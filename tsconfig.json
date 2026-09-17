@@ -1,0 +1,130 @@
+/* To learn more about Typescript configuration file: https://www.typescriptlang.org/docs/handbook/tsconfig-json.html. */
+/* To learn more about Angular compiler options: https://angular.dev/reference/configs/angular-compiler-options. */
+{
+  "compileOnSave": false,
+  "compilerOptions": {
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "experimentalDecorators": true,
+    "importHelpers": true,
+    "paths": {
+      "shared-ui": ["./projects/shared-ui/src/public-api.ts"]
+    },
+    "target": "ES2022",
+    "module": "preserve"
+  },
+  "angularCompilerOptions": {
+    "enableI18nLegacyMessageIdFormat": false,
+    "strictInjectionParameters": true,
+    "strictInputAccessModifiers": true
+  },
+  "files": [],
+  "references": [
+    {
+      "path": "./projects/shell/tsconfig.app.json"
+    },
+    {
+      "path": "./projects/shell/tsconfig.spec.json"
+    },
+    {
+      "path": "./projects/mfe-marketing/tsconfig.app.json"
+    },
+    {
+      "path": "./projects/mfe-marketing/tsconfig.spec.json"
+    },
+    {
+      "path": "./projects/mfe-shop/tsconfig.app.json"
+    },
+    {
+      "path": "./projects/mfe-shop/tsconfig.spec.json"
+    },
+    {
+      "path": "./projects/mfe-auth/tsconfig.app.json"
+    },
+    {
+      "path": "./projects/mfe-auth/tsconfig.spec.json"
+    },
+    {
+      "path": "./projects/mfe-account/tsconfig.app.json"
+    },
+    {
+      "path": "./projects/mfe-account/tsconfig.spec.json"
+    },
+    {
+      "path": "./projects/mfe-admin/tsconfig.app.json"
+    },
+    {
+      "path": "./projects/mfe-admin/tsconfig.spec.json"
+    },
+    {
+      "path": "./projects/mfe-blog/tsconfig.app.json"
+    },
+    {
+      "path": "./projects/mfe-blog/tsconfig.spec.json"
+    },
+    {
+      "path": "./projects/mfe-checkout/tsconfig.app.json"
+    },
+    {
+      "path": "./projects/mfe-checkout/tsconfig.spec.json"
+    },
+    {
+      "path": "./projects/mfe-inventory/tsconfig.app.json"
+    },
+    {
+      "path": "./projects/mfe-inventory/tsconfig.spec.json"
+    },
+    {
+      "path": "./projects/mfe-support/tsconfig.app.json"
+    },
+    {
+      "path": "./projects/mfe-support/tsconfig.spec.json"
+    },
+    {
+      "path": "./projects/mfe-quote/tsconfig.app.json"
+    },
+    {
+      "path": "./projects/mfe-quote/tsconfig.spec.json"
+    },
+    {
+      "path": "./projects/mfe-admin-cms/tsconfig.app.json"
+    },
+    {
+      "path": "./projects/mfe-admin-cms/tsconfig.spec.json"
+    },
+    {
+      "path": "./projects/mfe-admin-users/tsconfig.app.json"
+    },
+    {
+      "path": "./projects/mfe-admin-users/tsconfig.spec.json"
+    },
+    {
+      "path": "./projects/mfe-admin-sales/tsconfig.app.json"
+    },
+    {
+      "path": "./projects/mfe-admin-sales/tsconfig.spec.json"
+    },
+    {
+      "path": "./projects/mfe-admin-analytics/tsconfig.app.json"
+    },
+    {
+      "path": "./projects/mfe-admin-analytics/tsconfig.spec.json"
+    },
+    {
+      "path": "./projects/shared-ui/tsconfig.lib.json"
+    },
+    {
+      "path": "./projects/shared-ui/tsconfig.spec.json"
+    },
+    {
+      "path": "./projects/mfe-admin-core/tsconfig.app.json"
+    },
+    {
+      "path": "./projects/mfe-admin-shop/tsconfig.app.json"
+    }
+  ]
+}
