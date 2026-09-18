@@ -1,71 +1,68 @@
-import { Component } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ButtonComponent } from 'shared-ui';
+import { CmsService, PageHeaderComponent } from 'shared-ui';
+import { LucideBriefcase, LucideGraduationCap, LucideSparkles, LucideUsers } from '@lucide/angular';
 
 @Component({
   selector: 'app-careers',
   standalone: true,
-  imports: [CommonModule, ButtonComponent],
+  imports: [
+    CommonModule, 
+    PageHeaderComponent,
+    LucideBriefcase,
+    LucideGraduationCap,
+    LucideSparkles,
+    LucideUsers
+  ],
   template: `
-    <div class="bg-surface py-24">
-      <div class="container mx-auto px-4 max-w-4xl text-center">
-        <h1 class="font-display text-4xl font-bold text-ink sm:text-5xl">Join the Nigson Group</h1>
-        <p class="mx-auto mt-6 max-w-2xl text-lg text-muted-ink">
-          We're always looking for talented individuals who are passionate about building the future of distribution and real estate in West Africa.
-        </p>
+    <div class="bg-surface">
+      <ng-container *ngIf="hero().visible">
+        <lib-page-header [eyebrow]="hero().t('eyebrow')" [title]="hero().t('heading')" [subtitle]="hero().t('body')"></lib-page-header>
+      </ng-container>
 
-        <div class="mt-16 text-left">
-          <h2 class="text-2xl font-display font-bold text-ink mb-8">Open Positions</h2>
-          
-          <div class="space-y-4">
-            <!-- Job 1 -->
-            <div class="rounded-2xl border border-hairline bg-white p-6 shadow-sm transition-all hover:border-brand/30 hover:shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-              <div>
-                <h3 class="text-lg font-bold text-ink">Senior Logistics Coordinator</h3>
-                <div class="mt-2 flex flex-wrap items-center gap-4 text-sm text-muted-ink">
-                  <span class="flex items-center gap-1">📍 Lagos, Nigeria</span>
-                  <span class="flex items-center gap-1">⏱ Full-time</span>
-                  <span class="flex items-center gap-1">💼 Operations</span>
-                </div>
-              </div>
-              <button ui-button variant="outline" class="shrink-0">Apply Now</button>
-            </div>
+      <section *ngIf="tracks().visible" class="container-page py-16 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <div *ngFor="let t of tracksCards(); let i = index" class="rounded-2xl border border-border p-6">
+          <ng-container [ngSwitch]="i % 4">
+            <svg lucideBriefcase *ngSwitchCase="0" class="h-7 w-7 text-brand"></svg>
+            <svg lucideGraduationCap *ngSwitchCase="1" class="h-7 w-7 text-brand"></svg>
+            <svg lucideSparkles *ngSwitchCase="2" class="h-7 w-7 text-brand"></svg>
+            <svg lucideUsers *ngSwitchCase="3" class="h-7 w-7 text-brand"></svg>
+          </ng-container>
+          <h3 class="mt-4 text-lg font-semibold">{{ t.title }}</h3>
+          <p class="mt-2 text-sm text-muted-foreground">{{ t.body }}</p>
+        </div>
+      </section>
 
-            <!-- Job 2 -->
-            <div class="rounded-2xl border border-hairline bg-white p-6 shadow-sm transition-all hover:border-brand/30 hover:shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-              <div>
-                <h3 class="text-lg font-bold text-ink">B2B Sales Representative</h3>
-                <div class="mt-2 flex flex-wrap items-center gap-4 text-sm text-muted-ink">
-                  <span class="flex items-center gap-1">📍 Kano, Nigeria</span>
-                  <span class="flex items-center gap-1">⏱ Full-time</span>
-                  <span class="flex items-center gap-1">💼 Sales</span>
-                </div>
+      <section *ngIf="openings().visible" class="border-t border-border bg-surface-alt">
+        <div class="container-page py-16">
+          <h2 class="text-3xl font-semibold mb-8">{{ openings().t('heading') }}</h2>
+          <div class="rounded-2xl border border-border bg-background divide-y divide-border overflow-hidden">
+            <div *ngFor="let o of openingsCards()" class="flex flex-col md:flex-row md:items-center gap-3 md:gap-8 p-6 hover:bg-surface-alt/60 transition-colors">
+              <div class="flex-1">
+                <h3 class="font-semibold text-lg">{{ o.title }}</h3>
+                <p class="text-sm text-muted-foreground">{{ o.type }} &bull; {{ o.location }}</p>
               </div>
-              <button ui-button variant="outline" class="shrink-0">Apply Now</button>
+              <a
+                [href]="'mailto:' + openings().t('applyEmail') + '?subject=Application'"
+                class="inline-flex items-center justify-center rounded-full bg-brand text-brand-foreground px-5 py-2 text-sm font-semibold hover:bg-brand-deep transition-colors"
+              >
+                {{ openings().t('btnLabel') }}
+              </a>
             </div>
-            
-            <!-- Job 3 -->
-            <div class="rounded-2xl border border-hairline bg-white p-6 shadow-sm transition-all hover:border-brand/30 hover:shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-              <div>
-                <h3 class="text-lg font-bold text-ink">Warehouse Manager</h3>
-                <div class="mt-2 flex flex-wrap items-center gap-4 text-sm text-muted-ink">
-                  <span class="flex items-center gap-1">📍 Port Harcourt, Nigeria</span>
-                  <span class="flex items-center gap-1">⏱ Full-time</span>
-                  <span class="flex items-center gap-1">💼 Operations</span>
-                </div>
-              </div>
-              <button ui-button variant="outline" class="shrink-0">Apply Now</button>
-            </div>
-          </div>
-          
-          <div class="mt-12 rounded-2xl bg-brand/5 p-8 text-center border border-brand/10">
-            <h3 class="text-xl font-bold text-ink mb-2">Don't see a fit?</h3>
-            <p class="text-muted-ink mb-6">Send us your resume anyway. We're always on the lookout for great talent.</p>
-            <button ui-button variant="default">Send Resume</button>
           </div>
         </div>
-      </div>
+      </section>
     </div>
   `
 })
-export class CareersComponent {}
+export class CareersComponent {
+  cms = inject(CmsService);
+  page = this.cms.getPageSections('careers');
+
+  hero = computed(() => this.page.get('hero'));
+  tracks = computed(() => this.page.get('tracks'));
+  openings = computed(() => this.page.get('openings'));
+
+  tracksCards = computed(() => this.tracks().cards((c) => ({ title: c['title'], body: c['body'] })));
+  openingsCards = computed(() => this.openings().cards((c) => ({ title: c['title'], type: c['type'], location: c['location'] })));
+}

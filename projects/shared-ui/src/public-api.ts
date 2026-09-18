@@ -17,4 +17,4 @@ export * from './lib/catalog.service';
 export * from './lib/admin/admin.service';
 export * from './lib/admin-ui/admin-heading.component';
 export * from './lib/admin-ui/stat-card.component';
-export * from './lib/admin-ui/badge.component';
+export * from './lib/admin-ui/badge.component';export * from './lib/marketing/page-header.component';

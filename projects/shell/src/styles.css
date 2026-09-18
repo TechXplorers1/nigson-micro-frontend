@@ -3,12 +3,7 @@
 @tailwind components;
 @tailwind utilities;
 
-
-
-
 /* @custom-variant dark (&:is(.dark *)); */
-
-
 
 :root {
   --radius: 0.75rem;
@@ -51,11 +46,14 @@
   --border: #ececec;
   --input: #ececec;
   --ring: #d71920;
+
+  --font-display: "Poppins", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Poppins", ui-sans-serif, system-ui, sans-serif;
 }
 
 @layer base {
   * {
-    border-color: var(--color-border);
+    border-color: var(--border);
   }
 
   html {
@@ -63,8 +61,8 @@
   }
 
   body {
-    background-color: var(--color-background);
-    color: var(--color-foreground);
+    background-color: var(--background);
+    color: var(--foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
@@ -74,7 +72,7 @@
     font-family: var(--font-display);
     font-weight: 800; /* ExtraBold */
     letter-spacing: -0.02em;
-    color: var(--color-ink);
+    color: var(--ink);
   }
 
   ::selection {
@@ -85,28 +83,22 @@
 
 @layer utilities {
   .container-page {
-    
-  width: 100%;
-  margin-inline: auto;
-  padding-inline: 1.5rem;
-  max-width: 82rem;
-
+    width: 100%;
+    margin-inline: auto;
+    padding-inline: 1.5rem;
+    max-width: 82rem;
   }
 }
 
 @layer utilities {
   .text-balance {
-    
-  text-wrap: balance;
-
+    text-wrap: balance;
   }
 }
 
 @layer utilities {
   .hairline {
-    
-  border-color: var(--hairline);
-
+    border-color: var(--hairline);
   }
 }
 
@@ -145,100 +137,74 @@
 
 @layer utilities {
   .animate-fade-up {
-    
-  animation: fadeUp 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
-
+    animation: fadeUp 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 }
 @layer utilities {
   .animate-fade-in {
-    
-  animation: fadeIn 1s ease-out both;
-
+    animation: fadeIn 1s ease-out both;
   }
 }
 @layer utilities {
   .animate-marquee {
-    
-  animation: marquee 40s linear infinite;
-
+    animation: marquee 40s linear infinite;
   }
 }
 @layer utilities {
   .animate-soft-pulse {
-    
-  animation: softPulse 2.4s ease-out infinite;
-
+    animation: softPulse 2.4s ease-out infinite;
   }
 }
 @layer utilities {
   .animate-reveal {
-    
-  animation: revealClip 1.2s cubic-bezier(0.7, 0, 0.3, 1) both;
-
+    animation: revealClip 1.2s cubic-bezier(0.7, 0, 0.3, 1) both;
   }
 }
 @layer utilities {
   .animate-scroll-line {
-    
-  animation: scrollLine 2.4s cubic-bezier(0.65, 0, 0.35, 1) infinite;
-
+    animation: scrollLine 2.4s cubic-bezier(0.65, 0, 0.35, 1) infinite;
   }
 }
 @layer utilities {
   .animate-float-y {
-    
-  animation: floatY 2.4s ease-in-out infinite;
-
+    animation: floatY 2.4s ease-in-out infinite;
   }
 }
 
 @layer utilities {
   .reveal-on-scroll {
-    
-  opacity: 0;
-  transform: translateY(28px);
-  transition: opacity 0.9s cubic-bezier(0.22, 1, 0.36, 1), transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
-
+    opacity: 0;
+    transform: translateY(28px);
+    transition: opacity 0.9s cubic-bezier(0.22, 1, 0.36, 1), transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
   }
 }
 @layer utilities {
   .reveal-visible {
-    
-  opacity: 1;
-  transform: translateY(0);
-
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
 @layer utilities {
   .magnetic-btn {
-    
-  position: relative;
-  overflow: hidden;
-  transition: transform 0.25s ease, background-color 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
-
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.25s ease, background-color 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
   }
 }
 
 @layer utilities {
   .bg-gradient-brand {
-    
-  background-color: var(--brand);
-
+    background-color: var(--brand);
   }
 }
 @layer utilities {
   .shadow-brand {
-    
-  box-shadow: 0 20px 45px -20px rgba(215, 25, 32, 0.45);
-
+    box-shadow: 0 20px 45px -20px rgba(215, 25, 32, 0.45);
   }
 }
 @layer utilities {
   .shadow-elegant {
-    
-  box-shadow: 0 25px 60px -25px rgba(17, 17, 17, 0.18);
-
+    box-shadow: 0 25px 60px -25px rgba(17, 17, 17, 0.18);
   }
 }

@@ -24,11 +24,13 @@ export const routes: Routes = [
   },
   {
     path: 'blog',
-    loadComponent: () => import('./pages/blog.component').then(m => m.BlogComponent)
+    redirectTo: 'insights',
+    pathMatch: 'full'
   },
   {
     path: 'blog/:slug',
-    loadComponent: () => import('./pages/blog-post.component').then(m => m.BlogPostComponent)
+    redirectTo: 'insights/:slug',
+    pathMatch: 'full'
   },
   {
     path: 'insights',

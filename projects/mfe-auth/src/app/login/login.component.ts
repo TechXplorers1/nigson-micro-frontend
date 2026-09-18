@@ -215,7 +215,7 @@ export class LoginComponent {
       const returnUrl = this.route.snapshot.queryParams['redirect'] || '/';
       
       if (user.role === "admin") {
-        this.router.navigate(['/admin-core']); // Mocking admin redirection
+        this.router.navigate(['/admin']); // Mocking admin redirection
       } else {
         this.router.navigateByUrl(returnUrl);
       }

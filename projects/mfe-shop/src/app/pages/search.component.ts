@@ -1,9 +1,9 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs/operators';
-import { CatalogService, Product } from 'shared-ui';
+import { CatalogService, PageHeaderComponent } from 'shared-ui';
 import { ProductCardComponent } from '../products/product-card.component';
 import { LucideSearch } from '@lucide/angular';
 import { FormsModule } from '@angular/forms';
@@ -11,71 +11,80 @@ import { FormsModule } from '@angular/forms';
 @Component({
   selector: 'app-search',
   standalone: true,
-  imports: [CommonModule, RouterLink, ProductCardComponent, LucideSearch, FormsModule],
+  imports: [CommonModule, RouterLink, ProductCardComponent, LucideSearch, FormsModule, PageHeaderComponent],
   template: `
-    <div class="bg-surface min-h-[70vh]">
-      <div class="border-b border-hairline bg-white shadow-sm">
-        <div class="container mx-auto px-4 py-8">
-          <form class="mx-auto flex max-w-2xl items-center rounded-2xl border-2 border-brand bg-white px-4 shadow-sm focus-within:ring-4 focus-within:ring-brand/20">
-            <svg lucideSearch class="h-5 w-5 text-brand"></svg>
-            <input 
-              type="search" 
-              [ngModel]="query()" 
-              (ngModelChange)="onSearch($event)"
-              name="search"
-              class="w-full bg-transparent p-4 text-lg text-ink focus:outline-none placeholder:text-muted-ink"
-              placeholder="Search products, brands, or categories..."
-              autocomplete="off"
-            >
-          </form>
-          
-          <div class="mt-4 text-center text-sm text-muted-ink">
-            <span *ngIf="query()">Showing results for "<strong class="text-ink">{{ query() }}</strong>"</span>
-            <span *ngIf="!query()">Start typing to search our entire catalogue</span>
+    <div class="bg-surface min-h-screen">
+      <lib-page-header
+        [title]="headerTitle()"
+        [subtitle]="headerSubtitle()"
+      ></lib-page-header>
+
+      <section class="container-page py-12">
+        <ng-container *ngIf="matches().length > 0; else noMatches">
+          <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <app-product-card *ngFor="let p of matches()" [product]="p"></app-product-card>
+          </div>
+        </ng-container>
+
+        <ng-template #noMatches>
+          <div class="rounded-2xl border border-border bg-surface-alt/40 py-16 text-center">
+            <p class="text-lg font-semibold text-ink">No products found</p>
+            <p class="mt-2 text-sm text-muted-foreground">
+              We couldn't find a match{{ term() ? ' for "' + term() + '"' : '' }}. Try another keyword or explore the picks below.
+            </p>
+          </div>
+        </ng-template>
+
+        <div *ngIf="recommended().length > 0" class="mt-16">
+          <h2 class="text-2xl font-extrabold text-ink">
+            {{ matches().length > 0 ? "You may also like" : "Recommended for you" }}
+          </h2>
+          <div class="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            <app-product-card *ngFor="let p of recommended()" [product]="p" [compact]="true"></app-product-card>
           </div>
         </div>
-      </div>
-
-      <div class="container mx-auto px-4 py-12">
-        <div *ngIf="filteredProducts().length > 0" class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:gap-8">
-          <app-product-card *ngFor="let p of filteredProducts()" [p]="p"></app-product-card>
-        </div>
-
-        <div *ngIf="filteredProducts().length === 0 && query()" class="py-24 text-center">
-          <svg lucideSearch class="mx-auto h-16 w-16 text-muted-ink/30 mb-4"></svg>
-          <h2 class="text-2xl font-bold text-ink">No results found</h2>
-          <p class="mt-2 text-muted-ink">We couldn't find any products matching "{{ query() }}".</p>
-          <a routerLink="/products" class="mt-6 inline-block font-bold text-brand hover:underline">Browse all products</a>
-        </div>
-      </div>
+      </section>
     </div>
   `
 })
 export class SearchComponent {
-  private route = inject(ActivatedRoute);
+  route = inject(ActivatedRoute);
   catalog = inject(CatalogService);
-  
-  querySignal = signal('');
-  
-  routeQuery = toSignal(
-    this.route.queryParamMap.pipe(map(params => params.get('q') || '')),
-    { initialValue: '' }
-  );
-  
-  query = computed(() => this.querySignal() || this.routeQuery());
 
-  filteredProducts = computed(() => {
-    const q = this.query().toLowerCase();
-    if (!q) return [];
-    
-    return this.catalog.PRODUCTS.filter((p: Product) => 
-      p.name.toLowerCase().includes(q) || 
-      p.category.toLowerCase().includes(q) ||
-      p.sku.toLowerCase().includes(q)
+  q = toSignal(this.route.queryParamMap.pipe(map(params => params.get('q') || '')), { initialValue: '' });
+  
+  term = computed(() => this.q().trim().toLowerCase());
+
+  matches = computed(() => {
+    const t = this.term();
+    if (!t) return [];
+    return this.catalog.products().filter(p => 
+      [p.name, p.sku, p.category, p.desc].join(" ").toLowerCase().includes(t)
     );
   });
-  
-  onSearch(val: string) {
-    this.querySignal.set(val);
-  }
+
+  recommended = computed(() => {
+    const m = this.matches();
+    const matchedSkus = new Set(m.map(p => p.sku));
+    const cats = new Set(m.map(p => p.category));
+    
+    const rest = this.catalog.products().filter(p => !matchedSkus.has(p.sku));
+    const sameCat = rest.filter(p => cats.has(p.category));
+    const others = rest.filter(p => !cats.has(p.category));
+    
+    return [...sameCat, ...others].slice(0, 4);
+  });
+
+  headerTitle = computed(() => {
+    const t = this.term();
+    return t ? \`Search results for "\${t}"\` : "Search our products";
+  });
+
+  headerSubtitle = computed(() => {
+    const t = this.term();
+    const m = this.matches();
+    return t 
+      ? \`\${m.length} \${m.length === 1 ? 'product' : 'products'} found in the Nigson catalog.\`
+      : "Use the search icon in the navigation to find products by name, SKU or category.";
+  });
 }

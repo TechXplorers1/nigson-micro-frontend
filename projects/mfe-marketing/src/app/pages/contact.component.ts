@@ -1,92 +1,145 @@
-import { Component } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ButtonComponent, InputComponent } from 'shared-ui';
-import { LucideMapPin, LucidePhone, LucideMail } from '@lucide/angular';
+import { CmsService, PageHeaderComponent, InputComponent, ButtonComponent } from 'shared-ui';
+import { LucideMapPin, LucidePhone, LucideMail, LucideMessageCircle, LucideCheckCircle2 } from '@lucide/angular';
 
 @Component({
   selector: 'app-contact',
   standalone: true,
-  imports: [CommonModule, ButtonComponent, InputComponent, LucideMapPin, LucidePhone, LucideMail],
+  imports: [
+    CommonModule, 
+    PageHeaderComponent,
+    LucideMapPin,
+    LucidePhone,
+    LucideMail,
+    LucideMessageCircle,
+    LucideCheckCircle2
+  ],
   template: `
-    <div class="bg-surface py-24">
-      <div class="container mx-auto px-4 max-w-6xl">
-        <div class="text-center mb-16">
-          <h1 class="font-display text-4xl font-bold text-ink sm:text-5xl">Contact Us</h1>
-          <p class="mt-4 text-lg text-muted-ink">We're here to help and answer any question you might have.</p>
-        </div>
+    <div class="bg-surface min-h-screen">
+      <ng-container *ngIf="hero().visible">
+        <lib-page-header [eyebrow]="hero().t('eyebrow')" [title]="hero().t('heading')" [subtitle]="hero().t('body')"></lib-page-header>
+      </ng-container>
 
-        <div class="grid gap-12 lg:grid-cols-2">
-          <!-- Contact Info -->
-          <div>
-            <h2 class="text-2xl font-display font-bold text-ink mb-8">Get in Touch</h2>
-            <div class="space-y-8">
-              <div class="flex items-start gap-4">
-                <div class="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-brand/10 text-brand">
-                  <svg lucideMapPin class="h-6 w-6"></svg>
-                </div>
-                <div>
-                  <h3 class="font-bold text-ink">Head Office</h3>
-                  <p class="mt-1 text-muted-ink">123 Industrial Layout,<br>Lagos, Nigeria</p>
-                </div>
-              </div>
-              <div class="flex items-start gap-4">
-                <div class="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-brand/10 text-brand">
-                  <svg lucidePhone class="h-6 w-6"></svg>
-                </div>
-                <div>
-                  <h3 class="font-bold text-ink">Phone</h3>
-                  <p class="mt-1 text-muted-ink">+234 800 123 4567<br>Mon-Fri, 8am to 5pm</p>
-                </div>
-              </div>
-              <div class="flex items-start gap-4">
-                <div class="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-brand/10 text-brand">
-                  <svg lucideMail class="h-6 w-6"></svg>
-                </div>
-                <div>
-                  <h3 class="font-bold text-ink">Email</h3>
-                  <p class="mt-1 text-muted-ink">hello&#64;nigsongroup.com<br>sales&#64;nigsongroup.com</p>
-                </div>
-              </div>
+      <section class="container-page py-16 grid gap-10 lg:grid-cols-3">
+        
+        <!-- Info column -->
+        <div *ngIf="info().visible" class="space-y-6">
+          <div class="rounded-2xl border border-border bg-background p-6">
+            <svg lucideMapPin class="h-6 w-6 text-brand"></svg>
+            <h3 class="mt-3 font-semibold">{{ info().t('officeTitle') }}</h3>
+            <p class="mt-1 whitespace-pre-line text-sm text-muted-foreground">{{ info().t('address') }}</p>
+          </div>
+          
+          <div class="rounded-2xl border border-border bg-background p-6">
+            <svg lucidePhone class="h-6 w-6 text-brand"></svg>
+            <h3 class="mt-3 font-semibold">{{ info().t('phoneTitle') }}</h3>
+            <a [href]="'tel:' + sanitizePhone(info().t('phone'))" class="mt-1 block text-sm text-muted-foreground hover:text-brand">
+              {{ info().t('phone') }}
+            </a>
+          </div>
+          
+          <div class="rounded-2xl border border-border bg-background p-6">
+            <svg lucideMail class="h-6 w-6 text-brand"></svg>
+            <h3 class="mt-3 font-semibold">{{ info().t('emailTitle') }}</h3>
+            <a [href]="'mailto:' + info().t('email')" class="mt-1 block text-sm text-muted-foreground hover:text-brand">
+              {{ info().t('email') }}
+            </a>
+          </div>
+          
+          <a
+            [href]="info().t('whatsappLink')"
+            class="flex items-center gap-3 rounded-2xl bg-gradient-brand p-6 text-brand-foreground shadow-brand hover:opacity-95"
+          >
+            <svg lucideMessageCircle class="h-6 w-6"></svg>
+            <div>
+              <p class="font-semibold">{{ info().t('whatsappTitle') }}</p>
+              <p class="text-sm text-background/80">{{ info().t('whatsappBody') }}</p>
             </div>
-          </div>
+          </a>
+        </div>
 
-          <!-- Contact Form -->
-          <div class="rounded-2xl border border-hairline bg-white p-8 shadow-sm">
-            <h2 class="text-2xl font-display font-bold text-ink mb-6">Send a Message</h2>
-            <form class="space-y-6" (submit)="onSubmit($event)">
-              <div class="grid gap-6 sm:grid-cols-2">
+        <!-- Form and Map Column -->
+        <div class="space-y-8" [ngClass]="info().visible ? 'lg:col-span-2' : 'lg:col-span-3'">
+          
+          <form *ngIf="form().visible" (submit)="onSubmit($event)" class="rounded-2xl border border-border bg-background p-8 shadow-elegant space-y-5">
+            <ng-container *ngIf="submitted(); else formFields">
+              <div class="text-center py-10">
+                <svg lucideCheckCircle2 class="mx-auto h-14 w-14 text-brand"></svg>
+                <h3 class="mt-4 text-2xl font-semibold">Message sent</h3>
+                <p class="mt-2 text-muted-foreground">{{ form().t('successText') }}</p>
+              </div>
+            </ng-container>
+            
+            <ng-template #formFields>
+              <h2 class="text-2xl font-semibold">{{ form().t('heading') }}</h2>
+              <div class="grid gap-5 md:grid-cols-2">
                 <div>
-                  <label class="mb-2 block text-sm font-bold text-ink">First Name</label>
-                  <input ui-input placeholder="John">
+                  <label class="block text-sm font-medium mb-1.5">{{ form().t('nameLabel') }} <span class="text-brand">*</span></label>
+                  <input type="text" required class="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm focus:outline-none focus:border-brand" />
                 </div>
                 <div>
-                  <label class="mb-2 block text-sm font-bold text-ink">Last Name</label>
-                  <input ui-input placeholder="Doe">
+                  <label class="block text-sm font-medium mb-1.5">{{ form().t('emailLabel') }} <span class="text-brand">*</span></label>
+                  <input type="email" required class="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm focus:outline-none focus:border-brand" />
                 </div>
               </div>
+              
               <div>
-                <label class="mb-2 block text-sm font-bold text-ink">Email</label>
-                <input ui-input type="email" placeholder="john@example.com">
+                <label class="block text-sm font-medium mb-1.5">{{ form().t('subjectLabel') }}</label>
+                <input type="text" class="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm focus:outline-none focus:border-brand" />
               </div>
+              
               <div>
-                <label class="mb-2 block text-sm font-bold text-ink">Subject</label>
-                <input ui-input placeholder="How can we help?">
+                <label class="block text-sm font-medium mb-1.5">Type</label>
+                <select class="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm focus:outline-none focus:border-brand">
+                  <option>General inquiry</option>
+                  <option>Sales / Wholesale</option>
+                  <option>Complaint</option>
+                  <option>Partnership</option>
+                </select>
               </div>
+              
               <div>
-                <label class="mb-2 block text-sm font-bold text-ink">Message</label>
-                <textarea rows="4" class="w-full rounded-xl border border-hairline bg-surface/50 px-4 py-3 text-sm focus:border-brand focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand/10 transition-all" placeholder="Your message here..."></textarea>
+                <label class="block text-sm font-medium mb-1.5">{{ form().t('messageLabel') }} <span class="text-brand">*</span></label>
+                <textarea rows="5" required class="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm focus:outline-none focus:border-brand"></textarea>
               </div>
-              <button ui-button type="submit" variant="default" class="w-full">Send Message</button>
-            </form>
+              
+              <button type="submit" class="w-full rounded-full bg-brand text-brand-foreground py-3 text-sm font-semibold hover:bg-brand-deep transition-colors">
+                {{ form().t('btnLabel') }}
+              </button>
+            </ng-template>
+          </form>
+
+          <div class="rounded-2xl overflow-hidden border border-border">
+            <iframe
+              title="Nigson HQ"
+              class="w-full h-72"
+              src="https://www.google.com/maps?q=Ikate+Lekki+Lagos&output=embed"
+              loading="lazy"
+            ></iframe>
           </div>
         </div>
-      </div>
+
+      </section>
     </div>
   `
 })
 export class ContactComponent {
-  onSubmit(e: Event) {
-    e.preventDefault();
-    alert('Message sent successfully! We will get back to you soon.');
+  cms = inject(CmsService);
+  page = this.cms.getPageSections('contact');
+
+  hero = computed(() => this.page.get('hero'));
+  info = computed(() => this.page.get('info'));
+  form = computed(() => this.page.get('form'));
+
+  submitted = signal(false);
+
+  sanitizePhone(phone: string): string {
+    return phone ? phone.replace(/\s/g, '') : '';
+  }
+
+  onSubmit(event: Event) {
+    event.preventDefault();
+    this.submitted.set(true);
   }
 }
