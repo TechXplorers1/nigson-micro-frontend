@@ -22,14 +22,6 @@ export const routes: Routes = [
     path: 'admin',
     loadChildren: () => loadRemoteModule('mfe-admin-core', './Routes').then(m => m.routes)
   },
-  {
-    path: 'admin-shop',
-    loadComponent: () => loadRemoteModule('mfe-admin-shop', './Component').then(m => m.App)
-  },
-  {
-    path: 'admin-cms',
-    loadComponent: () => loadRemoteModule('mfe-admin-cms', './Component').then(m => m.App)
-  },
   // ---------------------------------------------------------------------------
   // NEW MARKETING ROUTES
   // ---------------------------------------------------------------------------

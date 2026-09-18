@@ -54,9 +54,9 @@ type Item = { to: string; label: string; icon: any; key: SectionKey; exact?: boo
                 <a 
                   *ngFor="let i of getPermittedItems(g.items)"
                   [routerLink]="i.to"
-                  routerLinkActive="bg-brand text-white"
+                  routerLinkActive="!bg-brand !text-white"
                   [routerLinkActiveOptions]="{exact: i.exact || false}"
-                  [class]="'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors text-muted-ink hover:bg-surface-alt hover:text-ink'"
+                  class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors text-muted-ink hover:bg-surface-alt hover:text-ink"
                 >
                   <!-- We use a switch or mapping for icons since dynamic component rendering is tricky in simple templates -->
                   <svg *ngIf="i.label === 'Dashboard'" lucideLayoutDashboard class="h-4 w-4 shrink-0"></svg>

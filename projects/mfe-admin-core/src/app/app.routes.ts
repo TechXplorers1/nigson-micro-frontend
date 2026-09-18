@@ -15,16 +15,13 @@ export const routes: Routes = [
       { path: 'users', component: AdminUsersComponent },
       { path: 'roles', component: AdminRolesComponent },
       
-      // Load CMS MFE routes directly into the Admin Layout
+      // Load CMS and Shop MFE routes directly into the Admin Layout
       {
         path: '',
-        loadChildren: () => import('@angular-architects/native-federation').then(m => m.loadRemoteModule('mfe-admin-cms', './Routes').then(mod => mod.routes))
-      },
-      
-      // Load Shop MFE routes directly into the Admin Layout
-      {
-        path: '',
-        loadChildren: () => import('@angular-architects/native-federation').then(m => m.loadRemoteModule('mfe-admin-shop', './Routes').then(mod => mod.routes))
+        loadChildren: () => Promise.all([
+          import('@angular-architects/native-federation').then(m => m.loadRemoteModule('mfe-admin-cms', './Routes').then(mod => mod.routes)),
+          import('@angular-architects/native-federation').then(m => m.loadRemoteModule('mfe-admin-shop', './Routes').then(mod => mod.routes))
+        ]).then(([cmsRoutes, shopRoutes]) => [...cmsRoutes, ...shopRoutes])
       }
     ]
   }
