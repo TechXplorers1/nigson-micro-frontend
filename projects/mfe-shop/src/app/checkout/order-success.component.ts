@@ -67,7 +67,7 @@ import { map } from 'rxjs/operators';
           </div>
 
           <div class="mt-8 flex flex-wrap justify-center gap-3">
-            <a routerLink="/shop/products" class="inline-flex items-center gap-2 rounded-full bg-brand text-white px-6 py-3 text-sm font-semibold hover:bg-brand-deep">
+            <a routerLink="/products" class="inline-flex items-center gap-2 rounded-full bg-brand text-white px-6 py-3 text-sm font-semibold hover:bg-brand-deep">
               Continue shopping <svg lucideArrowRight class="h-4 w-4"></svg>
             </a>
             

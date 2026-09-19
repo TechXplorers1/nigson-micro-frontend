@@ -28,7 +28,7 @@ import { ShopService } from 'shared-ui';
             class="reveal-on-scroll flex flex-col rounded-2xl bg-white p-4 transition-transform hover:-translate-y-1"
             [style.transitionDelay]="i * 60 + 'ms'"
           >
-            <a [routerLink]="['/shop/products', p.sku]" class="block">
+            <a [routerLink]="['/products', p.sku]" class="block">
               <div class="relative aspect-square overflow-hidden rounded-xl bg-[#f1f1f1]">
                 <img
                   [src]="catalog.imageFor(p.category)"

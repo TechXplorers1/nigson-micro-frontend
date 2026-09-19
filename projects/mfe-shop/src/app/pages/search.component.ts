@@ -11,7 +11,7 @@ import { FormsModule } from '@angular/forms';
 @Component({
   selector: 'app-search',
   standalone: true,
-  imports: [CommonModule, RouterLink, ProductCardComponent, LucideSearch, FormsModule, PageHeaderComponent],
+  imports: [CommonModule, ProductCardComponent, FormsModule, PageHeaderComponent],
   template: `
     <div class="bg-surface min-h-screen">
       <lib-page-header
@@ -22,7 +22,7 @@ import { FormsModule } from '@angular/forms';
       <section class="container-page py-12">
         <ng-container *ngIf="matches().length > 0; else noMatches">
           <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            <app-product-card *ngFor="let p of matches()" [product]="p"></app-product-card>
+            <app-product-card *ngFor="let p of matches()" [p]="p"></app-product-card>
           </div>
         </ng-container>
 
@@ -40,7 +40,7 @@ import { FormsModule } from '@angular/forms';
             {{ matches().length > 0 ? "You may also like" : "Recommended for you" }}
           </h2>
           <div class="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            <app-product-card *ngFor="let p of recommended()" [product]="p" [compact]="true"></app-product-card>
+            <app-product-card *ngFor="let p of recommended()" [p]="p" [compact]="true"></app-product-card>
           </div>
         </div>
       </section>
@@ -58,33 +58,33 @@ export class SearchComponent {
   matches = computed(() => {
     const t = this.term();
     if (!t) return [];
-    return this.catalog.products().filter(p => 
+    return this.catalog.PRODUCTS.filter((p: any) => 
       [p.name, p.sku, p.category, p.desc].join(" ").toLowerCase().includes(t)
     );
   });
 
   recommended = computed(() => {
     const m = this.matches();
-    const matchedSkus = new Set(m.map(p => p.sku));
-    const cats = new Set(m.map(p => p.category));
+    const matchedSkus = new Set(m.map((p: any) => p.sku));
+    const cats = new Set(m.map((p: any) => p.category));
     
-    const rest = this.catalog.products().filter(p => !matchedSkus.has(p.sku));
-    const sameCat = rest.filter(p => cats.has(p.category));
-    const others = rest.filter(p => !cats.has(p.category));
+    const rest = this.catalog.PRODUCTS.filter((p: any) => !matchedSkus.has(p.sku));
+    const sameCat = rest.filter((p: any) => cats.has(p.category));
+    const others = rest.filter((p: any) => !cats.has(p.category));
     
     return [...sameCat, ...others].slice(0, 4);
   });
 
   headerTitle = computed(() => {
     const t = this.term();
-    return t ? \`Search results for "\${t}"\` : "Search our products";
+    return t ? `Search results for "${t}"` : "Search our products";
   });
 
   headerSubtitle = computed(() => {
     const t = this.term();
     const m = this.matches();
     return t 
-      ? \`\${m.length} \${m.length === 1 ? 'product' : 'products'} found in the Nigson catalog.\`
+      ? `${m.length} ${m.length === 1 ? 'product' : 'products'} found in the Nigson catalog.`
       : "Use the search icon in the navigation to find products by name, SKU or category.";
   });
 }

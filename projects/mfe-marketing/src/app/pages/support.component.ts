@@ -192,7 +192,7 @@ const PAGES: Record<string, Page> = {
             Contact us
           </a>
           <a
-            routerLink="/shop/products"
+            routerLink="/products"
             class="rounded-full border border-ink px-6 py-3 text-sm font-semibold text-ink transition-colors hover:bg-ink hover:text-white"
           >
             Browse products

@@ -35,7 +35,7 @@ import { CatalogService, ShopService, QtyStepperComponent } from 'shared-ui';
                 Browse our premium accessories and FMCG range and add products to build your order.
               </p>
               <a
-                routerLink="/shop/products"
+                routerLink="/products"
                 class="mt-8 inline-flex items-center gap-2 rounded-full bg-brand text-white px-6 py-3 text-sm font-semibold hover:bg-brand-deep transition-colors"
               >
                 Explore products <svg lucideArrowRight class="h-4 w-4"></svg>
@@ -111,7 +111,7 @@ import { CatalogService, ShopService, QtyStepperComponent } from 'shared-ui';
                   <div class="flex items-center gap-1.5"><svg lucideTruck class="h-3.5 w-3.5 text-emerald-600"></svg> Nationwide delivery</div>
                 </div>
                 
-                <a routerLink="/shop/products" class="mt-5 block text-center text-xs font-semibold text-brand hover:underline">
+                <a routerLink="/products" class="mt-5 block text-center text-xs font-semibold text-brand hover:underline">
                   Continue shopping →
                 </a>
               </aside>
@@ -136,11 +136,11 @@ export class CartComponent {
 
   proceedToCheckout() {
     if (this.shop.user()) {
-      this.router.navigate(['/shop/checkout']);
+      this.router.navigate(['/checkout']);
     } else {
       // Typically goes to login, but we mock login state in the shell.
       // I will just let them go to checkout directly for this prototype.
-      this.router.navigate(['/shop/checkout']);
+      this.router.navigate(['/checkout']);
     }
   }
 }

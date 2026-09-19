@@ -3,14 +3,6 @@ import { loadRemoteModule } from '@angular-architects/native-federation';
 
 export const routes: Routes = [
   {
-    path: 'marketing',
-    loadChildren: () => loadRemoteModule('mfe-marketing', './Routes').then(m => m.routes)
-  },
-  {
-    path: 'shop',
-    loadChildren: () => loadRemoteModule('mfe-shop', './Routes').then(m => m.routes)
-  },
-  {
     path: 'auth',
     loadChildren: () => loadRemoteModule('mfe-auth', './Routes').then(m => m.routes)
   },
@@ -22,51 +14,16 @@ export const routes: Routes = [
     path: 'admin',
     loadChildren: () => loadRemoteModule('mfe-admin-core', './Routes').then(m => m.routes)
   },
-  // ---------------------------------------------------------------------------
-  // NEW MARKETING ROUTES
-  // ---------------------------------------------------------------------------
-  {
-    path: 'about',
-    loadChildren: () => import('@angular-architects/native-federation').then(m => m.loadRemoteModule('mfe-marketing', './Routes').then(mod => mod.routes))
-  },
-  {
-    path: 'contact',
-    loadChildren: () => import('@angular-architects/native-federation').then(m => m.loadRemoteModule('mfe-marketing', './Routes').then(mod => mod.routes))
-  },
-  {
-    path: 'careers',
-    loadChildren: () => import('@angular-architects/native-federation').then(m => m.loadRemoteModule('mfe-marketing', './Routes').then(mod => mod.routes))
-  },
-  {
-    path: 'distributor',
-    loadChildren: () => import('@angular-architects/native-federation').then(m => m.loadRemoteModule('mfe-marketing', './Routes').then(mod => mod.routes))
-  },
-  {
-    path: 'blog',
-    loadChildren: () => import('@angular-architects/native-federation').then(m => m.loadRemoteModule('mfe-marketing', './Routes').then(mod => mod.routes))
-  },
-  {
-    path: 'insights',
-    loadChildren: () => import('@angular-architects/native-federation').then(m => m.loadRemoteModule('mfe-marketing', './Routes').then(mod => mod.routes))
-  },
-  {
-    path: 'support',
-    loadChildren: () => import('@angular-architects/native-federation').then(m => m.loadRemoteModule('mfe-marketing', './Routes').then(mod => mod.routes))
-  },
-  // ---------------------------------------------------------------------------
-  // NEW SHOP ROUTES
-  // ---------------------------------------------------------------------------
-  {
-    path: 'search',
-    loadChildren: () => import('@angular-architects/native-federation').then(m => m.loadRemoteModule('mfe-shop', './Routes').then(mod => mod.routes))
-  },
-  {
-    path: 'quote',
-    loadChildren: () => import('@angular-architects/native-federation').then(m => m.loadRemoteModule('mfe-shop', './Routes').then(mod => mod.routes))
-  },
+  // Mount both Marketing and Shop routes directly into the Shell's root
   {
     path: '',
-    redirectTo: 'marketing',
-    pathMatch: 'full'
+    loadChildren: () => Promise.all([
+      loadRemoteModule('mfe-marketing', './Routes').then(m => m.routes),
+      loadRemoteModule('mfe-shop', './Routes').then(m => m.routes)
+    ]).then(([marketingRoutes, shopRoutes]) => {
+      // Retain mfe-marketing's empty path (HomeComponent) but filter out mfe-shop's empty path redirect
+      const shop = shopRoutes.filter((r: any) => r.path !== '');
+      return [...marketingRoutes, ...shop];
+    })
   }
 ];

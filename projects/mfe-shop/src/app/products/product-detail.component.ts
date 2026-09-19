@@ -118,7 +118,7 @@ import { WriteReviewComponent } from './write-review.component';
               <!-- Qty Stepper / Cart Control -->
               <ui-qty-stepper *ngIf="product()" [product]="product()!" [image]="gallery()[0]"></ui-qty-stepper>
 
-              <a [routerLink]="['/shop/quote']" class="inline-flex items-center gap-2 rounded-full border border-ink text-ink px-6 py-3 text-sm font-semibold hover:bg-ink hover:text-white transition-colors">
+              <a [routerLink]="['/quote']" class="inline-flex items-center gap-2 rounded-full border border-ink text-ink px-6 py-3 text-sm font-semibold hover:bg-ink hover:text-white transition-colors">
                 <svg lucideFileText class="h-4 w-4"></svg> Request quote
               </a>
             </div>

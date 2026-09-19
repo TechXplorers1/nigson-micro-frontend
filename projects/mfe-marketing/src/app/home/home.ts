@@ -1,4 +1,5 @@
-import { Component, computed, inject, OnInit } from '@angular/core';
+import { Component, computed, inject, OnInit, AfterViewInit, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { LucideArrowRight, LucideShieldCheck, LucideTruck } from '@lucide/angular';
@@ -50,7 +51,26 @@ export class HomeComponent implements OnInit {
     { name: "Deals", filter: "deals", img: "/assets/shopcat/deals.jpg" },
   ];
 
+  platformId = inject(PLATFORM_ID);
+
   ngOnInit() {
-    // Reveal logic can go here
+    // Other init logic if needed
+  }
+
+  ngAfterViewInit() {
+    if (isPlatformBrowser(this.platformId)) {
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('reveal-visible');
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+
+      document.querySelectorAll('.reveal-on-scroll').forEach(el => {
+        observer.observe(el);
+      });
+    }
   }
 }

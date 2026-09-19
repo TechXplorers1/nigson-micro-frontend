@@ -52,7 +52,7 @@ import { getAllPublishedPosts, BlogPost } from './blog-posts';
           <h2 class="text-3xl md:text-4xl font-extrabold tracking-[-0.02em] max-w-2xl">{{ cta().t('heading') }}</h2>
           <p class="mt-4 max-w-xl text-white/85">{{ cta().t('body') }}</p>
           <a
-            routerLink="/shop/quote"
+            routerLink="/quote"
             class="mt-8 inline-flex items-center gap-2 rounded-full bg-white px-7 py-3.5 text-sm font-semibold text-brand hover:bg-white/95 transition-colors"
           >
             {{ cta().t('btnLabel') }} <svg lucideArrowRight class="h-4 w-4"></svg>

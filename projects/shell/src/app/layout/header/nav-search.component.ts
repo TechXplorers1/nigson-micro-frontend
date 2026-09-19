@@ -86,6 +86,6 @@ export class NavSearchComponent {
     }
     this.open.set(false);
     this.query.set(''); // Clear search on submit just like the original React app
-    this.router.navigate(['/shop/search'], { queryParams: { q: term } });
+    this.router.navigate(['/search'], { queryParams: { q: term } });
   }
 }

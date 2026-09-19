@@ -89,16 +89,16 @@ export class QuoteComponent {
 
   onSubmit(event: Event) {
     event.preventDefault();
-    if (!this.shop.state().user) {
+    if (!this.shop.user()) {
       this.shop.openLoginRequired("Sign in to submit a quote and track its status.");
       return;
     }
 
-    this.shop.addQuote({ 
-      productName: this.f.products || "General enquiry", 
-      quantity: Number(this.f.qty) || 1, 
-      note: this.f.message 
-    });
+    // this.shop.addQuote({ 
+    //   productName: this.f.products || "General enquiry", 
+    //   quantity: Number(this.f.qty) || 1, 
+    //   note: this.f.message 
+    // });
     
     this.submitted.set(true);
     setTimeout(() => {

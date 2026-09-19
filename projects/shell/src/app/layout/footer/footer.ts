@@ -25,11 +25,11 @@ export class FooterComponent {
     {
       heading: "Shop",
       links: [
-        { label: "All Products", to: "/shop/products" },
-        { label: "Deals", to: "/shop/products" },
-        { label: "New Arrivals", to: "/shop/products" },
-        { label: "Best Sellers", to: "/shop/products" },
-        { label: "Categories", to: "/shop/products" },
+        { label: "All Products", to: "/products" },
+        { label: "Deals", to: "/products" },
+        { label: "New Arrivals", to: "/products" },
+        { label: "Best Sellers", to: "/products" },
+        { label: "Categories", to: "/products" },
       ],
     },
     {

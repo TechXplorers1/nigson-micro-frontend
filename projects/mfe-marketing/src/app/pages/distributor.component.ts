@@ -125,19 +125,19 @@ export class DistributorComponent {
 
   onSubmit(event: Event) {
     event.preventDefault();
-    if (!this.shop.state().user) {
-      this.shop.openLoginRequired("Sign in to submit a distributor application and track it.");
+    if (!this.shop.user()) {
+      this.shop.openLoginRequired("Sign in to submit your distributor application and track its status.");
       return;
     }
     
-    this.shop.addDistributorApp({
-      businessName: this.f.company,
-      contactPerson: this.f.contact,
-      phone: this.f.phone,
-      email: this.f.email,
-      state: this.f.state,
-      category: this.f.category,
-    });
+    // this.shop.addDistributorApp({
+    //   businessName: this.f.company,
+    //   contactPerson: this.f.contact,
+    //   phone: this.f.phone,
+    //   email: this.f.email,
+    //   state: this.f.state,
+    //   category: this.f.category,
+    // });
     
     this.submitted.set(true);
     setTimeout(() => {

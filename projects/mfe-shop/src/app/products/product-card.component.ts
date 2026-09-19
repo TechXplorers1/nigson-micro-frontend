@@ -10,7 +10,7 @@ import { CatalogService, Product, ShopService } from 'shared-ui';
   imports: [CommonModule, RouterLink, LucideShoppingCart, LucideStar],
   template: `
     <div class="group flex flex-col text-left rounded-2xl border border-border bg-background overflow-hidden hover:shadow-elegant hover:-translate-y-1 transition-all h-full">
-      <a [routerLink]="['/shop/products', p.sku]" class="text-left flex-1">
+      <a [routerLink]="['/products', p.sku]" class="text-left flex-1">
         <div class="aspect-[4/3] bg-surface-alt relative overflow-hidden">
           <img
             [src]="catalog.imageFor(p.category)"
@@ -33,7 +33,7 @@ import { CatalogService, Product, ShopService } from 'shared-ui';
 
       <div class="px-5 pt-3">
         <a
-          [routerLink]="['/shop/products', p.sku]"
+          [routerLink]="['/products', p.sku]"
           fragment="reviews"
           class="inline-flex items-center gap-1.5 text-sm font-semibold text-ink hover:text-brand transition-colors"
         >
@@ -45,7 +45,7 @@ import { CatalogService, Product, ShopService } from 'shared-ui';
 
       <div class="mt-auto px-5 pb-5 pt-4 flex gap-2">
         <a
-          [routerLink]="['/shop/products', p.sku]"
+          [routerLink]="['/products', p.sku]"
           class="flex-1 rounded-full border border-hairline px-4 py-2.5 text-xs font-semibold text-ink hover:border-brand hover:text-brand transition-colors text-center"
         >
           View Details

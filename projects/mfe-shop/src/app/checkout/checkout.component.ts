@@ -326,7 +326,7 @@ export class CheckoutComponent {
 
   next() { this.step.set(Math.min(2, this.step() + 1) as Step); }
   back() { this.step.set(Math.max(0, this.step() - 1) as Step); }
-  goCart() { this.router.navigate(['/shop/cart']); }
+  goCart() { this.router.navigate(['/cart']); }
 
   validate(): string | null {
     if (this.step() === 0) {
@@ -388,7 +388,7 @@ export class CheckoutComponent {
       });
       this.processing.set(false);
       this.payOpen.set(false);
-      this.router.navigate(['/shop/checkout/success'], { queryParams: { id: order.id } });
+      this.router.navigate(['/checkout/success'], { queryParams: { id: order.id } });
     }, 1500);
   }
 }

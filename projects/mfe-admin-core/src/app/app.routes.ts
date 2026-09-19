@@ -1,27 +1,43 @@
-import { Routes } from '@angular/router';
+import { Routes, UrlSegment, UrlMatchResult } from '@angular/router';
+import { loadRemoteModule } from '@angular-architects/native-federation';
 import { AdminLayoutComponent } from './layout/admin-layout.component';
 import { AdminDashboardComponent } from './dashboard/admin-dashboard.component';
 import { AnalyticsComponent } from './analytics/analytics.component';
 import { AdminUsersComponent } from './users/users.component';
 import { AdminRolesComponent } from './roles/roles.component';
 
+export function cmsMatcher(segments: UrlSegment[]): UrlMatchResult | null {
+  const cmsRoutes = ['blog', 'pages', 'reviews'];
+  if (segments.length > 0 && cmsRoutes.includes(segments[0].path)) {
+    return { consumed: [] }; // Do not consume segments so children can match them
+  }
+  return null;
+}
+
 export const routes: Routes = [
   {
     path: '',
     component: AdminLayoutComponent,
     children: [
-      { path: '', component: AdminDashboardComponent },
+      { path: '', component: AdminDashboardComponent, pathMatch: 'full' },
       { path: 'analytics', component: AnalyticsComponent },
       { path: 'users', component: AdminUsersComponent },
       { path: 'roles', component: AdminRolesComponent },
       
-      // Load CMS and Shop MFE routes directly into the Admin Layout
+      // Load CMS routes conditionally using a matcher
+      {
+        matcher: cmsMatcher,
+        loadChildren: () => loadRemoteModule('mfe-admin-cms', './Routes')
+          .then(m => m.routes)
+          .catch(err => { console.error('Error loading mfe-admin-cms', err); return []; })
+      },
+      
+      // Load Shop routes as fallback for all other inventory/sales routes
       {
         path: '',
-        loadChildren: () => Promise.all([
-          import('@angular-architects/native-federation').then(m => m.loadRemoteModule('mfe-admin-cms', './Routes').then(mod => mod.routes)),
-          import('@angular-architects/native-federation').then(m => m.loadRemoteModule('mfe-admin-shop', './Routes').then(mod => mod.routes))
-        ]).then(([cmsRoutes, shopRoutes]) => [...cmsRoutes, ...shopRoutes])
+        loadChildren: () => loadRemoteModule('mfe-admin-shop', './Routes')
+          .then(m => m.routes)
+          .catch(err => { console.error('Error loading mfe-admin-shop', err); return []; })
       }
     ]
   }

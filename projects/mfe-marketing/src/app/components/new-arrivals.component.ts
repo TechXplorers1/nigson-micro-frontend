@@ -23,7 +23,7 @@ import { ShopService } from 'shared-ui';
             <p class="mt-2 text-sm text-muted-foreground">Fresh tech. New possibilities.</p>
           </div>
           <a
-            routerLink="/shop/products"
+            routerLink="/products"
             class="inline-flex shrink-0 items-center gap-1.5 text-sm font-semibold text-ink transition-colors hover:text-brand"
           >
             Shop all new arrivals <svg lucideArrowRight class="h-4 w-4"></svg>
@@ -36,7 +36,7 @@ import { ShopService } from 'shared-ui';
             class="reveal-on-scroll flex flex-col rounded-2xl bg-white border border-hairline p-4 transition-transform hover:-translate-y-1 hover:border-brand/30 hover:shadow-elegant"
             [style.transitionDelay]="i * 60 + 'ms'"
           >
-            <a [routerLink]="['/shop/products', p.sku]" class="block">
+            <a [routerLink]="['/products', p.sku]" class="block">
               <div class="relative aspect-square overflow-hidden rounded-xl bg-[#f1f1f1]">
                 <img
                   [src]="catalog.imageFor(p.category)"

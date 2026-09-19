@@ -52,7 +52,7 @@ import { ShopService } from 'shared-ui';
             class="reveal-on-scroll flex w-[82%] shrink-0 snap-start flex-col rounded-2xl border border-hairline bg-white p-4 transition-transform hover:-translate-y-1 sm:w-[47%] lg:w-[31%] xl:w-[calc((100%-5rem)/5)]"
             [style.transitionDelay]="(i < 4 ? i : 4) * 60 + 'ms'"
           >
-            <a [routerLink]="['/shop/products', p.sku]" class="block">
+            <a [routerLink]="['/products', p.sku]" class="block">
               <div class="relative aspect-square overflow-hidden rounded-xl bg-[#f1f1f1]">
                 <img
                   [src]="catalog.imageFor(p.category)"

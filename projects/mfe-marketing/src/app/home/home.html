@@ -27,13 +27,13 @@
       </p>
       <div class="mt-8 flex flex-wrap gap-3">
         <a
-          routerLink="/shop/products"
+          routerLink="/products"
           class="inline-flex h-14 items-center gap-3 rounded-md bg-brand px-7 text-sm font-bold text-white shadow-brand transition-colors hover:bg-brand-deep"
         >
           SHOP NOW <svg lucideArrowRight class="h-5 w-5"></svg>
         </a>
         <a
-          routerLink="/shop/products"
+          routerLink="/products"
           class="inline-flex h-14 items-center rounded-md border border-ink bg-white px-7 text-sm font-bold text-ink transition-colors hover:border-brand hover:text-brand"
         >
           EXPLORE DEALS
@@ -71,7 +71,7 @@
         <p class="mt-1.5 text-sm text-muted-foreground">Everything you need, all in one place.</p>
       </div>
       <a
-        routerLink="/shop/products"
+        routerLink="/products"
         class="inline-flex shrink-0 items-center gap-1.5 pt-1 text-sm font-semibold text-ink transition-colors hover:text-brand"
       >
         View all <svg lucideArrowRight class="h-4 w-4"></svg>
@@ -81,7 +81,7 @@
     <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:gap-5 lg:grid-cols-9">
       <a
         *ngFor="let c of SHOP_CATEGORIES"
-        routerLink="/shop/products"
+        routerLink="/products"
         [queryParams]="{category: c.filter}"
         class="reveal-on-scroll group block text-center"
       >

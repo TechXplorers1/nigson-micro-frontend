@@ -42,7 +42,7 @@ import { SectionApi } from 'shared-ui';
               {{ s?.t('btn1Label') || 'SHOP WHOLESALE' }} <svg lucideArrowRight class="h-4 w-4"></svg>
             </a>
             <a
-              [routerLink]="s?.t('btn2Link') || '/shop/quote'"
+              [routerLink]="s?.t('btn2Link') || '/quote'"
               class="inline-flex h-12 items-center rounded-md border border-ink bg-transparent px-6 text-sm font-bold text-ink transition-colors hover:border-brand hover:text-brand"
             >
               {{ s?.t('btn2Label') || 'REQUEST A QUOTE' }}

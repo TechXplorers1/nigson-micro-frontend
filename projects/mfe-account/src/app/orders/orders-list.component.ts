@@ -22,7 +22,7 @@ import {
       </div>
       <h2 class="mt-5 text-2xl font-extrabold">No orders yet</h2>
       <p class="mt-2 text-sm text-muted-ink">Your placed orders will appear here.</p>
-      <a routerLink="/shop" class="mt-6 inline-flex items-center gap-2 rounded-full bg-brand text-white px-5 py-2.5 text-sm font-semibold hover:bg-brand-deep">
+      <a routerLink="/products" class="mt-6 inline-flex items-center gap-2 rounded-full bg-brand text-white px-5 py-2.5 text-sm font-semibold hover:bg-brand-deep">
         Shop products <svg lucideArrowRight class="h-4 w-4"></svg>
       </a>
     </div>
