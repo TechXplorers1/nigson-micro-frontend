@@ -1,4 +1,4 @@
-$apps = "mfe-auth", "mfe-shop", "mfe-account", "mfe-admin-core", "mfe-admin-shop", "mfe-admin-cms"
+$apps = "auth", "shop", "account", "admin-core", "admin-shop", "admin-cms"
 
 foreach ($app in $apps) {
   Write-Host "Configuring boilerplate for $app..."

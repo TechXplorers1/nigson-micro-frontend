@@ -31,88 +31,88 @@
       "path": "./projects/shell/tsconfig.spec.json"
     },
     {
-      "path": "./projects/mfe-marketing/tsconfig.app.json"
+      "path": "./projects/marketing/tsconfig.app.json"
     },
     {
-      "path": "./projects/mfe-marketing/tsconfig.spec.json"
+      "path": "./projects/marketing/tsconfig.spec.json"
     },
     {
-      "path": "./projects/mfe-shop/tsconfig.app.json"
+      "path": "./projects/shop/tsconfig.app.json"
     },
     {
-      "path": "./projects/mfe-shop/tsconfig.spec.json"
+      "path": "./projects/shop/tsconfig.spec.json"
     },
     {
-      "path": "./projects/mfe-auth/tsconfig.app.json"
+      "path": "./projects/auth/tsconfig.app.json"
     },
     {
-      "path": "./projects/mfe-auth/tsconfig.spec.json"
+      "path": "./projects/auth/tsconfig.spec.json"
     },
     {
-      "path": "./projects/mfe-account/tsconfig.app.json"
+      "path": "./projects/account/tsconfig.app.json"
     },
     {
-      "path": "./projects/mfe-account/tsconfig.spec.json"
+      "path": "./projects/account/tsconfig.spec.json"
     },
     {
-      "path": "./projects/mfe-admin/tsconfig.app.json"
+      "path": "./projects/admin/tsconfig.app.json"
     },
     {
-      "path": "./projects/mfe-admin/tsconfig.spec.json"
+      "path": "./projects/admin/tsconfig.spec.json"
     },
     {
-      "path": "./projects/mfe-blog/tsconfig.app.json"
+      "path": "./projects/blog/tsconfig.app.json"
     },
     {
-      "path": "./projects/mfe-blog/tsconfig.spec.json"
+      "path": "./projects/blog/tsconfig.spec.json"
     },
     {
-      "path": "./projects/mfe-checkout/tsconfig.app.json"
+      "path": "./projects/checkout/tsconfig.app.json"
     },
     {
-      "path": "./projects/mfe-checkout/tsconfig.spec.json"
+      "path": "./projects/checkout/tsconfig.spec.json"
     },
     {
-      "path": "./projects/mfe-inventory/tsconfig.app.json"
+      "path": "./projects/inventory/tsconfig.app.json"
     },
     {
-      "path": "./projects/mfe-inventory/tsconfig.spec.json"
+      "path": "./projects/inventory/tsconfig.spec.json"
     },
     {
-      "path": "./projects/mfe-support/tsconfig.app.json"
+      "path": "./projects/support/tsconfig.app.json"
     },
     {
-      "path": "./projects/mfe-support/tsconfig.spec.json"
+      "path": "./projects/support/tsconfig.spec.json"
     },
     {
-      "path": "./projects/mfe-quote/tsconfig.app.json"
+      "path": "./projects/quote/tsconfig.app.json"
     },
     {
-      "path": "./projects/mfe-quote/tsconfig.spec.json"
+      "path": "./projects/quote/tsconfig.spec.json"
     },
     {
-      "path": "./projects/mfe-admin-cms/tsconfig.app.json"
+      "path": "./projects/admin-cms/tsconfig.app.json"
     },
     {
-      "path": "./projects/mfe-admin-cms/tsconfig.spec.json"
+      "path": "./projects/admin-cms/tsconfig.spec.json"
     },
     {
-      "path": "./projects/mfe-admin-users/tsconfig.app.json"
+      "path": "./projects/admin-users/tsconfig.app.json"
     },
     {
-      "path": "./projects/mfe-admin-users/tsconfig.spec.json"
+      "path": "./projects/admin-users/tsconfig.spec.json"
     },
     {
-      "path": "./projects/mfe-admin-sales/tsconfig.app.json"
+      "path": "./projects/admin-sales/tsconfig.app.json"
     },
     {
-      "path": "./projects/mfe-admin-sales/tsconfig.spec.json"
+      "path": "./projects/admin-sales/tsconfig.spec.json"
     },
     {
-      "path": "./projects/mfe-admin-analytics/tsconfig.app.json"
+      "path": "./projects/admin-analytics/tsconfig.app.json"
     },
     {
-      "path": "./projects/mfe-admin-analytics/tsconfig.spec.json"
+      "path": "./projects/admin-analytics/tsconfig.spec.json"
     },
     {
       "path": "./projects/shared-ui/tsconfig.lib.json"
@@ -121,10 +121,10 @@
       "path": "./projects/shared-ui/tsconfig.spec.json"
     },
     {
-      "path": "./projects/mfe-admin-core/tsconfig.app.json"
+      "path": "./projects/admin-core/tsconfig.app.json"
     },
     {
-      "path": "./projects/mfe-admin-shop/tsconfig.app.json"
+      "path": "./projects/admin-shop/tsconfig.app.json"
     }
   ]
 }

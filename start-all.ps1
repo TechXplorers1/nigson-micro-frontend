@@ -1,12 +1,12 @@
 $mfe = @{
     "shell" = 4200
-    "mfe-marketing" = 4201
-    "mfe-shop" = 4202
-    "mfe-auth" = 4203
-    "mfe-account" = 4204
-    "mfe-admin-core" = 4205
-    "mfe-admin-shop" = 4209
-    "mfe-admin-cms" = 4210
+    "marketing" = 4201
+    "shop" = 4202
+    "auth" = 4203
+    "account" = 4204
+    "admin-core" = 4205
+    "admin-shop" = 4209
+    "admin-cms" = 4210
 }
 
 Write-Host "Starting all Micro Frontends via http-server..."

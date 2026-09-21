@@ -4,7 +4,7 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve shell",
-    "start:all": "concurrently \"ng serve mfe-marketing\" \"ng serve mfe-shop\" \"ng serve mfe-auth\" \"ng serve mfe-account\" \"ng serve mfe-admin-core\" \"ng serve mfe-admin-shop\" \"ng serve mfe-admin-cms\" \"ng serve shell\"",
+    "start:all": "concurrently \"ng serve marketing\" \"ng serve shop\" \"ng serve auth\" \"ng serve account\" \"ng serve admin-core\" \"ng serve admin-shop\" \"ng serve admin-cms\" \"ng serve shell\"",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"

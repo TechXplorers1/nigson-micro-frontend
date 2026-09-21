@@ -1,10 +1,10 @@
 $apps = @{
-  "mfe-auth" = 4202;
-  "mfe-shop" = 4203;
-  "mfe-account" = 4204;
-  "mfe-admin-core" = 4205;
-  "mfe-admin-shop" = 4206;
-  "mfe-admin-cms" = 4207;
+  "auth" = 4202;
+  "shop" = 4203;
+  "account" = 4204;
+  "admin-core" = 4205;
+  "admin-shop" = 4206;
+  "admin-cms" = 4207;
 }
 
 foreach ($app in $apps.Keys) {

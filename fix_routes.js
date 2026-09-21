@@ -30,19 +30,19 @@ const filesToUpdate = [
   'projects/shell/src/app/layout/header/nav-search.component.ts',
   'projects/shell/src/app/layout/header/header.html',
   'projects/shell/src/app/layout/footer/footer.ts',
-  'projects/mfe-shop/src/app/products/product-detail.component.ts',
-  'projects/mfe-shop/src/app/checkout/checkout.component.ts',
-  'projects/mfe-shop/src/app/cart/cart.component.ts',
-  'projects/mfe-shop/src/app/checkout/order-success.component.ts',
-  'projects/mfe-shop/src/app/products/product-card.component.ts',
-  'projects/mfe-marketing/src/app/home/home.html',
-  'projects/mfe-marketing/src/app/pages/insights.component.ts',
-  'projects/mfe-marketing/src/app/pages/support.component.ts',
-  'projects/mfe-marketing/src/app/components/wholesale-cta.component.ts',
-  'projects/mfe-marketing/src/app/components/new-arrivals.component.ts',
-  'projects/mfe-marketing/src/app/components/flash-sale.component.ts',
-  'projects/mfe-marketing/src/app/components/best-sellers.component.ts',
-  'projects/mfe-account/src/app/orders/orders-list.component.ts'
+  'projects/shop/src/app/products/product-detail.component.ts',
+  'projects/shop/src/app/checkout/checkout.component.ts',
+  'projects/shop/src/app/cart/cart.component.ts',
+  'projects/shop/src/app/checkout/order-success.component.ts',
+  'projects/shop/src/app/products/product-card.component.ts',
+  'projects/marketing/src/app/home/home.html',
+  'projects/marketing/src/app/pages/insights.component.ts',
+  'projects/marketing/src/app/pages/support.component.ts',
+  'projects/marketing/src/app/components/wholesale-cta.component.ts',
+  'projects/marketing/src/app/components/new-arrivals.component.ts',
+  'projects/marketing/src/app/components/flash-sale.component.ts',
+  'projects/marketing/src/app/components/best-sellers.component.ts',
+  'projects/account/src/app/orders/orders-list.component.ts'
 ];
 
 filesToUpdate.forEach(file => replaceInFile(path.join(process.cwd(), file)));

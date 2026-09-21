@@ -101,25 +101,25 @@
         }
       }
     },
-    "mfe-marketing": {
+    "marketing": {
       "projectType": "application",
       "schematics": {},
-      "root": "projects/mfe-marketing",
-      "sourceRoot": "projects/mfe-marketing/src",
+      "root": "projects/marketing",
+      "sourceRoot": "projects/marketing/src",
       "prefix": "app",
       "architect": {
         "build": {
           "builder": "@angular-architects/native-federation:build",
           "options": {
             "cacheExternalArtifacts": true,
-            "tsConfig": "projects/mfe-marketing/tsconfig.federation.json"
+            "tsConfig": "projects/marketing/tsconfig.federation.json"
           },
           "configurations": {
             "production": {
-              "target": "mfe-marketing:esbuild:production"
+              "target": "marketing:esbuild:production"
             },
             "development": {
-              "target": "mfe-marketing:esbuild:development",
+              "target": "marketing:esbuild:development",
               "dev": true
             }
           },
@@ -128,8 +128,8 @@
         "serve": {
           "builder": "@angular-architects/native-federation:build",
           "options": {
-            "target": "mfe-marketing:serve-original:development",
-            "tsConfig": "projects/mfe-marketing/tsconfig.federation.json",
+            "target": "marketing:serve-original:development",
+            "tsConfig": "projects/marketing/tsconfig.federation.json",
             "rebuildDelay": 500,
             "cacheExternalArtifacts": true,
             "dev": true,
@@ -143,15 +143,15 @@
         "esbuild": {
           "builder": "@angular/build:application",
           "options": {
-            "browser": "projects/mfe-marketing/src/main.ts",
-            "tsConfig": "projects/mfe-marketing/tsconfig.app.json",
+            "browser": "projects/marketing/src/main.ts",
+            "tsConfig": "projects/marketing/tsconfig.app.json",
             "assets": [
               {
                 "glob": "**/*",
-                "input": "projects/mfe-marketing/public"
+                "input": "projects/marketing/public"
               }
             ],
-            "styles": ["projects/mfe-marketing/src/styles.css"],
+            "styles": ["projects/marketing/src/styles.css"],
             "polyfills": ["es-module-shims"]
           },
           "configurations": {
@@ -182,10 +182,10 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "mfe-marketing:esbuild:production"
+              "buildTarget": "marketing:esbuild:production"
             },
             "development": {
-              "buildTarget": "mfe-marketing:esbuild:development"
+              "buildTarget": "marketing:esbuild:development"
             }
           },
           "defaultConfiguration": "development",
@@ -195,25 +195,25 @@
         }
       }
     },
-    "mfe-shop": {
+    "shop": {
       "projectType": "application",
       "schematics": {},
-      "root": "projects/mfe-shop",
-      "sourceRoot": "projects/mfe-shop/src",
+      "root": "projects/shop",
+      "sourceRoot": "projects/shop/src",
       "prefix": "app",
       "architect": {
         "build": {
           "builder": "@angular-architects/native-federation:build",
           "options": {
             "cacheExternalArtifacts": true,
-            "tsConfig": "projects/mfe-shop/tsconfig.federation.json"
+            "tsConfig": "projects/shop/tsconfig.federation.json"
           },
           "configurations": {
             "production": {
-              "target": "mfe-shop:esbuild:production"
+              "target": "shop:esbuild:production"
             },
             "development": {
-              "target": "mfe-shop:esbuild:development",
+              "target": "shop:esbuild:development",
               "dev": true
             }
           },
@@ -222,8 +222,8 @@
         "serve": {
           "builder": "@angular-architects/native-federation:build",
           "options": {
-            "target": "mfe-shop:serve-original:development",
-            "tsConfig": "projects/mfe-shop/tsconfig.federation.json",
+            "target": "shop:serve-original:development",
+            "tsConfig": "projects/shop/tsconfig.federation.json",
             "rebuildDelay": 500,
             "cacheExternalArtifacts": true,
             "dev": true,
@@ -237,15 +237,15 @@
         "esbuild": {
           "builder": "@angular/build:application",
           "options": {
-            "browser": "projects/mfe-shop/src/main.ts",
-            "tsConfig": "projects/mfe-shop/tsconfig.app.json",
+            "browser": "projects/shop/src/main.ts",
+            "tsConfig": "projects/shop/tsconfig.app.json",
             "assets": [
               {
                 "glob": "**/*",
-                "input": "projects/mfe-shop/public"
+                "input": "projects/shop/public"
               }
             ],
-            "styles": ["projects/mfe-shop/src/styles.css"],
+            "styles": ["projects/shop/src/styles.css"],
             "polyfills": ["es-module-shims"]
           },
           "configurations": {
@@ -276,10 +276,10 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "mfe-shop:esbuild:production"
+              "buildTarget": "shop:esbuild:production"
             },
             "development": {
-              "buildTarget": "mfe-shop:esbuild:development"
+              "buildTarget": "shop:esbuild:development"
             }
           },
           "defaultConfiguration": "development",
@@ -289,25 +289,25 @@
         }
       }
     },
-    "mfe-auth": {
+    "auth": {
       "projectType": "application",
       "schematics": {},
-      "root": "projects/mfe-auth",
-      "sourceRoot": "projects/mfe-auth/src",
+      "root": "projects/auth",
+      "sourceRoot": "projects/auth/src",
       "prefix": "app",
       "architect": {
         "build": {
           "builder": "@angular-architects/native-federation:build",
           "options": {
             "cacheExternalArtifacts": true,
-            "tsConfig": "projects/mfe-auth/tsconfig.federation.json"
+            "tsConfig": "projects/auth/tsconfig.federation.json"
           },
           "configurations": {
             "production": {
-              "target": "mfe-auth:esbuild:production"
+              "target": "auth:esbuild:production"
             },
             "development": {
-              "target": "mfe-auth:esbuild:development",
+              "target": "auth:esbuild:development",
               "dev": true
             }
           },
@@ -316,8 +316,8 @@
         "serve": {
           "builder": "@angular-architects/native-federation:build",
           "options": {
-            "target": "mfe-auth:serve-original:development",
-            "tsConfig": "projects/mfe-auth/tsconfig.federation.json",
+            "target": "auth:serve-original:development",
+            "tsConfig": "projects/auth/tsconfig.federation.json",
             "rebuildDelay": 500,
             "cacheExternalArtifacts": true,
             "dev": true,
@@ -331,15 +331,15 @@
         "esbuild": {
           "builder": "@angular/build:application",
           "options": {
-            "browser": "projects/mfe-auth/src/main.ts",
-            "tsConfig": "projects/mfe-auth/tsconfig.app.json",
+            "browser": "projects/auth/src/main.ts",
+            "tsConfig": "projects/auth/tsconfig.app.json",
             "assets": [
               {
                 "glob": "**/*",
-                "input": "projects/mfe-auth/public"
+                "input": "projects/auth/public"
               }
             ],
-            "styles": ["projects/mfe-auth/src/styles.css"],
+            "styles": ["projects/auth/src/styles.css"],
             "polyfills": ["es-module-shims"]
           },
           "configurations": {
@@ -370,10 +370,10 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "mfe-auth:esbuild:production"
+              "buildTarget": "auth:esbuild:production"
             },
             "development": {
-              "buildTarget": "mfe-auth:esbuild:development"
+              "buildTarget": "auth:esbuild:development"
             }
           },
           "defaultConfiguration": "development",
@@ -383,25 +383,25 @@
         }
       }
     },
-    "mfe-account": {
+    "account": {
       "projectType": "application",
       "schematics": {},
-      "root": "projects/mfe-account",
-      "sourceRoot": "projects/mfe-account/src",
+      "root": "projects/account",
+      "sourceRoot": "projects/account/src",
       "prefix": "app",
       "architect": {
         "build": {
           "builder": "@angular-architects/native-federation:build",
           "options": {
             "cacheExternalArtifacts": true,
-            "tsConfig": "projects/mfe-account/tsconfig.federation.json"
+            "tsConfig": "projects/account/tsconfig.federation.json"
           },
           "configurations": {
             "production": {
-              "target": "mfe-account:esbuild:production"
+              "target": "account:esbuild:production"
             },
             "development": {
-              "target": "mfe-account:esbuild:development",
+              "target": "account:esbuild:development",
               "dev": true
             }
           },
@@ -410,8 +410,8 @@
         "serve": {
           "builder": "@angular-architects/native-federation:build",
           "options": {
-            "target": "mfe-account:serve-original:development",
-            "tsConfig": "projects/mfe-account/tsconfig.federation.json",
+            "target": "account:serve-original:development",
+            "tsConfig": "projects/account/tsconfig.federation.json",
             "rebuildDelay": 500,
             "cacheExternalArtifacts": true,
             "dev": true,
@@ -425,15 +425,15 @@
         "esbuild": {
           "builder": "@angular/build:application",
           "options": {
-            "browser": "projects/mfe-account/src/main.ts",
-            "tsConfig": "projects/mfe-account/tsconfig.app.json",
+            "browser": "projects/account/src/main.ts",
+            "tsConfig": "projects/account/tsconfig.app.json",
             "assets": [
               {
                 "glob": "**/*",
-                "input": "projects/mfe-account/public"
+                "input": "projects/account/public"
               }
             ],
-            "styles": ["projects/mfe-account/src/styles.css"],
+            "styles": ["projects/account/src/styles.css"],
             "polyfills": ["es-module-shims"]
           },
           "configurations": {
@@ -464,10 +464,10 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "mfe-account:esbuild:production"
+              "buildTarget": "account:esbuild:production"
             },
             "development": {
-              "buildTarget": "mfe-account:esbuild:development"
+              "buildTarget": "account:esbuild:development"
             }
           },
           "defaultConfiguration": "development",
@@ -477,25 +477,25 @@
         }
       }
     },
-    "mfe-admin": {
+    "admin": {
       "projectType": "application",
       "schematics": {},
-      "root": "projects/mfe-admin",
-      "sourceRoot": "projects/mfe-admin/src",
+      "root": "projects/admin",
+      "sourceRoot": "projects/admin/src",
       "prefix": "app",
       "architect": {
         "build": {
           "builder": "@angular-architects/native-federation:build",
           "options": {
             "cacheExternalArtifacts": true,
-            "tsConfig": "projects/mfe-admin/tsconfig.federation.json"
+            "tsConfig": "projects/admin/tsconfig.federation.json"
           },
           "configurations": {
             "production": {
-              "target": "mfe-admin:esbuild:production"
+              "target": "admin:esbuild:production"
             },
             "development": {
-              "target": "mfe-admin:esbuild:development",
+              "target": "admin:esbuild:development",
               "dev": true
             }
           },
@@ -504,8 +504,8 @@
         "serve": {
           "builder": "@angular-architects/native-federation:build",
           "options": {
-            "target": "mfe-admin:serve-original:development",
-            "tsConfig": "projects/mfe-admin/tsconfig.federation.json",
+            "target": "admin:serve-original:development",
+            "tsConfig": "projects/admin/tsconfig.federation.json",
             "rebuildDelay": 500,
             "cacheExternalArtifacts": true,
             "dev": true,
@@ -519,15 +519,15 @@
         "esbuild": {
           "builder": "@angular/build:application",
           "options": {
-            "browser": "projects/mfe-admin/src/main.ts",
-            "tsConfig": "projects/mfe-admin/tsconfig.app.json",
+            "browser": "projects/admin/src/main.ts",
+            "tsConfig": "projects/admin/tsconfig.app.json",
             "assets": [
               {
                 "glob": "**/*",
-                "input": "projects/mfe-admin/public"
+                "input": "projects/admin/public"
               }
             ],
-            "styles": ["projects/mfe-admin/src/styles.css"],
+            "styles": ["projects/admin/src/styles.css"],
             "polyfills": ["es-module-shims"]
           },
           "configurations": {
@@ -558,10 +558,10 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "mfe-admin:esbuild:production"
+              "buildTarget": "admin:esbuild:production"
             },
             "development": {
-              "buildTarget": "mfe-admin:esbuild:development"
+              "buildTarget": "admin:esbuild:development"
             }
           },
           "defaultConfiguration": "development",
@@ -571,25 +571,25 @@
         }
       }
     },
-    "mfe-blog": {
+    "blog": {
       "projectType": "application",
       "schematics": {},
-      "root": "projects/mfe-blog",
-      "sourceRoot": "projects/mfe-blog/src",
+      "root": "projects/blog",
+      "sourceRoot": "projects/blog/src",
       "prefix": "app",
       "architect": {
         "build": {
           "builder": "@angular-architects/native-federation:build",
           "options": {
             "cacheExternalArtifacts": true,
-            "tsConfig": "projects/mfe-blog/tsconfig.federation.json"
+            "tsConfig": "projects/blog/tsconfig.federation.json"
           },
           "configurations": {
             "production": {
-              "target": "mfe-blog:esbuild:production"
+              "target": "blog:esbuild:production"
             },
             "development": {
-              "target": "mfe-blog:esbuild:development",
+              "target": "blog:esbuild:development",
               "dev": true
             }
           },
@@ -598,8 +598,8 @@
         "serve": {
           "builder": "@angular-architects/native-federation:build",
           "options": {
-            "target": "mfe-blog:serve-original:development",
-            "tsConfig": "projects/mfe-blog/tsconfig.federation.json",
+            "target": "blog:serve-original:development",
+            "tsConfig": "projects/blog/tsconfig.federation.json",
             "rebuildDelay": 500,
             "cacheExternalArtifacts": true,
             "dev": true,
@@ -613,15 +613,15 @@
         "esbuild": {
           "builder": "@angular/build:application",
           "options": {
-            "browser": "projects/mfe-blog/src/main.ts",
-            "tsConfig": "projects/mfe-blog/tsconfig.app.json",
+            "browser": "projects/blog/src/main.ts",
+            "tsConfig": "projects/blog/tsconfig.app.json",
             "assets": [
               {
                 "glob": "**/*",
-                "input": "projects/mfe-blog/public"
+                "input": "projects/blog/public"
               }
             ],
-            "styles": ["projects/mfe-blog/src/styles.css"],
+            "styles": ["projects/blog/src/styles.css"],
             "polyfills": ["es-module-shims"]
           },
           "configurations": {
@@ -652,10 +652,10 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "mfe-blog:esbuild:production"
+              "buildTarget": "blog:esbuild:production"
             },
             "development": {
-              "buildTarget": "mfe-blog:esbuild:development"
+              "buildTarget": "blog:esbuild:development"
             }
           },
           "defaultConfiguration": "development",
@@ -665,25 +665,25 @@
         }
       }
     },
-    "mfe-checkout": {
+    "checkout": {
       "projectType": "application",
       "schematics": {},
-      "root": "projects/mfe-checkout",
-      "sourceRoot": "projects/mfe-checkout/src",
+      "root": "projects/checkout",
+      "sourceRoot": "projects/checkout/src",
       "prefix": "app",
       "architect": {
         "build": {
           "builder": "@angular-architects/native-federation:build",
           "options": {
             "cacheExternalArtifacts": true,
-            "tsConfig": "projects/mfe-checkout/tsconfig.federation.json"
+            "tsConfig": "projects/checkout/tsconfig.federation.json"
           },
           "configurations": {
             "production": {
-              "target": "mfe-checkout:esbuild:production"
+              "target": "checkout:esbuild:production"
             },
             "development": {
-              "target": "mfe-checkout:esbuild:development",
+              "target": "checkout:esbuild:development",
               "dev": true
             }
           },
@@ -692,8 +692,8 @@
         "serve": {
           "builder": "@angular-architects/native-federation:build",
           "options": {
-            "target": "mfe-checkout:serve-original:development",
-            "tsConfig": "projects/mfe-checkout/tsconfig.federation.json",
+            "target": "checkout:serve-original:development",
+            "tsConfig": "projects/checkout/tsconfig.federation.json",
             "rebuildDelay": 500,
             "cacheExternalArtifacts": true,
             "dev": true,
@@ -707,15 +707,15 @@
         "esbuild": {
           "builder": "@angular/build:application",
           "options": {
-            "browser": "projects/mfe-checkout/src/main.ts",
-            "tsConfig": "projects/mfe-checkout/tsconfig.app.json",
+            "browser": "projects/checkout/src/main.ts",
+            "tsConfig": "projects/checkout/tsconfig.app.json",
             "assets": [
               {
                 "glob": "**/*",
-                "input": "projects/mfe-checkout/public"
+                "input": "projects/checkout/public"
               }
             ],
-            "styles": ["projects/mfe-checkout/src/styles.css"],
+            "styles": ["projects/checkout/src/styles.css"],
             "polyfills": ["es-module-shims"]
           },
           "configurations": {
@@ -746,10 +746,10 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "mfe-checkout:esbuild:production"
+              "buildTarget": "checkout:esbuild:production"
             },
             "development": {
-              "buildTarget": "mfe-checkout:esbuild:development"
+              "buildTarget": "checkout:esbuild:development"
             }
           },
           "defaultConfiguration": "development",
@@ -759,25 +759,25 @@
         }
       }
     },
-    "mfe-inventory": {
+    "inventory": {
       "projectType": "application",
       "schematics": {},
-      "root": "projects/mfe-inventory",
-      "sourceRoot": "projects/mfe-inventory/src",
+      "root": "projects/inventory",
+      "sourceRoot": "projects/inventory/src",
       "prefix": "app",
       "architect": {
         "build": {
           "builder": "@angular-architects/native-federation:build",
           "options": {
             "cacheExternalArtifacts": true,
-            "tsConfig": "projects/mfe-inventory/tsconfig.federation.json"
+            "tsConfig": "projects/inventory/tsconfig.federation.json"
           },
           "configurations": {
             "production": {
-              "target": "mfe-inventory:esbuild:production"
+              "target": "inventory:esbuild:production"
             },
             "development": {
-              "target": "mfe-inventory:esbuild:development",
+              "target": "inventory:esbuild:development",
               "dev": true
             }
           },
@@ -786,8 +786,8 @@
         "serve": {
           "builder": "@angular-architects/native-federation:build",
           "options": {
-            "target": "mfe-inventory:serve-original:development",
-            "tsConfig": "projects/mfe-inventory/tsconfig.federation.json",
+            "target": "inventory:serve-original:development",
+            "tsConfig": "projects/inventory/tsconfig.federation.json",
             "rebuildDelay": 500,
             "cacheExternalArtifacts": true,
             "dev": true,
@@ -801,15 +801,15 @@
         "esbuild": {
           "builder": "@angular/build:application",
           "options": {
-            "browser": "projects/mfe-inventory/src/main.ts",
-            "tsConfig": "projects/mfe-inventory/tsconfig.app.json",
+            "browser": "projects/inventory/src/main.ts",
+            "tsConfig": "projects/inventory/tsconfig.app.json",
             "assets": [
               {
                 "glob": "**/*",
-                "input": "projects/mfe-inventory/public"
+                "input": "projects/inventory/public"
               }
             ],
-            "styles": ["projects/mfe-inventory/src/styles.css"],
+            "styles": ["projects/inventory/src/styles.css"],
             "polyfills": ["es-module-shims"]
           },
           "configurations": {
@@ -840,10 +840,10 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "mfe-inventory:esbuild:production"
+              "buildTarget": "inventory:esbuild:production"
             },
             "development": {
-              "buildTarget": "mfe-inventory:esbuild:development"
+              "buildTarget": "inventory:esbuild:development"
             }
           },
           "defaultConfiguration": "development",
@@ -853,25 +853,25 @@
         }
       }
     },
-    "mfe-support": {
+    "support": {
       "projectType": "application",
       "schematics": {},
-      "root": "projects/mfe-support",
-      "sourceRoot": "projects/mfe-support/src",
+      "root": "projects/support",
+      "sourceRoot": "projects/support/src",
       "prefix": "app",
       "architect": {
         "build": {
           "builder": "@angular-architects/native-federation:build",
           "options": {
             "cacheExternalArtifacts": true,
-            "tsConfig": "projects/mfe-support/tsconfig.federation.json"
+            "tsConfig": "projects/support/tsconfig.federation.json"
           },
           "configurations": {
             "production": {
-              "target": "mfe-support:esbuild:production"
+              "target": "support:esbuild:production"
             },
             "development": {
-              "target": "mfe-support:esbuild:development",
+              "target": "support:esbuild:development",
               "dev": true
             }
           },
@@ -880,8 +880,8 @@
         "serve": {
           "builder": "@angular-architects/native-federation:build",
           "options": {
-            "target": "mfe-support:serve-original:development",
-            "tsConfig": "projects/mfe-support/tsconfig.federation.json",
+            "target": "support:serve-original:development",
+            "tsConfig": "projects/support/tsconfig.federation.json",
             "rebuildDelay": 500,
             "cacheExternalArtifacts": true,
             "dev": true,
@@ -895,15 +895,15 @@
         "esbuild": {
           "builder": "@angular/build:application",
           "options": {
-            "browser": "projects/mfe-support/src/main.ts",
-            "tsConfig": "projects/mfe-support/tsconfig.app.json",
+            "browser": "projects/support/src/main.ts",
+            "tsConfig": "projects/support/tsconfig.app.json",
             "assets": [
               {
                 "glob": "**/*",
-                "input": "projects/mfe-support/public"
+                "input": "projects/support/public"
               }
             ],
-            "styles": ["projects/mfe-support/src/styles.css"],
+            "styles": ["projects/support/src/styles.css"],
             "polyfills": ["es-module-shims"]
           },
           "configurations": {
@@ -934,10 +934,10 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "mfe-support:esbuild:production"
+              "buildTarget": "support:esbuild:production"
             },
             "development": {
-              "buildTarget": "mfe-support:esbuild:development"
+              "buildTarget": "support:esbuild:development"
             }
           },
           "defaultConfiguration": "development",
@@ -947,25 +947,25 @@
         }
       }
     },
-    "mfe-quote": {
+    "quote": {
       "projectType": "application",
       "schematics": {},
-      "root": "projects/mfe-quote",
-      "sourceRoot": "projects/mfe-quote/src",
+      "root": "projects/quote",
+      "sourceRoot": "projects/quote/src",
       "prefix": "app",
       "architect": {
         "build": {
           "builder": "@angular-architects/native-federation:build",
           "options": {
             "cacheExternalArtifacts": true,
-            "tsConfig": "projects/mfe-quote/tsconfig.federation.json"
+            "tsConfig": "projects/quote/tsconfig.federation.json"
           },
           "configurations": {
             "production": {
-              "target": "mfe-quote:esbuild:production"
+              "target": "quote:esbuild:production"
             },
             "development": {
-              "target": "mfe-quote:esbuild:development",
+              "target": "quote:esbuild:development",
               "dev": true
             }
           },
@@ -974,8 +974,8 @@
         "serve": {
           "builder": "@angular-architects/native-federation:build",
           "options": {
-            "target": "mfe-quote:serve-original:development",
-            "tsConfig": "projects/mfe-quote/tsconfig.federation.json",
+            "target": "quote:serve-original:development",
+            "tsConfig": "projects/quote/tsconfig.federation.json",
             "rebuildDelay": 500,
             "cacheExternalArtifacts": true,
             "dev": true,
@@ -989,15 +989,15 @@
         "esbuild": {
           "builder": "@angular/build:application",
           "options": {
-            "browser": "projects/mfe-quote/src/main.ts",
-            "tsConfig": "projects/mfe-quote/tsconfig.app.json",
+            "browser": "projects/quote/src/main.ts",
+            "tsConfig": "projects/quote/tsconfig.app.json",
             "assets": [
               {
                 "glob": "**/*",
-                "input": "projects/mfe-quote/public"
+                "input": "projects/quote/public"
               }
             ],
-            "styles": ["projects/mfe-quote/src/styles.css"],
+            "styles": ["projects/quote/src/styles.css"],
             "polyfills": ["es-module-shims"]
           },
           "configurations": {
@@ -1028,10 +1028,10 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "mfe-quote:esbuild:production"
+              "buildTarget": "quote:esbuild:production"
             },
             "development": {
-              "buildTarget": "mfe-quote:esbuild:development"
+              "buildTarget": "quote:esbuild:development"
             }
           },
           "defaultConfiguration": "development",
@@ -1041,25 +1041,25 @@
         }
       }
     },
-    "mfe-admin-cms": {
+    "admin-cms": {
       "projectType": "application",
       "schematics": {},
-      "root": "projects/mfe-admin-cms",
-      "sourceRoot": "projects/mfe-admin-cms/src",
+      "root": "projects/admin-cms",
+      "sourceRoot": "projects/admin-cms/src",
       "prefix": "app",
       "architect": {
         "build": {
           "builder": "@angular-architects/native-federation:build",
           "options": {
             "cacheExternalArtifacts": true,
-            "tsConfig": "projects/mfe-admin-cms/tsconfig.federation.json"
+            "tsConfig": "projects/admin-cms/tsconfig.federation.json"
           },
           "configurations": {
             "production": {
-              "target": "mfe-admin-cms:esbuild:production"
+              "target": "admin-cms:esbuild:production"
             },
             "development": {
-              "target": "mfe-admin-cms:esbuild:development",
+              "target": "admin-cms:esbuild:development",
               "dev": true
             }
           },
@@ -1068,8 +1068,8 @@
         "serve": {
           "builder": "@angular-architects/native-federation:build",
           "options": {
-            "target": "mfe-admin-cms:serve-original:development",
-            "tsConfig": "projects/mfe-admin-cms/tsconfig.federation.json",
+            "target": "admin-cms:serve-original:development",
+            "tsConfig": "projects/admin-cms/tsconfig.federation.json",
             "rebuildDelay": 500,
             "cacheExternalArtifacts": true,
             "dev": true,
@@ -1083,15 +1083,15 @@
         "esbuild": {
           "builder": "@angular/build:application",
           "options": {
-            "browser": "projects/mfe-admin-cms/src/main.ts",
-            "tsConfig": "projects/mfe-admin-cms/tsconfig.app.json",
+            "browser": "projects/admin-cms/src/main.ts",
+            "tsConfig": "projects/admin-cms/tsconfig.app.json",
             "assets": [
               {
                 "glob": "**/*",
-                "input": "projects/mfe-admin-cms/public"
+                "input": "projects/admin-cms/public"
               }
             ],
-            "styles": ["projects/mfe-admin-cms/src/styles.css"],
+            "styles": ["projects/admin-cms/src/styles.css"],
             "polyfills": ["es-module-shims"]
           },
           "configurations": {
@@ -1122,10 +1122,10 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "mfe-admin-cms:esbuild:production"
+              "buildTarget": "admin-cms:esbuild:production"
             },
             "development": {
-              "buildTarget": "mfe-admin-cms:esbuild:development"
+              "buildTarget": "admin-cms:esbuild:development"
             }
           },
           "defaultConfiguration": "development",
@@ -1135,25 +1135,25 @@
         }
       }
     },
-    "mfe-admin-users": {
+    "admin-users": {
       "projectType": "application",
       "schematics": {},
-      "root": "projects/mfe-admin-users",
-      "sourceRoot": "projects/mfe-admin-users/src",
+      "root": "projects/admin-users",
+      "sourceRoot": "projects/admin-users/src",
       "prefix": "app",
       "architect": {
         "build": {
           "builder": "@angular-architects/native-federation:build",
           "options": {
             "cacheExternalArtifacts": true,
-            "tsConfig": "projects/mfe-admin-users/tsconfig.federation.json"
+            "tsConfig": "projects/admin-users/tsconfig.federation.json"
           },
           "configurations": {
             "production": {
-              "target": "mfe-admin-users:esbuild:production"
+              "target": "admin-users:esbuild:production"
             },
             "development": {
-              "target": "mfe-admin-users:esbuild:development",
+              "target": "admin-users:esbuild:development",
               "dev": true
             }
           },
@@ -1162,8 +1162,8 @@
         "serve": {
           "builder": "@angular-architects/native-federation:build",
           "options": {
-            "target": "mfe-admin-users:serve-original:development",
-            "tsConfig": "projects/mfe-admin-users/tsconfig.federation.json",
+            "target": "admin-users:serve-original:development",
+            "tsConfig": "projects/admin-users/tsconfig.federation.json",
             "rebuildDelay": 500,
             "cacheExternalArtifacts": true,
             "dev": true,
@@ -1177,15 +1177,15 @@
         "esbuild": {
           "builder": "@angular/build:application",
           "options": {
-            "browser": "projects/mfe-admin-users/src/main.ts",
-            "tsConfig": "projects/mfe-admin-users/tsconfig.app.json",
+            "browser": "projects/admin-users/src/main.ts",
+            "tsConfig": "projects/admin-users/tsconfig.app.json",
             "assets": [
               {
                 "glob": "**/*",
-                "input": "projects/mfe-admin-users/public"
+                "input": "projects/admin-users/public"
               }
             ],
-            "styles": ["projects/mfe-admin-users/src/styles.css"],
+            "styles": ["projects/admin-users/src/styles.css"],
             "polyfills": ["es-module-shims"]
           },
           "configurations": {
@@ -1216,10 +1216,10 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "mfe-admin-users:esbuild:production"
+              "buildTarget": "admin-users:esbuild:production"
             },
             "development": {
-              "buildTarget": "mfe-admin-users:esbuild:development"
+              "buildTarget": "admin-users:esbuild:development"
             }
           },
           "defaultConfiguration": "development",
@@ -1229,25 +1229,25 @@
         }
       }
     },
-    "mfe-admin-sales": {
+    "admin-sales": {
       "projectType": "application",
       "schematics": {},
-      "root": "projects/mfe-admin-sales",
-      "sourceRoot": "projects/mfe-admin-sales/src",
+      "root": "projects/admin-sales",
+      "sourceRoot": "projects/admin-sales/src",
       "prefix": "app",
       "architect": {
         "build": {
           "builder": "@angular-architects/native-federation:build",
           "options": {
             "cacheExternalArtifacts": true,
-            "tsConfig": "projects/mfe-admin-sales/tsconfig.federation.json"
+            "tsConfig": "projects/admin-sales/tsconfig.federation.json"
           },
           "configurations": {
             "production": {
-              "target": "mfe-admin-sales:esbuild:production"
+              "target": "admin-sales:esbuild:production"
             },
             "development": {
-              "target": "mfe-admin-sales:esbuild:development",
+              "target": "admin-sales:esbuild:development",
               "dev": true
             }
           },
@@ -1256,8 +1256,8 @@
         "serve": {
           "builder": "@angular-architects/native-federation:build",
           "options": {
-            "target": "mfe-admin-sales:serve-original:development",
-            "tsConfig": "projects/mfe-admin-sales/tsconfig.federation.json",
+            "target": "admin-sales:serve-original:development",
+            "tsConfig": "projects/admin-sales/tsconfig.federation.json",
             "rebuildDelay": 500,
             "cacheExternalArtifacts": true,
             "dev": true,
@@ -1271,15 +1271,15 @@
         "esbuild": {
           "builder": "@angular/build:application",
           "options": {
-            "browser": "projects/mfe-admin-sales/src/main.ts",
-            "tsConfig": "projects/mfe-admin-sales/tsconfig.app.json",
+            "browser": "projects/admin-sales/src/main.ts",
+            "tsConfig": "projects/admin-sales/tsconfig.app.json",
             "assets": [
               {
                 "glob": "**/*",
-                "input": "projects/mfe-admin-sales/public"
+                "input": "projects/admin-sales/public"
               }
             ],
-            "styles": ["projects/mfe-admin-sales/src/styles.css"],
+            "styles": ["projects/admin-sales/src/styles.css"],
             "polyfills": ["es-module-shims"]
           },
           "configurations": {
@@ -1310,10 +1310,10 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "mfe-admin-sales:esbuild:production"
+              "buildTarget": "admin-sales:esbuild:production"
             },
             "development": {
-              "buildTarget": "mfe-admin-sales:esbuild:development"
+              "buildTarget": "admin-sales:esbuild:development"
             }
           },
           "defaultConfiguration": "development",
@@ -1323,25 +1323,25 @@
         }
       }
     },
-    "mfe-admin-analytics": {
+    "admin-analytics": {
       "projectType": "application",
       "schematics": {},
-      "root": "projects/mfe-admin-analytics",
-      "sourceRoot": "projects/mfe-admin-analytics/src",
+      "root": "projects/admin-analytics",
+      "sourceRoot": "projects/admin-analytics/src",
       "prefix": "app",
       "architect": {
         "build": {
           "builder": "@angular-architects/native-federation:build",
           "options": {
             "cacheExternalArtifacts": true,
-            "tsConfig": "projects/mfe-admin-analytics/tsconfig.federation.json"
+            "tsConfig": "projects/admin-analytics/tsconfig.federation.json"
           },
           "configurations": {
             "production": {
-              "target": "mfe-admin-analytics:esbuild:production"
+              "target": "admin-analytics:esbuild:production"
             },
             "development": {
-              "target": "mfe-admin-analytics:esbuild:development",
+              "target": "admin-analytics:esbuild:development",
               "dev": true
             }
           },
@@ -1350,8 +1350,8 @@
         "serve": {
           "builder": "@angular-architects/native-federation:build",
           "options": {
-            "target": "mfe-admin-analytics:serve-original:development",
-            "tsConfig": "projects/mfe-admin-analytics/tsconfig.federation.json",
+            "target": "admin-analytics:serve-original:development",
+            "tsConfig": "projects/admin-analytics/tsconfig.federation.json",
             "rebuildDelay": 500,
             "cacheExternalArtifacts": true,
             "dev": true,
@@ -1365,15 +1365,15 @@
         "esbuild": {
           "builder": "@angular/build:application",
           "options": {
-            "browser": "projects/mfe-admin-analytics/src/main.ts",
-            "tsConfig": "projects/mfe-admin-analytics/tsconfig.app.json",
+            "browser": "projects/admin-analytics/src/main.ts",
+            "tsConfig": "projects/admin-analytics/tsconfig.app.json",
             "assets": [
               {
                 "glob": "**/*",
-                "input": "projects/mfe-admin-analytics/public"
+                "input": "projects/admin-analytics/public"
               }
             ],
-            "styles": ["projects/mfe-admin-analytics/src/styles.css"],
+            "styles": ["projects/admin-analytics/src/styles.css"],
             "polyfills": ["es-module-shims"]
           },
           "configurations": {
@@ -1404,10 +1404,10 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "mfe-admin-analytics:esbuild:production"
+              "buildTarget": "admin-analytics:esbuild:production"
             },
             "development": {
-              "buildTarget": "mfe-admin-analytics:esbuild:development"
+              "buildTarget": "admin-analytics:esbuild:development"
             }
           },
           "defaultConfiguration": "development",
@@ -1443,7 +1443,7 @@
         }
       }
     },
-    "mfe-admin-core": {
+    "admin-core": {
       "projectType": "application",
       "schematics": {
         "@schematics/angular:class": {
@@ -1471,22 +1471,22 @@
           "skipTests": true
         }
       },
-      "root": "projects/mfe-admin-core",
-      "sourceRoot": "projects/mfe-admin-core/src",
+      "root": "projects/admin-core",
+      "sourceRoot": "projects/admin-core/src",
       "prefix": "app",
       "architect": {
         "build": {
           "builder": "@angular-architects/native-federation:build",
           "options": {
             "cacheExternalArtifacts": true,
-            "tsConfig": "projects/mfe-admin-core/tsconfig.federation.json"
+            "tsConfig": "projects/admin-core/tsconfig.federation.json"
           },
           "configurations": {
             "production": {
-              "target": "mfe-admin-core:esbuild:production"
+              "target": "admin-core:esbuild:production"
             },
             "development": {
-              "target": "mfe-admin-core:esbuild:development",
+              "target": "admin-core:esbuild:development",
               "dev": true
             }
           },
@@ -1495,8 +1495,8 @@
         "serve": {
           "builder": "@angular-architects/native-federation:build",
           "options": {
-            "target": "mfe-admin-core:serve-original:development",
-            "tsConfig": "projects/mfe-admin-core/tsconfig.federation.json",
+            "target": "admin-core:serve-original:development",
+            "tsConfig": "projects/admin-core/tsconfig.federation.json",
             "rebuildDelay": 500,
             "cacheExternalArtifacts": true,
             "dev": true,
@@ -1507,15 +1507,15 @@
         "esbuild": {
           "builder": "@angular/build:application",
           "options": {
-            "browser": "projects/mfe-admin-core/src/main.ts",
-            "tsConfig": "projects/mfe-admin-core/tsconfig.app.json",
+            "browser": "projects/admin-core/src/main.ts",
+            "tsConfig": "projects/admin-core/tsconfig.app.json",
             "assets": [
               {
                 "glob": "**/*",
-                "input": "projects/mfe-admin-core/public"
+                "input": "projects/admin-core/public"
               }
             ],
-            "styles": ["projects/mfe-admin-core/src/styles.css"],
+            "styles": ["projects/admin-core/src/styles.css"],
             "polyfills": ["es-module-shims"]
           },
           "configurations": {
@@ -1546,10 +1546,10 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "mfe-admin-core:esbuild:production"
+              "buildTarget": "admin-core:esbuild:production"
             },
             "development": {
-              "buildTarget": "mfe-admin-core:esbuild:development"
+              "buildTarget": "admin-core:esbuild:development"
             }
           },
           "defaultConfiguration": "development",
@@ -1559,7 +1559,7 @@
         }
       }
     },
-    "mfe-admin-shop": {
+    "admin-shop": {
       "projectType": "application",
       "schematics": {
         "@schematics/angular:class": {
@@ -1587,22 +1587,22 @@
           "skipTests": true
         }
       },
-      "root": "projects/mfe-admin-shop",
-      "sourceRoot": "projects/mfe-admin-shop/src",
+      "root": "projects/admin-shop",
+      "sourceRoot": "projects/admin-shop/src",
       "prefix": "app",
       "architect": {
         "build": {
           "builder": "@angular-architects/native-federation:build",
           "options": {
             "cacheExternalArtifacts": true,
-            "tsConfig": "projects/mfe-admin-shop/tsconfig.federation.json"
+            "tsConfig": "projects/admin-shop/tsconfig.federation.json"
           },
           "configurations": {
             "production": {
-              "target": "mfe-admin-shop:esbuild:production"
+              "target": "admin-shop:esbuild:production"
             },
             "development": {
-              "target": "mfe-admin-shop:esbuild:development",
+              "target": "admin-shop:esbuild:development",
               "dev": true
             }
           },
@@ -1611,8 +1611,8 @@
         "serve": {
           "builder": "@angular-architects/native-federation:build",
           "options": {
-            "target": "mfe-admin-shop:serve-original:development",
-            "tsConfig": "projects/mfe-admin-shop/tsconfig.federation.json",
+            "target": "admin-shop:serve-original:development",
+            "tsConfig": "projects/admin-shop/tsconfig.federation.json",
             "rebuildDelay": 500,
             "cacheExternalArtifacts": true,
             "dev": true,
@@ -1623,15 +1623,15 @@
         "esbuild": {
           "builder": "@angular/build:application",
           "options": {
-            "browser": "projects/mfe-admin-shop/src/main.ts",
-            "tsConfig": "projects/mfe-admin-shop/tsconfig.app.json",
+            "browser": "projects/admin-shop/src/main.ts",
+            "tsConfig": "projects/admin-shop/tsconfig.app.json",
             "assets": [
               {
                 "glob": "**/*",
-                "input": "projects/mfe-admin-shop/public"
+                "input": "projects/admin-shop/public"
               }
             ],
-            "styles": ["projects/mfe-admin-shop/src/styles.css"],
+            "styles": ["projects/admin-shop/src/styles.css"],
             "polyfills": ["es-module-shims"]
           },
           "configurations": {
@@ -1662,10 +1662,10 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "mfe-admin-shop:esbuild:production"
+              "buildTarget": "admin-shop:esbuild:production"
             },
             "development": {
-              "buildTarget": "mfe-admin-shop:esbuild:development"
+              "buildTarget": "admin-shop:esbuild:development"
             }
           },
           "defaultConfiguration": "development",

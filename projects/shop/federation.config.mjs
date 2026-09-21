@@ -1,7 +1,11 @@
 import { withNativeFederation, shareAll } from '@angular-architects/native-federation/config';
 
 export default withNativeFederation({
-  name: 'shell',
+  name: 'shop',
+
+  exposes: {
+    './Routes': './projects/shop/src/app/app.routes.ts',
+  },
 
   shared: {
     'shared-ui': { singleton: true, strictVersion: true, requiredVersion: 'auto', build: 'package' },
@@ -42,3 +46,4 @@ export default withNativeFederation({
     denseChunking: true,
   },
 });
+

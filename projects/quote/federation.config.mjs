@@ -1,7 +1,11 @@
 import { withNativeFederation, shareAll } from '@angular-architects/native-federation/config';
 
 export default withNativeFederation({
-  name: 'shell',
+  name: 'quote',
+
+  exposes: {
+    './Component': './projects/quote/src/app/app.ts',
+  },
 
   shared: {
     'shared-ui': { singleton: true, strictVersion: true, requiredVersion: 'auto', build: 'package' },
