@@ -5,6 +5,17 @@ export default withNativeFederation({
 
   exposes: {
     './Routes': './projects/admin-shop/src/app/app.routes.ts',
+    './InventoryDashboard': './projects/admin-shop/src/app/inventory/inventory-dashboard.component.ts',
+    './ProductList': './projects/admin-shop/src/app/inventory/product-list.component.ts',
+    './ProductEdit': './projects/admin-shop/src/app/inventory/product-edit.component.ts',
+    './StockAdjustment': './projects/admin-shop/src/app/inventory/stock-adjustment.component.ts',
+    './StockMovements': './projects/admin-shop/src/app/inventory/stock-movements.component.ts',
+    './StockReport': './projects/admin-shop/src/app/inventory/stock-report.component.ts',
+    './Orders': './projects/admin-shop/src/app/sales/orders.component.ts',
+    './Customers': './projects/admin-shop/src/app/sales/customers.component.ts',
+    './Quotes': './projects/admin-shop/src/app/sales/quotes.component.ts',
+    './Applications': './projects/admin-shop/src/app/sales/applications.component.ts',
+    './Inquiries': './projects/admin-shop/src/app/sales/inquiries.component.ts',
   },
 
   shared: {

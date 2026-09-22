@@ -115,7 +115,11 @@ export class ShopService {
     if (specific.length === 0) {
       // Auto-seed for demo
       const seeded = seedReviews(sku);
-      this.reviews.update(r => [...r, ...seeded]);
+      setTimeout(() => {
+        if (!this.reviews().some(r => r.sku === sku)) {
+          this.reviews.update(r => [...r, ...seeded]);
+        }
+      }, 0);
       return seeded;
     }
     return specific.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());

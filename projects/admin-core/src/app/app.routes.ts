@@ -1,19 +1,13 @@
-import { Routes, UrlSegment, UrlMatchResult } from '@angular/router';
-import { loadRemoteModule } from '@angular-architects/native-federation';
+import { Routes } from '@angular/router';
 import { AdminLayoutComponent } from './layout/admin-layout.component';
 import { AdminDashboardComponent } from './dashboard/admin-dashboard.component';
 import { AnalyticsComponent } from './analytics/analytics.component';
 import { AdminUsersComponent } from './users/users.component';
 import { AdminRolesComponent } from './roles/roles.component';
 
-export function cmsMatcher(segments: UrlSegment[]): UrlMatchResult | null {
-  const cmsRoutes = ['blog', 'pages', 'reviews'];
-  if (segments.length > 0 && cmsRoutes.includes(segments[0].path)) {
-    return { consumed: [] }; // Do not consume segments so children can match them
-  }
-  return null;
-}
-
+// These are only the routes that admin-core directly owns.
+// The admin-cms and admin-shop child routes are wired up by the shell,
+// which is the only host that can call loadRemoteModule for other remotes.
 export const routes: Routes = [
   {
     path: '',
@@ -23,22 +17,6 @@ export const routes: Routes = [
       { path: 'analytics', component: AnalyticsComponent },
       { path: 'users', component: AdminUsersComponent },
       { path: 'roles', component: AdminRolesComponent },
-      
-      // Load CMS routes conditionally using a matcher
-      {
-        matcher: cmsMatcher,
-        loadChildren: () => loadRemoteModule('admin-cms', './Routes')
-          .then(m => m.routes)
-          .catch(err => { console.error('Error loading admin-cms', err); return []; })
-      },
-      
-      // Load Shop routes as fallback for all other inventory/sales routes
-      {
-        path: '',
-        loadChildren: () => loadRemoteModule('admin-shop', './Routes')
-          .then(m => m.routes)
-          .catch(err => { console.error('Error loading admin-shop', err); return []; })
-      }
     ]
   }
 ];

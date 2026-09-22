@@ -68,9 +68,16 @@ export class HomeComponent implements OnInit {
         });
       }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
 
-      document.querySelectorAll('.reveal-on-scroll').forEach(el => {
-        observer.observe(el);
-      });
+      const attachObserver = () => {
+        document.querySelectorAll('.reveal-on-scroll:not(.observed)').forEach(el => {
+          el.classList.add('observed');
+          observer.observe(el);
+        });
+      };
+      attachObserver();
+      // Use setTimeout to ensure child component views are fully resolved
+      setTimeout(attachObserver, 100);
+      setTimeout(attachObserver, 500);
     }
   }
 }

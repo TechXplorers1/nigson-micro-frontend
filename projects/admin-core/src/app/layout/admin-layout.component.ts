@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink, RouterOutlet, RouterLinkActive } from '@angular/router';
 import { ShopService, AdminService, SectionKey } from 'shared-ui';
@@ -47,12 +47,12 @@ type Item = { to: string; label: string; icon: any; key: SectionKey; exact?: boo
         </div>
 
         <nav class="flex-1 overflow-y-auto px-3 py-4">
-          <ng-container *ngFor="let g of groups">
-            <div *ngIf="getPermittedItems(g.items).length > 0" class="mb-4">
+          <ng-container *ngFor="let g of permittedGroups()">
+            <div class="mb-4">
               <p *ngIf="g.title" class="px-3 pb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-muted-ink">{{ g.title }}</p>
               <div class="space-y-1">
                 <a 
-                  *ngFor="let i of getPermittedItems(g.items)"
+                  *ngFor="let i of g.items"
                   [routerLink]="i.to"
                   routerLinkActive="!bg-brand !text-white"
                   [routerLinkActiveOptions]="{exact: i.exact || false}"
@@ -180,9 +180,12 @@ export class AdminLayoutComponent implements OnInit {
     }
   }
 
-  getPermittedItems(items: any[]) {
-    return items.filter(i => this.admin.can(i.key));
-  }
+  permittedGroups = computed(() => {
+    return this.groups.map(g => ({
+      ...g,
+      items: g.items.filter(i => this.admin.can(i.key))
+    })).filter(g => g.items.length > 0);
+  });
 
   handleLogout() {
     this.shop.signOut();

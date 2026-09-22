@@ -5,6 +5,11 @@ export default withNativeFederation({
 
   exposes: {
     './Routes': './projects/admin-core/src/app/app.routes.ts',
+    './AdminLayout': './projects/admin-core/src/app/layout/admin-layout.component.ts',
+    './AdminDashboard': './projects/admin-core/src/app/dashboard/admin-dashboard.component.ts',
+    './Analytics': './projects/admin-core/src/app/analytics/analytics.component.ts',
+    './Users': './projects/admin-core/src/app/users/users.component.ts',
+    './Roles': './projects/admin-core/src/app/roles/roles.component.ts',
   },
 
   shared: {

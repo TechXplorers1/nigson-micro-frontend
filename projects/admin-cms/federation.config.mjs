@@ -5,6 +5,9 @@ export default withNativeFederation({
 
   exposes: {
     './Routes': './projects/admin-cms/src/app/app.routes.ts',
+    './Blog': './projects/admin-cms/src/app/cms/blog.component.ts',
+    './Pages': './projects/admin-cms/src/app/cms/pages.component.ts',
+    './Reviews': './projects/admin-cms/src/app/cms/reviews.component.ts',
   },
 
   shared: {
