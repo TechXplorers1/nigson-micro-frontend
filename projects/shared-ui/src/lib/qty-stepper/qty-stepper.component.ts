@@ -1,7 +1,7 @@
 import { Component, Input, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ShopService } from '../shop.service';
-import { Product } from '../catalog.service';
+import { CatalogService, Product } from '../catalog.service';
 import { LucideMinus, LucidePlus, LucideShoppingCart } from '@lucide/angular';
 
 @Component({
@@ -52,12 +52,16 @@ import { LucideMinus, LucidePlus, LucideShoppingCart } from '@lucide/angular';
 })
 export class QtyStepperComponent {
   shop = inject(ShopService);
+  catalog = inject(CatalogService);
 
   @Input({ required: true }) product!: any;
   @Input() image?: string;
 
   get stock() {
-    return (this.product.stock || 0) - this.qty();
+    const available = this.product.stock != null
+      ? this.product.stock
+      : this.catalog.stockFor(this.product.sku);
+    return available - this.qty();
   }
 
   qty() {
