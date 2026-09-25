@@ -8,6 +8,7 @@ import {
 } from '@lucide/angular';
 import { CatalogService, ShopService, QtyStepperComponent, ratingFor, relativeDate } from 'shared-ui';
 import { WriteReviewComponent } from './write-review.component';
+import { ProductCardComponent } from './product-card.component';
 
 @Component({
   selector: 'app-product-detail',
@@ -16,7 +17,7 @@ import { WriteReviewComponent } from './write-review.component';
     CommonModule, RouterLink, LucideArrowLeft, LucideChevronLeft, 
     LucideChevronRight, LucideZoomIn, LucideZoomOut, LucideRotateCcw, 
     LucideStar, LucideFileText, LucidePenLine,
-    QtyStepperComponent, WriteReviewComponent
+    QtyStepperComponent, WriteReviewComponent, ProductCardComponent
   ],
   template: `
     <div class="min-h-screen bg-background" *ngIf="product()">
@@ -122,6 +123,142 @@ import { WriteReviewComponent } from './write-review.component';
                 <svg lucideFileText class="h-4 w-4"></svg> Request quote
               </a>
             </div>
+          </div>
+        </div>
+
+        <!-- Horizontal Tab Navigation Section -->
+        <div class="mt-16 border-t border-hairline pt-10">
+          <div class="border-b border-hairline">
+            <nav class="flex gap-8 md:gap-12 overflow-x-auto" aria-label="Product detail tabs">
+              <button
+                *ngFor="let tab of tabs"
+                (click)="activeTab.set(tab)"
+                [ngClass]="activeTab() === tab ? 'text-brand' : 'text-muted-ink hover:text-ink'"
+                class="relative pb-4 text-base md:text-lg font-bold transition-colors capitalize whitespace-nowrap"
+              >
+                {{ tab }}
+                <span *ngIf="activeTab() === tab" class="absolute bottom-0 left-0 right-0 h-[3px] bg-brand rounded-full"></span>
+              </button>
+            </nav>
+          </div>
+
+          <!-- Tab Panels -->
+          <div class="py-8">
+            <div *ngIf="activeTab() === 'description'" class="space-y-4 max-w-4xl animate-fade-in text-ink/80 leading-relaxed">
+              <p class="text-lg font-semibold text-ink">{{ product()?.name }} Overview</p>
+              <p>{{ product()?.desc }}</p>
+              <p>
+                Engineered to meet the highest standards of durability and performance across Nigerian markets.
+                Suitable for both wholesale commercial resale and direct consumer use.
+              </p>
+              <div class="mt-6 rounded-2xl bg-surface-alt p-6 border border-hairline">
+                <p class="font-bold text-ink mb-3">Key Highlights:</p>
+                <ul class="grid sm:grid-cols-2 gap-2 text-sm text-ink/80">
+                  <li class="flex items-center gap-2"><span class="text-brand font-bold">✓</span> Wholesale & retail pricing tier</li>
+                  <li class="flex items-center gap-2"><span class="text-brand font-bold">✓</span> Fast dispatch from central Lagos hub</li>
+                  <li class="flex items-center gap-2"><span class="text-brand font-bold">✓</span> 12-month standard Nigson warranty</li>
+                  <li class="flex items-center gap-2"><span class="text-brand font-bold">✓</span> Bulk order distributor volume discounts</li>
+                </ul>
+              </div>
+            </div>
+
+            <div *ngIf="activeTab() === 'specifications'" class="max-w-3xl animate-fade-in">
+              <div class="rounded-2xl border border-hairline overflow-hidden bg-white">
+                <table class="w-full text-left text-sm">
+                  <tbody class="divide-y divide-hairline">
+                    <tr class="bg-surface-alt/50">
+                      <td class="px-6 py-4 font-bold text-ink w-1/3">SKU Model</td>
+                      <td class="px-6 py-4 text-ink/80 font-mono">{{ product()?.sku }}</td>
+                    </tr>
+                    <tr>
+                      <td class="px-6 py-4 font-bold text-ink">Category</td>
+                      <td class="px-6 py-4 text-ink/80">{{ product()?.category }}</td>
+                    </tr>
+                    <tr class="bg-surface-alt/50">
+                      <td class="px-6 py-4 font-bold text-ink">Warranty</td>
+                      <td class="px-6 py-4 text-ink/80">12 Months Standard Manufacturer Warranty</td>
+                    </tr>
+                    <tr>
+                      <td class="px-6 py-4 font-bold text-ink">Build Material</td>
+                      <td class="px-6 py-4 text-ink/80">Premium Grade Fire-Retardant Polymer & Alloy</td>
+                    </tr>
+                    <tr class="bg-surface-alt/50">
+                      <td class="px-6 py-4 font-bold text-ink">Compatibility</td>
+                      <td class="px-6 py-4 text-ink/80">Universal iOS / Android / USB-C Standards Compliant</td>
+                    </tr>
+                    <tr>
+                      <td class="px-6 py-4 font-bold text-ink">Certification</td>
+                      <td class="px-6 py-4 text-ink/80">CE / RoHS / FCC Quality Verified</td>
+                    </tr>
+                    <tr class="bg-surface-alt/50">
+                      <td class="px-6 py-4 font-bold text-ink">Importer & Distributor</td>
+                      <td class="px-6 py-4 text-ink/80">Nigson Group Ltd, Lagos Nigeria</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div *ngIf="activeTab() === 'packaging'" class="max-w-3xl animate-fade-in space-y-4 text-ink/80">
+              <p class="text-base font-semibold text-ink">Packaging & Shipping Details</p>
+              <div class="grid sm:grid-cols-2 gap-4">
+                <div class="rounded-2xl border border-hairline p-5 bg-white">
+                  <p class="text-xs uppercase font-bold text-brand tracking-widest">Retail Box Contents</p>
+                  <ul class="mt-3 space-y-1.5 text-sm">
+                    <li>• 1x {{ product()?.name }} unit</li>
+                    <li>• 1x User Manual & Setup Guide</li>
+                    <li>• 1x Nigson Warranty Card</li>
+                  </ul>
+                </div>
+                <div class="rounded-2xl border border-hairline p-5 bg-white">
+                  <p class="text-xs uppercase font-bold text-brand tracking-widest">Master Carton Specs</p>
+                  <ul class="mt-3 space-y-1.5 text-sm">
+                    <li>• Carton Quantity: 40 Units / Box</li>
+                    <li>• Gross Weight: ~ 0.45 kg per unit box</li>
+                    <li>• Barcode: Individually Labelled for Resale</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div *ngIf="activeTab() === 'availability'" class="max-w-3xl animate-fade-in space-y-4 text-ink/80">
+              <p class="text-base font-semibold text-ink">Stock & Distribution Availability</p>
+              <div class="rounded-2xl border border-hairline p-6 bg-white space-y-3">
+                <div class="flex items-center justify-between border-b border-hairline pb-3">
+                  <span class="text-sm font-bold text-ink">Central Lagos Warehouse Status</span>
+                  <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 text-emerald-700 px-3 py-1 text-xs font-bold">
+                    <span class="h-2 w-2 rounded-full bg-emerald-600 animate-pulse"></span> In Stock & Ready to Ship
+                  </span>
+                </div>
+                <div class="flex items-center justify-between border-b border-hairline pb-3">
+                  <span class="text-sm font-bold text-ink">Dispatch Turnaround</span>
+                  <span class="text-sm text-ink/80 font-medium">Dispatched within 24 Hours</span>
+                </div>
+                <div class="flex items-center justify-between border-b border-hairline pb-3">
+                  <span class="text-sm font-bold text-ink">Nationwide Shipping</span>
+                  <span class="text-sm text-ink/80 font-medium">2 - 4 Business Days across Nigeria</span>
+                </div>
+                <div class="flex items-center justify-between pt-1">
+                  <span class="text-sm font-bold text-ink">Minimum Wholesale Order</span>
+                  <span class="text-sm text-brand font-bold">10 Units</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Recommended products -->
+      <section class="border-t border-hairline bg-surface-alt/40 py-14">
+        <div class="container-page">
+          <div class="flex flex-wrap items-end justify-between gap-4">
+            <h2 class="text-2xl font-extrabold tracking-[-0.02em]">Recommended Products</h2>
+            <a routerLink="/products" class="text-sm font-semibold text-ink hover:text-brand transition-colors">
+              View all
+            </a>
+          </div>
+          <div class="mt-8 grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+            <app-product-card *ngFor="let r of recommended()" [p]="r" [compact]="true"></app-product-card>
           </div>
         </div>
       </section>
@@ -251,6 +388,15 @@ export class ProductDetailComponent implements OnInit {
     if (!r) return 0;
     return r.count + Math.max(0, this.reviews().length - 4);
   });
+
+  recommended = computed(() => {
+    const p = this.product();
+    if (!p) return [];
+    return this.catalog.recommendedFor(p.sku);
+  });
+
+  activeTab = signal<'description' | 'specifications' | 'packaging' | 'availability'>('description');
+  tabs = ['description', 'specifications', 'packaging', 'availability'] as const;
 
   writeOpen = false;
   

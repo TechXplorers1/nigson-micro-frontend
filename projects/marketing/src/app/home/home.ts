@@ -10,6 +10,7 @@ import { NewArrivalsComponent } from '../components/new-arrivals.component';
 import { BestSellersComponent } from '../components/best-sellers.component';
 import { WholesaleCtaComponent } from '../components/wholesale-cta.component';
 import { ServiceBenefitsComponent } from '../components/service-benefits.component';
+import { TestimonialsComponent } from '../components/testimonials.component';
 
 @Component({
   selector: 'app-home',
@@ -24,7 +25,8 @@ import { ServiceBenefitsComponent } from '../components/service-benefits.compone
     NewArrivalsComponent,
     BestSellersComponent,
     WholesaleCtaComponent,
-    ServiceBenefitsComponent
+    ServiceBenefitsComponent,
+    TestimonialsComponent
   ],
   templateUrl: './home.html',
   styleUrls: ['./home.css']
@@ -36,8 +38,9 @@ export class HomeComponent implements OnInit {
   heroSection = computed(() => this.cms.getPageSections('home').get('home_hero'));
   categoriesSection = computed(() => this.cms.getPageSections('home').get('home_categories'));
   promoSection = computed(() => this.cms.getPageSections('home').get('home_promo_banner'));
-  wholesaleSection = computed(() => this.cms.getPageSections('home').get('home_wholesale_cta'));
+  wholesaleSection = computed(() => this.cms.getPageSections('home').get('distributorCta'));
   seoSection = computed(() => this.cms.getPageSections('home').get('home_seo'));
+  testimonialsSection = computed(() => this.cms.getPageSections('home').get('testimonials'));
 
   readonly SHOP_CATEGORIES = [
     { name: "Earbuds", filter: "earbuds", img: "/assets/shopcat/earbuds.jpg" },

@@ -36,7 +36,7 @@ import { SectionApi } from 'shared-ui';
           <!-- Actions -->
           <div class="flex flex-wrap items-center justify-center gap-3">
             <a
-              [routerLink]="s?.t('btn1Link') || '/marketing/distributor'"
+              [routerLink]="s?.t('btn1Link') || '/distributor'"
               class="inline-flex h-12 items-center gap-2 rounded-md bg-brand px-6 text-sm font-bold text-white shadow-brand transition-colors hover:bg-brand-deep"
             >
               {{ s?.t('btn1Label') || 'SHOP WHOLESALE' }} <svg lucideArrowRight class="h-4 w-4"></svg>

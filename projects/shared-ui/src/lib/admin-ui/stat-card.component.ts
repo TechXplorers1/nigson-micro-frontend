@@ -29,7 +29,7 @@ import { RouterLink } from '@angular/router';
           <p class="mt-2 text-2xl font-extrabold text-ink">{{ value }}</p>
           <p *ngIf="hint" class="mt-1 text-xs text-muted-ink">{{ hint }}</p>
         </div>
-        <div *ngIf="icon" class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-surface-alt text-brand transition-colors group-hover:bg-brand group-hover:text-white">
+        <div *ngIf="icon" class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-red-50 text-brand transition-colors group-hover:bg-brand group-hover:text-white">
           <ng-content></ng-content>
         </div>
       </div>

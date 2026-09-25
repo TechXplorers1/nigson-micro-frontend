@@ -25,7 +25,7 @@ import { getPost, getAllPublishedPosts } from './blog-posts';
       <ng-container *ngIf="post(); else notFound">
         <article class="pt-28">
           <div class="container-page max-w-3xl">
-            <a routerLink="/marketing/insights" class="inline-flex items-center gap-2 text-sm font-semibold text-muted-ink hover:text-brand transition-colors">
+            <a routerLink="/insights" class="inline-flex items-center gap-2 text-sm font-semibold text-muted-ink hover:text-brand transition-colors">
               <svg lucideArrowLeft class="h-4 w-4"></svg> Back to Insights
             </a>
             
@@ -95,7 +95,7 @@ import { getPost, getAllPublishedPosts } from './blog-posts';
               <div class="grid gap-6 md:grid-cols-3">
                 <a
                   *ngFor="let r of relatedPosts()"
-                  [routerLink]="['/marketing/insights', r.slug]"
+                  [routerLink]="['/insights', r.slug]"
                   class="group rounded-2xl bg-white border border-hairline overflow-hidden hover:-translate-y-1 hover:border-brand transition-all flex flex-col"
                 >
                   <div class="aspect-[16/10] overflow-hidden">
@@ -122,7 +122,7 @@ import { getPost, getAllPublishedPosts } from './blog-posts';
       <ng-template #notFound>
         <div class="container-page py-32 text-center">
           <h1 class="text-4xl font-extrabold">Article not found</h1>
-          <a routerLink="/marketing/insights" class="mt-6 inline-flex items-center gap-2 text-brand font-semibold">
+          <a routerLink="/insights" class="mt-6 inline-flex items-center gap-2 text-brand font-semibold">
             <svg lucideArrowLeft class="h-4 w-4"></svg> Back to Insights
           </a>
         </div>

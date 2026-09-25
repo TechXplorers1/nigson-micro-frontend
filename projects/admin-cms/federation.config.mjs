@@ -8,6 +8,7 @@ export default withNativeFederation({
     './Blog': './projects/admin-cms/src/app/cms/blog.component.ts',
     './Pages': './projects/admin-cms/src/app/cms/pages.component.ts',
     './Reviews': './projects/admin-cms/src/app/cms/reviews.component.ts',
+    './VisualHome': './projects/admin-cms/src/app/cms/visual-home-editor.component.ts',
   },
 
   shared: {

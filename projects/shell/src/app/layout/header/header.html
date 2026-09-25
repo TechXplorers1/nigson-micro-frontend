@@ -73,7 +73,7 @@
             <div class="h-10 w-16 rounded-md bg-surface-alt"></div>
           </ng-template>
 
-          <a routerLink="/marketing/distributor" routerLinkActive="text-brand" [routerLinkActiveOptions]="{exact: false}" class="flex min-w-28 flex-col items-center gap-1 transition-colors text-ink hover:text-brand">
+          <a routerLink="/distributor" routerLinkActive="text-brand" [routerLinkActiveOptions]="{exact: false}" class="flex min-w-28 flex-col items-center gap-1 transition-colors text-ink hover:text-brand">
             <svg lucideHandshake class="h-5 w-5"></svg>
             <span class="text-xs font-semibold whitespace-nowrap">Become a Partner</span>
           </a>
@@ -109,7 +109,7 @@
           <a routerLink="/products" class="text-sm font-semibold transition-colors text-ink hover:text-brand">Deals</a>
           <a routerLink="/products" class="text-sm font-semibold transition-colors text-ink hover:text-brand">New Arrivals</a>
           <a routerLink="/products" class="text-sm font-semibold transition-colors text-ink hover:text-brand">Best Sellers</a>
-          <a routerLink="/marketing/distributor" class="text-sm font-semibold transition-colors text-ink hover:text-brand">Wholesale</a>
+          <a routerLink="/distributor" class="text-sm font-semibold transition-colors text-ink hover:text-brand">Wholesale</a>
         </nav>
         <div class="flex shrink-0 items-center gap-2 text-sm font-medium text-muted-ink">
           <svg lucideTruck class="h-5 w-5 text-brand"></svg>
@@ -136,6 +136,52 @@
       <button class="inline-flex items-center justify-center rounded-md p-2 text-ink transition-colors" (click)="toggleOpen()">
         <svg *ngIf="open()" lucideX class="h-6 w-6"></svg><svg *ngIf="!open()" lucideMenu class="h-6 w-6"></svg>
       </button>
+    </div>
+  </div>
+
+  <!-- Global Mobile Drawer -->
+  <div *ngIf="open()" class="lg:hidden border-t border-hairline bg-white animate-fade-in absolute w-full top-full left-0 z-40 max-h-[calc(100vh-80px)] overflow-y-auto">
+    <div class="container-page py-6 flex flex-col gap-1">
+      <div class="mb-3 flex w-full">
+        <app-nav-search [solid]="true" (click)="open.set(false)"></app-nav-search>
+      </div>
+
+      <a routerLink="/products" (click)="open.set(false)" class="flex items-center justify-between rounded-md bg-brand px-3 py-3 text-base font-semibold text-white">
+        <span class="flex items-center gap-2"><svg lucideMenu class="h-4 w-4"></svg> All Categories</span>
+        <svg lucideChevronDown class="h-4 w-4"></svg>
+      </a>
+      <a routerLink="/products" (click)="open.set(false)" class="rounded-md px-3 py-3 text-base font-semibold text-ink hover:bg-brand hover:text-white">Deals</a>
+      <a routerLink="/products" (click)="open.set(false)" class="rounded-md px-3 py-3 text-base font-semibold text-ink hover:bg-brand hover:text-white">New Arrivals</a>
+      <a routerLink="/products" (click)="open.set(false)" class="rounded-md px-3 py-3 text-base font-semibold text-ink hover:bg-brand hover:text-white">Best Sellers</a>
+      <a routerLink="/distributor" (click)="open.set(false)" class="rounded-md px-3 py-3 text-base font-semibold text-ink hover:bg-brand hover:text-white">Wholesale</a>
+      
+      <div class="flex items-center gap-2 border-t border-hairline px-3 pt-4 text-sm font-medium text-muted-ink">
+        <svg lucideTruck class="h-5 w-5 text-brand"></svg> Nationwide delivery
+      </div>
+
+      <a
+        routerLink="/cart"
+        (click)="open.set(false)"
+        class="rounded-md px-3 py-3 text-base font-semibold text-ink hover:bg-brand hover:text-white transition-colors flex items-center justify-between"
+      >
+        <span class="flex items-center gap-2"><svg lucideShoppingCart class="h-4 w-4"></svg> Cart</span>
+        <span *ngIf="shop.hydrated() && shop.cartCount() > 0" class="rounded-full bg-brand text-white text-xs font-bold px-2 py-0.5">
+          {{ shop.cartCount() }}
+        </span>
+      </a>
+
+      <ng-container *ngIf="shop.hydrated() && shop.user(); else mobileGuestUser">
+        <ng-container *ngIf="shop.isAdmin(); else mobileNormalUser">
+          <a routerLink="/admin" (click)="open.set(false)" class="rounded-md px-3 py-3 text-base font-semibold text-ink hover:bg-brand hover:text-white">Admin Dashboard</a>
+        </ng-container>
+        <ng-template #mobileNormalUser>
+          <a routerLink="/account" (click)="open.set(false)" class="rounded-md px-3 py-3 text-base font-semibold text-ink hover:bg-brand hover:text-white">My Account</a>
+          <button (click)="open.set(false); handleLogout()" class="text-left rounded-md px-3 py-3 text-base font-semibold text-brand hover:bg-brand hover:text-white">Logout</button>
+        </ng-template>
+      </ng-container>
+      <ng-template #mobileGuestUser>
+        <a routerLink="/auth/login" (click)="open.set(false)" class="rounded-md px-3 py-3 text-base font-semibold text-ink">Login</a>
+      </ng-template>
     </div>
   </div>
 </header>

@@ -30,10 +30,11 @@ import { ShopService } from 'shared-ui';
           </a>
         </div>
 
-        <div class="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <!-- Horizontal scroll on mobile, grid on desktop -->
+        <div class="mt-8 flex overflow-x-auto snap-x snap-mandatory gap-5 pb-6 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:pb-0 hide-scrollbar" style="scrollbar-width: none;">
           <div
             *ngFor="let p of products(); let i = index"
-            class="reveal-on-scroll flex flex-col rounded-2xl bg-white border border-hairline p-4 transition-transform hover:-translate-y-1 hover:border-brand/30 hover:shadow-elegant"
+            class="reveal-on-scroll flex flex-col rounded-2xl bg-white border border-hairline p-4 transition-all hover:-translate-y-1 hover:border-brand/30 hover:shadow-elegant shrink-0 w-[260px] sm:w-auto snap-start"
             [style.transitionDelay]="i * 60 + 'ms'"
           >
             <a [routerLink]="['/products', p.sku]" class="block">
@@ -44,40 +45,40 @@ import { ShopService } from 'shared-ui';
                   loading="lazy"
                   class="absolute inset-0 h-full w-full object-cover"
                 />
-                <span class="absolute left-2 top-2 rounded-md bg-ink px-2 py-1 text-[11px] font-bold text-white uppercase tracking-wider">
+                <span class="absolute left-2 top-2 rounded-md bg-ink px-2 py-1 text-[11px] font-bold text-white uppercase tracking-wider shadow-sm">
                   New
                 </span>
               </div>
 
-              <div class="mt-3 flex items-center gap-1.5 text-sm">
+              <div class="mt-4 flex items-center gap-1.5 text-sm">
                 <svg lucideStar class="h-4 w-4 fill-[#F5A623] text-[#F5A623]"></svg>
-                <span class="font-semibold text-ink">{{ catalog.ratingFor(p.sku).average }}</span>
-                <span class="text-muted-foreground">({{ catalog.ratingFor(p.sku).count }})</span>
+                <span class="font-bold text-ink">{{ catalog.ratingFor(p.sku).average }}</span>
+                <span class="text-muted-foreground font-medium">({{ catalog.ratingFor(p.sku).count }})</span>
               </div>
 
-              <h3 class="mt-2 text-[15px] font-semibold leading-snug text-ink line-clamp-2">{{ p.name }}</h3>
+              <h3 class="mt-2 text-[15px] font-bold leading-snug text-ink line-clamp-2">{{ p.name }}</h3>
 
               <div class="mt-3 flex items-baseline gap-2">
                 <span class="text-xl font-extrabold text-brand">{{ catalog.formatPrice(p.price) }}</span>
               </div>
             </a>
 
-            <div class="mt-4">
+            <div class="mt-5 mt-auto">
               <button
                 *ngIf="qtyFor(p.sku)() === 0"
                 type="button"
                 (click)="addToCart(p)"
-                class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-ink text-white px-4 py-3 text-sm font-semibold hover:bg-black transition-colors"
+                class="w-full inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-ink text-white text-sm font-bold hover:bg-black transition-colors"
               >
                 <svg lucideShoppingCart class="h-4 w-4"></svg> Add to Cart
               </button>
 
-              <div *ngIf="qtyFor(p.sku)() > 0" class="w-full inline-flex items-center justify-between rounded-xl bg-ink text-white px-2 py-1.5">
+              <div *ngIf="qtyFor(p.sku)() > 0" class="w-full inline-flex h-11 items-center justify-between rounded-xl bg-ink text-white px-2">
                 <button
                   type="button"
                   aria-label="Decrease quantity"
                   (click)="shop.updateQty(p.sku, qtyFor(p.sku)() - 1)"
-                  class="grid h-9 w-9 place-items-center rounded-lg hover:bg-black transition-colors"
+                  class="grid h-8 w-8 place-items-center rounded-lg hover:bg-black transition-colors"
                 >
                   <svg lucideMinus class="h-4 w-4"></svg>
                 </button>
@@ -86,7 +87,7 @@ import { ShopService } from 'shared-ui';
                   type="button"
                   aria-label="Increase quantity"
                   (click)="shop.updateQty(p.sku, qtyFor(p.sku)() + 1)"
-                  class="grid h-9 w-9 place-items-center rounded-lg hover:bg-black transition-colors"
+                  class="grid h-8 w-8 place-items-center rounded-lg hover:bg-black transition-colors"
                 >
                   <svg lucidePlus class="h-4 w-4"></svg>
                 </button>

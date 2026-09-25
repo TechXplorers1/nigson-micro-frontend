@@ -58,6 +58,11 @@ export const routes: Routes = [
           .then(m => m.AdminPagesComponent)
       },
       {
+        path: 'pages/:id',
+        loadComponent: () => loadRemoteModule('admin-cms', './VisualHome')
+          .then(m => m.VisualHomeEditorComponent)
+      },
+      {
         path: 'reviews',
         loadComponent: () => loadRemoteModule('admin-cms', './Reviews')
           .then(m => m.AdminReviewsComponent)

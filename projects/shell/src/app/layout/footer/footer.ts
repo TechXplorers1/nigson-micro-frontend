@@ -17,9 +17,9 @@ export class FooterComponent {
     {
       heading: "Get to Know Us",
       links: [
-        { label: "About", to: "/marketing/about" },
-        { label: "Insights", to: "/marketing/insights" },
-        { label: "Careers", to: "/marketing/careers" },
+        { label: "About", to: "/about" },
+        { label: "Insights", to: "/insights" },
+        { label: "Careers", to: "/careers" },
       ],
     },
     {
@@ -37,26 +37,26 @@ export class FooterComponent {
       links: [
         { label: "My Account", to: "/account" },
         { label: "Orders", to: "/account/orders" },
-        { label: "Shipping", to: "/marketing/support/shipping" },
-        { label: "Returns", to: "/marketing/support/returns" },
+        { label: "Shipping", to: "/support/shipping" },
+        { label: "Returns", to: "/support/returns" },
       ],
     },
     {
       heading: "Business",
       links: [
-        { label: "Wholesale", to: "/marketing/distributor" },
-        { label: "Become a Partner", to: "/marketing/distributor" },
-        { label: "Become an Affiliate", to: "/marketing/support/affiliate" },
+        { label: "Wholesale", to: "/distributor" },
+        { label: "Become a Partner", to: "/distributor" },
+        { label: "Become an Affiliate", to: "/support/affiliate" },
         { label: "Request a Quote", to: "/quote" },
       ],
     },
     {
       heading: "Support",
       links: [
-        { label: "Contact Us", to: "/marketing/contact" },
+        { label: "Contact Us", to: "/contact" },
         { label: "WhatsApp", href: "https://wa.me/2348073467809" },
-        { label: "FAQs", to: "/marketing/support/faqs" },
-        { label: "Help Center", to: "/marketing/support/help" },
+        { label: "FAQs", to: "/support/faqs" },
+        { label: "Help Center", to: "/support/help" },
       ],
     },
   ];

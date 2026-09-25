@@ -806,4 +806,35 @@ export class CmsService {
       }
     };
   }
+
+  // --- Editor APIs ---
+  pageDef(pageId: string) {
+    return PAGES.find(p => p.id === pageId);
+  }
+
+  drafts = computed(() => this.state().drafts);
+  published = computed(() => this.state().published);
+
+  updateDraft(pageId: string, mutator: (p: PageContent) => PageContent) {
+    const next = clone(this.state());
+    if (next.drafts[pageId]) {
+      next.drafts[pageId] = mutator(clone(next.drafts[pageId]));
+      next.drafts[pageId].updatedAt = new Date().toISOString();
+      this.persist(next);
+    }
+  }
+
+  saveDraft(pageId: string) {
+    // Persist already happens in updateDraft, but we can have this for API compatibility
+    this.persist(clone(this.state()));
+  }
+
+  publishPage(pageId: string) {
+    const next = clone(this.state());
+    if (next.drafts[pageId]) {
+      next.published[pageId] = clone(next.drafts[pageId]);
+      next.published[pageId].status = "Published";
+      this.persist(next);
+    }
+  }
 }

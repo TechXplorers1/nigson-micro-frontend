@@ -27,7 +27,7 @@ import { LucideEye } from '@lucide/angular';
     </div>
 
     <div class="rounded-2xl border border-hairline bg-white shadow-sm overflow-x-auto">
-      <table class="w-full text-left text-sm text-ink">
+      <table class="w-full min-w-[720px] text-left text-sm text-ink">
         <thead class="border-b border-hairline bg-surface-alt/50 text-[10px] font-bold uppercase tracking-widest text-muted-ink">
           <tr>
             <th class="px-6 py-4">Order ID</th>
@@ -139,3 +139,4 @@ export class AdminOrdersComponent {
     return statusTone(status);
   }
 }
+

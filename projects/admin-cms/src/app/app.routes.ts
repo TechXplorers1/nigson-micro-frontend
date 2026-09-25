@@ -12,5 +12,9 @@ export const routes: Routes = [
   {
     path: 'reviews',
     loadComponent: () => import('./cms/reviews.component').then(m => m.AdminReviewsComponent)
+  },
+  {
+    path: 'pages/home',
+    loadComponent: () => import('./cms/visual-home-editor.component').then(m => m.VisualHomeEditorComponent)
   }
 ];

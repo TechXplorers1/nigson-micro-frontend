@@ -11,7 +11,7 @@ import { AdminService, AdminHeadingComponent, BadgeComponent, statusTone } from 
     
     <div class="rounded-2xl border border-hairline bg-white shadow-sm overflow-hidden">
       <div class="overflow-x-auto">
-        <table class="w-full text-left text-sm text-ink">
+        <table class="w-full min-w-[720px] text-left text-sm text-ink">
           <thead class="border-b border-hairline bg-surface-alt/50 text-[10px] font-bold uppercase tracking-widest text-muted-ink">
             <tr>
               <th class="px-6 py-4">Sender</th>
@@ -47,3 +47,4 @@ export class AdminInquiriesComponent {
   admin = inject(AdminService);
   getTone(status: string) { return statusTone(status); }
 }
+

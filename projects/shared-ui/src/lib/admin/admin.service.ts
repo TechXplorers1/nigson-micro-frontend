@@ -69,7 +69,7 @@ export type AdminUser = {
 
 export type AdminRole = { id: string; name: string; permissions: SectionKey[] };
 
-export type StockLog = { id: string; sku: string; product: string; change: number; reason: string; date: string; by: string };
+export type StockLog = { id: string; sku: string; product: string; change: number; qty?: number; reason: string; date: string; by: string; supplier?: string; ref?: string; notes?: string; };
 
 export type Activity = { id: string; text: string; date: string };
 

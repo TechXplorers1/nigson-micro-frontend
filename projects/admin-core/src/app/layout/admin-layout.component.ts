@@ -54,6 +54,7 @@ type Item = { to: string; label: string; icon: any; key: SectionKey; exact?: boo
                 <a 
                   *ngFor="let i of g.items"
                   [routerLink]="i.to"
+                  (click)="sidebarOpen.set(false)"
                   routerLinkActive="!bg-brand !text-white"
                   [routerLinkActiveOptions]="{exact: i.exact || false}"
                   class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors text-muted-ink hover:bg-surface-alt hover:text-ink"

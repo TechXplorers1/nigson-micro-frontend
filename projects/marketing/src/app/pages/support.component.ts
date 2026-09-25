@@ -186,7 +186,7 @@ const PAGES: Record<string, Page> = {
 
         <div class="mt-10 flex flex-wrap items-center gap-3">
           <a
-            routerLink="/marketing/contact"
+            routerLink="/contact"
             class="rounded-full bg-brand px-6 py-3 text-sm font-semibold text-brand-foreground transition-colors hover:bg-brand-deep"
           >
             Contact us
@@ -213,7 +213,7 @@ export class SupportComponent {
     if (!s) return undefined;
     const p = PAGES[s];
     if (!p) {
-      this.router.navigate(['/marketing/home']);
+      this.router.navigate(['/home']);
       return undefined;
     }
     return p;
