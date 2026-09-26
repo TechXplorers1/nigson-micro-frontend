@@ -39,10 +39,8 @@ type Item = { to: string; label: string; icon: any; key: SectionKey; exact?: boo
         [class]="'fixed inset-y-0 left-0 z-50 w-[260px] flex-col border-r border-hairline bg-white shadow-sm transition-transform lg:static lg:flex lg:translate-x-0 ' + 
                  (sidebarOpen() ? 'flex translate-x-0' : '-translate-x-full')"
       >
-        <div class="flex items-center gap-2 border-b border-hairline px-6 py-5">
-          <span class="text-xl font-extrabold tracking-tight text-ink">
-            NIG<span class="text-brand">SON</span>
-          </span>
+        <div class="flex items-center border-b border-hairline px-6 py-4">
+          <img src="/assets/logo.png" alt="Nigson" class="w-28 xl:w-32 h-auto object-contain -ml-2" />
           <span class="ml-1 rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-brand">Admin</span>
         </div>
 

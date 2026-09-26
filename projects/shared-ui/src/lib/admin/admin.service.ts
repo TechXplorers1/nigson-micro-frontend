@@ -10,6 +10,7 @@ export type AdminProduct = {
   id: string; name: string; sku: string; category: string; price: number;
   desc: string; image: string; images?: string[]; status: "Active" | "Draft";
   stock: number; reserved: number; rating: number;
+  cost?: number; retail?: number; lowLevel?: number;
 };
 
 export type AdminPage = {
