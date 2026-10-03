@@ -1,112 +1,205 @@
-<!-- Hero Section -->
-<section class="relative overflow-hidden bg-white md:h-[600px] lg:h-[640px]">
-  <div class="absolute inset-y-0 right-0 hidden w-[61%] overflow-hidden bg-brand/5 [clip-path:polygon(18%_0,100%_0,100%_100%,0_100%)] md:block">
-    <img
-      src="/assets/home-hero-products.jpg"
-      alt="Nigson earbuds, power bank, charger and charging cable"
-      width="1200"
-      height="900"
-      class="h-full w-full object-cover"
-    />
-    <div class="absolute right-[13%] top-[10%] grid h-20 w-20 place-items-center rounded-full bg-brand text-center text-white shadow-elegant lg:h-24 lg:w-24">
-      <span class="text-2xl font-extrabold leading-none lg:text-3xl">40%<small class="mt-1 block text-[10px] font-bold uppercase">Off</small></span>
-    </div>
-  </div>
-
-  <div class="relative z-10 flex flex-col-reverse w-full px-6 md:h-full md:grid md:grid-cols-[44%_56%] md:px-[7%]">
-    <div class="flex flex-col justify-center pb-14 pt-6 md:py-10">
-      <p class="mb-6 w-fit border-l-[3px] border-brand bg-brand/10 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-brand">
-        UP TO 40% OFF
-      </p>
-      <h1 class="text-[44px] font-extrabold leading-[0.98] text-ink sm:text-6xl lg:text-[80px]">
-        POWER YOUR<br />
-        <span class="text-brand">EVERYDAY.</span>
-      </h1>
-      <p class="mt-7 max-w-[520px] text-base leading-8 text-muted-ink lg:text-lg">
-        Discover smarter tech, powerful accessories and everyday essentials at prices you’ll love.
-      </p>
-      <div class="mt-8 flex flex-wrap gap-3">
-        <a
-          routerLink="/products"
-          class="inline-flex h-14 items-center gap-3 rounded-md bg-brand px-7 text-sm font-bold text-white shadow-brand transition-colors hover:bg-brand-deep"
-        >
-          SHOP NOW <svg lucideArrowRight class="h-5 w-5"></svg>
-        </a>
-        <a
-          routerLink="/products"
-          class="inline-flex h-14 items-center rounded-md border border-ink bg-white px-7 text-sm font-bold text-ink transition-colors hover:border-brand hover:text-brand"
-        >
-          EXPLORE DEALS
-        </a>
-      </div>
-      <div class="mt-8 flex flex-wrap items-center gap-x-8 gap-y-3 text-xs font-medium text-muted-ink">
-        <span class="flex items-center gap-2"><svg lucideShieldCheck class="h-4 w-4 text-brand"></svg> Genuine products</span>
-        <span class="flex items-center gap-2"><svg lucideTruck class="h-4 w-4 text-brand"></svg> Fast nationwide delivery</span>
-      </div>
-    </div>
-
-    <!-- Mobile Hero Image (Top) -->
-    <div class="relative mx-auto mt-6 aspect-square w-full max-w-md overflow-hidden rounded-[2rem] bg-brand/5 shadow-elegant md:hidden">
-      <img
-        src="/assets/home-hero-products.jpg"
-        alt="Nigson earbuds, power bank, charger and charging cable"
-        width="1200"
-        height="900"
-        class="h-full w-full object-cover"
-      />
-      <div class="absolute right-4 top-4 grid h-16 w-16 place-items-center rounded-full bg-brand text-center text-white shadow-elegant">
-        <span class="text-xl font-extrabold leading-none">40%<small class="mt-1 block text-[8px] font-bold uppercase">Off</small></span>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- Shop by Category Section -->
-<section class="bg-white py-14 md:py-16">
-  <div class="container-page">
-    <div class="mb-8 flex items-start justify-between gap-6 reveal-on-scroll">
-      <div>
-        <h2 class="text-2xl md:text-[26px] font-extrabold uppercase tracking-[-0.02em]">
-          Shop by Category
-        </h2>
-        <p class="mt-1.5 text-sm text-muted-foreground">Everything you need, all in one place.</p>
-      </div>
-      <a
-        routerLink="/products"
-        class="inline-flex shrink-0 items-center gap-1.5 pt-1 text-sm font-semibold text-ink transition-colors hover:text-brand"
-      >
-        View all <svg lucideArrowRight class="h-4 w-4"></svg>
-      </a>
-    </div>
-
-    <!-- Horizontal scroll on mobile, grid on desktop -->
-    <div class="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-6 md:grid md:grid-cols-4 lg:grid-cols-9 md:gap-5 md:pb-0 hide-scrollbar" style="scrollbar-width: none;">
-      <a
-        *ngFor="let c of SHOP_CATEGORIES"
-        routerLink="/products"
-        [queryParams]="{category: c.filter}"
-        class="reveal-on-scroll group block text-center shrink-0 w-[110px] md:w-auto snap-start"
-      >
-        <div class="relative aspect-square overflow-hidden rounded-[1.25rem] border border-border bg-[#f6f6f6] transition-all group-hover:border-brand group-hover:shadow-md">
-          <img
-            [src]="c.img"
-            [alt]="c.name"
-            loading="lazy"
-            width="640"
-            height="640"
-            class="absolute inset-0 h-full w-full object-cover"
-          />
+<main>
+  <section id="shop" class="overflow-hidden border-b border-border">
+    <div class="mx-auto grid min-h-[calc(100vh-4rem)] max-w-[1600px] items-center lg:grid-cols-[0.82fr_1.18fr]">
+      <div class="z-10 px-6 py-20 sm:px-12 lg:px-20 lg:py-24">
+        <p class="display-type mb-5 text-xs font-bold uppercase text-primary">Nigson</p>
+        <h1 class="display-type text-balance text-5xl font-extrabold leading-[0.98] sm:text-7xl lg:text-[5.7rem]">POWER YOUR EVERYDAY.</h1>
+        <p class="mt-7 max-w-lg text-base leading-7 text-muted-foreground sm:text-lg">Smart technology, essential accessories and everyday products designed for the way you live.</p>
+        <div class="mt-9 flex flex-wrap gap-3">
+          <a href="#best-sellers" class="inline-flex h-11 items-center justify-center rounded-md bg-brand px-8 text-sm font-medium text-brand-foreground shadow transition-colors hover:bg-brand/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">Shop Now <svg lucideArrowRight class="ml-2 h-4 w-4"></svg></a>
+          <a href="#categories" class="inline-flex h-11 items-center justify-center rounded-md border border-input bg-transparent px-8 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">Explore Products <svg lucideArrowRight class="ml-2 h-4 w-4"></svg></a>
         </div>
-        <p class="mt-3 text-xs font-semibold text-ink transition-colors group-hover:text-brand md:text-[13px]">
-          {{ c.name }}
-        </p>
-      </a>
+      </div>
+      <div class="h-[52vh] min-h-[430px] bg-surface lg:h-[calc(100vh-4rem)]">
+        <img [src]="heroImage" alt="Nigson audio and charging essentials" width="1600" height="1104" class="h-full w-full object-cover" />
+      </div>
     </div>
-  </div>
-</section>
-<app-flash-sale></app-flash-sale>
-<app-new-arrivals></app-new-arrivals>
-<app-best-sellers></app-best-sellers>
-<app-service-benefits></app-service-benefits>
-<app-testimonials [s]="testimonialsSection()"></app-testimonials>
-<app-wholesale-cta [s]="wholesaleSection()"></app-wholesale-cta>
+  </section>
+
+  <section id="new-arrivals" class="px-6 py-24 text-center sm:px-12 sm:py-32">
+    <div class="mx-auto max-w-4xl">
+      <p class="display-type mb-5 text-xs font-bold uppercase text-primary">New Arrival</p>
+      <h2 class="display-type text-balance text-4xl font-bold leading-[1.05] sm:text-6xl lg:text-7xl">MADE FOR EVERY DAY.</h2>
+      <p class="mx-auto mt-6 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">Thoughtfully selected technology and accessories that combine everyday usefulness with modern design.</p>
+      <a href="#categories" class="display-type mt-8 inline-flex items-center gap-2 text-sm font-semibold text-primary">Explore New Arrivals <svg lucideArrowRight class="h-4 w-4"></svg></a>
+    </div>
+    <img [src]="powerImage" alt="New Nigson power essentials" loading="lazy" width="1408" height="1200" class="mx-auto mt-16 aspect-[16/8] w-full max-w-6xl object-cover" />
+  </section>
+
+  <section id="categories" aria-label="Product categories">
+    <ng-container *ngFor="let item of categories; let i = index">
+      <article [ngClass]="i % 2 === 0 ? 'bg-background' : 'bg-surface'">
+        <div class="mx-auto grid min-h-[620px] max-w-[1440px] items-center lg:grid-cols-2">
+          <div class="flex h-full items-center px-6 py-20 sm:px-12 lg:px-20" [ngClass]="{'lg:order-2': i % 2 === 1}">
+            <div class="max-w-xl">
+              <p class="display-type mb-5 text-xs font-bold uppercase text-primary">{{item.label}}</p>
+              <h3 class="display-type text-balance text-4xl font-bold leading-[1.05] sm:text-5xl lg:text-6xl">{{item.title}}</h3>
+              <p class="mt-6 max-w-md text-base leading-7 text-muted-foreground sm:text-lg">{{item.description}}</p>
+              <a routerLink="/products" [queryParams]="{category: item.filter}" class="display-type mt-8 inline-flex items-center gap-2 text-sm font-semibold text-primary transition-[gap] hover:gap-3">View Category <svg lucideArrowRight class="h-4 w-4"></svg></a>
+            </div>
+          </div>
+          <div class="h-[420px] overflow-hidden sm:h-[540px] lg:h-full" [ngClass]="{'lg:order-1': i % 2 === 1}">
+            <img [src]="item.image" [alt]="item.label + ' products'" loading="lazy" width="1400" height="1200" class="h-full w-full object-cover transition-transform duration-700 hover:scale-[1.02]" />
+          </div>
+        </div>
+      </article>
+
+      <section *ngIf="item.label === 'Charging'" aria-label="Nigson in everyday life" class="grid gap-3 px-3 py-3 sm:gap-4 sm:px-4 md:grid-cols-2 lg:gap-5 lg:px-5">
+        <article *ngFor="let p of lifestylePanels" class="group relative aspect-[4/5] overflow-hidden rounded-2xl bg-ink md:aspect-[6/7]">
+          <img [src]="p.image" [alt]="p.alt" loading="lazy" width="1200" height="1408" class="absolute inset-0 h-full w-full object-cover transition-transform duration-[1200ms] ease-out group-hover:scale-[1.03]" />
+          <div class="absolute inset-0 bg-gradient-to-t from-ink/85 via-ink/25 to-transparent"></div>
+          <div class="absolute inset-x-0 bottom-0 flex flex-col items-center p-8 text-center text-primary-foreground sm:p-12">
+            <h2 class="display-type text-balance text-3xl font-bold leading-[1.05] sm:text-4xl lg:text-5xl">{{p.title}}</h2>
+            <p class="mt-4 max-w-sm text-base leading-7 text-primary-foreground/80">{{p.text}}</p>
+            <a href="#best-sellers" class="mt-7 inline-flex h-12 items-center gap-2 rounded-full bg-background px-7 text-sm font-medium tracking-wide text-foreground transition-colors hover:bg-primary hover:text-primary-foreground">SHOP NOW <svg lucideArrowRight class="h-4 w-4"></svg></a>
+          </div>
+        </article>
+      </section>
+    </ng-container>
+  </section>
+
+  <section id="best-sellers" class="px-5 py-24 sm:px-8 sm:py-32 lg:px-12">
+    <div class="mx-auto max-w-[1440px]">
+      <p class="display-type mb-5 text-xs font-bold uppercase text-primary">Customer Favourites</p>
+      <h2 class="display-type max-w-4xl text-balance text-4xl font-bold leading-[1.05] sm:text-6xl">THE PRODUCTS PEOPLE COME BACK FOR.</h2>
+      <div class="mt-14 grid gap-x-5 gap-y-12 sm:grid-cols-2 lg:grid-cols-4">
+        <article *ngFor="let product of products" class="group">
+          <div class="aspect-square overflow-hidden bg-surface cursor-pointer" [routerLink]="['/products', product.product.sku]">
+            <img [src]="product.image" [alt]="product.name" loading="lazy" width="700" height="700" class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
+          </div>
+          <div class="pt-5">
+            <h3 class="display-type font-semibold cursor-pointer hover:text-primary transition-colors" [routerLink]="['/products', product.product.sku]">{{product.name}}</h3>
+            <p class="mt-1 text-sm text-muted-foreground">{{product.detail}}</p>
+            <div class="mt-5 flex items-center justify-between gap-3">
+              <span class="display-type font-semibold">{{product.price}}</span>
+              <ui-qty-stepper [product]="product.product" [image]="product.image" class="scale-[0.85] origin-right"></ui-qty-stepper>
+            </div>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section id="wholesale" class="bg-ink text-primary-foreground">
+    <div class="mx-auto grid min-h-[650px] max-w-[1600px] items-stretch lg:grid-cols-2">
+      <div class="flex items-center px-6 py-24 sm:px-12 lg:px-20">
+        <div class="max-w-xl">
+          <p class="display-type mb-5 text-xs font-bold uppercase text-primary">Nigson Wholesale</p>
+          <h2 class="display-type text-balance text-5xl font-bold leading-[1.03] sm:text-7xl text-white">BUY MORE. BUILD MORE.</h2>
+          <p class="mt-7 max-w-lg text-base leading-7 text-primary-foreground/65 sm:text-lg">Special pricing and dependable supply for retailers, businesses and bulk buyers.</p>
+          <a href="mailto:wholesale@nigson.com" class="mt-9 inline-flex h-11 items-center justify-center rounded-md border border-input bg-background px-8 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground">Shop Wholesale <svg lucideArrowRight class="ml-2 h-4 w-4"></svg></a>
+        </div>
+      </div>
+      <img [src]="wholesaleImage" alt="Nigson wholesale product selection" loading="lazy" width="1600" height="1008" class="h-full min-h-[460px] w-full object-cover" />
+    </div>
+  </section>
+
+  <section id="become-a-partner" class="bg-surface">
+    <div class="mx-auto grid min-h-[650px] max-w-[1600px] items-stretch lg:grid-cols-2">
+      <img [src]="lifestyleWork" alt="Working with Nigson as a business partner" loading="lazy" width="1200" height="1408" class="h-full min-h-[460px] w-full object-cover" />
+      <div class="flex items-center px-6 py-24 sm:px-12 lg:px-20">
+        <div class="max-w-xl">
+          <p class="display-type mb-5 text-xs font-bold uppercase text-primary">Partnership</p>
+          <h2 class="display-type text-balance text-5xl font-bold leading-[1.03] sm:text-7xl text-foreground">BECOME A NIGSON PARTNER.</h2>
+          <p class="mt-7 max-w-lg text-base leading-7 text-muted-foreground sm:text-lg">Grow your business with Nigson through reliable products, dependable supply and long-term partnership.</p>
+          <a href="mailto:wholesale@nigson.com" class="mt-9 inline-flex h-11 items-center justify-center rounded-md bg-brand px-8 text-sm font-medium text-brand-foreground shadow transition-colors hover:bg-brand/90">BECOME A PARTNER <svg lucideArrowRight class="ml-2 h-4 w-4"></svg></a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="px-5 py-24 sm:px-8 sm:py-28 lg:px-12">
+    <div class="mx-auto max-w-[1440px]">
+      <h2 class="display-type text-center text-4xl font-bold sm:text-5xl">BUILT AROUND YOUR EVERYDAY.</h2>
+      <div class="mt-16 grid gap-px bg-border sm:grid-cols-2 lg:grid-cols-4">
+        
+        <div class="bg-background px-6 py-10 text-center"><svg lucideTruck class="mx-auto h-7 w-7 text-primary" strokeWidth="1.7"></svg><h3 class="display-type mt-5 font-semibold">Fast Delivery</h3><p class="mt-2 text-sm text-muted-foreground">Across India, with care.</p></div>
+        <div class="bg-background px-6 py-10 text-center"><svg lucideShieldCheck class="mx-auto h-7 w-7 text-primary" strokeWidth="1.7"></svg><h3 class="display-type mt-5 font-semibold">Secure Payments</h3><p class="mt-2 text-sm text-muted-foreground">Protected at every step.</p></div>
+        <div class="bg-background px-6 py-10 text-center"><svg lucideRotateCcw class="mx-auto h-7 w-7 text-primary" strokeWidth="1.7"></svg><h3 class="display-type mt-5 font-semibold">Easy Returns</h3><p class="mt-2 text-sm text-muted-foreground">Simple, straightforward support.</p></div>
+        <div class="bg-background px-6 py-10 text-center"><svg lucideHeadphones class="mx-auto h-7 w-7 text-primary" strokeWidth="1.7"></svg><h3 class="display-type mt-5 font-semibold">Customer Support</h3><p class="mt-2 text-sm text-muted-foreground">Real help when you need it.</p></div>
+
+      </div>
+    </div>
+  </section>
+
+  <section class="border-t border-border px-6 py-28 text-center sm:px-12 sm:py-40">
+    <p class="display-type mb-5 text-xs font-bold uppercase text-primary">Discover Nigson</p>
+    <h2 class="display-type mx-auto max-w-5xl text-balance text-5xl font-bold leading-[1.02] sm:text-7xl lg:text-8xl">GOOD PRODUCTS.<br />SIMPLER CHOICES.</h2>
+    <p class="mx-auto mt-7 max-w-xl leading-7 text-muted-foreground">Discover technology, accessories and everyday essentials selected for modern living.</p>
+    <a href="#best-sellers" class="mt-9 inline-flex h-11 items-center justify-center rounded-md bg-brand px-8 text-sm font-medium text-brand-foreground shadow transition-colors hover:bg-brand/90">Shop Nigson <svg lucideArrowRight class="ml-2 h-4 w-4"></svg></a>
+  </section>
+
+  <section
+    aria-roledescription="carousel"
+    aria-label="Featured from Nigson"
+    class="overflow-hidden border-t border-border bg-surface py-20 sm:py-28"
+    (mouseenter)="setPaused(true)"
+    (mouseleave)="setPaused(false)"
+  >
+    <div
+      class="relative mx-auto h-[520px] w-full touch-pan-y select-none sm:h-[560px] lg:h-[620px]"
+      (pointerdown)="onPointerDown($event)"
+      (pointermove)="onPointerMove($event)"
+      (pointerup)="onPointerUp($event)"
+      (pointercancel)="onPointerUp($event)"
+    >
+      <ng-container *ngFor="let o of offsets">
+        <article
+          [attr.aria-hidden]="o !== 0"
+          [attr.aria-label]="(mod(pos + o) + 1) + ' of ' + N"
+          class="absolute top-0 left-1/2 h-full w-[92vw] overflow-hidden rounded-[var(--radius)] sm:w-[82vw] lg:w-[76vw] lg:max-w-[1280px]"
+          [ngClass]="slides[mod(pos + o)].tone === 'dark' ? 'bg-ink text-primary-foreground' : 'bg-background text-foreground'"
+          [style.transform]="'translateX(calc(-50% + ' + o + ' * (min(76vw, 1280px) + 20px) + ' + drag + 'px))'"
+          [style.transition]="startX !== null ? 'none' : 'transform 700ms cubic-bezier(0.22, 1, 0.36, 1), opacity 700ms'"
+          [style.opacity]="o === 0 ? 1 : 0.55"
+        >
+          <img
+            [src]="slides[mod(pos + o)].image"
+            alt=""
+            draggable="false"
+            loading="lazy"
+            class="absolute inset-0 h-full w-full object-cover"
+            [ngClass]="{'opacity-70': slides[mod(pos + o)].tone === 'dark'}"
+          />
+          <div
+            class="absolute inset-0"
+            [ngClass]="slides[mod(pos + o)].tone === 'dark' ? 'bg-gradient-to-r from-ink via-ink/60 to-transparent' : 'bg-gradient-to-r from-background via-background/70 to-transparent'"
+          ></div>
+          <div class="relative flex h-full max-w-xl flex-col justify-end p-8 sm:p-12 lg:p-16">
+            <p class="text-xs font-medium tracking-[0.2em] text-primary uppercase">{{slides[mod(pos + o)].kicker}}</p>
+            <h3 class="display-type mt-4 text-4xl leading-[1.02] font-bold sm:text-5xl lg:text-6xl">{{slides[mod(pos + o)].title}}</h3>
+            <p class="mt-4 text-base leading-7" [ngClass]="slides[mod(pos + o)].tone === 'dark' ? 'text-primary-foreground/75' : 'text-muted-foreground'">{{slides[mod(pos + o)].desc}}</p>
+            <a
+              [routerLink]="slides[mod(pos + o)].link"
+              [queryParams]="slides[mod(pos + o)].queryParams"
+              [tabIndex]="o === 0 ? 0 : -1"
+              class="mt-8 inline-flex h-12 w-fit items-center gap-2 rounded-[var(--radius)] bg-primary px-6 text-sm font-medium tracking-wide text-primary-foreground uppercase transition-colors hover:bg-brand-bright"
+            >
+              {{slides[mod(pos + o)].cta}} <svg lucideArrowRight class="h-4 w-4"></svg>
+            </a>
+          </div>
+        </article>
+      </ng-container>
+    </div>
+
+    <div class="mt-8 flex items-center justify-center gap-5">
+      <button aria-label="Previous slide" (click)="go(-1)" class="grid h-10 w-10 place-items-center rounded-full bg-background text-foreground transition-colors hover:text-primary">
+        <svg lucideChevronLeft class="h-5 w-5"></svg>
+      </button>
+      <div class="flex items-center gap-2" role="tablist">
+        <button
+          *ngFor="let s of slides; let i = index"
+          role="tab"
+          [attr.aria-selected]="i === mod(pos)"
+          [attr.aria-label]="'Go to slide ' + (i + 1)"
+          (click)="go(i - mod(pos))"
+          class="h-2 rounded-full transition-all duration-500"
+          [ngClass]="i === mod(pos) ? 'w-8 bg-primary' : 'w-2 bg-foreground/25 hover:bg-foreground/50'"
+        ></button>
+      </div>
+      <button aria-label="Next slide" (click)="go(1)" class="grid h-10 w-10 place-items-center rounded-full bg-background text-foreground transition-colors hover:text-primary">
+        <svg lucideChevronRight class="h-5 w-5"></svg>
+      </button>
+    </div>
+  </section>
+</main>

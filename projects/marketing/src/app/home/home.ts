@@ -1,16 +1,16 @@
-import { Component, computed, inject, OnInit, AfterViewInit, PLATFORM_ID } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { Component, HostListener, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { LucideArrowRight, LucideShieldCheck, LucideTruck } from '@lucide/angular';
-import { CmsService } from 'shared-ui';
-
-import { FlashSaleComponent } from '../components/flash-sale.component';
-import { NewArrivalsComponent } from '../components/new-arrivals.component';
-import { BestSellersComponent } from '../components/best-sellers.component';
-import { WholesaleCtaComponent } from '../components/wholesale-cta.component';
-import { ServiceBenefitsComponent } from '../components/service-benefits.component';
-import { TestimonialsComponent } from '../components/testimonials.component';
+import { 
+  LucideArrowRight, 
+  LucideTruck, 
+  LucideShieldCheck, 
+  LucideRotateCcw, 
+  LucideHeadphones,
+  LucideChevronLeft,
+  LucideChevronRight
+} from '@lucide/angular';
+import { CatalogService, ShopService, Product, QtyStepperComponent } from 'shared-ui';
 
 @Component({
   selector: 'app-home',
@@ -19,68 +19,120 @@ import { TestimonialsComponent } from '../components/testimonials.component';
     CommonModule, 
     RouterLink, 
     LucideArrowRight, 
+    LucideTruck, 
     LucideShieldCheck, 
-    LucideTruck,
-    FlashSaleComponent,
-    NewArrivalsComponent,
-    BestSellersComponent,
-    WholesaleCtaComponent,
-    ServiceBenefitsComponent,
-    TestimonialsComponent
+    LucideRotateCcw, 
+    LucideHeadphones,
+    LucideChevronLeft,
+    LucideChevronRight,
+    QtyStepperComponent
   ],
   templateUrl: './home.html',
-  styleUrls: ['./home.css']
 })
-export class HomeComponent implements OnInit {
-  cms = inject(CmsService);
-  
-  // Create computed signals for specific sections in the CMS
-  heroSection = computed(() => this.cms.getPageSections('home').get('home_hero'));
-  categoriesSection = computed(() => this.cms.getPageSections('home').get('home_categories'));
-  promoSection = computed(() => this.cms.getPageSections('home').get('home_promo_banner'));
-  wholesaleSection = computed(() => this.cms.getPageSections('home').get('distributorCta'));
-  seoSection = computed(() => this.cms.getPageSections('home').get('home_seo'));
-  testimonialsSection = computed(() => this.cms.getPageSections('home').get('testimonials'));
+export class HomeComponent implements OnInit, OnDestroy {
+  catalog = inject(CatalogService);
+  shop = inject(ShopService);
 
-  readonly SHOP_CATEGORIES = [
-    { name: "Earbuds", filter: "earbuds", img: "/assets/shopcat/earbuds.jpg" },
-    { name: "Power Banks", filter: "power-banks", img: "/assets/shopcat/power-banks.jpg" },
-    { name: "Chargers", filter: "chargers", img: "/assets/shopcat/chargers.jpg" },
-    { name: "Cables", filter: "cables", img: "/assets/shopcat/cables.jpg" },
-    { name: "Mobile Accessories", filter: "mobile-accessories", img: "/assets/shopcat/mobile-accessories.jpg" },
-    { name: "Car Chargers", filter: "car-chargers", img: "/assets/shopcat/car-chargers.jpg" },
-    { name: "Home & Power", filter: "home-power", img: "/assets/shopcat/home-power.jpg" },
-    { name: "FMCG", filter: "fmcg", img: "/assets/shopcat/fmcg.jpg" },
-    { name: "Deals", filter: "deals", img: "/assets/shopcat/deals.jpg" },
+  heroImage = '/assets/nigson-hero-products.jpg';
+  audioImage = '/assets/nigson-audio.jpg';
+  powerImage = '/assets/nigson-power.jpg';
+  wholesaleImage = '/assets/nigson-wholesale.jpg';
+  lifestyleSound = '/assets/nigson-lifestyle-sound.jpg';
+  lifestyleWork = '/assets/nigson-lifestyle-work.jpg';
+
+  categories = [
+    { label: "Audio", title: "Sound that moves with you.", description: "Immersive listening, made effortless.", image: this.audioImage, filter: "Earbuds" },
+    { label: "Power", title: "Ready when you need it.", description: "Dependable portable power for every day.", image: this.powerImage, filter: "Power Banks" },
+    { label: "Charging", title: "Fast power. Less waiting.", description: "Compact chargers and cables built to keep up.", image: this.heroImage, filter: "Home Chargers" },
+    { label: "Mobile Accessories", title: "Made for your mobile life.", description: "The useful details that make every device better.", image: this.audioImage, filter: "Cables" },
+    { label: "Car Accessories", title: "Upgrade every drive.", description: "Smarter essentials for the road ahead.", image: this.powerImage, filter: "Car Chargers" },
+    { label: "Home & Power", title: "Everyday power, simplified.", description: "Reliable essentials for a more connected home.", image: this.heroImage, filter: "Power Strips" },
+    { label: "FMCG", title: "The everyday, considered.", description: "Useful products selected for modern routines.", image: this.wholesaleImage, filter: "FMCG" },
   ];
 
-  platformId = inject(PLATFORM_ID);
-
-  ngOnInit() {
-    // Other init logic if needed
+  get products() {
+    return this.catalog.PRODUCTS.filter(p => this.catalog.isDeal(p)).slice(0, 4).map(p => ({
+      name: p.name,
+      detail: p.desc,
+      price: this.catalog.formatPrice(p.price),
+      image: this.catalog.imageFor(p.category),
+      product: p
+    }));
   }
 
-  ngAfterViewInit() {
-    if (isPlatformBrowser(this.platformId)) {
-      const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('reveal-visible');
-            observer.unobserve(entry.target);
-          }
-        });
-      }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+  lifestylePanels = [
+    { title: "YOUR WORLD. YOUR SOUND.", text: "Turn everyday moments into your own soundtrack.", image: this.lifestyleSound, alt: "Person relaxing with Nigson wireless headphones" },
+    { title: "POWER YOUR WORKDAY.", text: "Stay connected, charged and ready for what comes next.", image: this.lifestyleWork, alt: "Person working with a Nigson power bank charging their phone" },
+  ];
 
-      const attachObserver = () => {
-        document.querySelectorAll('.reveal-on-scroll:not(.observed)').forEach(el => {
-          el.classList.add('observed');
-          observer.observe(el);
-        });
-      };
-      attachObserver();
-      // Use setTimeout to ensure child component views are fully resolved
-      setTimeout(attachObserver, 100);
-      setTimeout(attachObserver, 500);
+  slides = [
+    { kicker: "Nigson Audio", title: "SOUND. SIMPLIFIED.", desc: "Wireless audio made for every moment.", cta: "Shop Audio", link: "/products", queryParams: { category: "Earbuds" }, image: this.audioImage, tone: "dark" },
+    { kicker: "Nigson Power", title: "POWER YOUR EVERYDAY.", desc: "Reliable charging essentials, wherever you go.", cta: "Shop Power", link: "/products", queryParams: { category: "Power Banks" }, image: this.powerImage, tone: "light" },
+    { kicker: "Mobile Essentials", title: "READY FOR EVERY DAY.", desc: "Smart accessories designed around your devices.", cta: "Explore Accessories", link: "/products", queryParams: { category: "Cables" }, image: this.heroImage, tone: "white" },
+    { kicker: "Nigson Deals", title: "MORE VALUE. LESS WAITING.", desc: "Discover limited-time offers across Nigson.", cta: "View Deals", link: "/products", queryParams: { isDeal: "true" }, image: this.wholesaleImage, tone: "dark" },
+  ];
+
+  N = this.slides.length;
+  pos = 0;
+  drag = 0;
+  paused = false;
+  intervalId: any;
+  startX: number | null = null;
+  
+  offsets = [-2, -1, 0, 1, 2];
+
+  mod(n: number) {
+    return ((n % this.N) + this.N) % this.N;
+  }
+  
+  ngOnInit() {
+    this.startInterval();
+  }
+  
+  ngOnDestroy() {
+    if (this.intervalId) clearInterval(this.intervalId);
+  }
+
+  startInterval() {
+    if (this.intervalId) clearInterval(this.intervalId);
+    this.intervalId = setInterval(() => {
+      if (!this.paused && this.startX === null) {
+        this.pos++;
+      }
+    }, 5500);
+  }
+
+  setPaused(p: boolean) {
+    this.paused = p;
+  }
+
+  go(d: number) {
+    this.pos += d;
+    this.startInterval();
+  }
+
+  onPointerDown(e: PointerEvent) {
+    this.startX = e.clientX;
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  }
+  onPointerMove(e: PointerEvent) {
+    if (this.startX !== null) {
+      this.drag = e.clientX - this.startX;
     }
+  }
+  onPointerUp(e: PointerEvent) {
+    if (this.startX === null) return;
+    const w = (e.currentTarget as HTMLElement).offsetWidth || 1000;
+    if (Math.abs(this.drag) > w * 0.08) {
+      this.go(this.drag < 0 ? 1 : -1);
+    }
+    this.startX = null;
+    this.drag = 0;
+  }
+  
+  @HostListener('window:keydown', ['$event'])
+  onKeyDown(e: KeyboardEvent) {
+    if (e.key === "ArrowLeft") this.go(-1);
+    if (e.key === "ArrowRight") this.go(1);
   }
 }
