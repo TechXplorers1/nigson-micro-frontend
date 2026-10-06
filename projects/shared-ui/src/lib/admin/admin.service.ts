@@ -120,6 +120,45 @@ export class AdminService {
       { id: 'cu_1', name: 'David Okonkwo', email: 'david@mail.com', phone: '+234 8011111111', location: 'Lagos', joined: new Date().toISOString(), orders: 5, spend: 100000, saved: 2, quotes: 0, status: 'Active' },
       { id: 'cu_2', name: 'Sarah Adeyemi', email: 'sarah@mail.com', phone: '+234 8022222222', location: 'Abuja', joined: new Date().toISOString(), orders: 2, spend: 30000, saved: 0, quotes: 1, status: 'Active' }
     ]);
+    
+    this.hydrateFromStorage();
+  }
+  
+  private hydrateFromStorage() {
+    try {
+      const q = localStorage.getItem('nigson_quotes');
+      if (q) {
+        // Map from client quotes to admin quotes shape if needed, here they match closely enough
+        const parsed = JSON.parse(q).map((x: any) => ({
+          id: x.id, number: x.number, date: x.createdAt || x.date,
+          customer: x.customerName || 'Anonymous', email: x.email || '', phone: x.phone || '',
+          product: x.products, sku: x.sku || '', quantity: x.qty,
+          message: x.message, status: x.status
+        }));
+        this.quotes.set(parsed);
+      }
+      
+      const apps = localStorage.getItem('nigson_applications');
+      if (apps) {
+        this.applications.set(JSON.parse(apps));
+      }
+      
+      const inqs = localStorage.getItem('nigson_inquiries');
+      if (inqs) {
+        this.inquiries.set(JSON.parse(inqs));
+      }
+      
+      const ords = localStorage.getItem('nigson_orders');
+      if (ords) {
+        const parsedOrders = JSON.parse(ords).map((o: any) => ({
+          id: o.id, number: o.number, date: o.date,
+          customer: { name: o.customer.fullName, email: o.customer.email, phone: o.customer.phone, address: o.address?.city || 'Unknown' },
+          items: o.items.map((i: any) => ({ sku: i.sku, name: i.name, qty: i.qty, price: i.price })),
+          total: o.total, paymentStatus: 'Paid', status: o.status, delivery: o.deliveryMethod || 'Standard', timeline: []
+        }));
+        this.orders.set(parsedOrders);
+      }
+    } catch {}
   }
 
   currentRole = computed(() => {
@@ -161,11 +200,61 @@ export class AdminService {
   }
 
   setOrderStatus(orderId: string, status: string) {
+    // Update local signal
     this.orders.update(orders => orders.map(o => {
       if (o.id === orderId) {
         return { ...o, status: status as AdminOrderStatus };
       }
       return o;
     }));
+    // Persist to actual store
+    try {
+      const raw = localStorage.getItem('nigson_orders');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const updated = parsed.map((o: any) => o.id === orderId ? { ...o, status } : o);
+        localStorage.setItem('nigson_orders', JSON.stringify(updated));
+      }
+    } catch {}
+    this.log(`Order ${orderId} set to ${status}`);
+  }
+
+  setQuoteStatus(id: string, status: string) {
+    this.quotes.update(qs => qs.map(q => q.id === id ? { ...q, status: status as any } : q));
+    try {
+      const raw = localStorage.getItem('nigson_quotes');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const updated = parsed.map((q: any) => q.id === id ? { ...q, status } : q);
+        localStorage.setItem('nigson_quotes', JSON.stringify(updated));
+      }
+    } catch {}
+    this.log(`Quote ${id} set to ${status}`);
+  }
+
+  setApplicationStatus(id: string, status: string, note?: string) {
+    this.applications.update(apps => apps.map(a => a.id === id ? { ...a, status: status as any, note: note !== undefined ? note : a.note } : a));
+    try {
+      const raw = localStorage.getItem('nigson_applications');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const updated = parsed.map((a: any) => a.id === id ? { ...a, status, note: note !== undefined ? note : a.note } : a);
+        localStorage.setItem('nigson_applications', JSON.stringify(updated));
+      }
+    } catch {}
+    if (status) this.log(`Application ${id} set to ${status}`);
+  }
+
+  setInquiryStatus(id: string, status: string) {
+    this.inquiries.update(inqs => inqs.map(i => i.id === id ? { ...i, status: status as any } : i));
+    try {
+      const raw = localStorage.getItem('nigson_inquiries');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const updated = parsed.map((i: any) => i.id === id ? { ...i, status } : i);
+        localStorage.setItem('nigson_inquiries', JSON.stringify(updated));
+      }
+    } catch {}
+    this.log(`Inquiry ${id} set to ${status}`);
   }
 }

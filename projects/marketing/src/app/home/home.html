@@ -1,13 +1,20 @@
 <main>
-  <section id="shop" class="overflow-hidden border-b border-border">
+  <!-- ── HERO ─────────────────────────────────────────────────────────── -->
+  <section id="shop" class="overflow-hidden border-b border-border" *ngIf="hero().visible">
     <div class="mx-auto grid min-h-[calc(100vh-4rem)] max-w-[1600px] items-center lg:grid-cols-[0.82fr_1.18fr]">
       <div class="z-10 px-6 py-20 sm:px-12 lg:px-20 lg:py-24">
-        <p class="display-type mb-5 text-xs font-bold uppercase text-primary">Nigson</p>
-        <h1 class="display-type text-balance text-5xl font-extrabold leading-[0.98] sm:text-7xl lg:text-[5.7rem]">POWER YOUR EVERYDAY.</h1>
-        <p class="mt-7 max-w-lg text-base leading-7 text-muted-foreground sm:text-lg">Smart technology, essential accessories and everyday products designed for the way you live.</p>
+        <p class="display-type mb-5 text-xs font-bold uppercase text-primary">{{hero().t('badge') || 'Nigson'}}</p>
+        <h1 class="display-type text-balance text-5xl font-extrabold leading-[0.98] sm:text-7xl lg:text-[5.7rem]">
+          {{hero().t('heading')}} {{hero().t('headingAccent')}}
+        </h1>
+        <p class="mt-7 max-w-lg text-base leading-7 text-muted-foreground sm:text-lg">{{hero().t('body')}}</p>
         <div class="mt-9 flex flex-wrap gap-3">
-          <a href="#best-sellers" class="inline-flex h-11 items-center justify-center rounded-md bg-brand px-8 text-sm font-medium text-brand-foreground shadow transition-colors hover:bg-brand/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">Shop Now <svg lucideArrowRight class="ml-2 h-4 w-4"></svg></a>
-          <a href="#categories" class="inline-flex h-11 items-center justify-center rounded-md border border-input bg-transparent px-8 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">Explore Products <svg lucideArrowRight class="ml-2 h-4 w-4"></svg></a>
+          <a [routerLink]="hero().t('btn1Link') || '/products'" class="inline-flex h-11 items-center justify-center rounded-md bg-brand px-8 text-sm font-medium text-brand-foreground shadow transition-colors hover:bg-brand/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+            {{hero().t('btn1Label') || 'Shop Now'}} <svg lucideArrowRight class="ml-2 h-4 w-4"></svg>
+          </a>
+          <a [routerLink]="hero().t('btn2Link') || '/products'" class="inline-flex h-11 items-center justify-center rounded-md border border-input bg-transparent px-8 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+            {{hero().t('btn2Label') || 'Explore Products'}} <svg lucideArrowRight class="ml-2 h-4 w-4"></svg>
+          </a>
         </div>
       </div>
       <div class="h-[52vh] min-h-[430px] bg-surface lg:h-[calc(100vh-4rem)]">
@@ -16,18 +23,23 @@
     </div>
   </section>
 
-  <section id="new-arrivals" class="px-6 py-24 text-center sm:px-12 sm:py-32">
+  <!-- ── NEW ARRIVALS ───────────────────────────────────────────────────── -->
+  <section id="new-arrivals" class="px-6 py-24 text-center sm:px-12 sm:py-32" *ngIf="newArrivals().visible">
     <div class="mx-auto max-w-4xl">
       <p class="display-type mb-5 text-xs font-bold uppercase text-primary">New Arrival</p>
       <h2 class="display-type text-balance text-4xl font-bold leading-[1.05] sm:text-6xl lg:text-7xl">MADE FOR EVERY DAY.</h2>
-      <p class="mx-auto mt-6 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">Thoughtfully selected technology and accessories that combine everyday usefulness with modern design.</p>
-      <a href="#categories" class="display-type mt-8 inline-flex items-center gap-2 text-sm font-semibold text-primary">Explore New Arrivals <svg lucideArrowRight class="h-4 w-4"></svg></a>
+      <p class="mx-auto mt-6 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">{{newArrivals().t('subtitle')}}</p>
+      <a [routerLink]="newArrivals().t('btnLink') || '/products'" class="display-type mt-8 inline-flex items-center gap-2 text-sm font-semibold text-primary">
+        {{newArrivals().t('btnLabel') || 'Explore New Arrivals'}} <svg lucideArrowRight class="h-4 w-4"></svg>
+      </a>
     </div>
     <img [src]="powerImage" alt="New Nigson power essentials" loading="lazy" width="1408" height="1200" class="mx-auto mt-16 aspect-[16/8] w-full max-w-6xl object-cover" />
   </section>
 
-  <section id="categories" aria-label="Product categories">
-    <ng-container *ngFor="let item of categories; let i = index">
+  <!-- ── ALTERNATING CATEGORY LAYOUT ───────────────────────────────────── -->
+  <!-- Category Showcase — CMS driven -->
+  <section id="categories" aria-label="Product categories" *ngIf="categoryShowcase().visible">
+    <ng-container *ngFor="let item of showcaseCards(); let i = index">
       <article [ngClass]="i % 2 === 0 ? 'bg-background' : 'bg-surface'">
         <div class="mx-auto grid min-h-[620px] max-w-[1440px] items-center lg:grid-cols-2">
           <div class="flex h-full items-center px-6 py-20 sm:px-12 lg:px-20" [ngClass]="{'lg:order-2': i % 2 === 1}">
@@ -44,24 +56,28 @@
         </div>
       </article>
 
-      <section *ngIf="item.label === 'Charging'" aria-label="Nigson in everyday life" class="grid gap-3 px-3 py-3 sm:gap-4 sm:px-4 md:grid-cols-2 lg:gap-5 lg:px-5">
-        <article *ngFor="let p of lifestylePanels" class="group relative aspect-[4/5] overflow-hidden rounded-2xl bg-ink md:aspect-[6/7]">
+      <!-- Lifestyle panels after Charging block -->
+      <section *ngIf="item.label === 'Charging' && lifestyle().visible" aria-label="Nigson in everyday life" class="grid gap-3 px-3 py-3 sm:gap-4 sm:px-4 md:grid-cols-2 lg:gap-5 lg:px-5">
+        <article *ngFor="let p of lifestyleCards()" class="group relative aspect-[4/5] overflow-hidden rounded-2xl bg-ink md:aspect-[6/7]">
           <img [src]="p.image" [alt]="p.alt" loading="lazy" width="1200" height="1408" class="absolute inset-0 h-full w-full object-cover transition-transform duration-[1200ms] ease-out group-hover:scale-[1.03]" />
           <div class="absolute inset-0 bg-gradient-to-t from-ink/85 via-ink/25 to-transparent"></div>
           <div class="absolute inset-x-0 bottom-0 flex flex-col items-center p-8 text-center text-primary-foreground sm:p-12">
             <h2 class="display-type text-balance text-3xl font-bold leading-[1.05] sm:text-4xl lg:text-5xl">{{p.title}}</h2>
             <p class="mt-4 max-w-sm text-base leading-7 text-primary-foreground/80">{{p.text}}</p>
-            <a href="#best-sellers" class="mt-7 inline-flex h-12 items-center gap-2 rounded-full bg-background px-7 text-sm font-medium tracking-wide text-foreground transition-colors hover:bg-primary hover:text-primary-foreground">SHOP NOW <svg lucideArrowRight class="h-4 w-4"></svg></a>
+            <a [routerLink]="p.btnLink" class="mt-7 inline-flex h-12 items-center gap-2 rounded-full bg-background px-7 text-sm font-medium tracking-wide text-foreground transition-colors hover:bg-primary hover:text-primary-foreground">{{p.btnLabel}} <svg lucideArrowRight class="h-4 w-4"></svg></a>
           </div>
         </article>
       </section>
     </ng-container>
   </section>
 
-  <section id="best-sellers" class="px-5 py-24 sm:px-8 sm:py-32 lg:px-12">
+  <!-- ── BEST SELLERS ───────────────────────────────────────────────────── -->
+  <section id="best-sellers" class="px-5 py-24 sm:px-8 sm:py-32 lg:px-12" *ngIf="bestSellers().visible">
     <div class="mx-auto max-w-[1440px]">
       <p class="display-type mb-5 text-xs font-bold uppercase text-primary">Customer Favourites</p>
-      <h2 class="display-type max-w-4xl text-balance text-4xl font-bold leading-[1.05] sm:text-6xl">THE PRODUCTS PEOPLE COME BACK FOR.</h2>
+      <h2 class="display-type max-w-4xl text-balance text-4xl font-bold leading-[1.05] sm:text-6xl">
+        {{bestSellers().t('heading') || 'THE PRODUCTS PEOPLE COME BACK FOR.'}}
+      </h2>
       <div class="mt-14 grid gap-x-5 gap-y-12 sm:grid-cols-2 lg:grid-cols-4">
         <article *ngFor="let product of products" class="group">
           <div class="aspect-square overflow-hidden bg-surface cursor-pointer" [routerLink]="['/products', product.product.sku]">
@@ -80,56 +96,108 @@
     </div>
   </section>
 
-  <section id="wholesale" class="bg-ink text-primary-foreground">
+  <!-- ── WHOLESALE ─────────────────────────────────────────────────────── -->
+  <section id="wholesale" class="bg-ink text-primary-foreground" *ngIf="wholesale().visible">
     <div class="mx-auto grid min-h-[650px] max-w-[1600px] items-stretch lg:grid-cols-2">
       <div class="flex items-center px-6 py-24 sm:px-12 lg:px-20">
         <div class="max-w-xl">
-          <p class="display-type mb-5 text-xs font-bold uppercase text-primary">Nigson Wholesale</p>
-          <h2 class="display-type text-balance text-5xl font-bold leading-[1.03] sm:text-7xl text-white">BUY MORE. BUILD MORE.</h2>
-          <p class="mt-7 max-w-lg text-base leading-7 text-primary-foreground/65 sm:text-lg">Special pricing and dependable supply for retailers, businesses and bulk buyers.</p>
-          <a href="mailto:wholesale@nigson.com" class="mt-9 inline-flex h-11 items-center justify-center rounded-md border border-input bg-background px-8 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground">Shop Wholesale <svg lucideArrowRight class="ml-2 h-4 w-4"></svg></a>
+          <p class="display-type mb-5 text-xs font-bold uppercase text-primary">{{wholesale().t('eyebrow')}}</p>
+          <h2 class="display-type text-balance text-5xl font-bold leading-[1.03] sm:text-7xl text-white">{{wholesale().t('heading')}}</h2>
+          <p class="mt-7 max-w-lg text-base leading-7 text-primary-foreground/65 sm:text-lg">{{wholesale().t('body')}}</p>
+          <div class="mt-9 flex flex-wrap gap-3">
+            <a [routerLink]="wholesale().t('btn1Link') || '/distributor'" class="inline-flex h-11 items-center justify-center rounded-md border border-input bg-background px-8 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground">
+              {{wholesale().t('btn1Label') || 'Shop Wholesale'}} <svg lucideArrowRight class="ml-2 h-4 w-4"></svg>
+            </a>
+            <a *ngIf="wholesale().t('btn2Label')" [routerLink]="wholesale().t('btn2Link') || '/quote'" class="inline-flex h-11 items-center justify-center rounded-md border border-white/30 px-8 text-sm font-medium text-white transition-colors hover:bg-white/10">
+              {{wholesale().t('btn2Label')}}
+            </a>
+          </div>
         </div>
       </div>
       <img [src]="wholesaleImage" alt="Nigson wholesale product selection" loading="lazy" width="1600" height="1008" class="h-full min-h-[460px] w-full object-cover" />
     </div>
   </section>
 
-  <section id="become-a-partner" class="bg-surface">
+  <!-- ── BECOME A PARTNER ───────────────────────────────────────────────── -->
+  <section id="become-a-partner" class="bg-surface" *ngIf="distCta().visible">
     <div class="mx-auto grid min-h-[650px] max-w-[1600px] items-stretch lg:grid-cols-2">
       <img [src]="lifestyleWork" alt="Working with Nigson as a business partner" loading="lazy" width="1200" height="1408" class="h-full min-h-[460px] w-full object-cover" />
       <div class="flex items-center px-6 py-24 sm:px-12 lg:px-20">
         <div class="max-w-xl">
-          <p class="display-type mb-5 text-xs font-bold uppercase text-primary">Partnership</p>
-          <h2 class="display-type text-balance text-5xl font-bold leading-[1.03] sm:text-7xl text-foreground">BECOME A NIGSON PARTNER.</h2>
-          <p class="mt-7 max-w-lg text-base leading-7 text-muted-foreground sm:text-lg">Grow your business with Nigson through reliable products, dependable supply and long-term partnership.</p>
-          <a href="mailto:wholesale@nigson.com" class="mt-9 inline-flex h-11 items-center justify-center rounded-md bg-brand px-8 text-sm font-medium text-brand-foreground shadow transition-colors hover:bg-brand/90">BECOME A PARTNER <svg lucideArrowRight class="ml-2 h-4 w-4"></svg></a>
+          <p class="display-type mb-5 text-xs font-bold uppercase text-primary">{{distCta().t('eyebrow')}}</p>
+          <h2 class="display-type text-balance text-5xl font-bold leading-[1.03] sm:text-7xl text-foreground">{{distCta().t('heading')}}</h2>
+          <p class="mt-7 max-w-lg text-base leading-7 text-muted-foreground sm:text-lg">{{distCta().t('body')}}</p>
+          <!-- benefit tags -->
+          <ul *ngIf="distBenefits().length" class="mt-6 flex flex-wrap gap-2">
+            <li *ngFor="let b of distBenefits()" class="rounded-full border border-border px-3 py-1 text-xs font-medium text-muted-foreground">{{b.title}}</li>
+          </ul>
+          <a [routerLink]="distCta().t('btnLink') || '/distributor'" class="mt-9 inline-flex h-11 items-center justify-center rounded-md bg-brand px-8 text-sm font-medium text-brand-foreground shadow transition-colors hover:bg-brand/90">
+            {{distCta().t('btnLabel') || 'BECOME A PARTNER'}} <svg lucideArrowRight class="ml-2 h-4 w-4"></svg>
+          </a>
         </div>
       </div>
     </div>
   </section>
 
-  <section class="px-5 py-24 sm:px-8 sm:py-28 lg:px-12">
+  <!-- ── SERVICE BENEFITS ──────────────────────────────────────────────── -->
+  <section class="px-5 py-24 sm:px-8 sm:py-28 lg:px-12" *ngIf="benefits().visible">
     <div class="mx-auto max-w-[1440px]">
-      <h2 class="display-type text-center text-4xl font-bold sm:text-5xl">BUILT AROUND YOUR EVERYDAY.</h2>
+      <h2 class="display-type text-center text-4xl font-bold sm:text-5xl">{{benefits().t('heading') || 'BUILT AROUND YOUR EVERYDAY.'}}</h2>
       <div class="mt-16 grid gap-px bg-border sm:grid-cols-2 lg:grid-cols-4">
-        
-        <div class="bg-background px-6 py-10 text-center"><svg lucideTruck class="mx-auto h-7 w-7 text-primary" strokeWidth="1.7"></svg><h3 class="display-type mt-5 font-semibold">Fast Delivery</h3><p class="mt-2 text-sm text-muted-foreground">Across India, with care.</p></div>
-        <div class="bg-background px-6 py-10 text-center"><svg lucideShieldCheck class="mx-auto h-7 w-7 text-primary" strokeWidth="1.7"></svg><h3 class="display-type mt-5 font-semibold">Secure Payments</h3><p class="mt-2 text-sm text-muted-foreground">Protected at every step.</p></div>
-        <div class="bg-background px-6 py-10 text-center"><svg lucideRotateCcw class="mx-auto h-7 w-7 text-primary" strokeWidth="1.7"></svg><h3 class="display-type mt-5 font-semibold">Easy Returns</h3><p class="mt-2 text-sm text-muted-foreground">Simple, straightforward support.</p></div>
-        <div class="bg-background px-6 py-10 text-center"><svg lucideHeadphones class="mx-auto h-7 w-7 text-primary" strokeWidth="1.7"></svg><h3 class="display-type mt-5 font-semibold">Customer Support</h3><p class="mt-2 text-sm text-muted-foreground">Real help when you need it.</p></div>
-
+        <div class="bg-background px-6 py-10 text-center">
+          <svg lucideTruck class="mx-auto h-7 w-7 text-primary" strokeWidth="1.7"></svg>
+          <h3 class="display-type mt-5 font-semibold">{{benefitCards()[0]?.title || 'Fast Delivery'}}</h3>
+          <p class="mt-2 text-sm text-muted-foreground">{{benefitCards()[0]?.desc || 'Across India, with care.'}}</p>
+        </div>
+        <div class="bg-background px-6 py-10 text-center">
+          <svg lucideShieldCheck class="mx-auto h-7 w-7 text-primary" strokeWidth="1.7"></svg>
+          <h3 class="display-type mt-5 font-semibold">{{benefitCards()[1]?.title || 'Secure Payments'}}</h3>
+          <p class="mt-2 text-sm text-muted-foreground">{{benefitCards()[1]?.desc || 'Protected at every step.'}}</p>
+        </div>
+        <div class="bg-background px-6 py-10 text-center">
+          <svg lucideRotateCcw class="mx-auto h-7 w-7 text-primary" strokeWidth="1.7"></svg>
+          <h3 class="display-type mt-5 font-semibold">{{benefitCards()[2]?.title || 'Easy Returns'}}</h3>
+          <p class="mt-2 text-sm text-muted-foreground">{{benefitCards()[2]?.desc || 'Simple, straightforward support.'}}</p>
+        </div>
+        <div class="bg-background px-6 py-10 text-center">
+          <svg lucideHeadphones class="mx-auto h-7 w-7 text-primary" strokeWidth="1.7"></svg>
+          <h3 class="display-type mt-5 font-semibold">{{benefitCards()[3]?.title || 'Customer Support'}}</h3>
+          <p class="mt-2 text-sm text-muted-foreground">{{benefitCards()[3]?.desc || 'Real help when you need it.'}}</p>
+        </div>
       </div>
     </div>
   </section>
 
-  <section class="border-t border-border px-6 py-28 text-center sm:px-12 sm:py-40">
-    <p class="display-type mb-5 text-xs font-bold uppercase text-primary">Discover Nigson</p>
-    <h2 class="display-type mx-auto max-w-5xl text-balance text-5xl font-bold leading-[1.02] sm:text-7xl lg:text-8xl">GOOD PRODUCTS.<br />SIMPLER CHOICES.</h2>
-    <p class="mx-auto mt-7 max-w-xl leading-7 text-muted-foreground">Discover technology, accessories and everyday essentials selected for modern living.</p>
-    <a href="#best-sellers" class="mt-9 inline-flex h-11 items-center justify-center rounded-md bg-brand px-8 text-sm font-medium text-brand-foreground shadow transition-colors hover:bg-brand/90">Shop Nigson <svg lucideArrowRight class="ml-2 h-4 w-4"></svg></a>
+  <!-- ── TESTIMONIALS ───────────────────────────────────────────────────── -->
+  <section *ngIf="testimonials().visible && testimonialCards().length" class="border-t border-border bg-surface px-5 py-24 sm:px-8 sm:py-32 lg:px-12">
+    <div class="mx-auto max-w-[1440px]">
+      <p class="display-type mb-5 text-xs font-bold uppercase text-primary">{{testimonials().t('eyebrow')}}</p>
+      <h2 class="display-type max-w-3xl text-balance text-4xl font-bold leading-[1.05] sm:text-5xl">{{testimonials().t('heading')}}</h2>
+      <div class="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <blockquote *ngFor="let t of testimonialCards()" class="rounded-2xl bg-background p-8 shadow-sm ring-1 ring-border">
+          <p class="text-base leading-7 text-muted-foreground">"{{t.quote}}"</p>
+          <footer class="mt-6">
+            <p class="font-semibold text-foreground">{{t.name}}</p>
+            <p class="text-sm text-muted-foreground">{{t.role}}</p>
+          </footer>
+        </blockquote>
+      </div>
+    </div>
   </section>
 
+  <!-- ── SEO / DISCOVER ─────────────────────────────────────────────────── -->
+  <section class="border-t border-border px-6 py-28 text-center sm:px-12 sm:py-40" *ngIf="seo().visible">
+    <p class="display-type mb-5 text-xs font-bold uppercase text-primary">{{seo().t('eyebrow')}}</p>
+    <h2 class="display-type mx-auto max-w-5xl text-balance text-5xl font-bold leading-[1.02] sm:text-7xl lg:text-8xl">{{seo().t('heading')}}</h2>
+    <p class="mx-auto mt-7 max-w-xl leading-7 text-muted-foreground">{{seo().t('body')}}</p>
+    <a [routerLink]="seo().t('btnLink') || '/products'" class="mt-9 inline-flex h-11 items-center justify-center rounded-md bg-brand px-8 text-sm font-medium text-brand-foreground shadow transition-colors hover:bg-brand/90">
+      {{seo().t('btnLabel') || 'Shop Nigson'}} <svg lucideArrowRight class="ml-2 h-4 w-4"></svg>
+    </a>
+  </section>
+
+  <!-- ── FEATURED CAROUSEL — CMS driven ──────────────────────────────────── -->
   <section
+    *ngIf="carousel().visible && carouselSlides().length"
     aria-roledescription="carousel"
     aria-label="Featured from Nigson"
     class="overflow-hidden border-t border-border bg-surface py-20 sm:py-28"
@@ -148,34 +216,34 @@
           [attr.aria-hidden]="o !== 0"
           [attr.aria-label]="(mod(pos + o) + 1) + ' of ' + N"
           class="absolute top-0 left-1/2 h-full w-[92vw] overflow-hidden rounded-[var(--radius)] sm:w-[82vw] lg:w-[76vw] lg:max-w-[1280px]"
-          [ngClass]="slides[mod(pos + o)].tone === 'dark' ? 'bg-ink text-primary-foreground' : 'bg-background text-foreground'"
+          [ngClass]="carouselSlides()[mod(pos + o)].tone === 'dark' ? 'bg-ink text-primary-foreground' : 'bg-background text-foreground'"
           [style.transform]="'translateX(calc(-50% + ' + o + ' * (min(76vw, 1280px) + 20px) + ' + drag + 'px))'"
           [style.transition]="startX !== null ? 'none' : 'transform 700ms cubic-bezier(0.22, 1, 0.36, 1), opacity 700ms'"
           [style.opacity]="o === 0 ? 1 : 0.55"
         >
           <img
-            [src]="slides[mod(pos + o)].image"
+            [src]="carouselSlides()[mod(pos + o)].image"
             alt=""
             draggable="false"
             loading="lazy"
             class="absolute inset-0 h-full w-full object-cover"
-            [ngClass]="{'opacity-70': slides[mod(pos + o)].tone === 'dark'}"
+            [ngClass]="{'opacity-70': carouselSlides()[mod(pos + o)].tone === 'dark'}"
           />
           <div
             class="absolute inset-0"
-            [ngClass]="slides[mod(pos + o)].tone === 'dark' ? 'bg-gradient-to-r from-ink via-ink/60 to-transparent' : 'bg-gradient-to-r from-background via-background/70 to-transparent'"
+            [ngClass]="carouselSlides()[mod(pos + o)].tone === 'dark' ? 'bg-gradient-to-r from-ink via-ink/60 to-transparent' : 'bg-gradient-to-r from-background via-background/70 to-transparent'"
           ></div>
           <div class="relative flex h-full max-w-xl flex-col justify-end p-8 sm:p-12 lg:p-16">
-            <p class="text-xs font-medium tracking-[0.2em] text-primary uppercase">{{slides[mod(pos + o)].kicker}}</p>
-            <h3 class="display-type mt-4 text-4xl leading-[1.02] font-bold sm:text-5xl lg:text-6xl">{{slides[mod(pos + o)].title}}</h3>
-            <p class="mt-4 text-base leading-7" [ngClass]="slides[mod(pos + o)].tone === 'dark' ? 'text-primary-foreground/75' : 'text-muted-foreground'">{{slides[mod(pos + o)].desc}}</p>
+            <p class="text-xs font-medium tracking-[0.2em] text-primary uppercase">{{carouselSlides()[mod(pos + o)].kicker}}</p>
+            <h3 class="display-type mt-4 text-4xl leading-[1.02] font-bold sm:text-5xl lg:text-6xl">{{carouselSlides()[mod(pos + o)].title}}</h3>
+            <p class="mt-4 text-base leading-7" [ngClass]="carouselSlides()[mod(pos + o)].tone === 'dark' ? 'text-primary-foreground/75' : 'text-muted-foreground'">{{carouselSlides()[mod(pos + o)].desc}}</p>
             <a
-              [routerLink]="slides[mod(pos + o)].link"
-              [queryParams]="slides[mod(pos + o)].queryParams"
+              [routerLink]="carouselSlides()[mod(pos + o)].link"
+              [queryParams]="carouselSlides()[mod(pos + o)].queryParams"
               [tabIndex]="o === 0 ? 0 : -1"
               class="mt-8 inline-flex h-12 w-fit items-center gap-2 rounded-[var(--radius)] bg-primary px-6 text-sm font-medium tracking-wide text-primary-foreground uppercase transition-colors hover:bg-brand-bright"
             >
-              {{slides[mod(pos + o)].cta}} <svg lucideArrowRight class="h-4 w-4"></svg>
+              {{carouselSlides()[mod(pos + o)].cta}} <svg lucideArrowRight class="h-4 w-4"></svg>
             </a>
           </div>
         </article>
@@ -188,7 +256,7 @@
       </button>
       <div class="flex items-center gap-2" role="tablist">
         <button
-          *ngFor="let s of slides; let i = index"
+          *ngFor="let s of carouselSlides(); let i = index"
           role="tab"
           [attr.aria-selected]="i === mod(pos)"
           [attr.aria-label]="'Go to slide ' + (i + 1)"

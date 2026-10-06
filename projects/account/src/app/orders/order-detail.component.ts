@@ -137,8 +137,11 @@ export class OrderDetailComponent {
 
   confirmCancel() {
     if (confirm("Are you sure you want to cancel this order?")) {
-      // In a real app we'd dispatch an update
-      alert("Order cancelled");
+      const id = this.orderId();
+      this.shop.orders.update(orders =>
+        orders.map(o => o.id === id ? { ...o, status: 'Cancelled' as const } : o)
+      );
+      try { localStorage.setItem('nigson_orders', JSON.stringify(this.shop.orders())); } catch {}
     }
   }
 

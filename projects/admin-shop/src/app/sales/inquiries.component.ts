@@ -18,6 +18,7 @@ import { AdminService, AdminHeadingComponent, BadgeComponent, statusTone } from 
               <th class="px-6 py-4">Subject & Message</th>
               <th class="px-6 py-4">Status</th>
               <th class="px-6 py-4">Date</th>
+              <th class="px-6 py-4 text-right">Actions</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-hairline">
@@ -33,6 +34,11 @@ import { AdminService, AdminHeadingComponent, BadgeComponent, statusTone } from 
               </td>
               <td class="px-6 py-4"><lib-badge [tone]="getTone(i.status)">{{ i.status }}</lib-badge></td>
               <td class="px-6 py-4 whitespace-nowrap text-xs text-muted-ink">{{ i.date | date:'mediumDate' }}</td>
+              <td class="px-6 py-4 text-right">
+                <button *ngIf="i.status !== 'Resolved'" (click)="resolve(i.id)" class="inline-flex items-center rounded-full bg-surface-alt px-3 py-1.5 text-xs font-semibold hover:bg-green-50 hover:text-green-600 transition-colors">
+                  Mark Resolved
+                </button>
+              </td>
             </tr>
             <tr *ngIf="admin.inquiries().length === 0">
               <td colspan="4" class="p-8 text-center text-muted-ink">No inquiries found.</td>
@@ -46,5 +52,9 @@ import { AdminService, AdminHeadingComponent, BadgeComponent, statusTone } from 
 export class AdminInquiriesComponent {
   admin = inject(AdminService);
   getTone(status: string) { return statusTone(status); }
+
+  resolve(id: string) {
+    this.admin.setInquiryStatus(id, 'Resolved');
+  }
 }
 

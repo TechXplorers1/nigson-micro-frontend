@@ -115,11 +115,9 @@ export class WriteReviewComponent {
     }
     
     this.submitting = true;
-    setTimeout(() => {
-      // In a real app we'd call shop.addReview. For now we mock it as legacy did.
-      this.submitting = false;
-      this.done = true;
-      setTimeout(() => this.close.emit(), 1400);
-    }, 700);
+    this.shop.addReview({ sku: this.sku, name: this.name.trim(), rating: this.rating, text: this.text.trim() });
+    this.submitting = false;
+    this.done = true;
+    setTimeout(() => this.close.emit(), 1400);
   }
 }

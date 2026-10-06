@@ -21,6 +21,9 @@ import { CatalogService, Product, ShopService } from 'shared-ui';
           <span class="absolute top-3 left-3 rounded-full bg-background/90 backdrop-blur px-3 py-1 text-[10px] font-semibold uppercase tracking-widest text-brand">
             {{ p.category }}
           </span>
+          <span *ngIf="p.stock === 0" class="absolute top-3 right-3 rounded-full bg-rose-600 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-white shadow-sm">
+            Out of Stock
+          </span>
         </div>
         <div class="px-5 pt-5">
           <p class="text-[11px] uppercase tracking-widest text-muted-foreground">{{ p.sku }}</p>
@@ -52,10 +55,12 @@ import { CatalogService, Product, ShopService } from 'shared-ui';
         </a>
         <button
           type="button"
+          [disabled]="p.stock === 0"
           (click)="addToCart()"
-          class="flex-1 inline-flex items-center justify-center gap-1.5 rounded-full bg-brand text-white px-4 py-2.5 text-xs font-semibold hover:bg-brand-deep transition-colors"
+          class="flex-1 inline-flex items-center justify-center gap-1.5 rounded-full px-4 py-2.5 text-xs font-semibold transition-colors"
+          [ngClass]="p.stock === 0 ? 'bg-surface-alt text-muted-foreground cursor-not-allowed' : 'bg-brand text-white hover:bg-brand-deep'"
         >
-          <svg lucideShoppingCart class="h-3.5 w-3.5"></svg> Add to Cart
+          <svg lucideShoppingCart class="h-3.5 w-3.5"></svg> {{ p.stock === 0 ? 'Unavailable' : 'Add to Cart' }}
         </button>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { CmsService, PageHeaderComponent, InputComponent, ButtonComponent } from 'shared-ui';
 import { LucideMapPin, LucidePhone, LucideMail, LucideMessageCircle, LucideCheckCircle2 } from '@lucide/angular';
 
@@ -8,6 +9,7 @@ import { LucideMapPin, LucidePhone, LucideMail, LucideMessageCircle, LucideCheck
   standalone: true,
   imports: [
     CommonModule, 
+    FormsModule,
     PageHeaderComponent,
     LucideMapPin,
     LucidePhone,
@@ -76,22 +78,22 @@ import { LucideMapPin, LucidePhone, LucideMail, LucideMessageCircle, LucideCheck
               <div class="grid gap-5 md:grid-cols-2">
                 <div>
                   <label class="block text-sm font-medium mb-1.5">{{ form().t('nameLabel') }} <span class="text-brand">*</span></label>
-                  <input type="text" required class="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm focus:outline-none focus:border-brand" />
+                  <input type="text" [(ngModel)]="f.name" name="name" required class="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm focus:outline-none focus:border-brand" />
                 </div>
                 <div>
                   <label class="block text-sm font-medium mb-1.5">{{ form().t('emailLabel') }} <span class="text-brand">*</span></label>
-                  <input type="email" required class="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm focus:outline-none focus:border-brand" />
+                  <input type="email" [(ngModel)]="f.email" name="email" required class="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm focus:outline-none focus:border-brand" />
                 </div>
               </div>
               
               <div>
                 <label class="block text-sm font-medium mb-1.5">{{ form().t('subjectLabel') }}</label>
-                <input type="text" class="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm focus:outline-none focus:border-brand" />
+                <input type="text" [(ngModel)]="f.subject" name="subject" class="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm focus:outline-none focus:border-brand" />
               </div>
               
               <div>
                 <label class="block text-sm font-medium mb-1.5">Type</label>
-                <select class="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm focus:outline-none focus:border-brand">
+                <select [(ngModel)]="f.type" name="type" class="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm focus:outline-none focus:border-brand">
                   <option>General inquiry</option>
                   <option>Sales / Wholesale</option>
                   <option>Complaint</option>
@@ -101,7 +103,7 @@ import { LucideMapPin, LucidePhone, LucideMail, LucideMessageCircle, LucideCheck
               
               <div>
                 <label class="block text-sm font-medium mb-1.5">{{ form().t('messageLabel') }} <span class="text-brand">*</span></label>
-                <textarea rows="5" required class="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm focus:outline-none focus:border-brand"></textarea>
+                <textarea [(ngModel)]="f.message" name="message" rows="5" required class="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm focus:outline-none focus:border-brand"></textarea>
               </div>
               
               <button type="submit" class="w-full rounded-full bg-brand text-brand-foreground py-3 text-sm font-semibold hover:bg-brand-deep transition-colors">
@@ -134,12 +136,37 @@ export class ContactComponent {
 
   submitted = signal(false);
 
+  f = {
+    name: '',
+    email: '',
+    subject: '',
+    type: 'General inquiry',
+    message: ''
+  };
+
   sanitizePhone(phone: string): string {
     return phone ? phone.replace(/\s/g, '') : '';
   }
 
   onSubmit(event: Event) {
     event.preventDefault();
+    
+    const newInquiry = {
+      id: 'inq_' + Math.random().toString(36).substring(2, 9),
+      name: this.f.name,
+      email: this.f.email,
+      phone: '', // Not in form
+      subject: this.f.subject || this.f.type,
+      message: this.f.message,
+      status: 'New' as const,
+      date: new Date().toISOString()
+    };
+    
+    try {
+      const existing = JSON.parse(localStorage.getItem('nigson_inquiries') || '[]');
+      localStorage.setItem('nigson_inquiries', JSON.stringify([newInquiry, ...existing]));
+    } catch {}
+    
     this.submitted.set(true);
   }
 }

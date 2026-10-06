@@ -94,11 +94,20 @@ export class QuoteComponent {
       return;
     }
 
-    // this.shop.addQuote({ 
-    //   productName: this.f.products || "General enquiry", 
-    //   quantity: Number(this.f.qty) || 1, 
-    //   note: this.f.message 
-    // });
+    // Persist quote to localStorage so My Quotes page can read it
+    const newQuote = {
+      id: 'qut_' + Math.random().toString(36).substring(2, 9),
+      number: 'QUO-' + Math.floor(Math.random() * 1000000).toString().padStart(6, '0'),
+      products: this.f.products || 'General enquiry',
+      qty: Number(this.f.qty) || 1,
+      message: this.f.message,
+      status: 'Pending' as const,
+      createdAt: new Date().toISOString()
+    };
+    try {
+      const existing = JSON.parse(localStorage.getItem('nigson_quotes') || '[]');
+      localStorage.setItem('nigson_quotes', JSON.stringify([newQuote, ...existing]));
+    } catch {}
     
     this.submitted.set(true);
     setTimeout(() => {

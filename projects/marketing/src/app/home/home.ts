@@ -1,4 +1,4 @@
-import { Component, HostListener, OnInit, OnDestroy, inject } from '@angular/core';
+import { Component, HostListener, OnInit, OnDestroy, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { 
@@ -10,7 +10,7 @@ import {
   LucideChevronLeft,
   LucideChevronRight
 } from '@lucide/angular';
-import { CatalogService, ShopService, Product, QtyStepperComponent } from 'shared-ui';
+import { CatalogService, ShopService, CmsService, QtyStepperComponent } from 'shared-ui';
 
 @Component({
   selector: 'app-home',
@@ -32,23 +32,70 @@ import { CatalogService, ShopService, Product, QtyStepperComponent } from 'share
 export class HomeComponent implements OnInit, OnDestroy {
   catalog = inject(CatalogService);
   shop = inject(ShopService);
+  cms = inject(CmsService);
 
-  heroImage = '/assets/nigson-hero-products.jpg';
-  audioImage = '/assets/nigson-audio.jpg';
-  powerImage = '/assets/nigson-power.jpg';
+  /** CMS sections for the home page (reads published content) */
+  private sections = this.cms.getPageSections('home');
+
+  // ── section getters ──────────────────────────────────────────────────────
+  hero             = computed(() => this.sections.get('hero'));
+  newArrivals      = computed(() => this.sections.get('newArrivals'));
+  categoryShowcase = computed(() => this.sections.get('categoryShowcase'));
+  lifestyle        = computed(() => this.sections.get('lifestylePanels'));
+  bestSellers      = computed(() => this.sections.get('bestSellers'));
+  wholesale        = computed(() => this.sections.get('wholesale'));
+  distCta          = computed(() => this.sections.get('distributorCta'));
+  benefits         = computed(() => this.sections.get('serviceBenefits'));
+  testimonials     = computed(() => this.sections.get('testimonials'));
+  seo              = computed(() => this.sections.get('home_seo'));
+  carousel         = computed(() => this.sections.get('featuredCarousel'));
+
+  // ── derived card arrays ──────────────────────────────────────────────────
+  showcaseCards = computed(() =>
+    this.categoryShowcase().cards((f) => ({
+      label: f['label'], title: f['title'], description: f['description'],
+      filter: f['filter'], image: f['image'] || '/assets/nigson-hero-products.jpg'
+    }))
+  );
+
+  lifestyleCards = computed(() =>
+    this.lifestyle().cards((f) => ({
+      title: f['title'], text: f['text'],
+      image: f['image'] || '/assets/nigson-lifestyle-sound.jpg',
+      alt: f['alt'] || '',
+      btnLabel: f['btnLabel'] || 'SHOP NOW',
+      btnLink: f['btnLink'] || '#best-sellers'
+    }))
+  );
+
+  carouselSlides = computed(() =>
+    this.carousel().cards((f) => ({
+      kicker: f['kicker'], title: f['title'], desc: f['desc'],
+      cta: f['cta'], link: f['link'] || '/products',
+      queryParams: f['category'] ? { category: f['category'] } : {},
+      tone: f['tone'] || 'dark',
+      image: f['image'] || '/assets/nigson-audio.jpg'
+    }))
+  );
+
+  benefitCards = computed(() =>
+    this.benefits().cards((f) => ({ title: f['title'], desc: f['desc'] }))
+  );
+
+  testimonialCards = computed(() =>
+    this.testimonials().cards((f) => ({ quote: f['quote'], name: f['name'], role: f['role'] }))
+  );
+
+  distBenefits = computed(() =>
+    this.distCta().cards((f) => ({ title: f['title'] }))
+  );
+
+  // ── image assets ─────────────────────────────────────────────────────────
+  heroImage      = '/assets/nigson-hero-products.jpg';
+  audioImage     = '/assets/nigson-audio.jpg';
+  powerImage     = '/assets/nigson-power.jpg';
   wholesaleImage = '/assets/nigson-wholesale.jpg';
-  lifestyleSound = '/assets/nigson-lifestyle-sound.jpg';
-  lifestyleWork = '/assets/nigson-lifestyle-work.jpg';
-
-  categories = [
-    { label: "Audio", title: "Sound that moves with you.", description: "Immersive listening, made effortless.", image: this.audioImage, filter: "Earbuds" },
-    { label: "Power", title: "Ready when you need it.", description: "Dependable portable power for every day.", image: this.powerImage, filter: "Power Banks" },
-    { label: "Charging", title: "Fast power. Less waiting.", description: "Compact chargers and cables built to keep up.", image: this.heroImage, filter: "Home Chargers" },
-    { label: "Mobile Accessories", title: "Made for your mobile life.", description: "The useful details that make every device better.", image: this.audioImage, filter: "Cables" },
-    { label: "Car Accessories", title: "Upgrade every drive.", description: "Smarter essentials for the road ahead.", image: this.powerImage, filter: "Car Chargers" },
-    { label: "Home & Power", title: "Everyday power, simplified.", description: "Reliable essentials for a more connected home.", image: this.heroImage, filter: "Power Strips" },
-    { label: "FMCG", title: "The everyday, considered.", description: "Useful products selected for modern routines.", image: this.wholesaleImage, filter: "FMCG" },
-  ];
+  lifestyleWork  = '/assets/nigson-lifestyle-work.jpg';
 
   get products() {
     return this.catalog.PRODUCTS.filter(p => this.catalog.isDeal(p)).slice(0, 4).map(p => ({
@@ -60,79 +107,49 @@ export class HomeComponent implements OnInit, OnDestroy {
     }));
   }
 
-  lifestylePanels = [
-    { title: "YOUR WORLD. YOUR SOUND.", text: "Turn everyday moments into your own soundtrack.", image: this.lifestyleSound, alt: "Person relaxing with Nigson wireless headphones" },
-    { title: "POWER YOUR WORKDAY.", text: "Stay connected, charged and ready for what comes next.", image: this.lifestyleWork, alt: "Person working with a Nigson power bank charging their phone" },
-  ];
-
-  slides = [
-    { kicker: "Nigson Audio", title: "SOUND. SIMPLIFIED.", desc: "Wireless audio made for every moment.", cta: "Shop Audio", link: "/products", queryParams: { category: "Earbuds" }, image: this.audioImage, tone: "dark" },
-    { kicker: "Nigson Power", title: "POWER YOUR EVERYDAY.", desc: "Reliable charging essentials, wherever you go.", cta: "Shop Power", link: "/products", queryParams: { category: "Power Banks" }, image: this.powerImage, tone: "light" },
-    { kicker: "Mobile Essentials", title: "READY FOR EVERY DAY.", desc: "Smart accessories designed around your devices.", cta: "Explore Accessories", link: "/products", queryParams: { category: "Cables" }, image: this.heroImage, tone: "white" },
-    { kicker: "Nigson Deals", title: "MORE VALUE. LESS WAITING.", desc: "Discover limited-time offers across Nigson.", cta: "View Deals", link: "/products", queryParams: { isDeal: "true" }, image: this.wholesaleImage, tone: "dark" },
-  ];
-
-  N = this.slides.length;
+  // ── carousel state ────────────────────────────────────────────────────────
+  get N() { return this.carouselSlides().length || 1; }
   pos = 0;
   drag = 0;
   paused = false;
   intervalId: any;
   startX: number | null = null;
-  
   offsets = [-2, -1, 0, 1, 2];
 
-  mod(n: number) {
-    return ((n % this.N) + this.N) % this.N;
-  }
-  
-  ngOnInit() {
-    this.startInterval();
-  }
-  
-  ngOnDestroy() {
-    if (this.intervalId) clearInterval(this.intervalId);
-  }
+  mod(n: number) { return ((n % this.N) + this.N) % this.N; }
+
+  ngOnInit() { this.startInterval(); }
+  ngOnDestroy() { if (this.intervalId) clearInterval(this.intervalId); }
 
   startInterval() {
     if (this.intervalId) clearInterval(this.intervalId);
     this.intervalId = setInterval(() => {
-      if (!this.paused && this.startX === null) {
-        this.pos++;
-      }
+      if (!this.paused && this.startX === null) this.pos++;
     }, 5500);
   }
 
-  setPaused(p: boolean) {
-    this.paused = p;
-  }
-
-  go(d: number) {
-    this.pos += d;
-    this.startInterval();
-  }
+  setPaused(p: boolean) { this.paused = p; }
+  go(d: number) { this.pos += d; this.startInterval(); }
 
   onPointerDown(e: PointerEvent) {
     this.startX = e.clientX;
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
   }
   onPointerMove(e: PointerEvent) {
-    if (this.startX !== null) {
-      this.drag = e.clientX - this.startX;
-    }
+    if (this.startX !== null) this.drag = e.clientX - this.startX;
   }
   onPointerUp(e: PointerEvent) {
     if (this.startX === null) return;
     const w = (e.currentTarget as HTMLElement).offsetWidth || 1000;
-    if (Math.abs(this.drag) > w * 0.08) {
-      this.go(this.drag < 0 ? 1 : -1);
-    }
+    if (Math.abs(this.drag) > w * 0.08) this.go(this.drag < 0 ? 1 : -1);
     this.startX = null;
     this.drag = 0;
   }
-  
+
   @HostListener('window:keydown', ['$event'])
   onKeyDown(e: KeyboardEvent) {
     if (e.key === "ArrowLeft") this.go(-1);
     if (e.key === "ArrowRight") this.go(1);
   }
 }
+

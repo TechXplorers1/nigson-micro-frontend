@@ -38,7 +38,7 @@ import { LucidePlus, LucidePencil, LucideTrash2, LucideGlobe, LucideFileText } f
                 <p class="text-xs text-muted-ink">{{ p.slug }}</p>
               </td>
               <td class="px-6 py-4 text-muted-ink">{{ p.author }}</td>
-              <td class="px-6 py-4">
+              <td class="px-6 py-4 cursor-pointer" (click)="toggleStatus(p)" title="Toggle Status">
                 <div class="flex items-center gap-2">
                   <svg *ngIf="p.status === 'Published'" lucideGlobe class="h-4 w-4 text-emerald-600"></svg>
                   <svg *ngIf="p.status === 'Draft'" lucideFileText class="h-4 w-4 text-amber-600"></svg>
@@ -51,7 +51,7 @@ import { LucidePlus, LucidePencil, LucideTrash2, LucideGlobe, LucideFileText } f
                   <button class="grid h-8 w-8 place-items-center rounded-lg text-muted-ink transition-colors hover:bg-brand/10 hover:text-brand" title="Edit">
                     <svg lucidePencil class="h-4 w-4"></svg>
                   </button>
-                  <button class="grid h-8 w-8 place-items-center rounded-lg text-muted-ink transition-colors hover:bg-rose-100 hover:text-rose-600" title="Delete">
+                  <button (click)="delete(p.id)" class="grid h-8 w-8 place-items-center rounded-lg text-muted-ink transition-colors hover:bg-rose-100 hover:text-rose-600" title="Delete">
                     <svg lucideTrash2 class="h-4 w-4"></svg>
                   </button>
                 </div>
@@ -69,14 +69,57 @@ import { LucidePlus, LucidePencil, LucideTrash2, LucideGlobe, LucideFileText } f
 export class AdminBlogComponent {
   searchQuery = signal('');
   
-  posts = signal([
-    { id: '1', title: 'Welcome to Nigson Products', slug: '/blog/welcome', author: 'Admin User', status: 'Published', date: '2023-11-01T10:00:00Z' },
-    { id: '2', title: 'Top 10 Benefits of Buying Bulk', slug: '/blog/bulk-benefits', author: 'Content Team', status: 'Draft', date: '2023-11-15T14:30:00Z' }
-  ]);
+  posts = signal<any[]>([]);
+
+  constructor() {
+    this.load();
+  }
+
+  load() {
+    try {
+      const raw = localStorage.getItem('nigson.admin.v2');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed.posts)) {
+          this.posts.set(parsed.posts);
+          return;
+        }
+      }
+    } catch {}
+    
+    // Seed dummy if empty
+    this.posts.set([
+      { id: '1', title: 'Welcome to Nigson Products', slug: 'welcome', author: 'Admin User', status: 'Published', date: new Date().toISOString(), excerpt: 'Welcome to our new store.' },
+      { id: '2', title: 'Top 10 Benefits of Buying Bulk', slug: 'bulk-benefits', author: 'Content Team', status: 'Draft', date: new Date().toISOString(), excerpt: 'Save money by buying bulk.' }
+    ]);
+    this.save();
+  }
+
+  save() {
+    try {
+      const raw = localStorage.getItem('nigson.admin.v2') || '{}';
+      const parsed = JSON.parse(raw);
+      parsed.posts = this.posts();
+      localStorage.setItem('nigson.admin.v2', JSON.stringify(parsed));
+    } catch {}
+  }
 
   filteredPosts = computed(() => {
     const q = this.searchQuery().toLowerCase();
-    return this.posts().filter(p => p.title.toLowerCase().includes(q) || p.slug.toLowerCase().includes(q));
+    return this.posts().filter(p => p.title.toLowerCase().includes(q) || (p.slug || '').toLowerCase().includes(q));
   });
+
+  delete(id: string) {
+    if (confirm("Delete this post?")) {
+      this.posts.update(ps => ps.filter(p => p.id !== id));
+      this.save();
+    }
+  }
+
+  toggleStatus(p: any) {
+    const next = p.status === 'Published' ? 'Draft' : 'Published';
+    this.posts.update(ps => ps.map(x => x.id === p.id ? { ...x, status: next } : x));
+    this.save();
+  }
 }
 

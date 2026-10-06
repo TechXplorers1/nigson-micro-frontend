@@ -130,18 +130,30 @@ export class DistributorComponent {
       return;
     }
     
-    // this.shop.addDistributorApp({
-    //   businessName: this.f.company,
-    //   contactPerson: this.f.contact,
-    //   phone: this.f.phone,
-    //   email: this.f.email,
-    //   state: this.f.state,
-    //   category: this.f.category,
-    // });
+    const newApp = {
+      id: 'app_' + Math.random().toString(36).substring(2, 9),
+      number: 'APP-' + Math.floor(Math.random() * 1000000).toString().padStart(6, '0'),
+      businessName: this.f.company,
+      contactPerson: this.f.contact,
+      phone: this.f.phone,
+      email: this.f.email,
+      location: this.f.state + ' - ' + this.f.address,
+      category: this.f.category,
+      type: 'Distributor',
+      status: 'Pending',
+      date: new Date().toISOString()
+    };
+    
+    try {
+      const existing = JSON.parse(localStorage.getItem('nigson_applications') || '[]');
+      localStorage.setItem('nigson_applications', JSON.stringify([newApp, ...existing]));
+    } catch {}
     
     this.submitted.set(true);
     setTimeout(() => {
-      this.router.navigate(['/account/distributor']);
+      // In a real app, we would redirect to a tracker page in the account section.
+      // For now, we stay on the success state.
+      // this.router.navigate(['/account/applications']);
     }, 1200);
   }
 }

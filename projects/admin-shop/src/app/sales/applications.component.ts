@@ -189,16 +189,14 @@ export class AdminApplicationsComponent {
   }
 
   setStatus(id: string, s: any) {
-    this.admin.applications.update(apps => apps.map(a => a.id === id ? { ...a, status: s } : a));
+    this.admin.setApplicationStatus(id, s);
     if (this.view() && this.view().id === id) {
-      this.view.update(v => ({ ...v, status: s }));
+      this.view.update((v: any) => ({ ...v, status: s }));
     }
-    this.admin.log(`Application set to ${s}`);
   }
 
   saveNote(app: any) {
-    this.admin.applications.update(apps => apps.map(a => a.id === app.id ? { ...a, note: app.note } : a));
-    this.admin.log(`Saved note for application ${app.number}`);
+    this.admin.setApplicationStatus(app.id, app.status, app.note);
   }
 }
 

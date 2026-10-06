@@ -1,9 +1,10 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterOutlet, Router, RouterLinkActive } from '@angular/router';
 import { ShopService } from 'shared-ui';
 import { 
-  LucideUser, LucidePackage, LucideLogOut, LucideSettings
+  LucideUser, LucidePackage, LucideLogOut, LucideSettings,
+  LucideHeart, LucideClipboardList
 } from '@lucide/angular';
 
 @Component({
@@ -11,7 +12,8 @@ import {
   standalone: true,
   imports: [
     CommonModule, RouterLink, RouterOutlet, RouterLinkActive,
-    LucideUser, LucidePackage, LucideLogOut, LucideSettings
+    LucideUser, LucidePackage, LucideLogOut, LucideSettings,
+    LucideHeart, LucideClipboardList
   ],
   template: `
     <div *ngIf="!shop.user()" class="pt-40 pb-24 text-center text-muted-ink">
@@ -39,6 +41,7 @@ import {
           <!-- Sidebar -->
           <aside class="h-fit rounded-2xl border border-hairline bg-white p-3">
             <nav class="flex flex-col">
+              <!-- Profile -->
               <a 
                 routerLink="/account" 
                 routerLinkActive="bg-brand text-white" 
@@ -47,13 +50,37 @@ import {
               >
                 <svg lucideUser class="h-4 w-4"></svg> My Profile
               </a>
+              <!-- Orders -->
               <a 
                 routerLink="/account/orders" 
                 routerLinkActive="bg-brand text-white"
                 class="inline-flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-colors text-ink hover:bg-surface-alt"
               >
                 <svg lucidePackage class="h-4 w-4"></svg> My Orders
+                <span *ngIf="shop.orders().length" class="ml-auto rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-bold text-brand">
+                  {{ shop.orders().length }}
+                </span>
               </a>
+              <!-- Wishlist -->
+              <a 
+                routerLink="/account/wishlist" 
+                routerLinkActive="bg-brand text-white"
+                class="inline-flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-colors text-ink hover:bg-surface-alt"
+              >
+                <svg lucideHeart class="h-4 w-4"></svg> Wishlist
+                <span *ngIf="shop.saved().length" class="ml-auto rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-bold text-brand">
+                  {{ shop.saved().length }}
+                </span>
+              </a>
+              <!-- Quote Requests -->
+              <a 
+                routerLink="/account/quotes" 
+                routerLinkActive="bg-brand text-white"
+                class="inline-flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-colors text-ink hover:bg-surface-alt"
+              >
+                <svg lucideClipboardList class="h-4 w-4"></svg> Quote Requests
+              </a>
+              <!-- Settings -->
               <a 
                 routerLink="/account/settings" 
                 routerLinkActive="bg-brand text-white"
@@ -61,9 +88,10 @@ import {
               >
                 <svg lucideSettings class="h-4 w-4"></svg> Settings
               </a>
+              <!-- Divider + Logout -->
               <button
                 (click)="logout()"
-                class="mt-2 inline-flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-ink hover:bg-surface-alt border-t border-hairline"
+                class="mt-2 inline-flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-ink hover:bg-rose-50 hover:text-rose-600 border-t border-hairline transition-colors"
               >
                 <svg lucideLogOut class="h-4 w-4"></svg> Logout
               </button>

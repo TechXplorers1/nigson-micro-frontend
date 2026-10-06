@@ -1,5 +1,6 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { CmsService, PageHeaderComponent } from 'shared-ui';
 import { LucideBriefcase, LucideGraduationCap, LucideSparkles, LucideUsers } from '@lucide/angular';
 
@@ -9,6 +10,7 @@ import { LucideBriefcase, LucideGraduationCap, LucideSparkles, LucideUsers } fro
   imports: [
     CommonModule, 
     PageHeaderComponent,
+    FormsModule,
     LucideBriefcase,
     LucideGraduationCap,
     LucideSparkles,
@@ -41,13 +43,34 @@ import { LucideBriefcase, LucideGraduationCap, LucideSparkles, LucideUsers } fro
               <div class="flex-1">
                 <h3 class="font-semibold text-lg">{{ o.title }}</h3>
                 <p class="text-sm text-muted-foreground">{{ o.type }} &bull; {{ o.location }}</p>
+                
+                <!-- Inline Application Form -->
+                <div *ngIf="applyingTo() === o.title" class="mt-4 p-4 rounded-xl border border-border bg-surface-alt/50">
+                  <ng-container *ngIf="appliedTo() === o.title; else formFields">
+                    <p class="text-sm font-semibold text-brand">Application submitted successfully. We will be in touch!</p>
+                  </ng-container>
+                  <ng-template #formFields>
+                    <div class="grid gap-4 sm:grid-cols-2 text-sm">
+                      <input type="text" placeholder="Full Name" [(ngModel)]="appForm.name" class="rounded-lg border border-border px-3 py-2 bg-background">
+                      <input type="email" placeholder="Email Address" [(ngModel)]="appForm.email" class="rounded-lg border border-border px-3 py-2 bg-background">
+                      <input type="tel" placeholder="Phone Number" [(ngModel)]="appForm.phone" class="rounded-lg border border-border px-3 py-2 bg-background">
+                      <input type="text" placeholder="Link to Resume/CV (URL)" [(ngModel)]="appForm.cv" class="rounded-lg border border-border px-3 py-2 bg-background">
+                      <textarea placeholder="Cover Letter (Optional)" [(ngModel)]="appForm.coverLetter" class="sm:col-span-2 rounded-lg border border-border px-3 py-2 bg-background" rows="3"></textarea>
+                    </div>
+                    <div class="mt-4 flex gap-2">
+                      <button (click)="submitApplication(o.title)" class="rounded-full bg-brand px-4 py-1.5 text-xs font-semibold text-brand-foreground hover:bg-brand-deep">Submit</button>
+                      <button (click)="applyingTo.set(null)" class="rounded-full bg-surface px-4 py-1.5 text-xs font-semibold text-ink border border-border hover:bg-surface-alt">Cancel</button>
+                    </div>
+                  </ng-template>
+                </div>
               </div>
-              <a
-                [href]="'mailto:' + openings().t('applyEmail') + '?subject=Application'"
+              <button
+                *ngIf="applyingTo() !== o.title && appliedTo() !== o.title"
+                (click)="applyingTo.set(o.title)"
                 class="inline-flex items-center justify-center rounded-full bg-brand text-brand-foreground px-5 py-2 text-sm font-semibold hover:bg-brand-deep transition-colors"
               >
                 {{ openings().t('btnLabel') }}
-              </a>
+              </button>
             </div>
           </div>
         </div>
@@ -63,6 +86,27 @@ export class CareersComponent {
   tracks = computed(() => this.page.get('tracks'));
   openings = computed(() => this.page.get('openings'));
 
-  tracksCards = computed(() => this.tracks().cards((c) => ({ title: c['title'], body: c['body'] })));
-  openingsCards = computed(() => this.openings().cards((c) => ({ title: c['title'], type: c['type'], location: c['location'] })));
+  tracksCards = computed(() => this.tracks().cards((c: any) => ({ title: c['title'], body: c['body'] })));
+  openingsCards = computed(() => this.openings().cards((c: any) => ({ title: c['title'], type: c['type'], location: c['location'] })));
+
+  applyingTo = signal<string | null>(null);
+  appliedTo = signal<string | null>(null);
+
+  appForm = { name: '', email: '', phone: '', cv: '', coverLetter: '' };
+
+  submitApplication(jobTitle: string) {
+    if (!this.appForm.name || !this.appForm.email || !this.appForm.cv) return;
+    
+    // Simulate API persistence
+    try {
+      const apps = JSON.parse(localStorage.getItem('nigson_job_applications') || '[]');
+      apps.push({
+        jobTitle, ...this.appForm, date: new Date().toISOString()
+      });
+      localStorage.setItem('nigson_job_applications', JSON.stringify(apps));
+    } catch {}
+
+    this.appliedTo.set(jobTitle);
+    this.appForm = { name: '', email: '', phone: '', cv: '', coverLetter: '' };
+  }
 }

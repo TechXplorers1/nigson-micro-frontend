@@ -168,11 +168,10 @@ export class AdminQuotesComponent {
   }
 
   setStatus(id: string, s: any) {
-    this.admin.quotes.update(quotes => quotes.map(x => x.id === id ? { ...x, status: s } : x));
+    this.admin.setQuoteStatus(id, s);
     if (this.view() && this.view().id === id) {
-      this.view.update(v => ({ ...v, status: s }));
+      this.view.update((v: any) => ({ ...v, status: s }));
     }
-    this.admin.log(`Quote ${id} set to ${s}`);
   }
 
   sendQuote(id: string) {

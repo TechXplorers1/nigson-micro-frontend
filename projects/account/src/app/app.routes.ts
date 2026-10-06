@@ -19,6 +19,14 @@ export const routes: Routes = [
         loadComponent: () => import('./orders/order-detail.component').then(m => m.OrderDetailComponent)
       },
       {
+        path: 'wishlist',
+        loadComponent: () => import('./wishlist/wishlist.component').then(m => m.WishlistComponent)
+      },
+      {
+        path: 'quotes',
+        loadComponent: () => import('./quotes/my-quotes.component').then(m => m.MyQuotesComponent)
+      },
+      {
         path: 'settings',
         loadComponent: () => import('./settings/settings.component').then(m => m.SettingsComponent)
       }
