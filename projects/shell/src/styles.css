@@ -58,6 +58,7 @@
 
   html {
     scroll-behavior: smooth;
+    overflow-x: hidden;
   }
 
   body {
@@ -66,6 +67,7 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+    overflow-x: hidden;
   }
 
   h1, h2, h3, h4, h5 {
@@ -99,6 +101,16 @@
 @layer utilities {
   .hairline {
     border-color: var(--hairline);
+  }
+
+  .carousel-slide {
+    --slide-w: 92vw;
+  }
+  @media (min-width: 640px) {
+    .carousel-slide { --slide-w: 82vw; }
+  }
+  @media (min-width: 1024px) {
+    .carousel-slide { --slide-w: min(76vw, 1280px); }
   }
 }
 
@@ -216,6 +228,7 @@
     font-family: var(--font-sans, 'Poppins', ui-sans-serif, system-ui, sans-serif);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+    overflow-x: hidden;
   }
   
   h1, h2, h3, h4, h5 {
@@ -230,5 +243,6 @@
 
   html {
     scroll-behavior: smooth;
+    overflow-x: hidden;
   }
 }

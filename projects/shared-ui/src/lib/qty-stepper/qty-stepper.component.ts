@@ -20,12 +20,12 @@ import { LucideMinus, LucidePlus, LucideShoppingCart } from '@lucide/angular';
         *ngIf="qty() <= 0"
         type="button"
         (click)="add()"
-        class="inline-flex items-center gap-2 rounded-full bg-brand text-white px-6 py-3 text-sm font-semibold hover:bg-brand-deep transition-colors"
+        class="inline-flex w-full shrink-0 whitespace-nowrap items-center justify-center gap-2 rounded-full bg-brand text-white px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold hover:bg-brand-deep transition-colors"
       >
         <svg lucideShoppingCart class="h-4 w-4"></svg> Add to Cart
       </button>
 
-      <div *ngIf="qty() > 0" class="inline-flex items-center gap-1 rounded-full bg-brand text-white px-2 py-1.5">
+      <div *ngIf="qty() > 0" class="flex w-full items-center justify-between gap-1 rounded-full bg-brand text-white px-2 py-1.5">
         <button
           type="button"
           aria-label="Decrease quantity"

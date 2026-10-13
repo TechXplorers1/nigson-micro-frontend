@@ -7,7 +7,7 @@ import { LucideHeart, LucideTrash2, LucideShoppingCart, LucidePackageOpen } from
 @Component({
   selector: 'app-wishlist',
   standalone: true,
-  imports: [CommonModule, RouterLink, LucideHeart, LucideTrash2, LucideShoppingCart, LucidePackageOpen],
+  imports: [CommonModule, RouterLink, LucideTrash2, LucideShoppingCart, LucidePackageOpen],
   template: `
     <div class="space-y-6">
       <div class="rounded-2xl border border-hairline bg-white p-6 md:p-8">
@@ -78,8 +78,7 @@ export class WishlistComponent {
       name: item.name,
       category: item.category,
       price: item.price,
-      image: item.image,
-      qty: 1
+      image: item.image
     });
     // Remove from saved after adding to cart
     this.shop.toggleSaved({ sku: item.sku, name: item.name, category: item.category, price: item.price, image: item.image });
