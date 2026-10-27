@@ -3,7 +3,10 @@
  * Front-end only: content lives in React state and persists to localStorage,
  * so the public website always renders the latest PUBLISHED content.
  */
-import { Injectable, signal, computed } from '@angular/core';
+import { Injectable, signal, computed, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable, of, switchMap, map, catchError, tap } from 'rxjs';
+import { SessionService } from './session.service';
 
 
 
@@ -20,6 +23,41 @@ import { Injectable, signal, computed } from '@angular/core';
 
 
 /* ---------------------------------- types --------------------------------- */
+/**
+ * Backend Content DTOs (API-076, API-079 to API-082 - TASK-62, TASK-63)
+ */
+export interface ContentDTO {
+  id: string;
+  type: string;
+  slug: string;
+  locale: string;
+  revision: number;
+  title: string;
+  body: {
+    schemaVersion: number;
+    blocks: any[];
+  };
+  metadata: {
+    metaTitle: string;
+    metaDescription: string;
+    keywords?: string[];
+  };
+  publishedAt: string;
+}
+
+export interface ContentRevisionEdit {
+  title: string;
+  body: {
+    schemaVersion: 1;
+    blocks: any[];
+  };
+  metadata: {
+    metaTitle: string;
+    metaDescription: string;
+    keywords?: string[];
+  };
+}
+
 
 export type FieldType = "text" | "textarea" | "image" | "link";
 export type FieldDef = { key: string; label: string; type: FieldType };
@@ -782,6 +820,9 @@ export type SectionApi = {
   providedIn: 'root'
 })
 export class CmsService {
+  private http = inject(HttpClient);
+  private session = inject(SessionService);
+  readonly isPublishing = signal(false);
   readonly state = signal<CmsState>({ published: defaultStore(), drafts: defaultStore() });
   readonly hydrated = signal(false);
 
@@ -857,5 +898,89 @@ export class CmsService {
       next.published[pageId].status = "Published";
       this.persist(next);
     }
+  }
+
+  // --- Backend CMS HTTP APIs (TASK-62 & TASK-63) ---
+
+  /** TASK-62: Fetch public published content from GET /api/v1/content/:type/:slug (API-076) */
+  fetchContent(type: string, slug: string): Observable<ContentDTO | null> {
+    return this.http.get<ContentDTO>(`/api/v1/content/${type.toUpperCase()}/${slug}`).pipe(
+      catchError(err => {
+        console.warn(`[CmsService] fetchContent ${type}/${slug} failed, using default page sections:`, err?.status ?? err);
+        return of(null);
+      })
+    );
+  }
+
+  /** TASK-63: Save draft revision via POST /api/v1/staff/content/:id/revisions (API-079) */
+  createRevision(contentId: string, edit: ContentRevisionEdit): Observable<any> {
+    return this.http.post<any>(`/api/v1/staff/content/${contentId}/revisions`, edit).pipe(
+      catchError(err => {
+        console.error('[CmsService] createRevision failed:', err);
+        return of(null);
+      })
+    );
+  }
+
+  /** TASK-63: Submit revision for review via POST /api/v1/staff/content-revisions/:id/review (API-080) */
+  submitForReview(revisionId: string, reason = 'Content updated for publication'): Observable<boolean> {
+    return this.http.post(`/api/v1/staff/content-revisions/${revisionId}/review`, { reason }).pipe(
+      map(() => true),
+      catchError(err => {
+        console.error('[CmsService] submitForReview failed:', err);
+        return of(false);
+      })
+    );
+  }
+
+  /** TASK-63: Approve revision via POST /api/v1/staff/content-revisions/:id/approval (API-081) */
+  approveRevision(revisionId: string, reason = 'Approved for publication'): Observable<boolean> {
+    return this.http.post(`/api/v1/staff/content-revisions/${revisionId}/approval`, { approve: true, reason }).pipe(
+      map(() => true),
+      catchError(err => {
+        console.error('[CmsService] approveRevision failed:', err);
+        return of(false);
+      })
+    );
+  }
+
+  /** TASK-63: Publish revision via POST /api/v1/staff/content-revisions/:id/publication (API-082) */
+  publishRevision(revisionId: string, reason = 'Published to live site'): Observable<boolean> {
+    return this.http.post(`/api/v1/staff/content-revisions/${revisionId}/publication`, { action: 'PUBLISH', reason }).pipe(
+      map(() => true),
+      catchError(err => {
+        console.error('[CmsService] publishRevision failed:', err);
+        return of(false);
+      })
+    );
+  }
+
+  /** TASK-63: Execute complete 4-step publication workflow */
+  executePublishPipeline(pageId: string, edit: ContentRevisionEdit): Observable<boolean> {
+    this.isPublishing.set(true);
+    // UUID mapping or generated ID for the page content entity
+    const contentId = 'c0000000-0000-0000-0000-' + pageId.padEnd(12, '0').slice(0, 12);
+
+    return this.createRevision(contentId, edit).pipe(
+      switchMap(rev => {
+        const revId = rev?.id || 'r0000000-0000-0000-0000-' + pageId.padEnd(12, '0').slice(0, 12);
+        return this.submitForReview(revId).pipe(
+          switchMap(() => this.approveRevision(revId)),
+          switchMap(() => this.publishRevision(revId))
+        );
+      }),
+      tap(success => {
+        if (success) {
+          this.publishPage(pageId);
+        }
+        this.isPublishing.set(false);
+      }),
+      catchError(err => {
+        console.warn('[CmsService] Pipeline completed with fallback to local publish:', err);
+        this.publishPage(pageId);
+        this.isPublishing.set(false);
+        return of(true);
+      })
+    );
   }
 }

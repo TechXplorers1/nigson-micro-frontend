@@ -1,4 +1,4 @@
-import { Routes } from '@angular/router';
+﻿import { Routes } from '@angular/router';
 
 export const routes: Routes = [
   {
@@ -6,7 +6,7 @@ export const routes: Routes = [
     loadComponent: () => import('./products/product-list.component').then(m => m.ProductListComponent)
   },
   {
-    path: 'products/:sku',
+    path: 'products/:id',
     loadComponent: () => import('./products/product-detail.component').then(m => m.ProductDetailComponent)
   },
   {
@@ -35,3 +35,4 @@ export const routes: Routes = [
     pathMatch: 'full'
   }
 ];
+

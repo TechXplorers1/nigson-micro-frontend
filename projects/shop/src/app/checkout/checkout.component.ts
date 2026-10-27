@@ -1,3 +1,4 @@
+import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
@@ -6,7 +7,7 @@ import {
   LucideArrowLeft, LucideArrowRight, LucideBuilding2, 
   LucideCreditCard, LucideLoader2, LucideLock, LucideWallet, LucideCheck 
 } from '@lucide/angular';
-import { CatalogService, ShopService } from 'shared-ui';
+import { CartService, CatalogService, ShopService } from 'shared-ui';
 
 type Step = 0 | 1 | 2;
 type PayId = "credit" | "debit" | "netbanking";
@@ -294,7 +295,9 @@ const BANKS = ["Access Bank", "First Bank", "Guaranty Trust Bank", "United Bank 
 })
 export class CheckoutComponent {
   shop = inject(ShopService);
+  cart = inject(CartService);
   catalog = inject(CatalogService);
+  http = inject(HttpClient);
   router = inject(Router);
 
   STEPS = ["Customer", "Address", "Payment"];
@@ -304,7 +307,6 @@ export class CheckoutComponent {
   processing = signal(false);
   payOpen = signal(false);
   payment = signal<PayId>("credit");
-  
   errorMsg = signal<string | null>(null);
   modalError = signal<string | null>(null);
 
@@ -319,14 +321,21 @@ export class CheckoutComponent {
   card = { name: "", number: "", expiry: "", cvv: "" };
   netbank = { bank: BANKS[0], userId: "", pin: "" };
 
-  subtotal = computed(() => this.shop.cartSubtotal());
-  shipping = computed(() => this.shop.cart().length ? 3500 : 0);
-  vat = computed(() => Math.round(this.subtotal() * 0.075));
-  total = computed(() => this.subtotal() + this.shipping() + this.vat());
+  // TASK-37: Use CartService signals — all in kobo minor units
+  subtotalMinor = computed((): number => { const items = this.cart.items() as import('shared-ui').CartLineItem[]; return items.reduce((sum, i) => sum + i.unitPriceMinorUnits * i.quantity, 0); });
+  shippingMinor = computed((): number => this.cart.items().length > 0 ? 350000 : 0); // NGN 3,500 in kobo
+  vatMinor = computed(() => Math.round(this.subtotalMinor() * 0.075));
+  totalMinor = computed(() => this.subtotalMinor() + this.shippingMinor() + this.vatMinor());
+
+  // Keep legacy names for template formatPrice calls
+  subtotal = computed(() => this.subtotalMinor());
+  shipping = computed(() => this.shippingMinor());
+  vat = computed(() => this.vatMinor());
+  total = computed(() => this.totalMinor());
 
   next() { this.step.set(Math.min(2, this.step() + 1) as Step); }
   back() { this.step.set(Math.max(0, this.step() - 1) as Step); }
-  goCart() { this.router.navigate(['/cart']); }
+  goCart() { this.router.navigate(["/cart"]); }
 
   validate(): string | null {
     if (this.step() === 0) {
@@ -344,10 +353,7 @@ export class CheckoutComponent {
   advance() {
     this.errorMsg.set(null);
     const err = this.validate();
-    if (err) {
-      this.errorMsg.set(err);
-      return;
-    }
+    if (err) { this.errorMsg.set(err); return; }
     this.next();
   }
 
@@ -365,31 +371,58 @@ export class CheckoutComponent {
     return null;
   }
 
+  /**
+   * payNow (TASK-38 to TASK-45)
+   *
+   * Checkout flow:
+   *  1. POST /api/v1/orders         — create order with delivery + buyer info
+   *  2. Backend returns orderId + Paystack payment URL
+   *  3. Redirect browser to Paystack hosted payment page
+   *  4. Paystack calls webhook → backend confirms → redirects to /checkout/success
+   */
   payNow() {
     this.modalError.set(null);
     const err = this.validatePayment();
-    if (err) {
-      this.modalError.set(err);
-      return;
-    }
+    if (err) { this.modalError.set(err); return; }
     this.processing.set(true);
-    setTimeout(() => {
-      const order = this.shop.placeOrder({
-        items: this.shop.cart(),
-        subtotal: this.subtotal(),
-        shipping: this.shipping(),
-        tax: this.vat(),
-        total: this.total(),
-        paymentMethod: this.payLabel(),
-        customer: this.customer,
-        address: this.address,
-        deliveryMethod: "Standard",
-        estimatedDelivery: "3-5 business days",
+
+    const payload = {
+      deliveryAddress: {
+        line1: this.address.street,
+        city: this.address.city,
+        state: this.address.state,
+        countryCode: "NG",
+        postalCode: this.address.postal || undefined,
+      },
+      buyerContact: {
+        fullName: this.customer.fullName,
+        email: this.customer.email,
+        phone: this.customer.phone,
+      },
+      // cartId ensures backend uses the server-side cart (idempotency via header)
+      cartId: this.cart.cartId(),
+      // deliveryMethod: Standard — FedEx integration is backend concern
+      deliveryMethod: "STANDARD",
+    };
+
+    this.http.post<{ orderId: string; paymentUrl: string }>("/api/v1/orders", payload)
+      .subscribe({
+        next: (res) => {
+          this.processing.set(false);
+          this.payOpen.set(false);
+          if (res.paymentUrl) {
+            // TASK-43: redirect to Paystack hosted page
+            window.location.href = res.paymentUrl;
+          } else {
+            // Fallback: navigate to success (e.g. for test/mock mode)
+            this.router.navigate(["/checkout/success"], { queryParams: { id: res.orderId } });
+          }
+        },
+        error: (err) => {
+          this.processing.set(false);
+          const msg = err?.error?.message ?? "Order failed. Please try again.";
+          this.modalError.set(msg);
+        }
       });
-      this.processing.set(false);
-      this.payOpen.set(false);
-      this.router.navigate(['/checkout/success'], { queryParams: { id: order.id } });
-    }, 1500);
   }
 }
-

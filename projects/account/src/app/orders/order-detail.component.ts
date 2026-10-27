@@ -1,9 +1,9 @@
-import { Component, inject, computed } from '@angular/core';
+﻿import { Component, inject, computed, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink, ActivatedRoute, Router } from '@angular/router';
-import { ShopService } from 'shared-ui';
+import { RouterLink, ActivatedRoute } from '@angular/router';
+import { OrderService, BackendOrder, OrderTracking } from 'shared-ui';
 import { 
-  LucideArrowLeft, LucideXCircle
+  LucideArrowLeft, LucideXCircle, LucideTruck, LucideCheckCircle2, LucideClock
 } from '@lucide/angular';
 
 @Component({
@@ -11,7 +11,7 @@ import {
   standalone: true,
   imports: [
     CommonModule, RouterLink,
-    LucideArrowLeft, LucideXCircle
+    LucideArrowLeft, LucideXCircle, LucideTruck, LucideCheckCircle2, LucideClock
   ],
   template: `
     <div class="space-y-6">
@@ -19,42 +19,60 @@ import {
         <svg lucideArrowLeft class="h-4 w-4"></svg> Back to orders
       </a>
 
-      <div *ngIf="!order()" class="rounded-2xl border border-hairline p-10 text-center">
+      <div *ngIf="loading()" class="rounded-2xl border border-hairline bg-white p-16 text-center">
+        <p class="text-sm text-muted-ink">Loading order details...</p>
+      </div>
+
+      <div *ngIf="!loading() && !order()" class="rounded-2xl border border-hairline bg-white p-10 text-center">
         <p class="text-muted-ink">Order not found.</p>
       </div>
 
-      <ng-container *ngIf="order()">
+      <ng-container *ngIf="!loading() && order()">
         <div class="rounded-2xl border border-hairline bg-white p-6 md:p-8">
           <div class="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p class="text-[10px] font-semibold uppercase tracking-widest text-muted-ink">Order</p>
-              <h2 class="text-2xl font-extrabold">{{ order()?.number }}</h2>
-              <p class="text-xs text-muted-ink mt-1">Placed {{ formatDate(order()?.date ?? '') }}</p>
+              <p class="text-[10px] font-semibold uppercase tracking-widest text-muted-ink">Order Reference</p>
+              <h2 class="text-2xl font-extrabold text-ink">{{ order()?.orderNumber }}</h2>
+              <p class="text-xs text-muted-ink mt-1">Placed {{ formatDate(order()?.createdAt ?? '') }}</p>
             </div>
             <div class="text-right">
               <p class="text-[10px] font-semibold uppercase tracking-widest text-muted-ink">Status</p>
-              <p class="font-bold">{{ order()?.status }}</p>
-              <button
-                *ngIf="canCancel()"
-                (click)="confirmCancel()"
-                class="mt-3 inline-flex items-center gap-1.5 rounded-full border border-hairline px-4 py-2 text-xs font-semibold text-brand hover:border-brand transition-colors"
-              >
-                <svg lucideXCircle class="h-4 w-4"></svg> Cancel Order
-              </button>
+              <span class="inline-block mt-1 rounded-full px-3 py-1 text-xs font-bold" [ngClass]="statusColor(order()?.status ?? '')">
+                {{ statusLabel(order()?.status ?? '') }}
+              </span>
+              <div class="mt-2" *ngIf="order()?.status !== 'DELIVERED' && order()?.status !== 'CANCELLED'">
+                <button
+                  (click)="cancelOrder()"
+                  [disabled]="cancelling()"
+                  class="inline-flex items-center gap-1 rounded-full border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors disabled:opacity-50"
+                >
+                  <svg lucideXCircle class="h-3.5 w-3.5"></svg>
+                  {{ cancelling() ? 'Cancelling...' : 'Cancel Order' }}
+                </button>
+              </div>
             </div>
           </div>
 
-          <!-- Tracking timeline -->
-          <div class="mt-8" *ngIf="order()?.status !== 'Cancelled'">
-            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-ink/70">Tracking</p>
-            <ol class="mt-4 grid grid-cols-2 md:grid-cols-5 gap-4">
-              <li *ngFor="let s of timeline; let i = index" class="relative">
-                <div [ngClass]="['h-1.5 w-full rounded-full transition-colors', isDone(i) ? 'bg-brand' : 'bg-surface-alt']"></div>
+          <!-- Tracking section (TASK-45) -->
+          <div class="mt-8 border-t border-hairline pt-6">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <svg lucideTruck class="h-4 w-4 text-brand"></svg>
+                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-ink/70">Order Progress</p>
+              </div>
+              <span *ngIf="order()?.trackingNumber" class="text-xs text-muted-ink">
+                Tracking: <strong class="text-ink font-mono">{{ order()?.trackingNumber }}</strong>
+              </span>
+            </div>
+
+            <ol class="mt-4 grid grid-cols-2 md:grid-cols-6 gap-3">
+              <li *ngFor="let s of getTimeline(); let i = index" class="relative">
+                <div [ngClass]="['h-1.5 w-full rounded-full transition-colors', isStepDone(s, order()?.status ?? '') ? 'bg-brand' : 'bg-surface-alt']"></div>
                 <div class="mt-3 flex items-start gap-2">
-                  <div [ngClass]="['grid h-6 w-6 shrink-0 place-items-center rounded-full text-[10px]', isDone(i) ? 'bg-brand text-white' : 'bg-surface-alt text-muted-ink']">
+                  <div [ngClass]="['grid h-6 w-6 shrink-0 place-items-center rounded-full text-[10px] font-bold', isStepDone(s, order()?.status ?? '') ? 'bg-brand text-white' : 'bg-surface-alt text-muted-ink']">
                     {{ i + 1 }}
                   </div>
-                  <p [ngClass]="['text-xs font-semibold', isDone(i) ? 'text-ink' : 'text-muted-ink']">{{ s }}</p>
+                  <p [ngClass]="['text-xs font-semibold', isStepDone(s, order()?.status ?? '') ? 'text-ink' : 'text-muted-ink']">{{ statusLabel(s) }}</p>
                 </div>
               </li>
             </ol>
@@ -62,19 +80,19 @@ import {
         </div>
 
         <div class="grid gap-6 md:grid-cols-3">
-          <!-- Order Summary -->
+          <!-- Order Items -->
           <div class="md:col-span-2 space-y-6">
             <div class="rounded-2xl border border-hairline bg-white p-6">
-              <h3 class="text-sm font-extrabold uppercase tracking-widest border-b border-hairline pb-4 mb-4">Items</h3>
+              <h3 class="text-sm font-extrabold uppercase tracking-widest border-b border-hairline pb-4 mb-4">Items ({{ order()?.items?.length ?? 0 }})</h3>
               <ul class="space-y-4">
                 <li *ngFor="let item of order()?.items" class="flex gap-4">
-                  <img *ngIf="item.image" [src]="item.image" alt="" class="h-20 w-20 rounded-xl object-cover border border-hairline" />
+                  <img *ngIf="item.imageUrl" [src]="item.imageUrl" alt="" class="h-20 w-20 rounded-xl object-cover border border-hairline" />
                   <div class="flex-1">
-                    <p class="font-semibold text-sm">{{ item.name }}</p>
-                    <p class="text-xs text-muted-ink">SKU: {{ item.sku }}</p>
+                    <p class="font-semibold text-sm text-ink">{{ item.name }}</p>
+                    <p class="text-xs text-muted-ink font-mono">SKU: {{ item.sku }}</p>
                     <div class="mt-2 flex items-center justify-between text-sm">
-                      <span class="font-medium">{{ formatNaira(item.price) }} &times; {{ item.qty }}</span>
-                      <span class="font-bold">{{ formatNaira(item.price * item.qty) }}</span>
+                      <span class="font-medium text-muted-ink">{{ formatPrice(item.unitPriceMinorUnits) }} &times; {{ item.quantity }}</span>
+                      <span class="font-bold text-ink">{{ formatPrice(item.unitPriceMinorUnits * item.quantity) }}</span>
                     </div>
                   </div>
                 </li>
@@ -82,26 +100,30 @@ import {
             </div>
           </div>
 
-          <!-- Totals -->
+          <!-- Totals and Delivery -->
           <div class="space-y-6">
             <div class="rounded-2xl border border-hairline bg-white p-6">
-              <h3 class="text-sm font-extrabold uppercase tracking-widest border-b border-hairline pb-4 mb-4">Summary</h3>
+              <h3 class="text-sm font-extrabold uppercase tracking-widest border-b border-hairline pb-4 mb-4">Payment Summary</h3>
               <dl class="space-y-2 text-sm">
-                <div class="flex justify-between text-muted-ink"><dt>Subtotal</dt><dd>{{ formatNaira(order()?.subtotal ?? 0) }}</dd></div>
-                <div class="flex justify-between text-muted-ink"><dt>Shipping</dt><dd>{{ formatNaira(order()?.shipping ?? 0) }}</dd></div>
-                <div class="flex justify-between text-muted-ink"><dt>VAT (7.5%)</dt><dd>{{ formatNaira(order()?.tax ?? 0) }}</dd></div>
-                <div class="mt-4 border-t border-hairline pt-4 flex justify-between text-base font-extrabold">
-                  <dt>Total</dt><dd>{{ formatNaira(order()?.total ?? 0) }}</dd>
+                <div class="flex justify-between text-muted-ink"><dt>Subtotal</dt><dd>{{ formatPrice(order()?.subtotalMinorUnits ?? 0) }}</dd></div>
+                <div class="flex justify-between text-muted-ink"><dt>Shipping (FedEx)</dt><dd>{{ formatPrice(order()?.shippingMinorUnits ?? 0) }}</dd></div>
+                <div class="flex justify-between text-muted-ink"><dt>VAT (7.5%)</dt><dd>{{ formatPrice(order()?.taxMinorUnits ?? 0) }}</dd></div>
+                <div class="mt-4 border-t border-hairline pt-4 flex justify-between text-base font-extrabold text-ink">
+                  <dt>Total Paid</dt><dd>{{ formatPrice(order()?.totalMinorUnits ?? 0) }}</dd>
                 </div>
               </dl>
             </div>
+            
             <div class="rounded-2xl border border-hairline bg-white p-6">
-              <h3 class="text-sm font-extrabold uppercase tracking-widest border-b border-hairline pb-4 mb-4">Delivery</h3>
-              <p class="text-sm font-bold">{{ order()?.customer?.fullName }}</p>
+              <h3 class="text-sm font-extrabold uppercase tracking-widest border-b border-hairline pb-4 mb-4">Delivery Address</h3>
+              <p class="text-sm font-bold text-ink">{{ order()?.buyerContact?.fullName }}</p>
               <p class="mt-1 text-xs text-muted-ink leading-relaxed">
-                {{ order()?.address?.street }}<br/>
-                {{ order()?.address?.city }}, {{ order()?.address?.state }} {{ order()?.address?.postal }}<br/>
-                {{ order()?.address?.country }}
+                {{ order()?.deliveryAddress?.line1 }}<br/>
+                {{ order()?.deliveryAddress?.city }}, {{ order()?.deliveryAddress?.state }} {{ order()?.deliveryAddress?.postalCode }}<br/>
+                {{ order()?.deliveryAddress?.countryCode }}
+              </p>
+              <p *ngIf="order()?.buyerContact?.phone" class="mt-2 text-xs text-muted-ink">
+                Phone: {{ order()?.buyerContact?.phone }}
               </p>
             </div>
           </div>
@@ -110,46 +132,56 @@ import {
     </div>
   `
 })
-export class OrderDetailComponent {
-  shop = inject(ShopService);
+export class OrderDetailComponent implements OnInit {
+  private orderSvc = inject(OrderService);
   route = inject(ActivatedRoute);
 
-  timeline = ["Processing", "Shipped", "Delivered"];
+  readonly order = signal<BackendOrder | null>(null);
+  readonly tracking = signal<OrderTracking | null>(null);
+  readonly loading = signal(true);
+  readonly cancelling = signal(false);
 
-  orderId = computed(() => this.route.snapshot.paramMap.get('id') || '');
-
-  order = computed(() => {
-    return this.shop.orders().find(o => o.id === this.orderId());
-  });
-
-  canCancel() {
-    return this.order()?.status === "Processing" || this.order()?.status === "Confirmed" as any;
-  }
-
-  isDone(index: number) {
-    const o = this.order();
-    if (!o) return false;
-    let normalizedStatus = o.status as string;
-    if (normalizedStatus === 'Confirmed') normalizedStatus = 'Processing';
-    const currentIdx = this.timeline.indexOf(normalizedStatus);
-    return index <= currentIdx;
-  }
-
-  confirmCancel() {
-    if (confirm("Are you sure you want to cancel this order?")) {
-      const id = this.orderId();
-      this.shop.orders.update(orders =>
-        orders.map(o => o.id === id ? { ...o, status: 'Cancelled' as const } : o)
-      );
-      try { localStorage.setItem('nigson_orders', JSON.stringify(this.shop.orders())); } catch {}
+  ngOnInit() {
+    const id = this.route.snapshot.paramMap.get("id") ?? this.route.snapshot.paramMap.get("orderId") ?? "";
+    if (id) {
+      this.orderSvc.getOrder(id).subscribe({
+        next: o => {
+          this.order.set(o);
+          this.loading.set(false);
+          this.orderSvc.getTracking(id).subscribe(t => {
+            if (t) this.tracking.set(t);
+          });
+        },
+        error: () => this.loading.set(false)
+      });
     }
   }
 
-  formatDate(dateStr: string) {
-    return new Date(dateStr).toLocaleString();
+  formatPrice(minorUnits: number) { return this.orderSvc.formatPrice(minorUnits); }
+  statusLabel(status: string) { return this.orderSvc.statusLabel(status); }
+  statusColor(status: string) { return this.orderSvc.statusColor(status); }
+  formatDate(d: string) {
+    if (!d) return '-';
+    return new Date(d).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" });
   }
 
-  formatNaira(amount: number) {
-    return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(amount);
+  cancelOrder() {
+    const o = this.order();
+    if (!o) return;
+    if (!confirm('Are you sure you want to cancel this order?')) return;
+    this.cancelling.set(true);
+    this.orderSvc.cancelOrder(o.orderId).subscribe(updated => {
+      this.cancelling.set(false);
+      if (updated) this.order.set(updated);
+    });
+  }
+
+  getTimeline(): string[] {
+    return ['PENDING', 'CONFIRMED', 'PACKED', 'SHIPPED', 'OUT_FOR_DELIVERY', 'DELIVERED'];
+  }
+
+  isStepDone(step: string, status: string): boolean {
+    const order = ['PENDING','CONFIRMED','PACKED','SHIPPED','OUT_FOR_DELIVERY','DELIVERED'];
+    return order.indexOf(status) >= order.indexOf(step);
   }
 }

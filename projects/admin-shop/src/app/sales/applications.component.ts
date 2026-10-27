@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed } from '@angular/core';
+import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AdminService, AdminHeadingComponent, BadgeComponent, statusTone, StatCardComponent } from 'shared-ui';
@@ -141,7 +141,10 @@ import { LucideSearch, LucideEye, LucideCheck, LucideX } from '@lucide/angular';
     </div>
   `
 })
-export class AdminApplicationsComponent {
+export class AdminApplicationsComponent implements OnInit {
+  ngOnInit() {
+    this.admin.loadStaffApplications().subscribe();
+  }
   admin = inject(AdminService);
   
   tab = signal('Distributors');

@@ -1,4 +1,4 @@
-<header class="transition-all duration-500" [ngClass]="scrolled() ? 'border-b border-border/60 bg-white/85 backdrop-blur-lg backdrop-saturate-150 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.08)]' : 'border-b border-transparent bg-background'">
+﻿<header class="transition-all duration-500" [ngClass]="scrolled() ? 'border-b border-border/60 bg-white/85 backdrop-blur-lg backdrop-saturate-150 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.08)]' : 'border-b border-transparent bg-background'">
   <div class="mx-auto flex max-w-[1440px] items-center justify-between gap-6 px-5 lg:gap-10 lg:px-12 transition-all duration-500" [ngClass]="scrolled() ? 'h-16 sm:h-20' : 'h-24 sm:h-28'">
     <!-- Brand -->
     <a routerLink="/" class="flex shrink-0" (click)="open.set(false)">
@@ -42,7 +42,7 @@
         <ng-container *ngIf="shop.user(); else guestUser">
           <ng-container *ngIf="shop.isAdmin(); else normalUser">
             <a routerLink="/admin" class="hidden sm:inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground h-9 w-9" aria-label="Admin">
-              <span class="grid h-7 w-7 place-items-center rounded-full text-white text-xs font-bold" [style.background]="shop.user()?.avatarColor">
+              <span class="grid h-7 w-7 place-items-center rounded-full text-white text-xs font-bold" [style.background]="avatarBg()">
                 {{ shop.initialsOf(shop.user()?.fullName) }}
               </span>
             </a>
@@ -50,13 +50,13 @@
           <ng-template #normalUser>
             <div class="relative profile-dropdown-container hidden sm:block">
               <button (click)="toggleProfileOpen()" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground h-9 w-9" aria-label="Account">
-                <span class="grid h-7 w-7 place-items-center rounded-full text-white text-xs font-bold" [style.background]="shop.user()?.avatarColor">
+                <span class="grid h-7 w-7 place-items-center rounded-full text-white text-xs font-bold" [style.background]="avatarBg()">
                   {{ shop.initialsOf(shop.user()?.fullName) }}
                 </span>
               </button>
               <div *ngIf="profileOpen()" class="absolute right-0 top-full mt-2 w-72 rounded-md bg-white border border-border shadow-lg overflow-hidden animate-fade-in z-50">
                 <div class="p-4 border-b border-border flex items-center gap-3">
-                  <span class="grid h-11 w-11 place-items-center rounded-full text-white text-sm font-bold" [style.background]="shop.user()?.avatarColor">
+                  <span class="grid h-11 w-11 place-items-center rounded-full text-white text-sm font-bold" [style.background]="avatarBg()">
                     {{ shop.initialsOf(shop.user()?.fullName) }}
                   </span>
                   <div class="min-w-0">
@@ -141,3 +141,4 @@
     </ng-template>
   </nav>
 </header>
+

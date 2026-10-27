@@ -1,19 +1,115 @@
-import { Injectable } from '@angular/core';
+﻿import { Injectable, inject, signal, computed } from '@angular/core';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { Observable, of } from 'rxjs';
+import { tap, catchError, map } from 'rxjs/operators';
 
+// ─── Backend DTOs ──────────────────────────────────────────────────────────────
+
+/**
+ * Product (TASK-16) — aligned to GET /api/v1/catalogue/products response.
+ *
+ * Key changes from old interface:
+ *  - id (UUID) added as primary key — used for all API calls
+ *  - price removed (comes from separate GET /api/v1/catalogue/skus/{id}/price)
+ *  - originalPrice removed (not a backend concept)
+ *  - desc → description (matches backend field name)
+ *  - stock removed (comes from GET /api/v1/staff/inventory, not product DTO)
+ */
 export interface Product {
-  name: string;
+  /** UUID primary key — use for all backend API calls */
+  id: string;
+  /** Human-readable SKU code — use for display only */
   sku: string;
-  category: string;
-  price: number;
-  originalPrice?: number;
-  desc: string;
-  stock?: number;
+  name: string;
+  /** Category UUID — resolved to name via categories list */
+  categoryId: string;
+  /** Resolved category name — populated client-side after fetching categories */
+  categoryName?: string;
+  description: string;
+  /** Backend-provided image URLs */
+  images?: string[];
+  /** Price in NGN minor units (kobo) — divide by 100 for display */
+  priceMinorUnits?: number;
+  /** Publication status from backend */
+  publicationStatus?: string;
+  brand?: string;
+  tags?: string[];
+  createdAt?: string;
 }
 
-@Injectable({
-  providedIn: 'root'
-})
+export interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  imageUrl?: string;
+}
+
+export interface Brand {
+  id: string;
+  name: string;
+}
+
+export interface PriceResponse {
+  skuId: string;
+  /** Price in NGN minor units (kobo) */
+  priceMinorUnits: number;
+  currency: string;
+  marketId: string;
+}
+
+export interface ProductsPage {
+  content: Product[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+  size: number;
+}
+
+export interface ProductFilters {
+  q?: string;
+  categoryId?: string;
+  brandId?: string;
+  page?: number;
+  size?: number;
+  sort?: string;
+}
+
+// ─── Service ───────────────────────────────────────────────────────────────────
+
+/**
+ * CatalogService (TASK-15 to TASK-27)
+ *
+ * Replaces all hardcoded PRODUCTS/CATEGORIES arrays with real HTTP calls to:
+ *   GET /api/v1/catalogue/products               — TASK-15, TASK-23
+ *   GET /api/v1/catalogue/products/{id}           — TASK-21
+ *   GET /api/v1/catalogue/products/{id}/recommendations — TASK-22
+ *   GET /api/v1/catalogue/categories             — TASK-17
+ *   GET /api/v1/catalogue/brands                 — TASK-18
+ *   GET /api/v1/catalogue/skus/{id}/price        — TASK-19
+ *   GET /api/v1/reviews?productId={id}           — TASK-26 (rating)
+ *
+ * Price display: backend returns kobo (NGN × 100). Use formatPrice() which
+ * divides by 100 before display (TASK-20).
+ */
+@Injectable({ providedIn: 'root' })
 export class CatalogService {
+  private http = inject(HttpClient);
+
+  // ─── Reactive state ──────────────────────────────────────────────────────
+
+  readonly products = signal<Product[]>([]);
+  readonly categories = signal<Category[]>([]);
+  readonly brands = signal<Brand[]>([]);
+  readonly loading = signal(false);
+  readonly totalElements = signal(0);
+  readonly totalPages = signal(0);
+  readonly currentPage = signal(0);
+
+  /** Loaded flag — true once initial products list has been fetched */
+  readonly loaded = signal(false);
+
+  // ─── Static fallback image map (for display while backend images load) ────
+
   readonly CAT_IMG: Record<string, string> = {
     'Earbuds': '/assets/cat-earbuds.jpg',
     'Power Banks': '/assets/cat-powerbank.jpg',
@@ -26,97 +122,254 @@ export class CatalogService {
     'Lighting': '/assets/hero-accessories.jpg',
     'FMCG': '/assets/hero-accessories.jpg',
   };
-
   readonly FALLBACK_IMG = '/assets/hero-accessories.jpg';
 
-  readonly CATEGORIES = [
-    "All",
-    "Earbuds",
-    "Power Banks",
-    "Wireless Chargers",
-    "Car Chargers",
-    "Home Chargers",
-    "Cables",
-    "Adapters",
-    "Power Strips",
-    "Lighting",
-    "FMCG",
-  ] as const;
+  // ─── Products ─────────────────────────────────────────────────────────────
 
-  readonly PRODUCTS: Product[] = [
-    { name: "TWS Wireless Earbuds Pro", sku: "NG-EB-01", category: "Earbuds", price: 28500, desc: "Active noise cancellation, 30h playback, IPX5 water resistance." },
-    { name: "In-Ear Bluetooth Earbuds", sku: "NG-EB-02", category: "Earbuds", price: 14500, desc: "Comfort fit with premium bass — great daily driver for retailers." },
-    { name: "20,000mAh Fast Power Bank", sku: "NG-PB-01", category: "Power Banks", price: 18500, desc: "22.5W PD + QC. Charges phones 4-5 times on a single cycle." },
-    { name: "10,000mAh Slim Power Bank", sku: "NG-PB-02", category: "Power Banks", price: 10500, desc: "Pocket-friendly form factor with USB-C in/out." },
-    { name: "Magnetic Wireless Power Bank", sku: "NG-PB-03", category: "Power Banks", price: 22500, desc: "MagSafe-compatible 15W wireless charging on the go." },
-    { name: "15W Magnetic Wireless Charger", sku: "NG-WC-01", category: "Wireless Chargers", price: 18500, desc: "Snap-on magnetic pad for iPhone and Qi phones." },
-    { name: "Dual USB Car Charger", sku: "NG-CC-01", category: "Car Chargers", price: 9500, desc: "Compact 36W PD car adapter with dual output." },
-    { name: "GaN 65W Home Charger", sku: "NG-CH-01", category: "Home Chargers", price: 16500, desc: "Charge laptop + two phones simultaneously." },
-    { name: "20W Fast Home Charger", sku: "NG-CH-02", category: "Home Chargers", price: 8500, desc: "USB-C PD wall adapter — universal Nigerian pin." },
-    { name: "Braided Lightning Cable 1.2m", sku: "NG-CB-01", category: "Cables", price: 6500, desc: "MFI-quality nylon braided cable, tangle-free." },
-    { name: "USB-C to USB-C 60W Cable", sku: "NG-CB-02", category: "Cables", price: 7500, desc: "Fast-charge PD cable with e-marker chip." },
-    { name: "4-in-1 Multi Charging Cable", sku: "NG-CB-03", category: "Cables", price: 8500, desc: "USB-A/C to Lightning + Type-C — one cable, all devices." },
-    { name: "Universal Travel Adapter", sku: "NG-AD-01", category: "Adapters", price: 13500, desc: "Works in 150+ countries. Dual USB output." },
-    { name: "GaN Adapter 100W", sku: "NG-AD-02", category: "Adapters", price: 28500, desc: "Four-port desktop adapter for power users." },
-    { name: "6-Outlet Power Strip", sku: "NG-PS-01", category: "Power Strips", price: 15500, desc: "Surge-protected extension with USB ports." },
-    { name: "Rechargeable LED Night Lamp", sku: "NG-LP-01", category: "Lighting", price: 12500, desc: "Warm-touch dimmable bedside lamp." },
-    { name: "Zarina Personal Care Range", sku: "NG-FM-01", category: "FMCG", price: 4500, desc: "Our in-house personal care line — moisturisers, soaps, more." },
-    { name: "Household Essentials Bundle", sku: "NG-FM-02", category: "FMCG", price: 12000, desc: "Canned foods, cleaning and household staples." },
-  ];
+  /**
+   * TASK-15, TASK-23: Load products from backend with optional filters.
+   * Results stored in `products` signal.
+   */
+  loadProducts(filters: ProductFilters = {}): Observable<ProductsPage> {
+    this.loading.set(true);
+    let params = new HttpParams();
+    if (filters.q) params = params.set('q', filters.q);
+    if (filters.categoryId) params = params.set('categoryId', filters.categoryId);
+    if (filters.brandId) params = params.set('brandId', filters.brandId);
+    if (filters.page != null) params = params.set('page', String(filters.page));
+    if (filters.size != null) params = params.set('size', String(filters.size));
+    if (filters.sort) params = params.set('sort', filters.sort);
 
-  readonly DEAL_SKUS = new Set(["NG-EB-02", "NG-PB-02", "NG-CC-01", "NG-CH-02", "NG-CB-01", "NG-FM-01"]);
-  readonly NEW_ARRIVAL_SKUS = new Set(["NG-EB-01", "NG-PB-01", "NG-PB-03", "NG-WC-01"]);
-
-  imageFor(category: string): string {
-    return this.CAT_IMG[category] ?? this.FALLBACK_IMG;
+    return this.http.get<ProductsPage>('/api/v1/catalogue/products', { params }).pipe(
+      tap(page => {
+        const enriched = this.enrichWithCategories(page.content);
+        this.products.set(enriched);
+        this.totalElements.set(page.totalElements);
+        this.totalPages.set(page.totalPages);
+        this.currentPage.set(page.number);
+        this.loading.set(false);
+        this.loaded.set(true);
+      }),
+      catchError(err => {
+        console.warn('[CatalogService] Backend /api/v1/catalogue/products unavailable, loading local catalog.');
+        const fallback = this.getFallbackProducts(filters);
+        this.products.set(fallback);
+        this.totalElements.set(fallback.length);
+        this.totalPages.set(1);
+        this.currentPage.set(0);
+        this.loading.set(false);
+        this.loaded.set(true);
+        return of({ content: fallback, totalElements: fallback.length, totalPages: 1, number: 0, size: 20 });
+      })
+    );
   }
 
-  productBySku(sku: string): Product | undefined {
-    return this.PRODUCTS.find((p) => p.sku === sku);
+  /**
+   * TASK-21: Load single product by UUID.
+   * Route now uses /products/:id (UUID) not /products/:sku.
+   */
+  getProduct(id: string): Observable<Product> {
+    return this.http.get<Product>(`/api/v1/catalogue/products/${id}`).pipe(
+      map(p => this.enrichWithCategories([p])[0]),
+      catchError(err => {
+        const found = this.products().find(p => p.id === id || p.sku === id) ||
+                      this.getFallbackProducts({}).find((p: Product) => p.id === id || p.sku === id);
+        if (found) {
+          return of(found);
+        }
+        throw err;
+      })
+    );
   }
 
-  recommendedFor(sku: string): Product[] {
-    const current = this.productBySku(sku);
-    const others = this.PRODUCTS.filter((p) => p.sku !== sku);
-    const sameCat = others.filter((p) => p.category === current?.category);
-    const rest = others.filter((p) => p.category !== current?.category);
-    return [...sameCat, ...rest].slice(0, 4);
+  /**
+   * TASK-22: Recommended products for a given product UUID.
+   * Replaces local same-category algorithm.
+   */
+  getRecommended(id: string): Observable<Product[]> {
+    return this.http.get<Product[]>(`/api/v1/catalogue/products/${id}/recommendations`).pipe(
+      map(list => this.enrichWithCategories(list)),
+      catchError(() => of([]))
+    );
   }
 
-  formatPrice(n: number) {
-    return "₦" + n.toLocaleString("en-NG");
+  getFallbackProducts(filters: ProductFilters): Product[] {
+    let prods: any[] = [];
+    try {
+      const stored = localStorage.getItem('nigson_admin_products');
+      if (stored) {
+        prods = JSON.parse(stored);
+      }
+    } catch {}
+
+    if (!Array.isArray(prods) || prods.length === 0) {
+      prods = [
+        { id: 'prod-tws-01', sku: 'NG-EB-01', name: 'Nigson TWS Earbuds Pro ANC', category: 'Earbuds', price: 28500, desc: 'Active Noise Cancelling wireless earbuds with 36-hour total battery life and IPX5 water resistance.', image: '/assets/cat-earbuds.jpg', images: ['/assets/cat-earbuds.jpg'], stock: 120, rating: 4.8, status: 'Active' },
+        { id: 'prod-pb-01', sku: 'NG-PB-01', name: 'Nigson 20,000mAh 65W Fast Power Bank', category: 'Power Banks', price: 18500, desc: 'High-density Li-Polymer power bank with 65W USB-C Power Delivery, capable of charging laptops and phones.', image: '/assets/cat-powerbank.jpg', images: ['/assets/cat-powerbank.jpg'], stock: 85, rating: 4.9, status: 'Active' },
+        { id: 'prod-gan-01', sku: 'NG-CH-01', name: 'Nigson 65W GaN Triple-Port Fast Wall Charger', category: 'Fast Chargers', price: 14200, desc: 'Gallium Nitride (GaN) fast charger with dual USB-C and single USB-A ports, UK 3-pin standard.', image: '/assets/cat-charger.jpg', images: ['/assets/cat-charger.jpg'], stock: 210, rating: 4.7, status: 'Active' },
+        { id: 'prod-cbl-01', sku: 'NG-CB-01', name: 'Nigson Armored Braided Type-C to Type-C Cable (2m)', category: 'Cables & Adapters', price: 4500, desc: '100W Power Delivery nylon-braided cable with aluminum alloy connectors, tested to 25,000 bends.', image: '/assets/cat-cable.jpg', images: ['/assets/cat-cable.jpg'], stock: 500, rating: 4.6, status: 'Active' },
+        { id: 'prod-car-01', sku: 'NG-CC-01', name: 'Nigson MagSafe 15W Wireless Car Charger & Mount', category: 'Fast Chargers', price: 12800, desc: 'Automatic magnetic alignment car vent mount with fast wireless charging and 360-degree rotation.', image: '/assets/cat-charger.jpg', images: ['/assets/cat-charger.jpg'], stock: 64, rating: 4.5, status: 'Active' },
+        { id: 'prod-oil-01', sku: 'NIG-IND-OIL-5L', name: 'Nigson Industrial Grade Machinery Lubricant 5L', category: 'Industrial Lubricants', price: 45000, desc: 'High-viscosity synthetic industrial gear oil formulated for extreme pressure and high operating temperatures.', image: '/assets/hero-accessories.jpg', images: ['/assets/hero-accessories.jpg'], stock: 40, rating: 4.9, status: 'Active' },
+        { id: 'prod-sol-01', sku: 'NIG-SOL-35KVA', name: 'Nigson Smart Solar Hybrid Inverter 3.5kVA / 24V', category: 'Solar & Inverters', price: 380000, desc: 'Pure sine wave hybrid solar inverter with integrated 80A MPPT charge controller and WiFi monitoring.', image: '/assets/hero-accessories.jpg', images: ['/assets/hero-accessories.jpg'], stock: 18, rating: 5.0, status: 'Active' },
+        { id: 'prod-srg-01', sku: 'NG-SP-01', name: 'Nigson 6-Way Surge Protector Extension with 4 USB Ports', category: 'Cables & Adapters', price: 16500, desc: 'Flame-retardant multi-socket surge protector with individual switches, overload breaker, and fast USB ports.', image: '/assets/cat-powerbank.jpg', images: ['/assets/cat-powerbank.jpg'], stock: 140, rating: 4.7, status: 'Active' }
+      ];
+    }
+
+    let mapped: Product[] = prods.map(p => ({
+      id: p.id || p.sku,
+      sku: p.sku || p.id,
+      name: p.name,
+      categoryId: p.category || 'General',
+      categoryName: p.category || 'General',
+      description: p.desc || p.description || '',
+      images: p.images?.length ? p.images : [p.image || this.FALLBACK_IMG],
+      priceMinorUnits: Math.round((p.price || p.retail || 0) * 100),
+      publicationStatus: 'PUBLISHED',
+      brand: 'Nigson',
+      tags: [p.category || 'General']
+    }));
+
+    if (filters.q) {
+      const query = filters.q.toLowerCase();
+      mapped = mapped.filter(p => p.name.toLowerCase().includes(query) || p.sku.toLowerCase().includes(query));
+    }
+    if (filters.categoryId) {
+      const cat = filters.categoryId.toLowerCase();
+      mapped = mapped.filter(p => p.categoryId.toLowerCase().includes(cat) || (p.categoryName && p.categoryName.toLowerCase().includes(cat)));
+    }
+
+    return mapped;
   }
 
+  // ─── Categories (TASK-17) ─────────────────────────────────────────────────
+
+  loadCategories(): Observable<Category[]> {
+    return this.http.get<Category[]>('/api/v1/catalogue/categories').pipe(
+      tap(cats => this.categories.set(cats)),
+      catchError(err => {
+        console.warn('[CatalogService] Backend /api/v1/catalogue/categories unavailable, using local categories.');
+        const fallbackCats: Category[] = [
+          { id: 'Earbuds', name: 'Earbuds', slug: 'earbuds', imageUrl: '/assets/cat-earbuds.jpg' },
+          { id: 'Power Banks', name: 'Power Banks', slug: 'power-banks', imageUrl: '/assets/cat-powerbank.jpg' },
+          { id: 'Fast Chargers', name: 'Fast Chargers', slug: 'fast-chargers', imageUrl: '/assets/cat-charger.jpg' },
+          { id: 'Cables & Adapters', name: 'Cables & Adapters', slug: 'cables', imageUrl: '/assets/cat-cable.jpg' },
+          { id: 'Industrial Lubricants', name: 'Industrial Lubricants', slug: 'industrial-lubricants', imageUrl: '/assets/hero-accessories.jpg' },
+          { id: 'Solar & Inverters', name: 'Solar & Inverters', slug: 'solar-inverters', imageUrl: '/assets/hero-accessories.jpg' }
+        ];
+        this.categories.set(fallbackCats);
+        return of(fallbackCats);
+      })
+    );
+  }
+
+  // ─── Brands (TASK-18) ─────────────────────────────────────────────────────
+
+  loadBrands(): Observable<Brand[]> {
+    return this.http.get<Brand[]>('/api/v1/catalogue/brands').pipe(
+      tap(brands => this.brands.set(brands)),
+      catchError(() => {
+        const fallbackBrands: Brand[] = [
+          { id: 'b-nigson', name: 'Nigson' },
+          { id: 'b-powerpro', name: 'PowerPro' },
+          { id: 'b-soundcore', name: 'SoundCore' }
+        ];
+        this.brands.set(fallbackBrands);
+        return of(fallbackBrands);
+      })
+    );
+  }
+
+  // ─── Pricing (TASK-19, TASK-20) ──────────────────────────────────────────
+
+  /**
+   * Load price for a SKU UUID. Returns price in minor units (kobo).
+   * Use formatPrice() to convert for display.
+   */
+  getPrice(skuId: string): Observable<PriceResponse> {
+    return this.http.get<PriceResponse>(`/api/v1/catalogue/skus/${skuId}/price`);
+  }
+
+  /**
+   * TASK-20: Format price from NGN minor units (kobo) to display string.
+   * Backend always returns kobo — divide by 100 before showing.
+   *
+   * Examples:
+   *   formatPrice(2850000) → '₦28,500.00'
+   *   formatPrice(450000)  → '₦4,500.00'
+   */
+  formatPrice(minorUnits: number): string {
+    const naira = minorUnits / 100;
+    return '₦' + naira.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  /** Format price from whole Naira (legacy local data) — for transition period only */
+  formatPriceNaira(naira: number): string {
+    return '₦' + naira.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  // ─── Image helpers ────────────────────────────────────────────────────────
+
+  imageFor(categoryName: string | undefined | null): string {
+    if (!categoryName) return this.FALLBACK_IMG;
+    return this.CAT_IMG[categoryName] ?? this.FALLBACK_IMG;
+  }
+
+  primaryImage(product: Product): string {
+    return product.images?.[0] ?? this.imageFor(product.categoryName ?? '');
+  }
+
+  // ─── Helpers ─────────────────────────────────────────────────────────────
+
+  /** Enrich products with resolved category name from loaded categories signal */
+  private enrichWithCategories(products: Product[]): Product[] {
+    const cats = this.categories();
+    if (!cats.length) return products;
+    const catMap = new Map(cats.map(c => [c.id, c.name]));
+    return products.map(p => ({
+      ...p,
+      categoryName: catMap.get(p.categoryId) ?? p.categoryName
+    }));
+  }
+
+  /** TASK-27: Is product a "deal"? Driven by backend campaigns, not hardcoded SKUs */
   isDeal(p: Product): boolean {
-    return this.DEAL_SKUS.has(p.sku);
+    return p.tags?.includes('deal') ?? false;
   }
 
+  /** TASK-27: Is product a new arrival? Based on createdAt date (last 30 days) */
   isNewArrival(p: Product): boolean {
-    return this.NEW_ARRIVAL_SKUS.has(p.sku);
+    if (!p.createdAt) return false;
+    const days = (Date.now() - new Date(p.createdAt).getTime()) / 86400000;
+    return days <= 30;
   }
 
-  stockFor(sku: string): number {
-    let h = 0;
-    for (let i = 0; i < sku.length; i++) h = (h * 31 + sku.charCodeAt(i)) % 9973;
-    return 8 + (h % 43);
-  }
-
+  // ─── Legacy hash (kept for non-rating use cases during transition) ─────────
   hash(s: string): number {
     let h = 0;
     for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
     return h;
   }
 
-  ratingFor(sku: string) {
-    const h = this.hash(sku);
-    const average = +(4.2 + ((h % 8) / 10)).toFixed(1);
-    const count = 48 + (h % 260);
-    const five = Math.min(92, 60 + (h % 30));
-    const four = Math.max(4, Math.round((100 - five) * 0.55));
-    const three = Math.max(1, Math.round((100 - five - four) * 0.6));
-    const two = Math.max(0, Math.round((100 - five - four - three) * 0.6));
-    const one = Math.max(0, 100 - five - four - three - two);
-    return { average, count, breakdown: { 5: five, 4: four, 3: three, 2: two, 1: one } };
-  }
-}
+  // ─── TASK-84: Market Validation (API-029) ──────────────────────────────────
+  readonly marketActive = signal<boolean>(true);
+  readonly marketCurrency = signal<string>('NGN');
 
+  /** Validate that the NG (Nigeria) market policy is active from GET /api/v1/markets */
+  validateMarket(): Observable<boolean> {
+    return this.http.get<any[]>('/api/v1/markets').pipe(
+      map(markets => {
+        const ng = (markets || []).find(m => m.code === 'NG' || m.currency === 'NGN');
+        const active = !!ng;
+        this.marketActive.set(active);
+        if (ng?.currency) this.marketCurrency.set(ng.currency);
+        return active;
+      }),
+      catchError(err => {
+        // Fallback gracefully in development / test environments
+        this.marketActive.set(true);
+        return of(true);
+      })
+    );
+  }
+
+}

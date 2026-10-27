@@ -5,7 +5,7 @@ import {
   LucideTrash2, LucideShoppingBag, 
   LucideShieldCheck, LucideTruck, LucideArrowRight 
 } from '@lucide/angular';
-import { CatalogService, ShopService, QtyStepperComponent } from 'shared-ui';
+import { CartService, CatalogService, ShopService, QtyStepperComponent } from 'shared-ui';
 
 @Component({
   selector: 'app-cart',
@@ -26,7 +26,7 @@ import { CatalogService, ShopService, QtyStepperComponent } from 'shared-ui';
           <div *ngIf="!shop.hydrated()" class="rounded-2xl border border-hairline p-10 animate-pulse h-64 bg-surface-alt"></div>
           
           <ng-container *ngIf="shop.hydrated()">
-            <div *ngIf="shop.cart().length === 0" class="rounded-3xl border border-hairline bg-surface-alt p-10 md:p-16 text-center">
+            <div *ngIf="cart.items().length === 0" class="rounded-3xl border border-hairline bg-surface-alt p-10 md:p-16 text-center">
               <div class="mx-auto grid h-16 w-16 place-items-center rounded-full bg-white shadow-elegant">
                 <svg lucideShoppingBag class="h-8 w-8 text-brand"></svg>
               </div>
@@ -42,30 +42,30 @@ import { CatalogService, ShopService, QtyStepperComponent } from 'shared-ui';
               </a>
             </div>
 
-            <div *ngIf="shop.cart().length > 0" class="grid gap-10 lg:grid-cols-[1fr_400px]">
+            <div *ngIf="cart.items().length > 0" class="grid gap-10 lg:grid-cols-[1fr_400px]">
               <div class="space-y-4">
-                <article *ngFor="let item of shop.cart()" class="flex gap-4 rounded-2xl border border-hairline bg-white p-4 md:p-5">
+                <article *ngFor="let item of cart.items()" class="flex gap-4 rounded-2xl border border-hairline bg-white p-4 md:p-5">
                   <div class="h-24 w-24 md:h-28 md:w-28 shrink-0 rounded-xl overflow-hidden bg-surface-alt">
-                    <img *ngIf="item.image" [src]="item.image" [alt]="item.name" class="h-full w-full object-cover" />
-                    <div *ngIf="!item.image" class="h-full w-full grid place-items-center text-muted-ink">
+                    <img *ngIf="item.imageUrl" [src]="item.imageUrl" [alt]="item.name" class="h-full w-full object-cover" />
+                    <div *ngIf="!item.imageUrl" class="h-full w-full grid place-items-center text-muted-ink">
                       <svg lucideShoppingBag class="h-8 w-8"></svg>
                     </div>
                   </div>
                   <div class="flex-1 min-w-0 flex flex-col">
                     <div class="flex flex-wrap items-start justify-between gap-2">
                       <div class="min-w-0">
-                        <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-ink">{{ item.sku }} • {{ item.category }}</p>
+                        <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-ink">{{ item.sku }} • {{ item.categoryName }}</p>
                         <h3 class="mt-1 text-base md:text-lg font-semibold truncate">{{ item.name }}</h3>
-                        <p class="mt-1 text-sm text-muted-ink">Unit price {{ catalog.formatPrice(item.price) }}</p>
+                        <p class="mt-1 text-sm text-muted-ink">Unit price {{ catalog.formatPrice((item.unitPriceMinorUnits / 100)) }}</p>
                       </div>
                       <p class="text-lg font-bold text-[#D62828] whitespace-nowrap">
-                        {{ catalog.formatPrice(item.price * item.qty) }}
+                        {{ catalog.formatPrice((item.unitPriceMinorUnits / 100) * item.quantity) }}
                       </p>
                     </div>
                     <div class="mt-auto pt-4 flex items-center justify-between">
-                      <ui-qty-stepper [product]="item" [image]="item.image"></ui-qty-stepper>
+                      <ui-qty-stepper [product]="item" [image]="item.imageUrl"></ui-qty-stepper>
                       <button
-                        (click)="shop.removeFromCart(item.sku)"
+                        (click)="removeItem(item.lineId)"
                         class="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-ink hover:text-brand"
                       >
                         <svg lucideTrash2 class="h-3.5 w-3.5"></svg> Remove
@@ -124,23 +124,38 @@ import { CatalogService, ShopService, QtyStepperComponent } from 'shared-ui';
 })
 export class CartComponent {
   shop = inject(ShopService);
+  cart = inject(CartService);
   catalog = inject(CatalogService);
   router = inject(Router);
 
-  SHIPPING_FLAT = 3500;
+  /** Flat shipping fee in NGN minor units (kobo): NGN 3500 */
+  SHIPPING_MINOR = 350000;
 
-  subtotal = computed(() => this.shop.cartSubtotal());
-  shipping = computed(() => this.shop.cart().length ? this.SHIPPING_FLAT : 0);
-  vat = computed(() => Math.round(this.subtotal() * 0.075));
-  total = computed(() => this.subtotal() + this.shipping() + this.vat());
+  /** Use CartService signals for real server cart data */
+  subtotalMinorUnits = computed(() => this.cart.items().reduce((n, i) => n + i.unitPriceMinorUnits * i.quantity, 0));
+  shippingMinorUnits = computed(() => this.cart.items().length ? this.SHIPPING_MINOR : 0);
+  vatMinorUnits = computed(() => Math.round(this.subtotalMinorUnits() * 0.075));
+  totalMinorUnits = computed(() => this.subtotalMinorUnits() + this.shippingMinorUnits() + this.vatMinorUnits());
+
+  // Keep backward-compat properties for the summary template (which calls catalog.formatPrice)
+  subtotal = computed(() => this.subtotalMinorUnits());
+  shipping = computed(() => this.shippingMinorUnits());
+  vat = computed(() => this.vatMinorUnits());
+  total = computed(() => this.totalMinorUnits());
+
+  updateQty(lineId: string, qty: number) {
+    this.cart.updateQty(lineId, qty).subscribe();
+  }
+
+  removeItem(lineId: string) {
+    this.cart.removeItem(lineId).subscribe();
+  }
+
+  saveForLater(lineId: string) {
+    this.cart.saveForLater(lineId).subscribe();
+  }
 
   proceedToCheckout() {
-    if (this.shop.user()) {
-      this.router.navigate(['/checkout']);
-    } else {
-      // Typically goes to login, but we mock login state in the shell.
-      // I will just let them go to checkout directly for this prototype.
-      this.router.navigate(['/checkout']);
-    }
+    this.router.navigate(["/checkout"]);
   }
 }

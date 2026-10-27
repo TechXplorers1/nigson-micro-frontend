@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed } from '@angular/core';
+import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AdminService, AdminHeadingComponent, BadgeComponent } from 'shared-ui';
@@ -101,7 +101,10 @@ import { RouterLink } from '@angular/router';
     </div>
   `
 })
-export class ProductListComponent {
+export class ProductListComponent implements OnInit {
+  ngOnInit() {
+    this.admin.loadStaffProducts().subscribe();
+  }
   admin = inject(AdminService);
   searchQuery = signal('');
 

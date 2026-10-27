@@ -1,90 +1,64 @@
-import { Component, computed, inject } from '@angular/core';
+﻿import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { map } from 'rxjs/operators';
-import { CatalogService, PageHeaderComponent } from 'shared-ui';
+import { CatalogService, PageHeaderComponent, Product } from 'shared-ui';
 import { ProductCardComponent } from '../products/product-card.component';
-import { LucideSearch } from '@lucide/angular';
-import { FormsModule } from '@angular/forms';
+import { LucideLoader2 } from '@lucide/angular';
 
+/**
+ * SearchComponent (TASK-24)
+ * Replaces local PRODUCTS.filter() with GET /api/v1/catalogue/products?q=...
+ */
 @Component({
   selector: 'app-search',
   standalone: true,
-  imports: [CommonModule, ProductCardComponent, FormsModule, PageHeaderComponent],
+  imports: [CommonModule, RouterLink, ProductCardComponent, PageHeaderComponent, LucideLoader2],
   template: `
     <div class="bg-surface min-h-screen">
-      <lib-page-header
-        [title]="headerTitle()"
-        [subtitle]="headerSubtitle()"
-      ></lib-page-header>
+      <lib-page-header [title]="headerTitle()" [subtitle]="headerSubtitle()"></lib-page-header>
 
       <section class="container-page py-12">
-        <ng-container *ngIf="matches().length > 0; else noMatches">
+        <!-- Loading -->
+        <div *ngIf="catalog.loading()" class="flex justify-center py-20">
+          <svg lucideLoader2 class="h-8 w-8 text-brand animate-spin"></svg>
+        </div>
+
+        <!-- Results -->
+        <ng-container *ngIf="!catalog.loading() && catalog.products().length > 0">
           <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            <app-product-card *ngFor="let p of matches()" [p]="p"></app-product-card>
+            <app-product-card *ngFor="let p of catalog.products()" [p]="p"></app-product-card>
           </div>
         </ng-container>
 
-        <ng-template #noMatches>
+        <!-- No results -->
+        <ng-container *ngIf="!catalog.loading() && catalog.products().length === 0">
           <div class="rounded-2xl border border-border bg-surface-alt/40 py-16 text-center">
             <p class="text-lg font-semibold text-ink">No products found</p>
             <p class="mt-2 text-sm text-muted-foreground">
-              We couldn't find a match{{ term() ? ' for "' + term() + '"' : '' }}. Try another keyword or explore the picks below.
+              We couldn't find a match{{ term() ? ' for "' + term() + '"' : '' }}.
             </p>
           </div>
-        </ng-template>
-
-        <div *ngIf="recommended().length > 0" class="mt-16">
-          <h2 class="text-2xl font-extrabold text-ink">
-            {{ matches().length > 0 ? "You may also like" : "Recommended for you" }}
-          </h2>
-          <div class="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            <app-product-card *ngFor="let p of recommended()" [p]="p" [compact]="true"></app-product-card>
-          </div>
-        </div>
+        </ng-container>
       </section>
     </div>
   `
 })
-export class SearchComponent {
-  route = inject(ActivatedRoute);
+export class SearchComponent implements OnInit {
   catalog = inject(CatalogService);
+  route = inject(ActivatedRoute);
 
-  q = toSignal(this.route.queryParamMap.pipe(map(params => params.get('q') || '')), { initialValue: '' });
-  
-  term = computed(() => this.q().trim().toLowerCase());
+  readonly term = signal('');
 
-  matches = computed(() => {
-    const t = this.term();
-    if (!t) return [];
-    return this.catalog.PRODUCTS.filter((p: any) => 
-      [p.name, p.sku, p.category, p.desc].join(" ").toLowerCase().includes(t)
-    );
-  });
+  headerTitle = () => this.term() ? `Results for "${this.term()}"` : 'Search Products';
+  headerSubtitle = () => this.catalog.totalElements()
+    ? `${this.catalog.totalElements()} products found`
+    : 'Search our product catalogue';
 
-  recommended = computed(() => {
-    const m = this.matches();
-    const matchedSkus = new Set(m.map((p: any) => p.sku));
-    const cats = new Set(m.map((p: any) => p.category));
-    
-    const rest = this.catalog.PRODUCTS.filter((p: any) => !matchedSkus.has(p.sku));
-    const sameCat = rest.filter((p: any) => cats.has(p.category));
-    const others = rest.filter((p: any) => !cats.has(p.category));
-    
-    return [...sameCat, ...others].slice(0, 4);
-  });
-
-  headerTitle = computed(() => {
-    const t = this.term();
-    return t ? `Search results for "${t}"` : "Search our products";
-  });
-
-  headerSubtitle = computed(() => {
-    const t = this.term();
-    const m = this.matches();
-    return t 
-      ? `${m.length} ${m.length === 1 ? 'product' : 'products'} found in the Nigson catalog.`
-      : "Use the search icon in the navigation to find products by name, SKU or category.";
-  });
+  ngOnInit() {
+    const q = this.route.snapshot.queryParams['q'] ?? '';
+    this.term.set(q);
+    if (q) {
+      this.catalog.loadProducts({ q, size: 30 }).subscribe();
+    }
+  }
 }

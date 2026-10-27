@@ -1,17 +1,31 @@
-import { Injectable, signal, computed } from '@angular/core';
+﻿import { Injectable, signal, computed } from '@angular/core';
 import { Product } from './catalog.service';
 import { LS_CART, LS_SAVED, LS_ORDERS, LS_USER, LS_REVIEWS } from './utils';
-import { seedReviews, Review } from './reviews';
+import { Review } from './reviews';
 
+/**
+ * User (TASK-13) — aligned to backend Party/session model.
+ *
+ * id       → Keycloak `sub` UUID from GET /bff/session
+ * roles    → backend role array: CUSTOMER | ADMIN | SALES | OPERATIONS |
+ *             FINANCE | CONTENT_EDITOR | CONTENT_PUBLISHER | ANALYST
+ * fullName → from GET /api/v1/me response
+ * email    → IMMUTABLE in backend — display only, never editable
+ *
+ * Removed: avatarColor (UI-only, no backend field)
+ *          avatarUrl   (UI-only, no backend field)
+ *          role: 'user'|'admin' (replaced by roles: string[])
+ */
 export interface User {
+  /** Keycloak subject UUID */
   id: string;
   fullName: string;
+  /** Immutable — comes from Keycloak, cannot be changed via frontend */
   email: string;
-  role: 'user' | 'admin';
+  /** Backend roles e.g. ['CUSTOMER'] or ['ADMIN','SALES'] */
+  roles: string[];
   createdAt: string;
-  avatarColor: string;
   phone?: string;
-  avatarUrl?: string;
 }
 
 export interface CartItem {
@@ -73,7 +87,7 @@ export class ShopService {
 
   readonly cartCount = computed(() => this.cart().reduce((n, i) => n + i.qty, 0));
   readonly cartSubtotal = computed(() => this.cart().reduce((n, i) => n + i.qty * i.price, 0));
-  readonly isAdmin = computed(() => this.user()?.role === 'admin');
+  readonly isAdmin = computed(() => this.user()?.roles?.includes('ADMIN') ?? false);
 
   constructor() {
     this.init();
@@ -81,14 +95,12 @@ export class ShopService {
 
   private init() {
     try {
-      const u = localStorage.getItem(LS_USER);
-      if (u) this.user.set(JSON.parse(u));
+      // TASK-47: User profile is populated from GET /api/v1/me on session restore
       const c = localStorage.getItem(LS_CART);
       if (c) this.cart.set(JSON.parse(c));
             const s = localStorage.getItem(LS_SAVED);
       if (s) this.saved.set(JSON.parse(s));
-      const o = localStorage.getItem(LS_ORDERS);
-      if (o) this.orders.set(JSON.parse(o));
+      // TASK-77: Orders are loaded dynamically from OrderService via GET /api/v1/orders
     } catch { /* ignore */ }
     this.hydrated.set(true);
   }
@@ -106,33 +118,24 @@ export class ShopService {
     if (!current) return;
     const updated = { ...current, ...data };
     this.user.set(updated);
-    try { localStorage.setItem(LS_USER, JSON.stringify(updated)); } catch {}
+    // TASK-77: Saved via AccountService PATCH /api/v1/me
   }
 
-  reviewsFor(sku: string) {
-    const all = this.reviews();
-    const specific = all.filter(r => r.sku === sku);
-    if (specific.length === 0) {
-      // Auto-seed for demo
-      const seeded = seedReviews(sku);
-      setTimeout(() => {
-        if (!this.reviews().some(r => r.sku === sku)) {
-          this.reviews.update(r => [...r, ...seeded]);
-        }
-      }, 0);
-      return seeded;
-    }
-    return specific.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  reviewsFor(sku: string): Review[] {
+    return this.reviews().filter(r => r.sku === sku || r.productId === sku);
   }
 
   addReview(r: { sku: string; name: string; rating: number; text: string }) {
     const nr: Review = {
       id: Math.random().toString(36).substring(2, 9),
       date: new Date().toISOString(),
+      publishedAt: new Date().toISOString(),
+      displayName: r.name,
+      body: r.text,
       ...r
     };
     this.reviews.update(all => [nr, ...all]);
-    try { localStorage.setItem(LS_REVIEWS, JSON.stringify(this.reviews())); } catch {}
+    // TASK-77: Reviews fetched via ReviewService GET /api/v1/reviews
   }
 
   private persistCart(c: CartItem[]) {
@@ -147,12 +150,12 @@ export class ShopService {
 
     authenticate(user: User) {
     this.user.set(user);
-    try { localStorage.setItem(LS_USER, JSON.stringify(user)); } catch {}
+    // TASK-77: Authenticated state managed by SessionService /bff/session
   }
 
   signOut() {
     this.user.set(null);
-    try { localStorage.removeItem(LS_USER); } catch {}
+    // TASK-77: Session terminated via SessionService
   }
 
   addToCart(item: Omit<CartItem, 'qty'>, qty = 1) {
@@ -233,6 +236,7 @@ export class ShopService {
     return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
   }
 }
+
 
 
 

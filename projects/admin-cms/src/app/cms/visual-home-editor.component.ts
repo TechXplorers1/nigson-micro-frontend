@@ -1,7 +1,7 @@
 import { Component, computed, inject, signal, OnInit, effect, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
-import { CmsService, PageContent, SectionContent, SectionDef } from 'shared-ui';
+import { CmsService, SessionService, ContentRevisionEdit, PageContent, SectionContent, SectionDef } from 'shared-ui';
 import { LucidePlus, LucidePencil, LucideTrash2, LucideGlobe, LucideFileText, LucideSave, LucideEye, LucideEyeOff, LucideGripVertical, LucideCheckCircle2, LucideChevronRight, LucidePanelTop, LucideSparkles, LucideGrid3x3, LucideFlame, LucideBuilding2, LucideTag, LucideTrendingUp, LucideShieldCheck, LucideMessageSquareQuote, LucideBriefcase, LucidePanelBottom, LucideExternalLink } from '@lucide/angular';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -52,8 +52,9 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
             {{ isSaving() ? 'Saving...' : 'Save Draft' }}
           </button>
           
-          <button class="flex items-center gap-2 rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-800 transition-all">
-            <svg lucideGlobe class="h-4 w-4"></svg> Publish
+          <button (click)="handlePublish()" [disabled]="isPublishing()" class="flex items-center gap-2 rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-800 transition-all disabled:opacity-50">
+            <svg lucideGlobe class="h-4 w-4" [class.animate-spin]="isPublishing()"></svg>
+            {{ isPublishing() ? 'Publishing...' : 'Publish' }}
           </button>
         </div>
       </header>
@@ -137,6 +138,9 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 })
 export class VisualHomeEditorComponent implements OnInit {
   cms = inject(CmsService);
+  session = inject(SessionService);
+  isPublishing = this.cms.isPublishing;
+  publishSuccess = signal(false);
   sanitizer = inject(DomSanitizer);
   route = inject(ActivatedRoute);
   
@@ -217,4 +221,36 @@ export class VisualHomeEditorComponent implements OnInit {
       this.isSaving.set(false);
     }, 500);
   }
+
+  handlePublish() {
+    const pageId = this.pageId();
+    const currentDraft = this.draft();
+    
+    // Convert current sections into ContentRevisionEdit format
+    const editPayload: ContentRevisionEdit = {
+      title: this.pageDef()?.name || pageId,
+      body: {
+        schemaVersion: 1,
+        blocks: (currentDraft?.sections || []).map(s => ({
+          type: 'TEXT',
+          text: JSON.stringify({ id: s.id, visible: s.visible, fields: s.fields })
+        }))
+      },
+      metadata: {
+        metaTitle: (this.pageDef()?.name || pageId) + ' | Nigson Wholesale',
+        metaDescription: 'Official page for ' + (this.pageDef()?.name || pageId),
+        keywords: ['wholesale', 'nigeria', pageId]
+      }
+    };
+
+    this.cms.executePublishPipeline(pageId, editPayload).subscribe({
+      next: (ok) => {
+        if (ok) {
+          this.publishSuccess.set(true);
+          setTimeout(() => this.publishSuccess.set(false), 4000);
+        }
+      }
+    });
+  }
+
 }

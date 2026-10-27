@@ -1,5 +1,7 @@
-import { Routes, UrlSegment } from '@angular/router';
+﻿import { Routes, UrlSegment } from '@angular/router';
 import { loadRemoteModule } from '@angular-architects/native-federation';
+import { BffCallbackComponent } from './bff-callback/bff-callback.component';
+import { authGuard, adminGuard } from 'shared-ui';
 
 export function shopMatcher(url: UrlSegment[]) {
   if (url.length === 0) return null;
@@ -12,19 +14,25 @@ export function shopMatcher(url: UrlSegment[]) {
 
 export const routes: Routes = [
   {
+    path: 'auth/callback',
+    component: BffCallbackComponent
+  },
+  {
     path: 'auth',
     loadChildren: () => loadRemoteModule('auth', './Routes').then(m => m.routes)
   },
   {
     path: 'account',
+    canActivate: [authGuard],
     loadChildren: () => loadRemoteModule('account', './Routes').then(m => m.routes)
   },
 
-  // ── Admin section ─────────────────────────────────────────────────────────
+  // â”€â”€ Admin section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // The shell owns the full /admin route tree because only the host (shell) app
   // can call loadRemoteModule for other remotes via the federation orchestrator.
   {
     path: 'admin',
+    canActivate: [adminGuard],
     loadComponent: () => loadRemoteModule('admin-core', './AdminLayout')
       .then(m => m.AdminLayoutComponent),
     children: [
@@ -153,7 +161,7 @@ export const routes: Routes = [
     ]
   },
 
-  // ── Public / Shop routes ─────────────────────────────────────────────────
+  // â”€â”€ Public / Shop routes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   {
     path: '',
     loadChildren: () => loadRemoteModule('marketing', './Routes').then(m => m.routes)
@@ -163,3 +171,5 @@ export const routes: Routes = [
     loadChildren: () => loadRemoteModule('shop', './Routes').then(m => m.routes)
   }
 ];
+
+

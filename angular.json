@@ -40,7 +40,7 @@
             "cacheExternalArtifacts": true,
             "dev": true,
             "devServer": true,
-            "port": 0
+            "port": 4200
           }
         },
         "test": {
@@ -57,8 +57,12 @@
                 "input": "projects/shell/public"
               }
             ],
-            "styles": ["projects/shell/src/styles.css"],
-            "polyfills": ["es-module-shims"]
+            "styles": [
+              "projects/shell/src/styles.css"
+            ],
+            "polyfills": [
+              "es-module-shims"
+            ]
           },
           "configurations": {
             "production": {
@@ -96,7 +100,8 @@
           },
           "defaultConfiguration": "development",
           "options": {
-            "port": 4200
+            "port": 4200,
+            "proxyConfig": "proxy.conf.json"
           }
         }
       }
@@ -134,7 +139,7 @@
             "cacheExternalArtifacts": true,
             "dev": true,
             "devServer": true,
-            "port": 0
+            "port": 4201
           }
         },
         "test": {
@@ -151,8 +156,12 @@
                 "input": "projects/marketing/public"
               }
             ],
-            "styles": ["projects/marketing/src/styles.css"],
-            "polyfills": ["es-module-shims"]
+            "styles": [
+              "projects/marketing/src/styles.css"
+            ],
+            "polyfills": [
+              "es-module-shims"
+            ]
           },
           "configurations": {
             "production": {
@@ -228,7 +237,7 @@
             "cacheExternalArtifacts": true,
             "dev": true,
             "devServer": true,
-            "port": 0
+            "port": 4202
           }
         },
         "test": {
@@ -245,8 +254,12 @@
                 "input": "projects/shop/public"
               }
             ],
-            "styles": ["projects/shop/src/styles.css"],
-            "polyfills": ["es-module-shims"]
+            "styles": [
+              "projects/shop/src/styles.css"
+            ],
+            "polyfills": [
+              "es-module-shims"
+            ]
           },
           "configurations": {
             "production": {
@@ -322,7 +335,7 @@
             "cacheExternalArtifacts": true,
             "dev": true,
             "devServer": true,
-            "port": 0
+            "port": 4203
           }
         },
         "test": {
@@ -339,8 +352,12 @@
                 "input": "projects/auth/public"
               }
             ],
-            "styles": ["projects/auth/src/styles.css"],
-            "polyfills": ["es-module-shims"]
+            "styles": [
+              "projects/auth/src/styles.css"
+            ],
+            "polyfills": [
+              "es-module-shims"
+            ]
           },
           "configurations": {
             "production": {
@@ -416,7 +433,7 @@
             "cacheExternalArtifacts": true,
             "dev": true,
             "devServer": true,
-            "port": 0
+            "port": 4204
           }
         },
         "test": {
@@ -433,8 +450,12 @@
                 "input": "projects/account/public"
               }
             ],
-            "styles": ["projects/account/src/styles.css"],
-            "polyfills": ["es-module-shims"]
+            "styles": [
+              "projects/account/src/styles.css"
+            ],
+            "polyfills": [
+              "es-module-shims"
+            ]
           },
           "configurations": {
             "production": {
@@ -527,8 +548,12 @@
                 "input": "projects/admin/public"
               }
             ],
-            "styles": ["projects/admin/src/styles.css"],
-            "polyfills": ["es-module-shims"]
+            "styles": [
+              "projects/admin/src/styles.css"
+            ],
+            "polyfills": [
+              "es-module-shims"
+            ]
           },
           "configurations": {
             "production": {
@@ -621,8 +646,12 @@
                 "input": "projects/blog/public"
               }
             ],
-            "styles": ["projects/blog/src/styles.css"],
-            "polyfills": ["es-module-shims"]
+            "styles": [
+              "projects/blog/src/styles.css"
+            ],
+            "polyfills": [
+              "es-module-shims"
+            ]
           },
           "configurations": {
             "production": {
@@ -715,8 +744,12 @@
                 "input": "projects/checkout/public"
               }
             ],
-            "styles": ["projects/checkout/src/styles.css"],
-            "polyfills": ["es-module-shims"]
+            "styles": [
+              "projects/checkout/src/styles.css"
+            ],
+            "polyfills": [
+              "es-module-shims"
+            ]
           },
           "configurations": {
             "production": {
@@ -809,8 +842,12 @@
                 "input": "projects/inventory/public"
               }
             ],
-            "styles": ["projects/inventory/src/styles.css"],
-            "polyfills": ["es-module-shims"]
+            "styles": [
+              "projects/inventory/src/styles.css"
+            ],
+            "polyfills": [
+              "es-module-shims"
+            ]
           },
           "configurations": {
             "production": {
@@ -903,8 +940,12 @@
                 "input": "projects/support/public"
               }
             ],
-            "styles": ["projects/support/src/styles.css"],
-            "polyfills": ["es-module-shims"]
+            "styles": [
+              "projects/support/src/styles.css"
+            ],
+            "polyfills": [
+              "es-module-shims"
+            ]
           },
           "configurations": {
             "production": {
@@ -997,8 +1038,12 @@
                 "input": "projects/quote/public"
               }
             ],
-            "styles": ["projects/quote/src/styles.css"],
-            "polyfills": ["es-module-shims"]
+            "styles": [
+              "projects/quote/src/styles.css"
+            ],
+            "polyfills": [
+              "es-module-shims"
+            ]
           },
           "configurations": {
             "production": {
@@ -1074,7 +1119,7 @@
             "cacheExternalArtifacts": true,
             "dev": true,
             "devServer": true,
-            "port": 0
+            "port": 4211
           }
         },
         "test": {
@@ -1091,8 +1136,12 @@
                 "input": "projects/admin-cms/public"
               }
             ],
-            "styles": ["projects/admin-cms/src/styles.css"],
-            "polyfills": ["es-module-shims"]
+            "styles": [
+              "projects/admin-cms/src/styles.css"
+            ],
+            "polyfills": [
+              "es-module-shims"
+            ]
           },
           "configurations": {
             "production": {
@@ -1185,8 +1234,12 @@
                 "input": "projects/admin-users/public"
               }
             ],
-            "styles": ["projects/admin-users/src/styles.css"],
-            "polyfills": ["es-module-shims"]
+            "styles": [
+              "projects/admin-users/src/styles.css"
+            ],
+            "polyfills": [
+              "es-module-shims"
+            ]
           },
           "configurations": {
             "production": {
@@ -1279,8 +1332,12 @@
                 "input": "projects/admin-sales/public"
               }
             ],
-            "styles": ["projects/admin-sales/src/styles.css"],
-            "polyfills": ["es-module-shims"]
+            "styles": [
+              "projects/admin-sales/src/styles.css"
+            ],
+            "polyfills": [
+              "es-module-shims"
+            ]
           },
           "configurations": {
             "production": {
@@ -1373,8 +1430,12 @@
                 "input": "projects/admin-analytics/public"
               }
             ],
-            "styles": ["projects/admin-analytics/src/styles.css"],
-            "polyfills": ["es-module-shims"]
+            "styles": [
+              "projects/admin-analytics/src/styles.css"
+            ],
+            "polyfills": [
+              "es-module-shims"
+            ]
           },
           "configurations": {
             "production": {
@@ -1501,7 +1562,7 @@
             "cacheExternalArtifacts": true,
             "dev": true,
             "devServer": true,
-            "port": 0
+            "port": 4205
           }
         },
         "esbuild": {
@@ -1515,8 +1576,12 @@
                 "input": "projects/admin-core/public"
               }
             ],
-            "styles": ["projects/admin-core/src/styles.css"],
-            "polyfills": ["es-module-shims"]
+            "styles": [
+              "projects/admin-core/src/styles.css"
+            ],
+            "polyfills": [
+              "es-module-shims"
+            ]
           },
           "configurations": {
             "production": {
@@ -1617,7 +1682,7 @@
             "cacheExternalArtifacts": true,
             "dev": true,
             "devServer": true,
-            "port": 0
+            "port": 4206
           }
         },
         "esbuild": {
@@ -1631,8 +1696,12 @@
                 "input": "projects/admin-shop/public"
               }
             ],
-            "styles": ["projects/admin-shop/src/styles.css"],
-            "polyfills": ["es-module-shims"]
+            "styles": [
+              "projects/admin-shop/src/styles.css"
+            ],
+            "polyfills": [
+              "es-module-shims"
+            ]
           },
           "configurations": {
             "production": {

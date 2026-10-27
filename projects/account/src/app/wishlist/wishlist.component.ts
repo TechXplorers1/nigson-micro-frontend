@@ -13,8 +13,14 @@ import { LucideHeart, LucideTrash2, LucideShoppingCart, LucidePackageOpen } from
       <div class="rounded-2xl border border-hairline bg-white p-6 md:p-8">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-[10px] font-semibold uppercase tracking-widest text-brand">Saved</p>
+            <div class="flex items-center gap-2 mb-1">
+              <p class="text-[10px] font-semibold uppercase tracking-widest text-brand">Saved</p>
+              <span class="text-[10px] font-medium bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full border border-blue-200">
+                Local Device Only
+              </span>
+            </div>
             <h2 class="text-2xl font-extrabold">My Wishlist</h2>
+            <p class="text-xs text-muted-ink mt-0.5">Items saved locally on this browser for quick reference.</p>
           </div>
           <span class="rounded-full bg-surface-alt px-3 py-1 text-xs font-bold text-muted-ink">
             {{ shop.saved().length }} item{{ shop.saved().length !== 1 ? 's' : '' }}

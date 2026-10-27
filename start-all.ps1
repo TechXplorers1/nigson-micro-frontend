@@ -1,19 +1,3 @@
-$mfe = @{
-    "shell" = 4200
-    "marketing" = 4201
-    "shop" = 4202
-    "auth" = 4203
-    "account" = 4204
-    "admin-core" = 4205
-    "admin-shop" = 4209
-    "admin-cms" = 4210
-}
-
-Write-Host "Starting all Micro Frontends via http-server..."
-foreach ($app in $mfe.GetEnumerator()) {
-    $name = $app.Name
-    $port = $app.Value
-    Write-Host "Starting $name on port $port..."
-    Start-Process -NoNewWindow -FilePath "npx.cmd" -ArgumentList "http-server dist/$name -p $port --cors -s -c-1"
-}
-Write-Host "All apps started! Open http://localhost:4200 in your browser."
+# Starts all Nigson micro-frontends with built-in API / BFF reverse proxy
+Write-Host "Starting Nigson Micro-Frontend Mesh with Reverse Proxy..." -ForegroundColor Cyan
+node C:\Users\user\.gemini\antigravity-ide\brain\9dc69a07-2288-46c8-8e94-9fc64a7bc476\scratch\serve_all.js

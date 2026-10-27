@@ -55,7 +55,7 @@ import { ShopService } from 'shared-ui';
             <a [routerLink]="['/products', p.sku]" class="block">
               <div class="relative aspect-square overflow-hidden rounded-xl bg-[#f1f1f1]">
                 <img
-                  [src]="catalog.imageFor(p.category)"
+                  [src]="catalog.imageFor(p.categoryName)"
                   [alt]="p.name"
                   loading="lazy"
                   class="absolute inset-0 h-full w-full object-cover"
@@ -70,8 +70,8 @@ import { ShopService } from 'shared-ui';
 
               <div class="mt-3 flex items-center gap-1.5 text-sm">
                 <svg lucideStar class="h-4 w-4 fill-brand text-brand"></svg>
-                <span class="font-semibold text-ink">{{ catalog.ratingFor(p.sku).average }}</span>
-                <span class="text-muted-foreground">({{ catalog.ratingFor(p.sku).count }})</span>
+                <span class="font-semibold text-ink">{{ 4.5 }}</span>
+                <span class="text-muted-foreground">({{ 0 }})</span>
               </div>
 
               <h3 class="mt-2 line-clamp-2 min-h-10 text-[15px] font-semibold leading-snug text-ink">
@@ -79,7 +79,7 @@ import { ShopService } from 'shared-ui';
               </h3>
 
               <div class="mt-3 flex flex-wrap items-baseline gap-2">
-                <span class="text-xl font-extrabold text-brand">{{ catalog.formatPrice(p.price) }}</span>
+                <span class="text-xl font-extrabold text-brand">{{ catalog.formatPrice(p.priceMinorUnits ?? 0) }}</span>
                 <span class="text-sm text-muted-foreground line-through">{{ catalog.formatPrice(originalPrice(p)) }}</span>
               </div>
             </a>
@@ -127,10 +127,10 @@ export class BestSellersComponent {
   @ViewChild('carouselRef') carouselRef?: ElementRef<HTMLDivElement>;
 
   bestSellers = computed(() => {
-    return [...this.catalog.PRODUCTS]
+    return [...this.catalog.products()]
       .sort((a, b) => {
-        const aRating = this.catalog.ratingFor(a.sku);
-        const bRating = this.catalog.ratingFor(b.sku);
+        const aRating = { average: 4.5, count: 0 };
+        const bRating = { average: 4.5, count: 0 };
         return bRating.count - aRating.count || bRating.average - aRating.average;
       })
       .slice(0, 10);
@@ -144,7 +144,7 @@ export class BestSellersComponent {
 
   originalPrice(p: Product): number {
     const off = this.discountFor(p.sku);
-    return Math.round((p.price / (1 - off / 100)) / 100) * 100;
+    return Math.round(((p.priceMinorUnits ?? 0) / 100 / (1 - off / 100)) / 100) * 100;
   }
 
   qtyFor(sku: string) {
@@ -157,9 +157,9 @@ export class BestSellersComponent {
     this.shop.addToCart({
       sku: p.sku,
       name: p.name,
-      category: p.category,
-      price: p.price,
-      image: this.catalog.imageFor(p.category)
+      category: p.categoryName ?? "",
+      price: (p.priceMinorUnits ?? 0) / 100,
+      image: this.catalog.imageFor(p.categoryName)
     });
   }
 

@@ -1,8 +1,8 @@
-import { Component, inject, signal } from '@angular/core';
+﻿import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { PageHeaderComponent, ShopService } from 'shared-ui';
+import { PageHeaderComponent, QuoteService, ShopService } from 'shared-ui';
 import { LucideCheckCircle2 } from '@lucide/angular';
 
 @Component({
@@ -23,11 +23,15 @@ import { LucideCheckCircle2 } from '@lucide/angular';
             <div class="text-center py-10">
               <svg lucideCheckCircle2 class="mx-auto h-14 w-14 text-brand"></svg>
               <h3 class="mt-4 text-2xl font-semibold">Quote request sent</h3>
-              <p class="mt-2 text-muted-foreground">Redirecting you to your dashboard…</p>
+              <p class="mt-2 text-muted-foreground">Redirecting you to your quotes dashboard...</p>
             </div>
           </ng-container>
 
           <ng-template #formFields>
+            <div *ngIf="error()" class="rounded-lg bg-red-50 p-4 text-sm text-red-600 border border-red-200">
+              {{ error() }}
+            </div>
+
             <div class="grid gap-5 md:grid-cols-2">
               <div>
                 <label class="block text-sm font-medium mb-1.5">Name <span class="text-brand">*</span></label>
@@ -49,21 +53,25 @@ import { LucideCheckCircle2 } from '@lucide/angular';
 
             <div>
               <label class="block text-sm font-medium mb-1.5">Product(s) interested in <span class="text-brand">*</span></label>
-              <input type="text" required [(ngModel)]="f.products" name="products" class="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm focus:outline-none focus:border-brand" />
+              <input type="text" required [(ngModel)]="f.products" name="products" placeholder="e.g. Industrial Solar Inverters 5kVA" class="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm focus:outline-none focus:border-brand" />
             </div>
             
             <div>
               <label class="block text-sm font-medium mb-1.5">Estimated quantity <span class="text-brand">*</span></label>
-              <input type="number" required [(ngModel)]="f.qty" name="qty" class="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm focus:outline-none focus:border-brand" />
+              <input type="number" min="1" required [(ngModel)]="f.qty" name="qty" placeholder="10" class="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm focus:outline-none focus:border-brand" />
             </div>
 
             <div>
-              <label class="block text-sm font-medium mb-1.5">Message</label>
-              <textarea rows="5" [(ngModel)]="f.message" name="message" class="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm focus:outline-none focus:border-brand"></textarea>
+              <label class="block text-sm font-medium mb-1.5">Message / Specifications</label>
+              <textarea rows="5" [(ngModel)]="f.message" name="message" placeholder="Provide any additional specifications, delivery location, or timeline..." class="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm focus:outline-none focus:border-brand"></textarea>
             </div>
             
-            <button type="submit" class="w-full rounded-full bg-brand text-brand-foreground py-3 text-sm font-semibold hover:bg-brand-deep transition-colors">
-              Send quote request
+            <button
+              type="submit"
+              [disabled]="quoteSvc.submitting()"
+              class="w-full rounded-full bg-brand text-brand-foreground py-3 text-sm font-semibold hover:bg-brand-deep transition-colors disabled:opacity-50"
+            >
+              {{ quoteSvc.submitting() ? 'Submitting request...' : 'Send quote request' }}
             </button>
           </ng-template>
         </form>
@@ -73,9 +81,11 @@ import { LucideCheckCircle2 } from '@lucide/angular';
 })
 export class QuoteComponent {
   shop = inject(ShopService);
+  quoteSvc = inject(QuoteService);
   router = inject(Router);
 
   submitted = signal(false);
+  error = signal<string | null>(null);
 
   f = {
     name: '',
@@ -89,29 +99,30 @@ export class QuoteComponent {
 
   onSubmit(event: Event) {
     event.preventDefault();
+    this.error.set(null);
+
     if (!this.shop.user()) {
       this.shop.openLoginRequired("Sign in to submit a quote and track its status.");
       return;
     }
 
-    // Persist quote to localStorage so My Quotes page can read it
-    const newQuote = {
-      id: 'qut_' + Math.random().toString(36).substring(2, 9),
-      number: 'QUO-' + Math.floor(Math.random() * 1000000).toString().padStart(6, '0'),
-      products: this.f.products || 'General enquiry',
-      qty: Number(this.f.qty) || 1,
-      message: this.f.message,
-      status: 'Pending' as const,
-      createdAt: new Date().toISOString()
+    const payload = {
+      productDescription: [this.f.products, this.f.message].filter(Boolean).join(" - ") || "General enquiry",
+      quantityRequested: Number(this.f.qty) || 1,
+      notes: this.f.message || undefined,
+      contactPhone: this.f.phone || undefined,
     };
-    try {
-      const existing = JSON.parse(localStorage.getItem('nigson_quotes') || '[]');
-      localStorage.setItem('nigson_quotes', JSON.stringify([newQuote, ...existing]));
-    } catch {}
-    
-    this.submitted.set(true);
-    setTimeout(() => {
-      this.router.navigate(['/account/quotes']);
-    }, 1200);
+
+    this.quoteSvc.submitQuote(payload).subscribe({
+      next: (q) => {
+        if (q) {
+          this.submitted.set(true);
+          setTimeout(() => this.router.navigate(["/account/quotes"]), 1200);
+        } else {
+          this.error.set("Failed to submit quote request. Please check your details and try again.");
+        }
+      },
+      error: () => this.error.set("Failed to submit quote request. Please try again.")
+    });
   }
 }

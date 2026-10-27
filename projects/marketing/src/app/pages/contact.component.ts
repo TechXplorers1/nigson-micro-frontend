@@ -1,7 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { CmsService, PageHeaderComponent, InputComponent, ButtonComponent } from 'shared-ui';
+import { CmsService, MarketingService, PageHeaderComponent, InputComponent, ButtonComponent } from 'shared-ui';
 import { LucideMapPin, LucidePhone, LucideMail, LucideMessageCircle, LucideCheckCircle2 } from '@lucide/angular';
 
 @Component({
@@ -75,6 +75,9 @@ import { LucideMapPin, LucidePhone, LucideMail, LucideMessageCircle, LucideCheck
             
             <ng-template #formFields>
               <h2 class="text-2xl font-semibold">{{ form().t('heading') }}</h2>
+              <div *ngIf="submitError()" class="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+                {{ submitError() }}
+              </div>
               <div class="grid gap-5 md:grid-cols-2">
                 <div>
                   <label class="block text-sm font-medium mb-1.5">{{ form().t('nameLabel') }} <span class="text-brand">*</span></label>
@@ -127,6 +130,9 @@ import { LucideMapPin, LucidePhone, LucideMail, LucideMessageCircle, LucideCheck
   `
 })
 export class ContactComponent {
+  marketingSvc = inject(MarketingService);
+  submitting = this.marketingSvc.submittingEnquiry;
+  submitError = signal<string | null>(null);
   cms = inject(CmsService);
   page = this.cms.getPageSections('contact');
 
@@ -150,23 +156,27 @@ export class ContactComponent {
 
   onSubmit(event: Event) {
     event.preventDefault();
+    this.submitError.set(null);
+
+    const enquiryType = this.f.type.toLowerCase().includes('complaint') ? 'COMPLAINT' : 'CONTACT';
     
-    const newInquiry = {
-      id: 'inq_' + Math.random().toString(36).substring(2, 9),
-      name: this.f.name,
-      email: this.f.email,
-      phone: '', // Not in form
-      subject: this.f.subject || this.f.type,
-      message: this.f.message,
-      status: 'New' as const,
-      date: new Date().toISOString()
-    };
-    
-    try {
-      const existing = JSON.parse(localStorage.getItem('nigson_inquiries') || '[]');
-      localStorage.setItem('nigson_inquiries', JSON.stringify([newInquiry, ...existing]));
-    } catch {}
-    
-    this.submitted.set(true);
+    this.marketingSvc.submitEnquiry({
+      type: enquiryType,
+      name: this.f.name.trim(),
+      email: this.f.email.trim(),
+      subject: (this.f.subject || this.f.type).trim(),
+      message: this.f.message.trim()
+    }).subscribe({
+      next: (ok) => {
+        if (ok) {
+          this.submitted.set(true);
+        } else {
+          this.submitError.set('Failed to send enquiry. Please check your information and try again.');
+        }
+      },
+      error: () => {
+        this.submitError.set('An unexpected error occurred. Please try again.');
+      }
+    });
   }
 }

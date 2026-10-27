@@ -1,12 +1,12 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+﻿import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { CommonModule, Location } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { 
   LucideArrowLeft, LucideChevronLeft, LucideChevronRight, 
   LucideZoomIn, LucideZoomOut, LucideRotateCcw, LucideStar,
-  LucideFileText, LucidePenLine
+  LucideFileText, LucideShieldCheck, LucideCheckCircle2
 } from '@lucide/angular';
-import { CatalogService, ShopService, QtyStepperComponent, ratingFor, relativeDate } from 'shared-ui';
+import { CatalogService, ShopService, ReviewService, QtyStepperComponent, relativeDate } from 'shared-ui';
 import { WriteReviewComponent } from './write-review.component';
 import { ProductCardComponent } from './product-card.component';
 
@@ -16,8 +16,8 @@ import { ProductCardComponent } from './product-card.component';
   imports: [
     CommonModule, RouterLink, LucideArrowLeft, LucideChevronLeft, 
     LucideChevronRight, LucideZoomIn, LucideZoomOut, LucideRotateCcw, 
-    LucideStar, LucideFileText, LucidePenLine,
-    QtyStepperComponent, WriteReviewComponent, ProductCardComponent
+    LucideStar, LucideFileText,
+    QtyStepperComponent, ProductCardComponent, LucideShieldCheck, LucideCheckCircle2
   ],
   template: `
     <div class="min-h-screen bg-background" *ngIf="product()">
@@ -90,9 +90,9 @@ import { ProductCardComponent } from './product-card.component';
 
           <!-- Info -->
           <div>
-            <p class="text-[10px] font-semibold uppercase tracking-[0.22em] text-brand">{{ product()?.category }}</p>
+            <p class="text-[10px] font-semibold uppercase tracking-[0.22em] text-brand">{{ product()?.categoryName }}</p>
             <h1 class="mt-3 text-3xl md:text-4xl font-extrabold leading-tight tracking-[-0.02em]">{{ product()?.name }}</h1>
-            <p class="mt-2 text-xs uppercase tracking-widest text-muted-ink">SKU • {{ product()?.sku }}</p>
+            <p class="mt-2 text-xs uppercase tracking-widest text-muted-ink">SKU â€¢ {{ product()?.sku }}</p>
 
             <button class="mt-4 inline-flex items-center gap-3 rounded-full border border-hairline px-4 py-2 hover:border-brand transition-colors" (click)="scrollToReviews()">
               <svg lucideStar class="h-4 w-4 fill-brand text-brand"></svg>
@@ -102,17 +102,17 @@ import { ProductCardComponent } from './product-card.component';
 
             <div class="mt-6">
               <p class="text-[11px] uppercase tracking-widest text-muted-foreground">Starting From</p>
-              <p class="mt-1 text-3xl md:text-4xl font-bold text-[#D62828] leading-tight">{{ catalog.formatPrice(product()?.price || 0) }}</p>
+              <p class="mt-1 text-3xl md:text-4xl font-bold text-[#D62828] leading-tight">{{ catalog.formatPrice((product()?.priceMinorUnits ?? 0) / 100 || 0) }}</p>
               <p class="mt-2 text-sm text-muted-foreground">Wholesale pricing available for distributors.</p>
             </div>
 
-            <p class="mt-6 text-base text-ink/80 leading-relaxed">{{ product()?.desc }}</p>
+            <p class="mt-6 text-base text-ink/80 leading-relaxed">{{ product()?.description }}</p>
 
             <ul class="mt-6 space-y-2 text-sm text-ink/80">
-              <li class="flex gap-3"><span class="text-brand">✔</span> Wholesale & retail pricing</li>
-              <li class="flex gap-3"><span class="text-brand">✔</span> Nationwide delivery from Lagos hub</li>
-              <li class="flex gap-3"><span class="text-brand">✔</span> 12-month standard warranty</li>
-              <li class="flex gap-3"><span class="text-brand">✔</span> Bulk discounts for distributors</li>
+              <li class="flex gap-3"><span class="text-brand">âœ”</span> Wholesale & retail pricing</li>
+              <li class="flex gap-3"><span class="text-brand">âœ”</span> Nationwide delivery from Lagos hub</li>
+              <li class="flex gap-3"><span class="text-brand">âœ”</span> 12-month standard warranty</li>
+              <li class="flex gap-3"><span class="text-brand">âœ”</span> Bulk discounts for distributors</li>
             </ul>
 
             <div class="mt-8 flex flex-wrap gap-3">
@@ -146,7 +146,7 @@ import { ProductCardComponent } from './product-card.component';
           <div class="py-8">
             <div *ngIf="activeTab() === 'description'" class="space-y-4 max-w-4xl animate-fade-in text-ink/80 leading-relaxed">
               <p class="text-lg font-semibold text-ink">{{ product()?.name }} Overview</p>
-              <p>{{ product()?.desc }}</p>
+              <p>{{ product()?.description }}</p>
               <p>
                 Engineered to meet the highest standards of durability and performance across Nigerian markets.
                 Suitable for both wholesale commercial resale and direct consumer use.
@@ -154,10 +154,10 @@ import { ProductCardComponent } from './product-card.component';
               <div class="mt-6 rounded-2xl bg-surface-alt p-6 border border-hairline">
                 <p class="font-bold text-ink mb-3">Key Highlights:</p>
                 <ul class="grid sm:grid-cols-2 gap-2 text-sm text-ink/80">
-                  <li class="flex items-center gap-2"><span class="text-brand font-bold">✓</span> Wholesale & retail pricing tier</li>
-                  <li class="flex items-center gap-2"><span class="text-brand font-bold">✓</span> Fast dispatch from central Lagos hub</li>
-                  <li class="flex items-center gap-2"><span class="text-brand font-bold">✓</span> 12-month standard Nigson warranty</li>
-                  <li class="flex items-center gap-2"><span class="text-brand font-bold">✓</span> Bulk order distributor volume discounts</li>
+                  <li class="flex items-center gap-2"><span class="text-brand font-bold">âœ“</span> Wholesale & retail pricing tier</li>
+                  <li class="flex items-center gap-2"><span class="text-brand font-bold">âœ“</span> Fast dispatch from central Lagos hub</li>
+                  <li class="flex items-center gap-2"><span class="text-brand font-bold">âœ“</span> 12-month standard Nigson warranty</li>
+                  <li class="flex items-center gap-2"><span class="text-brand font-bold">âœ“</span> Bulk order distributor volume discounts</li>
                 </ul>
               </div>
             </div>
@@ -172,7 +172,7 @@ import { ProductCardComponent } from './product-card.component';
                     </tr>
                     <tr>
                       <td class="px-6 py-4 font-bold text-ink">Category</td>
-                      <td class="px-6 py-4 text-ink/80">{{ product()?.category }}</td>
+                      <td class="px-6 py-4 text-ink/80">{{ product()?.categoryName }}</td>
                     </tr>
                     <tr class="bg-surface-alt/50">
                       <td class="px-6 py-4 font-bold text-ink">Warranty</td>
@@ -205,17 +205,17 @@ import { ProductCardComponent } from './product-card.component';
                 <div class="rounded-2xl border border-hairline p-5 bg-white">
                   <p class="text-xs uppercase font-bold text-brand tracking-widest">Retail Box Contents</p>
                   <ul class="mt-3 space-y-1.5 text-sm">
-                    <li>• 1x {{ product()?.name }} unit</li>
-                    <li>• 1x User Manual & Setup Guide</li>
-                    <li>• 1x Nigson Warranty Card</li>
+                    <li>â€¢ 1x {{ product()?.name }} unit</li>
+                    <li>â€¢ 1x User Manual & Setup Guide</li>
+                    <li>â€¢ 1x Nigson Warranty Card</li>
                   </ul>
                 </div>
                 <div class="rounded-2xl border border-hairline p-5 bg-white">
                   <p class="text-xs uppercase font-bold text-brand tracking-widest">Master Carton Specs</p>
                   <ul class="mt-3 space-y-1.5 text-sm">
-                    <li>• Carton Quantity: 40 Units / Box</li>
-                    <li>• Gross Weight: ~ 0.45 kg per unit box</li>
-                    <li>• Barcode: Individually Labelled for Resale</li>
+                    <li>â€¢ Carton Quantity: 40 Units / Box</li>
+                    <li>â€¢ Gross Weight: ~ 0.45 kg per unit box</li>
+                    <li>â€¢ Barcode: Individually Labelled for Resale</li>
                   </ul>
                 </div>
               </div>
@@ -268,12 +268,10 @@ import { ProductCardComponent } from './product-card.component';
         <div class="container-page">
           <div class="flex flex-wrap items-end justify-between gap-4">
             <h2 class="text-2xl font-extrabold tracking-[-0.02em]">Reviews</h2>
-            <button
-              (click)="writeOpen = true"
-              class="inline-flex items-center gap-2 rounded-full bg-brand text-white px-5 py-2.5 text-sm font-semibold hover:bg-brand-deep transition-colors"
-            >
-              <svg lucidePenLine class="h-4 w-4"></svg> Write a Review
-            </button>
+            <div class="inline-flex items-center gap-2 rounded-full border border-hairline bg-surface-alt px-4 py-2 text-xs font-semibold text-muted-ink">
+              <svg lucideShieldCheck class="h-4 w-4 text-brand"></svg>
+              Verified Buyer Reviews
+            </div>
           </div>
 
           <div class="mt-6 grid gap-8 md:grid-cols-[220px_1fr]">
@@ -291,7 +289,7 @@ import { ProductCardComponent } from './product-card.component';
             <div class="space-y-2">
               <ng-container *ngFor="let s of [5, 4, 3, 2, 1]">
                 <div class="flex items-center gap-3">
-                  <span class="w-10 text-xs font-semibold tabular-nums">{{ s }} ★</span>
+                  <span class="w-10 text-xs font-semibold tabular-nums">{{ s }} â˜…</span>
                   <div class="h-2 flex-1 rounded-full bg-hairline/60 overflow-hidden">
                     <div class="h-full rounded-full bg-brand transition-all duration-700" [style.width]="$any(rating()?.breakdown)?.[s] + '%'"></div>
                   </div>
@@ -306,10 +304,10 @@ import { ProductCardComponent } from './product-card.component';
               <div class="flex flex-wrap items-center justify-between gap-2">
                 <div class="flex items-center gap-3">
                   <span class="grid h-9 w-9 place-items-center rounded-full bg-brand/10 text-brand text-xs font-extrabold">
-                    {{ r.name.slice(0, 1).toUpperCase() }}
+                    {{ (r.displayName || r.name || 'U').slice(0, 1).toUpperCase() }}
                   </span>
                   <div>
-                    <p class="text-sm font-bold">{{ r.name }}</p>
+                    <p class="text-sm font-bold">{{ r.displayName || r.name || 'Verified Customer' }}</p>
                     <div class="flex gap-0.5">
                       <ng-container *ngFor="let i of [1,2,3,4,5]">
                         <svg lucideStar class="h-3 w-3" [ngClass]="i <= r.rating ? 'fill-brand text-brand' : 'text-hairline'"></svg>
@@ -317,15 +315,15 @@ import { ProductCardComponent } from './product-card.component';
                     </div>
                   </div>
                 </div>
-                <span class="text-xs text-muted-foreground">{{ relativeDate(r.date) }}</span>
+                <span class="text-xs text-muted-foreground">{{ relativeDate(r.publishedAt || r.date) }}</span>
               </div>
-              <p class="mt-3 text-sm text-ink/80 leading-relaxed">{{ r.text }}</p>
+              <p class="mt-3 text-sm text-ink/80 leading-relaxed">{{ r.body || r.text }}</p>
             </li>
           </ul>
         </div>
       </section>
 
-      <app-write-review *ngIf="writeOpen && product()" [sku]="product()!.sku" (close)="writeOpen = false"></app-write-review>
+
     </div>
     
     <div class="min-h-[50vh] flex items-center justify-center" *ngIf="!product()">
@@ -338,74 +336,61 @@ export class ProductDetailComponent implements OnInit {
   location = inject(Location);
   catalog = inject(CatalogService);
   shop = inject(ShopService);
+  reviewSvc = inject(ReviewService);
 
   math = Math;
 
-  sku = signal<string>('');
-  
-  product = computed(() => {
-    return this.catalog.PRODUCTS.find(p => p.sku === this.sku());
-  });
+  /** Current product loaded from GET /api/v1/catalogue/products/:id (TASK-21) */
+  readonly product = signal<import('shared-ui').Product | null>(null);
+  readonly productLoading = signal(true);
 
-  primaryImg = computed(() => {
+  /** Recommendations from GET /api/v1/catalogue/products/:id/recommendations (TASK-22) */
+  readonly recommended = signal<import('shared-ui').Product[]>([]);
+
+  primaryImg = computed((): string => {
     const p = this.product();
-    return p ? this.catalog.imageFor(p.category) : '';
+    return p ? this.catalog.primaryImage(p) : '';
   });
 
-  gallery = computed(() => {
+  gallery = computed((): string[] => {
     const p = this.product();
     if (!p) return [];
-    
-    // Simulate gallery generator
-    const pool = [
-      this.primaryImg(),
-      '/assets/cat-earbuds.jpg',
-      '/assets/cat-powerbank.jpg',
-      '/assets/cat-charger.jpg'
-    ];
-    return pool;
+    const imgs = p.images ?? [];
+    if (imgs.length >= 2) return imgs;
+    // Pad with category fallback while real images load
+    const fallback = this.catalog.imageFor(p.categoryName ?? '');
+    return [fallback, fallback, fallback, fallback];
   });
 
-  rating = computed(() => {
-    const p = this.product();
-    return p ? ratingFor(p.sku) : null;
-  });
   reviews = computed(() => {
+    const backend = this.reviewSvc.reviews();
+    if (backend && backend.length > 0) return backend as any[];
     const p = this.product();
     return p ? this.shop.reviewsFor(p.sku) : [];
   });
-  
-  liveAverage = computed(() => {
-    const revs = this.reviews();
-    if (revs.length) {
-      return +(revs.reduce((n, r) => n + r.rating, 0) / revs.length).toFixed(1);
-    }
-    return this.rating()?.average ?? 0;
-  });
-  
-  totalReviews = computed(() => {
-    const r = this.rating();
-    if (!r) return 0;
-    return r.count + Math.max(0, this.reviews().length - 4);
+
+  rating = computed(() => {
+    return this.reviewSvc.computeRating(this.reviews());
   });
 
-  recommended = computed(() => {
-    const p = this.product();
-    if (!p) return [];
-    return this.catalog.recommendedFor(p.sku);
+  liveAverage = computed((): number => {
+    return this.rating().average;
+  });
+
+  totalReviews = computed((): number => {
+    return this.rating().count;
   });
 
   activeTab = signal<'description' | 'specifications' | 'packaging' | 'availability'>('description');
   tabs = ['description', 'specifications', 'packaging', 'availability'] as const;
 
-  writeOpen = false;
   
   relativeDate = relativeDate;
 
-  qtyInCart = computed(() => {
+  qtyInCart = computed((): number => {
     const p = this.product();
     if (!p) return 0;
-    return this.shop.cart().find(c => c.sku === p.sku)?.qty || 0;
+    return this.shop.cart().find(c => c.sku === p.sku || (c as any).skuId === p.id)?.qty ?? 0;
   });
 
   zoom = signal(1);
@@ -414,20 +399,31 @@ export class ProductDetailComponent implements OnInit {
 
   ngOnInit() {
     this.route.paramMap.subscribe(params => {
-      this.sku.set(params.get('sku') || '');
+      // TASK-21: route param is 'id' (UUID). Fall back to 'sku' for backward compat.
+      const id = params.get('id') || params.get('sku') || '';
       this.index.set(0);
       this.zoom.set(1);
       window.scrollTo({ top: 0 });
+      if (id) {
+        this.productLoading.set(true);
+        this.product.set(null);
+        this.catalog.getProduct(id).subscribe({
+          next: p => {
+            this.product.set(p);
+            this.productLoading.set(false);
+            if (p) this.reviewSvc.getProductReviews(p.id).subscribe();
+          },
+          error: () => this.productLoading.set(false)
+        });
+        // TASK-22: real recommendations
+        this.catalog.getRecommended(id).subscribe(recs => this.recommended.set(recs));
+      }
     });
   }
 
-  goBack() {
-    this.location.back();
-  }
+  goBack() { this.location.back(); }
 
-  setZoom(val: number) {
-    this.zoom.set(Math.max(0.5, Math.min(3, val)));
-  }
+  setZoom(val: number) { this.zoom.set(Math.max(0.5, Math.min(3, val))); }
 
   go(next: number) {
     this.fading.set(true);
@@ -448,11 +444,12 @@ export class ProductDetailComponent implements OnInit {
     if (!p) return;
     this.shop.addToCart({
       sku: p.sku,
+      skuId: p.id,
       name: p.name,
-      category: p.category,
-      price: p.price,
+      category: p.categoryName ?? '',
+      price: (p.priceMinorUnits ?? 0) / 100,
       image: this.primaryImg()
-    });
+    } as any);
   }
 }
 

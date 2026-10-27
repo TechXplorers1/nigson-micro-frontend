@@ -217,17 +217,20 @@ export class ProductEditComponent {
   }
 
   save() {
-    this.product.price = this.product.retail; // Sync price field if used elsewhere
-    
-    // Auto status
+    this.product.price = this.product.retail;
     this.product.status = this.product.stock > 0 ? 'Active' : 'Out of Stock';
 
     if (this.isNew()) {
-      this.admin.products.update(p => [...p, { ...this.product, id: Math.random().toString() }]);
+      this.admin.createProduct(this.product).subscribe({
+        next: () => this.router.navigate(['/admin/inventory/products']),
+        error: () => this.router.navigate(['/admin/inventory/products'])
+      });
     } else {
-      this.admin.products.update(p => p.map(x => x.sku === this.product.sku ? this.product : x));
+      this.admin.updateProduct(this.product.id || this.product.sku, this.product).subscribe({
+        next: () => this.router.navigate(['/admin/inventory/products']),
+        error: () => this.router.navigate(['/admin/inventory/products'])
+      });
     }
-    this.router.navigate(['/admin/inventory/products']);
   }
 }
 

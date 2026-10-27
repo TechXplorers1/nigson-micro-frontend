@@ -98,12 +98,12 @@ export class HomeComponent implements OnInit, OnDestroy {
   lifestyleWork  = '/assets/nigson-lifestyle-work.jpg';
 
   get products() {
-    return this.catalog.PRODUCTS.filter(p => this.catalog.isDeal(p)).slice(0, 4).map(p => ({
-      name: p.name,
-      detail: p.desc,
-      price: this.catalog.formatPrice(p.price),
-      image: this.catalog.imageFor(p.category),
-      product: p
+    return this.catalog.products().filter((prod: any) => this.catalog.isDeal(prod)).slice(0, 4).map((prod: any) => ({
+      name: prod.name,
+      detail: prod.description,
+      price: this.catalog.formatPrice(prod.priceMinorUnits ?? 0),
+      image: this.catalog.imageFor(prod.categoryName ?? ""),
+      product: prod
     }));
   }
 

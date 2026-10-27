@@ -2,7 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { CmsService, ShopService, PageHeaderComponent } from 'shared-ui';
+import { CmsService, ShopService, MarketingService, PageHeaderComponent } from 'shared-ui';
 import { LucideCheckCircle2 } from '@lucide/angular';
 
 @Component({
@@ -98,6 +98,9 @@ import { LucideCheckCircle2 } from '@lucide/angular';
   `
 })
 export class DistributorComponent {
+  marketingSvc = inject(MarketingService);
+  submitting = this.marketingSvc.submittingDistributor;
+  submitError = signal<string | null>(null);
   cms = inject(CmsService);
   shop = inject(ShopService);
   router = inject(Router);
@@ -125,35 +128,37 @@ export class DistributorComponent {
 
   onSubmit(event: Event) {
     event.preventDefault();
+    this.submitError.set(null);
+
     if (!this.shop.user()) {
-      this.shop.openLoginRequired("Sign in to submit your distributor application and track its status.");
+      this.shop.openLoginRequired("Please sign in to submit a verified wholesale distributor application.");
       return;
     }
-    
-    const newApp = {
-      id: 'app_' + Math.random().toString(36).substring(2, 9),
-      number: 'APP-' + Math.floor(Math.random() * 1000000).toString().padStart(6, '0'),
-      businessName: this.f.company,
-      contactPerson: this.f.contact,
-      phone: this.f.phone,
-      email: this.f.email,
-      location: this.f.state + ' - ' + this.f.address,
-      category: this.f.category,
-      type: 'Distributor',
-      status: 'Pending',
-      date: new Date().toISOString()
-    };
-    
-    try {
-      const existing = JSON.parse(localStorage.getItem('nigson_applications') || '[]');
-      localStorage.setItem('nigson_applications', JSON.stringify([newApp, ...existing]));
-    } catch {}
-    
-    this.submitted.set(true);
-    setTimeout(() => {
-      // In a real app, we would redirect to a tracker page in the account section.
-      // For now, we stay on the success state.
-      // this.router.navigate(['/account/applications']);
-    }, 1200);
+
+    const businessReference = [
+      'Contact: ' + this.f.contact,
+      'Phone: ' + this.f.phone,
+      'Email: ' + this.f.email,
+      'Location: ' + this.f.state + ', ' + this.f.address,
+      'Years in operation: ' + (this.f.years || '1'),
+      'Category interest: ' + this.f.category
+    ].join(' | ');
+
+    this.marketingSvc.submitDistributorApplication({
+      organizationName: this.f.company.trim(),
+      countryCode: 'NG',
+      businessReference: businessReference
+    }).subscribe({
+      next: (res) => {
+        if (res) {
+          this.submitted.set(true);
+        } else {
+          this.submitError.set('Failed to submit application. Please check all fields and ensure your business is eligible.');
+        }
+      },
+      error: () => {
+        this.submitError.set('An unexpected error occurred while submitting your application.');
+      }
+    });
   }
 }

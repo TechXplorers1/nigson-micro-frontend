@@ -1,9 +1,16 @@
-import { Component, Input, inject } from '@angular/core';
+﻿import { Component, Input, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ShopService } from '../shop.service';
-import { CatalogService, Product } from '../catalog.service';
 import { LucideMinus, LucidePlus, LucideShoppingCart } from '@lucide/angular';
 
+/**
+ * QtyStepperComponent (TASK-13 fix)
+ *
+ * stockFor() removed from CatalogService — real stock comes from inventory API.
+ * Stock check now uses product.stock if provided by backend; otherwise
+ * defaults to a generous limit (99) so the UI stays functional until
+ * real inventory is wired (TASK-39).
+ */
 @Component({
   selector: 'ui-qty-stepper',
   standalone: true,
@@ -34,9 +41,9 @@ import { LucideMinus, LucidePlus, LucideShoppingCart } from '@lucide/angular';
         >
           <svg lucideMinus class="h-4 w-4"></svg>
         </button>
-        
+
         <span class="min-w-[2.5rem] text-center text-sm font-bold tabular-nums">{{ qty() }}</span>
-        
+
         <button
           type="button"
           aria-label="Increase quantity"
@@ -52,35 +59,38 @@ import { LucideMinus, LucidePlus, LucideShoppingCart } from '@lucide/angular';
 })
 export class QtyStepperComponent {
   shop = inject(ShopService);
-  catalog = inject(CatalogService);
 
   @Input({ required: true }) product!: any;
   @Input() image?: string;
 
-  get stock() {
-    const available = this.product.stock != null
-      ? this.product.stock
-      : this.catalog.stockFor(this.product.sku);
-    return available - this.qty();
+  /**
+   * Available stock — uses backend-provided stock field when present,
+   * otherwise uses a safe default of 99 until real inventory API is wired (TASK-39).
+   */
+  get stock(): number {
+    return this.product?.stock ?? 99;
   }
 
-  qty() {
-    const item = this.shop.cart().find((c: any) => c.sku === this.product.sku);
+  qty(): number {
+    const item = this.shop.cart().find(
+      (c: any) => c.sku === this.product?.sku || c.skuId === this.product?.id
+    );
     return item ? item.qty : 0;
   }
 
-  atMax() {
+  atMax(): boolean {
     return this.qty() >= this.stock;
   }
 
   add() {
     this.shop.addToCart({
       sku: this.product.sku,
+      skuId: this.product.id,
       name: this.product.name,
-      category: this.product.category,
-      price: this.product.price,
-      image: this.image
-    });
+      category: this.product.categoryName ?? this.product.category ?? '',
+      price: this.product.price ?? (this.product.priceMinorUnits ?? 0) / 100,
+      image: this.image,
+    } as any);
   }
 
   update(newQty: number) {

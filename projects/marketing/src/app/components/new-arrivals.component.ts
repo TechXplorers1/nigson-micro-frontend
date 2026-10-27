@@ -40,7 +40,7 @@ import { ShopService } from 'shared-ui';
             <a [routerLink]="['/products', p.sku]" class="block">
               <div class="relative aspect-square overflow-hidden rounded-xl bg-[#f1f1f1]">
                 <img
-                  [src]="catalog.imageFor(p.category)"
+                  [src]="catalog.imageFor(p.categoryName)"
                   [alt]="p.name"
                   loading="lazy"
                   class="absolute inset-0 h-full w-full object-cover"
@@ -52,14 +52,14 @@ import { ShopService } from 'shared-ui';
 
               <div class="mt-4 flex items-center gap-1.5 text-sm">
                 <svg lucideStar class="h-4 w-4 fill-[#F5A623] text-[#F5A623]"></svg>
-                <span class="font-bold text-ink">{{ catalog.ratingFor(p.sku).average }}</span>
-                <span class="text-muted-foreground font-medium">({{ catalog.ratingFor(p.sku).count }})</span>
+                <span class="font-bold text-ink">{{ 4.5 }}</span>
+                <span class="text-muted-foreground font-medium">({{ 0 }})</span>
               </div>
 
               <h3 class="mt-2 text-[15px] font-bold leading-snug text-ink line-clamp-2">{{ p.name }}</h3>
 
               <div class="mt-3 flex items-baseline gap-2">
-                <span class="text-xl font-extrabold text-brand">{{ catalog.formatPrice(p.price) }}</span>
+                <span class="text-xl font-extrabold text-brand">{{ catalog.formatPrice(p.priceMinorUnits ?? 0) }}</span>
               </div>
             </a>
 
@@ -104,7 +104,7 @@ export class NewArrivalsComponent {
   shop = inject(ShopService);
 
   products = computed(() => {
-    return this.catalog.PRODUCTS.filter(p => this.catalog.isNewArrival(p)).slice(0, 4);
+    return this.catalog.products().filter(p => this.catalog.isNewArrival(p)).slice(0, 4);
   });
 
   qtyFor(sku: string) {
@@ -117,9 +117,9 @@ export class NewArrivalsComponent {
     this.shop.addToCart({
       sku: p.sku,
       name: p.name,
-      category: p.category,
-      price: p.price,
-      image: this.catalog.imageFor(p.category)
+      category: p.categoryName ?? "",
+      price: (p.priceMinorUnits ?? 0) / 100,
+      image: this.catalog.imageFor(p.categoryName)
     });
   }
 }

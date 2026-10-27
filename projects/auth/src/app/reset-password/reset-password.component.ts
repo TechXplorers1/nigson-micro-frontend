@@ -1,107 +1,70 @@
-import { Component, inject, signal } from '@angular/core';
+﻿import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
-import { FormsModule } from '@angular/forms';
-import { 
-  LucideEye, LucideEyeOff, LucideLoader2, LucideLock
-} from '@lucide/angular';
+import { RouterLink } from '@angular/router';
+import { LucideLoader2, LucideShieldCheck, LucideLock } from '@lucide/angular';
 import { AuthShellComponent } from '../auth-shell/auth-shell.component';
+import { BFF_BASE } from 'shared-ui';
 
+/**
+ * ResetPasswordComponent (TASK-11)
+ *
+ * Password reset in Nigson is handled exclusively by Keycloak.
+ * The browser never collects old/new passwords directly.
+ *
+ * This component redirects to the Keycloak forgot-password flow
+ * via the BFF login endpoint with kc_action=UPDATE_PASSWORD hint.
+ */
 @Component({
   selector: 'app-reset-password',
   standalone: true,
-  imports: [
-    CommonModule, FormsModule, AuthShellComponent,
-    LucideEye, LucideEyeOff, LucideLoader2, LucideLock
-  ],
+  imports: [CommonModule, RouterLink, AuthShellComponent, LucideLoader2, LucideShieldCheck, LucideLock],
   template: `
     <app-auth-shell
       eyebrow="Reset Password"
       title="Create new password"
-      subtitle="Your new password must be different from previous used passwords."
+      subtitle="You will be redirected to our secure portal to reset your password safely."
       [hasFooter]="false"
     >
-      <form (ngSubmit)="submit()" class="space-y-5" novalidate>
-        <div class="block">
-          <span class="text-xs font-semibold uppercase tracking-[0.12em] text-ink/70">New Password</span>
-          <div class="mt-1.5 relative">
-            <svg lucideLock class="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-ink"></svg>
-            <input
-              [type]="showPw() ? 'text' : 'password'"
-              name="password"
-              [(ngModel)]="password"
-              placeholder="Enter new password"
-              class="w-full rounded-xl border border-hairline bg-white pl-10 pr-11 py-3 text-sm focus:outline-none focus:border-brand"
-            />
-            <button
-              type="button"
-              (click)="showPw.set(!showPw())"
-              class="absolute right-3 top-1/2 -translate-y-1/2 grid h-8 w-8 place-items-center rounded-full text-muted-ink hover:text-brand"
-            >
-              <svg *ngIf="showPw()" lucideEyeOff class="h-4 w-4"></svg>
-              <svg *ngIf="!showPw()" lucideEye class="h-4 w-4"></svg>
-            </button>
-          </div>
-          <p *ngIf="errors().password" class="mt-1.5 text-xs text-brand font-medium">{{ errors().password }}</p>
+      <div class="flex flex-col items-center gap-6 py-4">
+        <div class="grid h-16 w-16 place-items-center rounded-full bg-brand/10">
+          <svg *ngIf="!redirecting()" lucideLock class="h-8 w-8 text-brand"></svg>
+          <svg *ngIf="redirecting()" lucideLoader2 class="h-8 w-8 text-brand animate-spin"></svg>
         </div>
 
-        <div class="block">
-          <span class="text-xs font-semibold uppercase tracking-[0.12em] text-ink/70">Confirm Password</span>
-          <div class="mt-1.5 relative">
-            <svg lucideLock class="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-ink"></svg>
-            <input
-              [type]="showConfirmPw() ? 'text' : 'password'"
-              name="confirmPassword"
-              [(ngModel)]="confirmPassword"
-              placeholder="Confirm new password"
-              class="w-full rounded-xl border border-hairline bg-white pl-10 pr-11 py-3 text-sm focus:outline-none focus:border-brand"
-            />
-            <button
-              type="button"
-              (click)="showConfirmPw.set(!showConfirmPw())"
-              class="absolute right-3 top-1/2 -translate-y-1/2 grid h-8 w-8 place-items-center rounded-full text-muted-ink hover:text-brand"
-            >
-              <svg *ngIf="showConfirmPw()" lucideEyeOff class="h-4 w-4"></svg>
-              <svg *ngIf="!showConfirmPw()" lucideEye class="h-4 w-4"></svg>
-            </button>
-          </div>
-          <p *ngIf="errors().confirm" class="mt-1.5 text-xs text-brand font-medium">{{ errors().confirm }}</p>
+        <div class="rounded-2xl border border-hairline bg-surface-alt p-4 w-full">
+          <p class="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-ink/60">
+            <svg lucideShieldCheck class="h-3.5 w-3.5 text-brand"></svg>
+            Secure Password Reset
+          </p>
+          <p class="mt-2 text-sm text-ink/70">
+            For your security, password changes are handled by Nigson's
+            identity provider. You will receive an email with a secure reset link.
+          </p>
         </div>
 
         <button
-          type="submit"
-          [disabled]="loading()"
+          id="btn-bff-reset"
+          (click)="redirectToReset()"
+          [disabled]="redirecting()"
           class="w-full inline-flex items-center justify-center gap-2 rounded-full bg-brand text-white py-3.5 text-sm font-semibold hover:bg-brand-deep transition-colors disabled:opacity-70"
         >
-          <svg *ngIf="loading()" lucideLoader2 class="h-4 w-4 animate-spin"></svg>
-          {{ loading() ? "Resetting password..." : "Reset Password" }}
+          <svg *ngIf="redirecting()" lucideLoader2 class="h-4 w-4 animate-spin"></svg>
+          {{ redirecting() ? 'Redirecting...' : 'Reset Password' }}
         </button>
-      </form>
+
+        <a routerLink="/auth/login" class="text-xs text-muted-ink hover:text-brand transition-colors">
+          Back to sign in
+        </a>
+      </div>
     </app-auth-shell>
   `
 })
 export class ResetPasswordComponent {
-  router = inject(Router);
+  readonly redirecting = signal(false);
 
-  password = '';
-  confirmPassword = '';
-  showPw = signal(false);
-  showConfirmPw = signal(false);
-  loading = signal(false);
-  errors = signal<{ password?: string; confirm?: string }>({});
-
-  submit() {
-    const errs: any = {};
-    if (this.password.length < 8) errs.password = "Password must be at least 8 characters.";
-    if (this.password !== this.confirmPassword) errs.confirm = "Passwords do not match.";
-    
-    this.errors.set(errs);
-    if (Object.keys(errs).length) return;
-
-    this.loading.set(true);
-    setTimeout(() => {
-      this.loading.set(false);
-      this.router.navigate(['/auth/login']);
-    }, 1000);
+  redirectToReset() {
+    this.redirecting.set(true);
+    // Keycloak forgot-password flow via BFF with kc_action hint
+    window.location.href = `${BFF_BASE}/bff/login?kc_action=UPDATE_PASSWORD`;
   }
 }

@@ -1,7 +1,7 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AdminService, AdminHeadingComponent, BadgeComponent, statusTone, AdminUser } from 'shared-ui';
-import { LucidePlus, LucidePencil } from '@lucide/angular';
+import { LucidePlus, LucidePencil, LucideX, LucideCheck } from '@lucide/angular';
 import { FormsModule } from '@angular/forms';
 
 @Component({
@@ -51,7 +51,7 @@ import { FormsModule } from '@angular/forms';
               <td class="px-6 py-4 text-xs text-muted-ink">{{ u.lastLogin | date:'medium' }}</td>
               <td class="px-6 py-4 text-right">
                 <div class="flex items-center justify-end gap-2" *ngIf="isSuper()">
-                  <button class="grid h-8 w-8 place-items-center rounded-lg text-muted-ink transition-colors hover:bg-brand/10 hover:text-brand" title="Edit">
+                  <button (click)="editUser(u)" class="grid h-8 w-8 place-items-center rounded-lg text-muted-ink transition-colors hover:bg-brand/10 hover:text-brand" title="Edit Role">
                     <svg lucidePencil class="h-4 w-4"></svg>
                   </button>
                 </div>
@@ -66,14 +66,21 @@ import { FormsModule } from '@angular/forms';
     </div>
   `
 })
-export class AdminUsersComponent {
+export class AdminUsersComponent implements OnInit {
+  editingUser = signal<AdminUser | null>(null);
+  selectedRole = 'ADMIN';
+  saving = signal(false);
+
+  ngOnInit() {
+    this.admin.loadStaffUsers().subscribe();
+  }
   admin = inject(AdminService);
   
   searchQuery = signal('');
   roleFilter = signal('All roles');
 
   get isSuper() {
-    return () => this.admin.currentRole()?.id === 'r_super';
+    return () => this.admin.isSuper();
   }
 
   get filteredUsers() {
@@ -100,8 +107,29 @@ export class AdminUsersComponent {
     return statusTone(status);
   }
 
-  openNewUser() {
-    alert('New user modal would open here.');
+    openNewUser() {
+    alert('Staff identity accounts are provisioned via Keycloak Identity Provider (ADR-008). Once provisioned in Keycloak, assign backend roles here.');
+  }
+
+  editUser(u: AdminUser) {
+    this.editingUser.set(u);
+    this.selectedRole = u.roleId || 'ADMIN';
+  }
+
+  saveRole() {
+    const user = this.editingUser();
+    if (!user) return;
+    this.saving.set(true);
+    this.admin.updateUserRoles(user.id, [this.selectedRole]).subscribe({
+      next: () => {
+        this.saving.set(false);
+        this.editingUser.set(null);
+      },
+      error: () => {
+        this.saving.set(false);
+        this.editingUser.set(null);
+      }
+    });
   }
 }
 

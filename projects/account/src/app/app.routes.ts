@@ -1,4 +1,4 @@
-import { Routes } from '@angular/router';
+﻿import { Routes } from '@angular/router';
 import { AccountLayoutComponent } from './layout/account-layout.component';
 
 export const routes: Routes = [
@@ -17,6 +17,10 @@ export const routes: Routes = [
       {
         path: 'orders/:id',
         loadComponent: () => import('./orders/order-detail.component').then(m => m.OrderDetailComponent)
+      },
+      {
+        path: 'addresses',
+        loadComponent: () => import('./addresses/addresses.component').then(m => m.AddressesComponent)
       },
       {
         path: 'wishlist',

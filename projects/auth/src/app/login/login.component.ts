@@ -1,224 +1,210 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink, Router, ActivatedRoute } from '@angular/router';
-import { FormsModule } from '@angular/forms';
-import { 
-  LucideEye, LucideEyeOff, LucideLoader2, 
-  LucideMail, LucideLock, LucidePhone, LucideShieldCheck 
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import {
+  LucideLoader2,
+  LucideShieldCheck,
+  LucideUser,
+  LucideShield,
+  LucideArrowRight,
+  LucideExternalLink,
+  LucideCheckCircle2
 } from '@lucide/angular';
 import { AuthShellComponent } from '../auth-shell/auth-shell.component';
-import { ShopService, CountrySelectComponent, Country, DEFAULT_COUNTRY } from 'shared-ui';
+import { SessionService, BFF_BASE } from 'shared-ui';
 
+/**
+ * LoginComponent (TASK-08)
+ *
+ * Provides authentication options:
+ * 1. Test profiles for local and MFE verification across all modules.
+ * 2. Keycloak OIDC authentication via the Commerce BFF (/bff/login?returnTo=...).
+ */
 @Component({
   selector: 'app-login',
   standalone: true,
   imports: [
-    CommonModule, FormsModule, RouterLink, AuthShellComponent, CountrySelectComponent,
-    LucideEye, LucideEyeOff, LucideLoader2, 
-    LucideMail, LucideLock, LucidePhone, LucideShieldCheck
+    CommonModule,
+    RouterLink,
+    AuthShellComponent,
+    LucideLoader2,
+    LucideShieldCheck,
+    LucideUser,
+    LucideShield,
+    LucideArrowRight,
+    LucideExternalLink,
+    LucideCheckCircle2
   ],
   template: `
     <app-auth-shell
-      eyebrow="Welcome back"
-      title="Sign in to your account"
-      subtitle="Access your orders, saved products and quote history."
+      eyebrow="Authentication"
+      title="Sign in to Nigson"
+      subtitle="Access your orders, quotes, account settings, and administrative consoles."
       [hasFooter]="true"
     >
-      <form (ngSubmit)="submit()" class="space-y-5" novalidate>
-        <!-- identity mode switch -->
-        <div class="grid grid-cols-2 gap-1 rounded-full border border-hairline bg-surface-alt p-1">
-          <button
-            type="button"
-            (click)="setMode('email')"
-            class="rounded-full py-2 text-sm font-semibold transition-all duration-200"
-            [ngClass]="mode() === 'email' ? 'bg-brand text-white shadow-sm' : 'text-ink/70 hover:text-brand'"
-          >
-            Email
-          </button>
-          <button
-            type="button"
-            (click)="setMode('phone')"
-            class="rounded-full py-2 text-sm font-semibold transition-all duration-200"
-            [ngClass]="mode() === 'phone' ? 'bg-brand text-white shadow-sm' : 'text-ink/70 hover:text-brand'"
-          >
-            Phone
-          </button>
+      <div class="flex flex-col gap-6 py-2">
+        <!-- Foundation mode info note -->
+        <div class="rounded-2xl border border-hairline bg-surface-alt p-4">
+          <div class="flex items-center gap-2">
+            <svg lucideShield class="h-4 w-4 text-brand flex-shrink-0"></svg>
+            <p class="text-xs font-bold uppercase tracking-wider text-ink/80">Local Development &amp; Test Sessions</p>
+          </div>
+          <p class="mt-1.5 text-xs text-muted-ink leading-relaxed">
+            The local backend runs in foundation security mode. You can instantly test protected routes using one of the predefined profiles below, or continue with Keycloak.
+          </p>
         </div>
 
-        <div class="animate-in fade-in-0 slide-in-from-bottom-1 duration-200">
-          <div *ngIf="mode() === 'email'" class="block">
-            <span class="text-xs font-semibold uppercase tracking-[0.12em] text-ink/70">Email address</span>
-            <div class="mt-1.5 relative">
-              <svg lucideMail class="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-ink"></svg>
-              <input
-                type="email"
-                name="email"
-                [(ngModel)]="email"
-                placeholder="you@company.com"
-                class="w-full rounded-xl border border-hairline bg-white pl-10 pr-4 py-3 text-sm focus:outline-none focus:border-brand"
-              />
-            </div>
-            <p *ngIf="errors().id" class="mt-1.5 text-xs text-brand font-medium">{{ errors().id }}</p>
-          </div>
+        <!-- Quick Demo Profiles -->
+        <div class="space-y-2.5">
+          <p class="text-[11px] font-bold uppercase tracking-widest text-muted-ink">Choose a Test Profile</p>
 
-          <div *ngIf="mode() === 'phone'" class="block">
-            <span class="text-xs font-semibold uppercase tracking-[0.12em] text-ink/70">Phone number</span>
-            <div class="mt-1.5 flex items-stretch rounded-xl border border-hairline bg-white focus-within:border-brand overflow-visible">
-              <ui-country-select [value]="country" (valueChange)="country.set($event)"></ui-country-select>
-              <div class="relative flex-1">
-                <svg lucidePhone class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-ink"></svg>
-                <input
-                  type="tel"
-                  name="phone"
-                  [(ngModel)]="phone"
-                  placeholder="807 346 7809"
-                  class="w-full bg-transparent pl-9 pr-4 py-3 text-sm outline-none"
-                />
+          <button
+            id="btn-login-customer"
+            type="button"
+            (click)="loginWithDemo('customer')"
+            class="group w-full flex items-center justify-between rounded-2xl border border-hairline bg-white p-3.5 hover:border-brand hover:shadow-sm transition-all text-left"
+          >
+            <div class="flex items-center gap-3">
+              <div class="grid h-10 w-10 place-items-center rounded-xl bg-blue-50 text-blue-600 group-hover:bg-brand/10 group-hover:text-brand transition-colors">
+                <svg lucideUser class="h-5 w-5"></svg>
+              </div>
+              <div>
+                <p class="text-sm font-bold text-ink">Chidi Okonkwo</p>
+                <p class="text-xs text-muted-ink">Customer &bull; Orders, Quotes, Addresses</p>
               </div>
             </div>
-            <p *ngIf="errors().id" class="mt-1.5 text-xs text-brand font-medium">{{ errors().id }}</p>
-          </div>
+            <div class="inline-flex items-center gap-1 text-xs font-semibold text-brand group-hover:translate-x-1 transition-transform">
+              Sign In <svg lucideArrowRight class="h-3.5 w-3.5"></svg>
+            </div>
+          </button>
+
+          <button
+            id="btn-login-admin"
+            type="button"
+            (click)="loginWithDemo('admin')"
+            class="group w-full flex items-center justify-between rounded-2xl border border-hairline bg-white p-3.5 hover:border-brand hover:shadow-sm transition-all text-left"
+          >
+            <div class="flex items-center gap-3">
+              <div class="grid h-10 w-10 place-items-center rounded-xl bg-purple-50 text-purple-600 group-hover:bg-brand/10 group-hover:text-brand transition-colors">
+                <svg lucideShieldCheck class="h-5 w-5"></svg>
+              </div>
+              <div>
+                <p class="text-sm font-bold text-ink">Adaobi Admin</p>
+                <p class="text-xs text-muted-ink">Administrator &bull; Commerce, Catalog, CMS, Users</p>
+              </div>
+            </div>
+            <div class="inline-flex items-center gap-1 text-xs font-semibold text-brand group-hover:translate-x-1 transition-transform">
+              Sign In <svg lucideArrowRight class="h-3.5 w-3.5"></svg>
+            </div>
+          </button>
+
+          <button
+            id="btn-login-staff"
+            type="button"
+            (click)="loginWithDemo('staff')"
+            class="group w-full flex items-center justify-between rounded-2xl border border-hairline bg-white p-3.5 hover:border-brand hover:shadow-sm transition-all text-left"
+          >
+            <div class="flex items-center gap-3">
+              <div class="grid h-10 w-10 place-items-center rounded-xl bg-emerald-50 text-emerald-600 group-hover:bg-brand/10 group-hover:text-brand transition-colors">
+                <svg lucideCheckCircle2 class="h-5 w-5"></svg>
+              </div>
+              <div>
+                <p class="text-sm font-bold text-ink">Emeka Logistics</p>
+                <p class="text-xs text-muted-ink">Operations &amp; Sales Staff &bull; Inventory, Quotes</p>
+              </div>
+            </div>
+            <div class="inline-flex items-center gap-1 text-xs font-semibold text-brand group-hover:translate-x-1 transition-transform">
+              Sign In <svg lucideArrowRight class="h-3.5 w-3.5"></svg>
+            </div>
+          </button>
         </div>
 
-        <div class="block">
-          <span class="text-xs font-semibold uppercase tracking-[0.12em] text-ink/70">Password</span>
-          <div class="mt-1.5 relative">
-            <svg lucideLock class="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-ink"></svg>
-            <input
-              [type]="showPw() ? 'text' : 'password'"
-              name="password"
-              [(ngModel)]="password"
-              placeholder="Enter your password"
-              class="w-full rounded-xl border border-hairline bg-white pl-10 pr-11 py-3 text-sm focus:outline-none focus:border-brand"
-            />
-            <button
-              type="button"
-              (click)="showPw.set(!showPw())"
-              class="absolute right-3 top-1/2 -translate-y-1/2 grid h-8 w-8 place-items-center rounded-full text-muted-ink hover:text-brand"
-            >
-              <svg *ngIf="showPw()" lucideEyeOff class="h-4 w-4"></svg>
-              <svg *ngIf="!showPw()" lucideEye class="h-4 w-4"></svg>
-            </button>
-          </div>
-          <p *ngIf="errors().password" class="mt-1.5 text-xs text-brand font-medium">{{ errors().password }}</p>
+        <div class="relative flex items-center justify-center">
+          <div class="w-full border-t border-hairline"></div>
+          <span class="absolute bg-white px-3 text-[11px] font-semibold uppercase tracking-widest text-muted-ink">OR</span>
         </div>
 
-        <p *ngIf="errors().form" class="rounded-xl border border-brand/30 bg-brand/5 px-4 py-3 text-sm font-medium text-brand animate-in fade-in-0 slide-in-from-top-1 duration-200">
-          {{ errors().form }}
-        </p>
+        <!-- Keycloak SSO redirect -->
+        <div class="space-y-3">
+          <button
+            id="btn-bff-login"
+            type="button"
+            (click)="redirectToLogin()"
+            [disabled]="redirecting()"
+            class="w-full inline-flex items-center justify-center gap-2 rounded-full border-2 border-brand bg-brand text-white py-3.5 text-sm font-semibold hover:bg-brand-deep hover:border-brand-deep transition-colors disabled:opacity-70 shadow-sm"
+          >
+            <svg *ngIf="redirecting()" lucideLoader2 class="h-4 w-4 animate-spin"></svg>
+            <svg *ngIf="!redirecting()" lucideExternalLink class="h-4 w-4"></svg>
+            {{ redirecting() ? 'Redirecting to Keycloak...' : 'Sign In with Keycloak SSO' }}
+          </button>
 
-        <div class="flex items-center justify-between text-sm">
-          <label class="inline-flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              name="remember"
-              [(ngModel)]="remember"
-              class="h-4 w-4 rounded border-hairline accent-brand"
-            />
-            <span class="text-ink/80">Remember me</span>
-          </label>
-          <a routerLink="/auth/forgot-password" class="font-semibold text-brand hover:underline">Forgot password?</a>
-        </div>
-
-        <button
-          type="submit"
-          [disabled]="loading()"
-          class="w-full inline-flex items-center justify-center gap-2 rounded-full bg-brand text-white py-3.5 text-sm font-semibold hover:bg-brand-deep transition-colors disabled:opacity-70"
-        >
-          <svg *ngIf="loading()" lucideLoader2 class="h-4 w-4 animate-spin"></svg>
-          {{ loading() ? "Signing in..." : "Sign In" }}
-        </button>
-
-        <div class="rounded-2xl border border-hairline bg-surface-alt p-4">
-          <p class="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-ink/60">
-            <svg lucideShieldCheck class="h-3.5 w-3.5 text-brand"></svg> Demo accounts
+          <p class="text-center text-xs text-muted-ink">
+            By signing in, you agree to Nigson's Terms of Service and Privacy Policy.
           </p>
-          <div class="mt-3 grid gap-2 sm:grid-cols-2">
-            <button type="button" (click)="fillDemo('user')" class="rounded-xl border border-hairline bg-white px-3 py-2.5 text-left text-xs hover:border-brand transition-colors">
-              <span class="block font-semibold text-ink">Customer</span>
-              <span class="block text-muted-ink">user@nigson.com</span>
-              <span class="block text-muted-ink">User@12345</span>
-            </button>
-            <button type="button" (click)="fillDemo('admin')" class="rounded-xl border border-hairline bg-white px-3 py-2.5 text-left text-xs hover:border-brand transition-colors">
-              <span class="block font-semibold text-ink">Administrator</span>
-              <span class="block text-muted-ink">admin@nigson.com</span>
-              <span class="block text-muted-ink">Admin@12345</span>
-            </button>
-          </div>
         </div>
+      </div>
 
-        <p class="text-center text-xs text-muted-ink">
-          By continuing you agree to Nigson's Terms & Privacy Policy.
-        </p>
-      </form>
       <div footer>
-        Don't have an account? <a routerLink="/auth/signup" class="font-semibold text-brand hover:underline">Create one</a>
+        Don't have an account?
+        <a routerLink="/auth/signup" class="font-semibold text-brand hover:underline">Create an account</a>
       </div>
     </app-auth-shell>
   `
 })
-export class LoginComponent {
-  shop = inject(ShopService);
-  router = inject(Router);
-  route = inject(ActivatedRoute);
+export class LoginComponent implements OnInit {
+  private session = inject(SessionService);
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
 
-  mode = signal<'email' | 'phone'>('email');
-  email = '';
-  country = signal<Country>(DEFAULT_COUNTRY);
-  phone = '';
-  password = '';
-  remember = true;
-  showPw = signal(false);
-  loading = signal(false);
-  errors = signal<{ id?: string; password?: string; form?: string }>({});
+  readonly redirecting = signal(false);
 
-  setMode(m: 'email' | 'phone') {
-    this.mode.set(m);
-    this.errors.set({});
-  }
-
-  fillDemo(kind: "user" | "admin") {
-    this.setMode("email");
-    this.email = kind === "admin" ? "admin@nigson.com" : "user@nigson.com";
-    this.password = kind === "admin" ? "Admin@12345" : "User@12345";
-    this.errors.set({});
-  }
-
-  submit() {
-    const errs: any = {};
-    if (this.mode() === "email") {
-      if (!this.email.trim()) errs.id = "Email address is required.";
-      else if (!this.email.includes('@')) errs.id = "Please enter a valid email address.";
-    } else {
-      if (!this.phone.trim()) errs.id = "Phone number is required.";
+  ngOnInit() {
+    if (this.session.authenticated()) {
+      const returnUrl = this.getReturnUrl();
+      this.router.navigateByUrl(returnUrl);
     }
-    if (!this.password) errs.password = "Password is required.";
-    
-    this.errors.set(errs);
-    if (Object.keys(errs).length) return;
+  }
 
-    this.loading.set(true);
-    setTimeout(() => {
-      // Mock Authentication
-      const user = {
-        id: "u_1",
-        fullName: this.email.includes("admin") ? "Admin User" : "Demo User",
-        email: this.mode() === "email" ? this.email : "phone@nigson.com",
-        role: this.email.includes("admin") ? "admin" : "user",
-        createdAt: new Date().toISOString(),
-        avatarColor: this.email.includes("admin") ? "#2563EB" : "#10B981",
-      } as any;
-      
-      this.shop.authenticate(user);
-      this.loading.set(false);
-      
-      const returnUrl = this.route.snapshot.queryParams['redirect'] || '/';
-      
-      if (user.role === "admin") {
-        this.router.navigate(['/admin']); // Mocking admin redirection
-      } else {
-        this.router.navigateByUrl(returnUrl);
-      }
-    }, 700);
+  getReturnUrl(): string {
+    return this.route.snapshot.queryParams['returnTo'] ||
+           this.route.snapshot.queryParams['redirect'] ||
+           '/';
+  }
+
+  loginWithDemo(role: 'customer' | 'admin' | 'staff') {
+    if (role === 'customer') {
+      this.session.setSession({
+        userId: 'dev-cust-001',
+        fullName: 'Chidi Okonkwo',
+        email: 'chidi.customer@nigson.ng',
+        roles: ['CUSTOMER']
+      });
+      const target = this.getReturnUrl();
+      this.router.navigateByUrl(target === '/' ? '/account' : target);
+    } else if (role === 'admin') {
+      this.session.setSession({
+        userId: 'dev-admin-001',
+        fullName: 'Adaobi Admin',
+        email: 'admin@nigson.ng',
+        roles: ['ADMIN', 'CUSTOMER', 'SALES', 'OPERATIONS', 'FINANCE', 'CONTENT_EDITOR', 'CONTENT_PUBLISHER', 'ANALYST']
+      });
+      const target = this.getReturnUrl();
+      this.router.navigateByUrl(target === '/' ? '/admin' : target);
+    } else {
+      this.session.setSession({
+        userId: 'dev-staff-001',
+        fullName: 'Emeka Logistics',
+        email: 'operations@nigson.ng',
+        roles: ['OPERATIONS', 'SALES', 'CUSTOMER']
+      });
+      const target = this.getReturnUrl();
+      this.router.navigateByUrl(target === '/' ? '/admin' : target);
+    }
+  }
+
+  redirectToLogin() {
+    this.redirecting.set(true);
+    const returnUrl = this.getReturnUrl();
+    window.location.href = `${BFF_BASE}/bff/login?returnTo=${encodeURIComponent(returnUrl)}`;
   }
 }

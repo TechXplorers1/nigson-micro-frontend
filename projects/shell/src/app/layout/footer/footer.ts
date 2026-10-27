@@ -1,15 +1,46 @@
-import { Component } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { FormsModule } from '@angular/forms';
+import { MarketingService } from 'shared-ui';
 
 @Component({
   selector: 'app-footer',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, FormsModule],
   templateUrl: './footer.html',
   styleUrls: ['./footer.css']
 })
 export class FooterComponent {
+  marketingSvc = inject(MarketingService);
+
+  newsletterEmail = '';
+  subscribing = signal(false);
+  subscribed = signal(false);
+  subscribeError = signal<string | null>(null);
+
+  onSubscribe(event: Event) {
+    event.preventDefault();
+    if (!this.newsletterEmail || !this.newsletterEmail.includes('@')) {
+      this.subscribeError.set('Please enter a valid email address.');
+      return;
+    }
+
+    this.subscribing.set(true);
+    this.subscribeError.set(null);
+
+    this.marketingSvc.subscribeNewsletter(this.newsletterEmail.trim()).subscribe({
+      next: (ok) => {
+        this.subscribing.set(false);
+        this.subscribed.set(true);
+        this.newsletterEmail = '';
+      },
+      error: () => {
+        this.subscribing.set(false);
+        this.subscribeError.set('Subscription failed. Please try again.');
+      }
+    });
+  }
   
   readonly currentYear = new Date().getFullYear();
 

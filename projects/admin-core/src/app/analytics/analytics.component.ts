@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AdminService, AdminHeadingComponent, StatCardComponent } from 'shared-ui';
 import { LucideTrendingUp, LucidePackage, LucideUsers, LucideShoppingCart, LucideClipboardList, LucideBuilding2, LucideBoxes, LucideMail } from '@lucide/angular';
@@ -76,22 +76,40 @@ import { RouterLink } from '@angular/router';
     </div>
   `
 })
-export class AnalyticsComponent {
+export class AnalyticsComponent implements OnInit {
   admin = inject(AdminService);
   Math = Math;
+
+  reportSales = signal<number | null>(null);
+  reportOrders = signal<number | null>(null);
+  reportCustomers = signal<number | null>(null);
+
+  ngOnInit() {
+    this.admin.loadStaffOrders().subscribe();
+    this.admin.loadStaffProducts().subscribe();
+    this.admin.loadCommerceReport().subscribe(rep => {
+      if (rep) {
+        if (rep.sales?.amount) this.reportSales.set(rep.sales.amount / 100);
+        if (rep.orders !== undefined) this.reportOrders.set(rep.orders);
+        if (rep.customers !== undefined) this.reportCustomers.set(rep.customers);
+      }
+    });
+    this.admin.loadEngagementReport().subscribe();
+  }
 
   get liveOrders() {
     return () => this.admin.orders().filter((o) => o.status !== "Cancelled");
   }
 
   get sales() {
-    return () => this.liveOrders().reduce((n, o) => n + o.total, 0);
+    return () => this.reportSales() !== null ? this.reportSales()! : this.liveOrders().reduce((n, o) => n + o.total, 0);
   }
 
   get aov() {
     return () => {
       const l = this.liveOrders();
-      return l.length ? Math.round(this.sales() / l.length) : 0;
+      const count = this.reportOrders() !== null ? this.reportOrders()! : l.length;
+      return count ? Math.round(this.sales() / count) : 0;
     };
   }
 

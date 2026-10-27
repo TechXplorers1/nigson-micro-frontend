@@ -1,4 +1,4 @@
-import { Component, HostListener, computed, signal, effect } from '@angular/core';
+﻿import { Component, HostListener, computed, signal, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { LucideMenu, LucideX, LucideChevronDown, LucideChevronRight, LucideShoppingCart, LucideShoppingBag, LucideUser, LucideUserRound, LucidePackage, LucideLogOut, LucideHandshake, LucideTruck, LucideSearch } from '@lucide/angular';
@@ -55,5 +55,13 @@ export class HeaderComponent {
     if (query) {
       this.router.navigate(['/search'], { queryParams: { q: query } });
     }
+  }
+  /** Deterministic avatar background from user's name initials (replaces avatarColor field) */
+  avatarBg(): string {
+    const name = this.shop.user()?.fullName ?? '';
+    const colors = ['#10B981','#2563EB','#7C3AED','#DB2777','#D97706','#059669'];
+    let h = 0;
+    for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+    return colors[h % colors.length];
   }
 }
