@@ -115,8 +115,18 @@ export class SessionService {
   clearSession() {
     try {
       sessionStorage.removeItem('nigson_dev_session');
+      sessionStorage.removeItem('nigson_pkce_verifier');
+      sessionStorage.removeItem('nigson_auth_return_url');
+      localStorage.removeItem('nigson_dev_session');
+      localStorage.removeItem('nigson_user');
     } catch {}
     this.clearSessionState();
+
+    // Call /bff/logout to invalidate server cookie if present
+    this.http
+      .post(`${BFF_BASE}/bff/logout`, {}, { withCredentials: true })
+      .pipe(catchError(() => of(null)))
+      .subscribe();
   }
 
   private clearSessionState() {

@@ -1,3 +1,14 @@
+// Dev globals
+if (typeof (globalThis as any).ngDevMode === 'undefined') {
+  (globalThis as any).ngDevMode = true;
+}
+if (typeof (globalThis as any).ngServerMode === 'undefined') {
+  (globalThis as any).ngServerMode = false;
+}
+
+(globalThis as any).ngDevMode = (globalThis as any).ngDevMode ?? true;
+(globalThis as any).ngServerMode = (globalThis as any).ngServerMode ?? false;
+
 ﻿/*
  * Public API Surface of shared-ui
  */
@@ -40,3 +51,5 @@ export * from './lib/account.service';
 export * from './lib/review.service';
 
 export * from './lib/marketing.service';
+
+export * from './lib/keycloak.service';

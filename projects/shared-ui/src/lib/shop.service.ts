@@ -1,4 +1,5 @@
-﻿import { Injectable, signal, computed } from '@angular/core';
+import { SessionService } from './session.service';
+﻿import { Injectable, signal, computed, Injector, inject } from '@angular/core';
 import { Product } from './catalog.service';
 import { LS_CART, LS_SAVED, LS_ORDERS, LS_USER, LS_REVIEWS } from './utils';
 import { Review } from './reviews';
@@ -153,9 +154,24 @@ export class ShopService {
     // TASK-77: Authenticated state managed by SessionService /bff/session
   }
 
+  private injector = inject(Injector);
+
   signOut() {
     this.user.set(null);
-    // TASK-77: Session terminated via SessionService
+    try {
+      sessionStorage.removeItem('nigson_dev_session');
+      sessionStorage.removeItem('nigson_pkce_verifier');
+      sessionStorage.removeItem('nigson_auth_return_url');
+      localStorage.removeItem('nigson_dev_session');
+      localStorage.removeItem('nigson_user');
+    } catch {}
+
+    try {
+      const session = this.injector.get(SessionService, null, { optional: true });
+      if (session) {
+        session.clearSession();
+      }
+    } catch {}
   }
 
   addToCart(item: Omit<CartItem, 'qty'>, qty = 1) {

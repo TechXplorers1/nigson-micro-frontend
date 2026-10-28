@@ -1,3 +1,11 @@
+// Polyfill dev globals in module scope
+if (typeof (globalThis as any).ngDevMode === 'undefined') {
+  (globalThis as any).ngDevMode = true;
+}
+if (typeof (globalThis as any).ngServerMode === 'undefined') {
+  (globalThis as any).ngServerMode = false;
+}
+
 import { Component, inject, signal } from '@angular/core';
 import { RouterOutlet, Router, NavigationEnd } from '@angular/router';
 import { CommonModule } from '@angular/common';

@@ -1,4 +1,4 @@
-﻿import { HttpInterceptorFn } from '@angular/common/http';
+import { HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { SessionService } from './session.service';
 
@@ -8,16 +8,19 @@ const MUTATION_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
  * CSRF Interceptor (TASK-03)
  *
  * Attaches the CSRF token obtained from GET /bff/session onto every
- * state-mutating request (POST, PUT, PATCH, DELETE).
+ * state-mutating request (POST, PUT, PATCH, DELETE) to the Commerce BFF.
  *
- * The backend Commerce BFF uses Spring Security's server-side session
- * protection. The token is returned in the /bff/session response body
- * as `csrfToken` and must be sent back as the `X-CSRF-TOKEN` header.
+ * Excludes Keycloak identity requests.
  */
 export const csrfInterceptor: HttpInterceptorFn = (req, next) => {
   const session = inject(SessionService);
 
   if (!MUTATION_METHODS.has(req.method)) {
+    return next(req);
+  }
+
+  // Do not attach to Keycloak or non-Nigson API requests
+  if (req.url.includes(':8180') || req.url.includes('/realms/') || req.url.includes('/admin/realms/')) {
     return next(req);
   }
 

@@ -1,4 +1,4 @@
-﻿import { HttpInterceptorFn } from '@angular/common/http';
+import { HttpInterceptorFn } from '@angular/common/http';
 
 const MUTATION_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
@@ -6,18 +6,17 @@ const MUTATION_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
  * Idempotency-Key Interceptor (TASK-04)
  *
  * Generates a unique UUID and attaches it as the `Idempotency-Key` header
- * on every state-mutating request (POST, PUT, PATCH, DELETE).
+ * on every state-mutating request (POST, PUT, PATCH, DELETE) to the Nigson backend.
  *
- * The backend requires this header on all mutation endpoints
- * (`requiredIdempotency: true` in the API catalog). It guarantees that
- * duplicate network retries do not create duplicate server-side effects
- * (double orders, double payments, double stock adjustments, etc.).
- *
- * Each request in a given user action gets its own UUID — do NOT reuse
- * the same key across different logical operations.
+ * Excludes Keycloak and third-party identity providers to avoid CORS preflight rejection.
  */
 export const idempotencyInterceptor: HttpInterceptorFn = (req, next) => {
   if (!MUTATION_METHODS.has(req.method)) {
+    return next(req);
+  }
+
+  // Do not attach to Keycloak or non-Nigson API requests
+  if (req.url.includes(':8180') || req.url.includes('/realms/') || req.url.includes('/admin/realms/')) {
     return next(req);
   }
 
