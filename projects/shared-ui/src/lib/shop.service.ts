@@ -1,3 +1,4 @@
+import { Injectable, signal, computed, Injector, inject, effect } from '@angular/core';
 import { SessionService } from './session.service';
 import { Injectable, signal, computed, Injector, inject } from '@angular/core';
 import { CartService } from './cart.service';
@@ -228,71 +229,79 @@ export class ShopService {
       this.cartService.addItem(skuId, qty).subscribe();
       return true;
     }
+    const skuId = (item as any).id || (item as any).skuId || item.sku;
+    this.cartService.addItem(skuId, qty).subscribe();
+    return true;
+  }
 
+  removeFromCart(sku: string) {
+    this.persistCart(this.cart().filter(c => c.sku !== sku));
+    this.cartService.removeItem(sku).subscribe();
+  }
+
+  updateQty(sku: string, qty: number) {
+    this.persistCart(
+      this.cart()
+        .map(c => (c.sku === sku ? { ...c, qty: Math.max(0, qty) } : c))
+        .filter(c => c.qty > 0)
+    );
+    this.cartService.updateQty(sku, qty).subscribe();
+  }
+
+  private persistOrders(o: Order[]) {
+    this.orders.set(o);
+    try { localStorage.setItem(LS_ORDERS, JSON.stringify(o)); } catch { }
     removeFromCart(sku: string) {
-      this.persistCart(this.cart().filter(c => c.sku !== sku));
       this.cartService.removeItem(sku).subscribe();
     }
 
-    updateQty(sku: string, qty: number) {
-      this.persistCart(
-        this.cart()
-          .map(c => (c.sku === sku ? { ...c, qty: Math.max(0, qty) } : c))
-          .filter(c => c.qty > 0)
-      );
-      this.cartService.updateQty(sku, qty).subscribe();
+    placeOrder(payload: Omit<Order, 'id' | 'number' | 'date' | 'status'>) {
+      const newOrder: Order = {
+        ...payload,
+        id: Math.random().toString(36).substring(2, 9),
+        number: 'ORD-' + Math.floor(Math.random() * 1000000).toString().padStart(6, '0'),
+        date: new Date().toISOString(),
+        status: 'Processing',
+      };
+      this.persistOrders([newOrder, ...this.orders()]);
+      this.clearCart();
+      return newOrder;
+      updateQty(sku: string, qty: number) {
+        this.cartService.updateQty(sku, qty).subscribe();
+      }
+
+      clearCart() {
+        this.persistCart([]);
+        this.cartService.clearCart().subscribe();
+      }
+
+      toggleSaved(item: Omit<SavedProduct, 'savedAt'>) {
+        if (!this.user()) {
+          alert("Please sign in to save products.");
+          return false;
+        }
+        const current = this.saved();
+        const exists = current.some(s => s.sku === item.sku);
+        if (exists) {
+          this.persistSaved(current.filter(s => s.sku !== item.sku));
+          return false;
+        } else {
+          this.persistSaved([{ ...item, savedAt: new Date().toISOString() }, ...current]);
+          return true;
+        }
+      }
+
+      isSaved(sku: string) {
+        return this.saved().some(s => s.sku === sku);
+      }
+
+      initialsOf(fullName: string | undefined): string {
+        if (!fullName) return 'U';
+        const parts = fullName.trim().split(' ');
+        if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+        return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+      }
     }
-
-    private persistOrders(o: Order[]) {
-    this.orders.set(o);
-    try { localStorage.setItem(LS_ORDERS, JSON.stringify(o)); } catch { }
-  }
-
-  placeOrder(payload: Omit<Order, 'id' | 'number' | 'date' | 'status'>) {
-    const newOrder: Order = {
-      ...payload,
-      id: Math.random().toString(36).substring(2, 9),
-      number: 'ORD-' + Math.floor(Math.random() * 1000000).toString().padStart(6, '0'),
-      date: new Date().toISOString(),
-      status: 'Processing',
-    };
-    this.persistOrders([newOrder, ...this.orders()]);
-    this.clearCart();
-    return newOrder;
-  }
-
-  clearCart() {
-    this.persistCart([]);
-    this.cartService.clearCart().subscribe();
-  }
-
-  toggleSaved(item: Omit<SavedProduct, 'savedAt'>) {
-    if (!this.user()) {
-      alert("Please sign in to save products.");
-      return false;
-    }
-    const current = this.saved();
-    const exists = current.some(s => s.sku === item.sku);
-    if (exists) {
-      this.persistSaved(current.filter(s => s.sku !== item.sku));
-      return false;
-    } else {
-      this.persistSaved([{ ...item, savedAt: new Date().toISOString() }, ...current]);
-      return true;
-    }
-  }
-
-  isSaved(sku: string) {
-    return this.saved().some(s => s.sku === sku);
-  }
-
-  initialsOf(fullName: string | undefined): string {
-    if (!fullName) return 'U';
-    const parts = fullName.trim().split(' ');
-    if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
-    return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
-  }
-}
 
 
 

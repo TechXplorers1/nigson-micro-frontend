@@ -154,52 +154,13 @@ export class AdminService {
   }
 
   private hydrateFromStorage() {
-    try {
-      const storedProds = localStorage.getItem('nigson_admin_products');
-      if (storedProds) {
-        const parsed = JSON.parse(storedProds);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          this.products.set(parsed);
-        }
-      }
-      const q = localStorage.getItem('nigson_quotes');
-      if (q) {
-        // Map from client quotes to admin quotes shape if needed, here they match closely enough
-        const parsed = JSON.parse(q).map((x: any) => ({
-          id: x.id, number: x.number, date: x.createdAt || x.date,
-          customer: x.customerName || 'Anonymous', email: x.email || '', phone: x.phone || '',
-          product: x.products, sku: x.sku || '', quantity: x.qty,
-          message: x.message, status: x.status
-        }));
-        this.quotes.set(parsed);
-      }
-
-      const apps = localStorage.getItem('nigson_applications');
-      if (apps) {
-        this.applications.set(JSON.parse(apps));
-      }
-
-      const inqs = localStorage.getItem('nigson_inquiries');
-      if (inqs) {
-        this.inquiries.set(JSON.parse(inqs));
-      }
-
-      const ords = localStorage.getItem('nigson_orders');
-      if (ords) {
-        const parsedOrders = JSON.parse(ords).map((o: any) => ({
-          id: o.id, number: o.number, date: o.date,
-          customer: { name: o.customer.fullName, email: o.customer.email, phone: o.customer.phone, address: o.address?.city || 'Unknown' },
-          items: o.items.map((i: any) => ({ sku: i.sku, name: i.name, qty: i.qty, price: i.price })),
-          total: o.total, paymentStatus: 'Paid', status: o.status, delivery: o.deliveryMethod || 'Standard', timeline: []
-        }));
-        this.orders.set(parsedOrders);
-      }
-    } catch { }
     if (this.session.authenticated()) {
       this.loadStaffProducts().subscribe();
       this.loadStaffOrders().subscribe();
       this.loadStaffInventory().subscribe();
       this.loadStaffUsers().subscribe();
+      this.loadStaffApplications().subscribe();
+      this.loadStaffReviews().subscribe();
     }
   }
 
@@ -256,15 +217,6 @@ export class AdminService {
       }
       return o;
     }));
-    // Persist to actual store
-    try {
-      const raw = localStorage.getItem('nigson_orders');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        const updated = parsed.map((o: any) => o.id === orderId ? { ...o, status } : o);
-        /* TASK-77: Orders managed by backend OrderService /api/v1/staff/orders */
-      }
-    } catch { }
     const headers = new HttpHeaders({
       'Content-Type': 'application/json',
       'If-Match': '"0"',
@@ -279,40 +231,44 @@ export class AdminService {
 
   setQuoteStatus(id: string, status: string) {
     this.quotes.update(qs => qs.map(q => q.id === id ? { ...q, status: status as any } : q));
-    try {
-      const raw = localStorage.getItem('nigson_quotes');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        const updated = parsed.map((q: any) => q.id === id ? { ...q, status } : q);
-        /* TASK-77: Quotes managed by backend /api/v1/quotes */
-      }
-    } catch { }
+    const headers = new HttpHeaders({
+      'Content-Type': 'application/json',
+      'If-Match': '"0"',
+      'Idempotency-Key': crypto.randomUUID()
+    });
+    this.http.post(`/api/v1/staff/quotes/${id}/status`, { status, reason: `Status set to ${status}` }, { headers }).subscribe({
+      next: () => this.log(`Quote ${id} set to ${status}`),
+      error: (err) => console.warn(`[AdminService] setQuoteStatus backend error:`, err?.status ?? err)
+    });
     this.log(`Quote ${id} set to ${status}`);
   }
 
   setApplicationStatus(id: string, status: string, note?: string) {
     this.applications.update(apps => apps.map(a => a.id === id ? { ...a, status: status as any, note: note !== undefined ? note : a.note } : a));
-    try {
-      const raw = localStorage.getItem('nigson_applications');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        const updated = parsed.map((a: any) => a.id === id ? { ...a, status, note: note !== undefined ? note : a.note } : a);
-        /* TASK-77: Applications managed by backend /api/v1/staff/distributor-applications */
-      }
-    } catch { }
+    const action = status.toLowerCase() === 'approved' ? 'approval' : 'rejection';
+    const headers = new HttpHeaders({
+      'Content-Type': 'application/json',
+      'If-Match': '"0"',
+      'Idempotency-Key': crypto.randomUUID()
+    });
+    this.http.post(`/api/v1/staff/distributor-applications/${id}/${action}`, { reason: note || `Application ${status}` }, { headers }).subscribe({
+      next: () => this.log(`Application ${id} set to ${status}`),
+      error: (err) => console.warn(`[AdminService] setApplicationStatus backend error:`, err?.status ?? err)
+    });
     if (status) this.log(`Application ${id} set to ${status}`);
   }
 
   setInquiryStatus(id: string, status: string) {
     this.inquiries.update(inqs => inqs.map(i => i.id === id ? { ...i, status: status as any } : i));
-    try {
-      const raw = localStorage.getItem('nigson_inquiries');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        const updated = parsed.map((i: any) => i.id === id ? { ...i, status } : i);
-        /* TASK-77: Inquiries managed by backend /api/v1/staff/leads */
-      }
-    } catch { }
+    const headers = new HttpHeaders({
+      'Content-Type': 'application/json',
+      'If-Match': '"0"',
+      'Idempotency-Key': crypto.randomUUID()
+    });
+    this.http.post(`/api/v1/staff/leads/${id}/status`, { status, reason: `Status set to ${status}` }, { headers }).subscribe({
+      next: () => this.log(`Inquiry ${id} set to ${status}`),
+      error: (err) => console.warn(`[AdminService] setInquiryStatus backend error:`, err?.status ?? err)
+    });
     this.log(`Inquiry ${id} set to ${status}`);
   }
 
@@ -368,6 +324,26 @@ export class AdminService {
           })
         );
       }
+  updateUserRoles(userId: string, roles: string[], reason = 'Administrative role assignment update'): Observable < boolean > {
+      const user = this.admins().find(u => u.id === userId);
+      const headers = new HttpHeaders({
+        'Content-Type': 'application/json',
+        'If-Match': `"${user?.version ?? 0}"`,
+        'Idempotency-Key': crypto.randomUUID()
+      });
+      const finalReason = reason && reason.length >= 10 ? reason : 'Administrative role assignment update';
+      return this.http.put(`/api/v1/staff/users/${userId}/roles`, { roles, reason: finalReason }, { headers }).pipe(
+        map(() => true),
+        tap(() => {
+          this.admins.update(all => all.map(u => u.id === userId ? { ...u, roleId: roles[0] || 'ADMIN', version: (u.version ?? 0) + 1 } : u));
+          this.log(`Roles for user ${userId} updated to ${roles.join(', ')}`);
+        }),
+        catchError(err => {
+          console.error('[AdminService] updateUserRoles failed:', err);
+          return of(false);
+        })
+      );
+    }
 
   /** TASK-66: Load staff products from GET /api/v1/staff/products or catalogue */
   /** Bulk create products into inventory */
@@ -384,6 +360,19 @@ export class AdminService {
         try { localStorage.setItem('nigson_admin_products', JSON.stringify(updated)); } catch { }
         return updated;
       });
+      this.products.update(all => [...all, ...formatted]);
+      this.log(`Bulk added ${newProducts.length} products to inventory`);
+      return of(formatted);
+    }
+  /** TASK-66: Bulk create products in UI state */
+  bulkCreateProducts(newProducts: AdminProduct[]): Observable < AdminProduct[] > {
+      const formatted = newProducts.map(p => ({
+        ...p,
+        id: p.id || 'prod-' + Math.random().toString(36).substring(2, 9),
+        status: p.status || 'Active',
+        reserved: p.reserved || 0,
+        rating: p.rating || 5
+      }));
       this.products.update(all => [...all, ...formatted]);
       this.log(`Bulk added ${newProducts.length} products to inventory`);
       return of(formatted);
@@ -406,8 +395,36 @@ export class AdminService {
               stock: p.stock ?? 100,
               reserved: p.reserved ?? 0,
               rating: p.rating ?? 5.0
-        sku: p.slug || 'NG-SKU',
-              category: p.brandName || 'General',
+  /** TASK-66: Load staff products from live catalogue */
+  loadStaffProducts(): Observable<AdminProduct[]> {
+                return this.http.get<any>('/api/v1/catalogue/products?market=NG').pipe(
+                  map(res => (res?.items ?? []).map((p: any) => ({
+                    id: p.id,
+                    name: p.name,
+                    sku: p.slug || 'NG-SKU',
+                    category: p.brandName || 'General',
+                    price: 28500,
+                    desc: p.name,
+                    image: p.imageUrl || '/assets/hero-accessories.jpg',
+                    images: p.imageUrl ? [p.imageUrl] : ['/assets/hero-accessories.jpg'],
+                    status: (p.available ? 'Active' : 'Draft') as 'Active' | 'Draft',
+                    stock: 250,
+                    reserved: 0,
+                    rating: 5.0
+                  }))),
+                  tap(products => {
+                    if (products.length > 0) this.products.set(products);
+                    this.products.set(products);
+                  }),
+                  catchError(err => {
+                    console.warn('[AdminService] loadStaffProducts fallback:', err?.status ?? err);
+                    return of(this.products());
+                    console.error('[AdminService] loadStaffProducts failed:', err);
+                    return of([]);
+                  })
+                );
+              }
+        category: p.brandName || 'General',
               price: 28500,
               desc: p.name,
               image: p.imageUrl || '/assets/hero-accessories.jpg',
@@ -418,12 +435,9 @@ export class AdminService {
               rating: 5.0
             }))),
             tap(products => {
-              if (products.length > 0) this.products.set(products);
               this.products.set(products);
             }),
             catchError(err => {
-              console.warn('[AdminService] loadStaffProducts fallback:', err?.status ?? err);
-              return of(this.products());
               console.error('[AdminService] loadStaffProducts failed:', err);
               return of([]);
             })
@@ -467,6 +481,39 @@ export class AdminService {
           })
         );
       }
+  loadStaffOrders(): Observable < AdminOrder[] > {
+        return this.http.get<{ items: any[] }>('/api/v1/staff/orders').pipe(
+          map(res => (res?.items ?? []).map(o => ({
+            id: o.id,
+            number: o.orderNumber || o.number || ('ORD-' + o.id.slice(0, 8)),
+            date: o.placedAt || o.createdAt || new Date().toISOString(),
+            customer: {
+              name: o.customerName || 'Customer',
+              email: o.customerEmail || '',
+              phone: o.customerPhone || '',
+              address: o.shippingAddress?.city || 'Nigeria'
+            },
+            items: (o.items || []).map((i: any) => ({
+              sku: i.sku || '',
+              name: i.title || i.name || 'Item',
+              qty: i.quantity || i.qty || 1,
+              price: i.unitPriceKobo ? i.unitPriceKobo / 100 : (i.price || 0)
+            })),
+            total: o.totalKobo ? o.totalKobo / 100 : (o.total || 0),
+            paymentStatus: o.paymentStatus || 'Paid',
+            status: o.state || o.status || 'Processing',
+            delivery: o.shippingMethod || 'Standard Delivery',
+            timeline: []
+          }))),
+          tap(orders => {
+            this.orders.set(orders);
+          }),
+          catchError(err => {
+            console.error('[AdminService] loadStaffOrders failed:', err);
+            return of([]);
+          })
+        );
+      }
 
   /** TASK-69: Load distributor applications from GET /api/v1/staff/distributor-applications (API-094) */
   loadStaffApplications(): Observable < AdminApplication[] > {
@@ -494,6 +541,31 @@ export class AdminService {
           })
         );
       }
+  loadStaffApplications(): Observable < AdminApplication[] > {
+        return this.http.get<{ content: any[] }>('/api/v1/staff/distributor-applications').pipe(
+          map(res => (res?.content ?? []).map(a => ({
+            id: a.id,
+            number: 'APP-' + a.id.slice(0, 6).toUpperCase(),
+            type: 'Distributor' as const,
+            businessName: a.organizationName || a.businessName || 'Business',
+            contactPerson: a.contactPerson || 'Contact',
+            email: a.email || '',
+            phone: a.phone || '',
+            location: a.countryCode || 'NG',
+            category: 'Wholesale',
+            date: a.submittedAt || new Date().toISOString(),
+            status: (a.state === 'APPROVED' ? 'Approved' : a.state === 'REJECTED' ? 'Rejected' : 'Pending') as LeadStatus,
+            note: a.businessReference
+          }))),
+          tap(apps => {
+            if (apps.length > 0) this.applications.set(apps);
+          }),
+          catchError(err => {
+            console.warn('[AdminService] loadStaffApplications error:', err?.status ?? err);
+            return of(this.applications());
+          })
+        );
+      }
 
   /** TASK-70: Load reviews for moderation from GET /api/v1/staff/reviews (API-098) */
   loadStaffReviews(): Observable < AdminReview[] > {
@@ -517,9 +589,33 @@ export class AdminService {
           })
         );
       }
+  loadStaffReviews(): Observable < AdminReview[] > {
+        return this.http.get<{ items?: any[]; content?: any[] }>('/api/v1/staff/reviews').pipe(
+          map(res => (res?.items ?? res?.content ?? []).map(r => ({
+            id: r.id,
+            sku: r.sku || r.productId || '',
+            product: r.productName || 'Nigson Product',
+            author: r.displayName || r.author || 'Verified Buyer',
+            rating: r.rating || 5,
+            text: r.body || r.text || '',
+            date: r.submittedAt || r.date || new Date().toISOString(),
+            status: (r.state === 'PUBLISHED' ? 'Published' : 'Hidden') as 'Published' | 'Hidden'
+          }))),
+          tap(revs => {
+            if (revs.length > 0) this.reviews.set(revs);
+          }),
+          catchError(err => {
+            console.warn('[AdminService] loadStaffReviews error:', err?.status ?? err);
+            return of(this.reviews());
+          })
+        );
+      }
 
 
   /** TASK-75: Load inventory */
+  loadInventory(): Observable < any[] > {
+        return this.loadStaffInventory();
+      }
   loadInventory(): Observable < any[] > {
         return this.loadStaffInventory();
       }
@@ -538,81 +634,147 @@ export class AdminService {
           skuId: sku,
           quantityDelta: change,
           reason: reason
-      skuId: resolvedSkuId,
-          locationId: '11111111-1111-1111-1111-111111111111',
-          delta: deltaStr,
-          reason: validReason
-        };
-        return this.http.post<any>('/api/v1/staff/stock-adjustments', payload).pipe(
-    return this.http.post<any>('/api/v1/staff/stock-adjustments', payload, { headers }).pipe(
-          tap(() => {
-            this.adjustStock(sku, change, reason);
-            this.adjustStock(sku, change, validReason);
-            this.loadStaffInventory().subscribe();
-          }),
+  postStockAdjustment(sku: string, change: number, reason: string): Observable<any> {
+            const resolvedSkuId = this.resolveSkuId(sku);
+            const headers = new HttpHeaders({
+              'Content-Type': 'application/json',
+              'If-Match': '"0"',
+              'Idempotency-Key': crypto.randomUUID()
+            });
+            const deltaStr = (change > 0 ? "" : "") + change.toFixed(3);
+            const validReason = reason && reason.trim().length >= 10 ? reason.trim() : 'Physical inventory count reconciliation';
+            const payload = {
+              skuId: resolvedSkuId,
+              locationId: '11111111-1111-1111-1111-111111111111',
+              delta: deltaStr,
+              reason: validReason
+            };
+            return this.http.post<any>('/api/v1/staff/stock-adjustments', payload).pipe(
+              locationId: '11111111-1111-1111-1111-111111111111',
+              delta: deltaStr,
+              reason: validReason
+    };
+          return this.http.post<any>('/api/v1/staff/stock-adjustments', payload, { headers }).pipe(
+            tap(() => {
+              this.adjustStock(sku, change, reason);
+              this.adjustStock(sku, change, validReason);
+              this.loadStaffInventory().subscribe();
+            }),
+            catchError(err => {
+              console.warn('[AdminService] postStockAdjustment HTTP fallback to local:', err?.status ?? err);
+              this.adjustStock(sku, change, reason);
+              return of(true);
+              console.error('[AdminService] postStockAdjustment failed:', err);
+              return of(false);
+            })
+          );
+        }
+      tap(() => {
+        this.adjustStock(sku, change, validReason);
+        this.loadStaffInventory().subscribe();
+      }),
+      catchError(err => {
+        console.error('[AdminService] postStockAdjustment failed:', err);
+      return of(false);
+    })
+    );
+  }
+
+  /** TASK-71: Load inventory from GET /api/v1/staff/inventory (API-045) */
+  loadStaffInventory(): Observable<any[]> {
+    return this.http.get<any[]>('/api/v1/staff/inventory').pipe(
+      tap(inv => {
+        if (inv && inv.length > 0) {
+          this.log('Staff inventory loaded from backend');
+        }
+      }),
+      loadStaffInventory(): Observable < any[] > {
+        return this.http.get<{ items: any[] }>('/api/v1/staff/inventory').pipe(
+          map(res => (res?.items ?? []).map(inv => {
+            const skuId = inv.skuId;
+            const codeMap: Record<string, string> = {
+              '55555555-2222-3333-4444-555555555501': 'NG-PB-20K',
+              '55555555-2222-3333-4444-555555555502': 'NG-CB-01',
+              '55555555-2222-3333-4444-555555555503': 'NG-CC-01',
+              '55555555-2222-3333-4444-555555555504': 'NG-EB-01'
+            };
+            const skuCode = codeMap[skuId] || skuId;
+            const onHand = parseFloat(inv.onHand) || 0;
+            const reserved = parseFloat(inv.reserved) || 0;
+            this.products.update(prods => prods.map(p => (p.id === skuId || p.sku === skuCode) ? { ...p, stock: onHand, reserved } : p));
+            return {
+              skuId: inv.skuId,
+              sku: skuCode,
+              locationId: inv.locationId,
+              onHand: onHand,
+              reserved: reserved,
+              allocated: parseFloat(inv.allocated) || 0,
+              available: parseFloat(inv.available) || 0,
+              version: inv.version
+            };
+          })),
           catchError(err => {
-            console.warn('[AdminService] postStockAdjustment HTTP fallback to local:', err?.status ?? err);
-            this.adjustStock(sku, change, reason);
-            return of(true);
-            console.error('[AdminService] postStockAdjustment failed:', err);
-            return of(false);
+            console.warn('[AdminService] loadStaffInventory fallback:', err?.status ?? err);
+            console.error('[AdminService] loadStaffInventory failed:', err);
+            return of([]);
           })
         );
       }
-
-  /** TASK-71: Load inventory from GET /api/v1/staff/inventory (API-045) */
-  loadStaffInventory(): Observable < any[] > {
-        return this.http.get<any[]>('/api/v1/staff/inventory').pipe(
-          tap(inv => {
-            if (inv && inv.length > 0) {
-              this.log('Staff inventory loaded from backend');
-            }
-          }),
-    return this.http.get<{ items: any[] }>('/api/v1/staff/inventory').pipe(
-            map(res => (res?.items ?? []).map(inv => {
-              const skuId = inv.skuId;
-              const codeMap: Record<string, string> = {
-                '55555555-2222-3333-4444-555555555501': 'NG-PB-20K',
-                '55555555-2222-3333-4444-555555555502': 'NG-CB-01',
-                '55555555-2222-3333-4444-555555555503': 'NG-CC-01',
-                '55555555-2222-3333-4444-555555555504': 'NG-EB-01'
-              };
-              const skuCode = codeMap[skuId] || skuId;
-              const onHand = parseFloat(inv.onHand) || 0;
-              const reserved = parseFloat(inv.reserved) || 0;
-              this.products.update(prods => prods.map(p => (p.id === skuId || p.sku === skuCode) ? { ...p, stock: onHand, reserved } : p));
-              return {
-                skuId: inv.skuId,
-                sku: skuCode,
-                locationId: inv.locationId,
-                onHand: onHand,
-                reserved: reserved,
-                allocated: parseFloat(inv.allocated) || 0,
-                available: parseFloat(inv.available) || 0,
-                version: inv.version
-              };
-            })),
-            catchError(err => {
-              console.warn('[AdminService] loadStaffInventory fallback:', err?.status ?? err);
-              console.error('[AdminService] loadStaffInventory failed:', err);
-              return of([]);
-            })
-          );
-      }
+      map(res => (res?.items ?? []).map(inv => {
+        const skuId = inv.skuId;
+        const codeMap: Record<string, string> = {
+          '55555555-2222-3333-4444-555555555501': 'NG-PB-20K',
+          '55555555-2222-3333-4444-555555555502': 'NG-CB-01',
+          '55555555-2222-3333-4444-555555555503': 'NG-CC-01',
+          '55555555-2222-3333-4444-555555555504': 'NG-EB-01'
+        };
+        const skuCode = codeMap[skuId] || skuId;
+        const onHand = parseFloat(inv.onHand) || 0;
+        const reserved = parseFloat(inv.reserved) || 0;
+        this.products.update(prods => prods.map(p => (p.id === skuId || p.sku === skuCode) ? { ...p, stock: onHand, reserved } : p));
+        return {
+          skuId: inv.skuId,
+          sku: skuCode,
+          locationId: inv.locationId,
+          onHand: onHand,
+          reserved: reserved,
+          allocated: parseFloat(inv.allocated) || 0,
+          available: parseFloat(inv.available) || 0,
+          version: inv.version
+        };
+      })),
+      catchError(err => {
+        console.error('[AdminService] loadStaffInventory failed:', err);
+        return of([]);
+      })
+    );
+  }
 
   private resolveSkuId(input: string): string {
-        const map: Record<string, string> = {
-        'NG-PB-20K': '55555555-2222-3333-4444-555555555501',
-        'NG-CB-01': '55555555-2222-3333-4444-555555555502',
-        'NG-CC-01': '55555555-2222-3333-4444-555555555503',
-        'NG-EB-01': '55555555-2222-3333-4444-555555555504',
-        'NG-PWR-001': '55555555-2222-3333-4444-555555555501',
-        'NG-PWR-002': '55555555-2222-3333-4444-555555555502',
-        'NG-PWR-003': '55555555-2222-3333-4444-555555555503',
-        'NG-LOG-004': '55555555-2222-3333-4444-555555555504'
-      };
-      if(map[input]) return map[input];
-      if(input.includes('-') && input.length === 36) return input;
+    const map: Record<string, string> = {
+      'NG-PB-20K': '55555555-2222-3333-4444-555555555501',
+      'NG-CB-01': '55555555-2222-3333-4444-555555555502',
+      'NG-CC-01': '55555555-2222-3333-4444-555555555503',
+      'NG-EB-01': '55555555-2222-3333-4444-555555555504',
+      'NG-PWR-001': '55555555-2222-3333-4444-555555555501',
+      'NG-PWR-002': '55555555-2222-3333-4444-555555555502',
+      'NG-PWR-003': '55555555-2222-3333-4444-555555555503',
+      'NG-LOG-004': '55555555-2222-3333-4444-555555555504'
+    };
+    if (map[input]) return map[input];
+    if (input.includes('-') && input.length === 36) return input;
+    const map: Record<string, string> = {
+      'NG-PB-20K': '55555555-2222-3333-4444-555555555501',
+      'NG-CB-01': '55555555-2222-3333-4444-555555555502',
+      'NG-CC-01': '55555555-2222-3333-4444-555555555503',
+      'NG-EB-01': '55555555-2222-3333-4444-555555555504',
+      'NG-PWR-001': '55555555-2222-3333-4444-555555555501',
+      'NG-PWR-002': '55555555-2222-3333-4444-555555555502',
+      'NG-PWR-003': '55555555-2222-3333-4444-555555555503',
+      'NG-LOG-004': '55555555-2222-3333-4444-555555555504'
+    };
+    if (map[input]) return map[input];
+    if (input.includes('-') && input.length === 36) return input;
     return '55555555-2222-3333-4444-555555555501';
   }
 
@@ -641,6 +803,7 @@ export class AdminService {
       }),
       catchError(err => {
         console.warn('[AdminService] loadStaffQuotes fallback:', err?.status ?? err);
+        console.warn('[AdminService] loadStaffQuotes error:', err?.status ?? err);
         return of(this.quotes());
       })
     );
@@ -654,6 +817,7 @@ export class AdminService {
     return this.http.get<any>('/api/v1/staff/reports/commerce' + params).pipe(
       catchError(err => {
         console.warn('[AdminService] loadCommerceReport fallback:', err?.status ?? err);
+        console.warn('[AdminService] loadCommerceReport error:', err?.status ?? err);
         return of(null);
       })
     );
@@ -667,6 +831,7 @@ export class AdminService {
     return this.http.get<any>('/api/v1/staff/reports/engagement' + params).pipe(
       catchError(err => {
         console.warn('[AdminService] loadEngagementReport fallback:', err?.status ?? err);
+        console.warn('[AdminService] loadEngagementReport error:', err?.status ?? err);
         return of(null);
       })
     );

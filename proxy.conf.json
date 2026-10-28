@@ -29,6 +29,12 @@
     "changeOrigin": true,
     "logLevel": "warn"
   },
+  "/api/v1/quotes": {
+    "target": "http://localhost:8081",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "warn"
+  },
   "/api/v1/me": {
     "target": "http://localhost:8081",
     "secure": false,
