@@ -1,4 +1,4 @@
-﻿import { Injectable, inject, signal } from "@angular/core";
+import { Injectable, inject, signal } from "@angular/core";
 import { HttpClient } from "@angular/common/http";
 import { Observable, of, tap, catchError, map } from "rxjs";
 import { SessionService } from "./session.service";
@@ -136,19 +136,10 @@ export class AccountService {
         });
       }),
       catchError(err => {
-        console.warn("[AccountService] Backend /api/v1/me unauthenticated or unavailable, using dev session profile.");
-        const devProfile: ProfileDTO = {
-          id: this.session.userId() || 'dev-usr-001',
-          displayName: this.session.fullName() || 'Chidi Okonkwo',
-          email: this.session.email() || 'chidi.customer@nigson.ng',
-          emailVerified: true,
-          phone: '+234 801 234 5678',
-          locale: 'en-NG',
-          version: 1
-        };
-        this.profile.set(devProfile);
+        console.error("[AccountService] Backend /api/v1/me unavailable:", err?.status ?? err);
+        this.profile.set(null);
         this.loadingProfile.set(false);
-        return of(devProfile);
+        return of(null);
       })
     );
   }
@@ -183,25 +174,10 @@ export class AccountService {
         this.loadingAddresses.set(false);
       }),
       catchError(err => {
-        console.warn("[AccountService] Backend /api/v1/me/addresses unavailable, using test address.");
-        const devAddrs: AddressDTO[] = [
-          {
-            id: 'addr-dev-1',
-            label: 'Headquarters / Lagos Office',
-            recipient: this.session.fullName() || 'Chidi Okonkwo',
-            phone: '+234 801 234 5678',
-            line1: '14 Broad Street, Marina',
-            city: 'Lagos',
-            region: 'Lagos State',
-            postalCode: '100221',
-            countryCode: 'NG',
-            isDefault: true,
-            version: 1
-          }
-        ];
-        this.addresses.set(devAddrs);
+        console.error("[AccountService] Backend /api/v1/me/addresses unavailable:", err?.status ?? err);
+        this.addresses.set([]);
         this.loadingAddresses.set(false);
-        return of(devAddrs);
+        return of([]);
       })
     );
   }
@@ -256,18 +232,10 @@ export class AccountService {
         this.loadingRewards.set(false);
       }),
       catchError(err => {
-        console.warn("[AccountService] Backend /api/v1/me/rewards unavailable, using test rewards ledger.");
-        const devRewards: RewardLedgerDTO = {
-          availableByCurrency: [
-            { currency: 'NGN', availableMinorUnits: 250000, lifetimeEarnedMinorUnits: 500000, tierName: 'Gold Tier' }
-          ],
-          entries: [
-            { id: 'rew-1', type: 'EARNED', minorUnits: 50000, currency: 'NGN', description: 'Welcome Tier Credit', createdAt: new Date().toISOString() }
-          ]
-        };
-        this.rewards.set(devRewards);
+        console.error("[AccountService] Backend /api/v1/me/rewards unavailable:", err?.status ?? err);
+        this.rewards.set(null);
         this.loadingRewards.set(false);
-        return of(devRewards);
+        return of(null);
       })
     );
   }
@@ -282,15 +250,10 @@ export class AccountService {
         this.loadingReferral.set(false);
       }),
       catchError(err => {
-        console.warn("[AccountService] Backend /api/v1/me/referral-code unavailable, using test referral code.");
-        const devReferral: ReferralDTO = {
-          code: 'NIGSON-' + (this.session.fullName()?.split(' ')[0] || 'VIP').toUpperCase(),
-          link: 'https://nigson.ng/ref/' + (this.session.fullName()?.split(' ')[0] || 'VIP').toUpperCase(),
-          qualifiedReferralCount: 3
-        };
-        this.referral.set(devReferral);
+        console.error("[AccountService] Backend /api/v1/me/referral-code unavailable:", err?.status ?? err);
+        this.referral.set(null);
         this.loadingReferral.set(false);
-        return of(devReferral);
+        return of(null);
       })
     );
   }

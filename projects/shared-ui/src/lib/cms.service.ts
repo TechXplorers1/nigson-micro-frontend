@@ -858,7 +858,7 @@ export class CmsService {
         if (!p) return { id: sectionId, visible: false, t: () => '', cards: () => [] };
         const s = p.sections.find((x) => x.id === sectionId);
         if (!s) return { id: sectionId, visible: false, t: () => '', cards: () => [] };
-        
+
         return {
           id: s.id,
           visible: s.visible,
@@ -915,6 +915,11 @@ export class CmsService {
   /** TASK-63: Save draft revision via POST /api/v1/staff/content/:id/revisions (API-079) */
   createRevision(contentId: string, edit: ContentRevisionEdit): Observable<any> {
     return this.http.post<any>(`/api/v1/staff/content/${contentId}/revisions`, edit).pipe(
+    const headers = {
+      "If-Match": '"0"',
+      "Idempotency-Key": crypto.randomUUID()
+    };
+    return this.http.post<any>(`/api/v1/staff/content/${contentId}/revisions`, edit, { headers }).pipe(
       catchError(err => {
         console.error('[CmsService] createRevision failed:', err);
         return of(null);
@@ -925,6 +930,11 @@ export class CmsService {
   /** TASK-63: Submit revision for review via POST /api/v1/staff/content-revisions/:id/review (API-080) */
   submitForReview(revisionId: string, reason = 'Content updated for publication'): Observable<boolean> {
     return this.http.post(`/api/v1/staff/content-revisions/${revisionId}/review`, { reason }).pipe(
+    const headers = {
+      "If-Match": '"0"',
+      "Idempotency-Key": crypto.randomUUID()
+    };
+    return this.http.post(`/api/v1/staff/content-revisions/${revisionId}/review`, { reason }, { headers }).pipe(
       map(() => true),
       catchError(err => {
         console.error('[CmsService] submitForReview failed:', err);
@@ -936,6 +946,11 @@ export class CmsService {
   /** TASK-63: Approve revision via POST /api/v1/staff/content-revisions/:id/approval (API-081) */
   approveRevision(revisionId: string, reason = 'Approved for publication'): Observable<boolean> {
     return this.http.post(`/api/v1/staff/content-revisions/${revisionId}/approval`, { approve: true, reason }).pipe(
+    const headers = {
+      "If-Match": '"0"',
+      "Idempotency-Key": crypto.randomUUID()
+    };
+    return this.http.post(`/api/v1/staff/content-revisions/${revisionId}/approval`, { approve: true, reason }, { headers }).pipe(
       map(() => true),
       catchError(err => {
         console.error('[CmsService] approveRevision failed:', err);
@@ -947,6 +962,11 @@ export class CmsService {
   /** TASK-63: Publish revision via POST /api/v1/staff/content-revisions/:id/publication (API-082) */
   publishRevision(revisionId: string, reason = 'Published to live site'): Observable<boolean> {
     return this.http.post(`/api/v1/staff/content-revisions/${revisionId}/publication`, { action: 'PUBLISH', reason }).pipe(
+    const headers = {
+      "If-Match": '"0"',
+      "Idempotency-Key": crypto.randomUUID()
+    };
+    return this.http.post(`/api/v1/staff/content-revisions/${revisionId}/publication`, { action: 'PUBLISH', reason }, { headers }).pipe(
       map(() => true),
       catchError(err => {
         console.error('[CmsService] publishRevision failed:', err);

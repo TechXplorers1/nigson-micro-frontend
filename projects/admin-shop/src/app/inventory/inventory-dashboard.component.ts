@@ -1,4 +1,5 @@
 import { Component, inject, computed } from '@angular/core';
+import { Component, inject, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AdminService, AdminHeadingComponent, StatCardComponent } from 'shared-ui';
 import { LucideBoxes, LucidePackageCheck, LucideAlertTriangle, LucideXCircle } from '@lucide/angular';
@@ -141,12 +142,17 @@ import { RouterLink } from '@angular/router';
   `
 })
 export class InventoryDashboardComponent {
+export class InventoryDashboardComponent implements OnInit {
+  ngOnInit() {
+    this.admin.loadStaffProducts().subscribe();
+    this.admin.loadStaffInventory().subscribe();
+  }
   admin = inject(AdminService);
 
   inStock = computed(() => this.admin.products().filter((p) => p.stock > 10).length);
   lowStock = computed(() => this.admin.products().filter((p) => p.stock > 0 && p.stock <= 10));
   outOfStock = computed(() => this.admin.products().filter((p) => p.stock === 0).length);
-  
+
   // Dummy movements since AdminService might not provide a movements() list right now
   movements = computed(() => [
     { id: 1, date: new Date('2026-08-12'), product: 'Household Essentials Bundle', type: 'Opening Stock', qty: 50 },

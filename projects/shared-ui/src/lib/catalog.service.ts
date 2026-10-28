@@ -1,4 +1,4 @@
-﻿import { Injectable, inject, signal, computed } from '@angular/core';
+import { Injectable, inject, signal, computed } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { tap, catchError, map } from 'rxjs/operators';
@@ -133,6 +133,7 @@ export class CatalogService {
   loadProducts(filters: ProductFilters = {}): Observable<ProductsPage> {
     this.loading.set(true);
     let params = new HttpParams();
+    let params = new HttpParams().set('market', 'NG');
     if (filters.q) params = params.set('q', filters.q);
     if (filters.categoryId) params = params.set('categoryId', filters.categoryId);
     if (filters.brandId) params = params.set('brandId', filters.brandId);
@@ -141,6 +142,30 @@ export class CatalogService {
     if (filters.sort) params = params.set('sort', filters.sort);
 
     return this.http.get<ProductsPage>('/api/v1/catalogue/products', { params }).pipe(
+    return this.http.get<any>('/api/v1/catalogue/products', { params }).pipe(
+      map(res => {
+        const rawItems = res.items || res.content || [];
+        const content: Product[] = rawItems.map((item: any) => ({
+          id: item.id,
+          sku: item.slug || item.id,
+          name: item.name,
+          categoryId: item.brandName || 'General',
+          categoryName: item.brandName || 'General',
+          description: item.name,
+          images: item.imageUrl ? [item.imageUrl] : [this.FALLBACK_IMG],
+          priceMinorUnits: 0,
+          publicationStatus: item.available ? 'PUBLISHED' : 'UNAVAILABLE',
+          brand: item.brandName || 'Nigson',
+          tags: []
+        }));
+        return {
+          content,
+          totalElements: res.totalElements ?? content.length,
+          totalPages: res.totalPages ?? 1,
+          number: res.page ?? 0,
+          size: res.size ?? 20
+        };
+      }),
       tap(page => {
         const enriched = this.enrichWithCategories(page.content);
         this.products.set(enriched);
@@ -157,9 +182,11 @@ export class CatalogService {
         this.totalElements.set(fallback.length);
         this.totalPages.set(1);
         this.currentPage.set(0);
+        console.error('[CatalogService] Backend /api/v1/catalogue/products failed:', err);
         this.loading.set(false);
         this.loaded.set(true);
         return of({ content: fallback, totalElements: fallback.length, totalPages: 1, number: 0, size: 20 });
+        return of({ content: [], totalElements: 0, totalPages: 0, number: 0, size: 20 });
       })
     );
   }
@@ -173,37 +200,54 @@ export class CatalogService {
       map(p => this.enrichWithCategories([p])[0]),
       catchError(err => {
         const found = this.products().find(p => p.id === id || p.sku === id) ||
-                      this.getFallbackProducts({}).find((p: Product) => p.id === id || p.sku === id);
+          this.getFallbackProducts({}).find((p: Product) => p.id === id || p.sku === id);
         if (found) {
           return of(found);
         }
         throw err;
-      })
-    );
-  }
+        return this.http.get<any>(`/api/v1/catalogue/products/${id}?market=NG`).pipe(
+          map(raw => {
+            const p: Product = {
+              id: raw.id,
+              sku: raw.skus?.[0]?.code || raw.slug,
+              name: raw.name,
+              categoryId: raw.categories?.[0]?.name || 'General',
+              categoryName: raw.categories?.[0]?.name || 'General',
+              description: raw.description,
+              images: raw.assets?.length ? raw.assets.map((a: any) => a.url) : [this.FALLBACK_IMG],
+              priceMinorUnits: 0,
+              publicationStatus: 'PUBLISHED',
+              brand: raw.brand?.name || 'Nigson'
+            };
+            return this.enrichWithCategories([p])[0];
+          })
+        );
+      }
 
   /**
    * TASK-22: Recommended products for a given product UUID.
    * Replaces local same-category algorithm.
    */
-  getRecommended(id: string): Observable<Product[]> {
-    return this.http.get<Product[]>(`/api/v1/catalogue/products/${id}/recommendations`).pipe(
-      map(list => this.enrichWithCategories(list)),
-      catchError(() => of([]))
-    );
-  }
+  getRecommended(id: string): Observable < Product[] > {
+        return this.http.get<Product[]>(`/api/v1/catalogue/products/${id}/recommendations`).pipe(
+          map(list => this.enrichWithCategories(list)),
+    return this.http.get<any[]>(`/api/v1/catalogue/products/${id}/recommendations?market=NG`).pipe(
+            map(list => this.enrichWithCategories(list || [])),
+            catchError(() => of([]))
+          );
+      }
 
   getFallbackProducts(filters: ProductFilters): Product[] {
-    let prods: any[] = [];
-    try {
-      const stored = localStorage.getItem('nigson_admin_products');
-      if (stored) {
-        prods = JSON.parse(stored);
-      }
-    } catch {}
+        let prods: any[] = [];
+        try {
+          const stored = localStorage.getItem('nigson_admin_products');
+          if(stored) {
+            prods = JSON.parse(stored);
+          }
+        } catch {}
 
-    if (!Array.isArray(prods) || prods.length === 0) {
-      prods = [
+    if(!Array.isArray(prods) || prods.length === 0) {
+      prods =[
         { id: 'prod-tws-01', sku: 'NG-EB-01', name: 'Nigson TWS Earbuds Pro ANC', category: 'Earbuds', price: 28500, desc: 'Active Noise Cancelling wireless earbuds with 36-hour total battery life and IPX5 water resistance.', image: '/assets/cat-earbuds.jpg', images: ['/assets/cat-earbuds.jpg'], stock: 120, rating: 4.8, status: 'Active' },
         { id: 'prod-pb-01', sku: 'NG-PB-01', name: 'Nigson 20,000mAh 65W Fast Power Bank', category: 'Power Banks', price: 18500, desc: 'High-density Li-Polymer power bank with 65W USB-C Power Delivery, capable of charging laptops and phones.', image: '/assets/cat-powerbank.jpg', images: ['/assets/cat-powerbank.jpg'], stock: 85, rating: 4.9, status: 'Active' },
         { id: 'prod-gan-01', sku: 'NG-CH-01', name: 'Nigson 65W GaN Triple-Port Fast Wall Charger', category: 'Fast Chargers', price: 14200, desc: 'Gallium Nitride (GaN) fast charger with dual USB-C and single USB-A ports, UK 3-pin standard.', image: '/assets/cat-charger.jpg', images: ['/assets/cat-charger.jpg'], stock: 210, rating: 4.7, status: 'Active' },
@@ -245,6 +289,13 @@ export class CatalogService {
 
   loadCategories(): Observable<Category[]> {
     return this.http.get<Category[]>('/api/v1/catalogue/categories').pipe(
+    return this.http.get<any[]>('/api/v1/catalogue/categories?market=NG').pipe(
+      map(cats => (cats || []).map(c => ({
+        id: c.id,
+        name: c.name,
+        slug: c.slug,
+        imageUrl: this.CAT_IMG[c.name] || this.FALLBACK_IMG
+      }))),
       tap(cats => this.categories.set(cats)),
       catchError(err => {
         console.warn('[CatalogService] Backend /api/v1/catalogue/categories unavailable, using local categories.');
@@ -259,6 +310,7 @@ export class CatalogService {
         this.categories.set(fallbackCats);
         return of(fallbackCats);
       })
+      catchError(() => of([]))
     );
   }
 
@@ -276,6 +328,8 @@ export class CatalogService {
         this.brands.set(fallbackBrands);
         return of(fallbackBrands);
       })
+      tap(brands => this.brands.set(brands || [])),
+      catchError(() => of([]))
     );
   }
 
@@ -287,36 +341,45 @@ export class CatalogService {
    */
   getPrice(skuId: string): Observable<PriceResponse> {
     return this.http.get<PriceResponse>(`/api/v1/catalogue/skus/${skuId}/price`);
-  }
+    getPrice(skuId: string, quantity = 1): Observable < PriceResponse > {
+      return this.http.get<any>(`/api/v1/catalogue/skus/${skuId}/price?market=NG&quantity=${quantity}`).pipe(
+        map(res => ({
+          skuId: res.skuId,
+          priceMinorUnits: Math.round(parseFloat(res.unitAmount) * 100),
+          currency: res.currency,
+          marketId: '29b78d62-ec0d-5ff9-8319-b485ecb093d6'
+        }))
+      );
+    }
 
-  /**
-   * TASK-20: Format price from NGN minor units (kobo) to display string.
-   * Backend always returns kobo — divide by 100 before showing.
-   *
-   * Examples:
-   *   formatPrice(2850000) → '₦28,500.00'
-   *   formatPrice(450000)  → '₦4,500.00'
-   */
-  formatPrice(minorUnits: number): string {
-    const naira = minorUnits / 100;
-    return '₦' + naira.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  }
+    /**
+     * TASK-20: Format price from NGN minor units (kobo) to display string.
+     * Backend always returns kobo — divide by 100 before showing.
+     *
+     * Examples:
+     *   formatPrice(2850000) → '₦28,500.00'
+     *   formatPrice(450000)  → '₦4,500.00'
+     */
+    formatPrice(minorUnits: number): string {
+      const naira = minorUnits / 100;
+      return '₦' + naira.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
 
-  /** Format price from whole Naira (legacy local data) — for transition period only */
-  formatPriceNaira(naira: number): string {
-    return '₦' + naira.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  }
+    /** Format price from whole Naira (legacy local data) — for transition period only */
+    formatPriceNaira(naira: number): string {
+      return '₦' + naira.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
 
-  // ─── Image helpers ────────────────────────────────────────────────────────
+    // ─── Image helpers ────────────────────────────────────────────────────────
 
-  imageFor(categoryName: string | undefined | null): string {
-    if (!categoryName) return this.FALLBACK_IMG;
-    return this.CAT_IMG[categoryName] ?? this.FALLBACK_IMG;
-  }
+    imageFor(categoryName: string | undefined | null): string {
+      if (!categoryName) return this.FALLBACK_IMG;
+      return this.CAT_IMG[categoryName] ?? this.FALLBACK_IMG;
+    }
 
-  primaryImage(product: Product): string {
-    return product.images?.[0] ?? this.imageFor(product.categoryName ?? '');
-  }
+    primaryImage(product: Product): string {
+      return product.images?.[0] ?? this.imageFor(product.categoryName ?? '');
+    }
 
   // ─── Helpers ─────────────────────────────────────────────────────────────
 

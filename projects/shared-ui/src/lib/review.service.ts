@@ -1,4 +1,4 @@
-﻿import { Injectable, inject, signal } from "@angular/core";
+import { Injectable, inject, signal } from "@angular/core";
 import { HttpClient, HttpParams } from "@angular/common/http";
 import { Observable, of, tap, catchError, map } from "rxjs";
 
@@ -24,10 +24,12 @@ export interface ReviewRatingSummary {
 }
 
 export interface EngagementReviewPage {
-  content: BackendReview[];
+  items?: BackendReview[];
+  content?: BackendReview[];
   totalElements: number;
   totalPages: number;
-  number: number;
+  number?: number;
+  page?: number;
   size: number;
 }
 
@@ -49,7 +51,7 @@ export class ReviewService {
       .set("size", String(size));
 
     return this.http.get<EngagementReviewPage>("/api/v1/reviews", { params }).pipe(
-      map(pg => pg?.content ?? []),
+      map(pg => pg?.items ?? pg?.content ?? []),
       tap(revs => {
         this.reviews.set(revs);
         this.loading.set(false);
@@ -58,6 +60,26 @@ export class ReviewService {
         console.warn("[ReviewService] getProductReviews failed:", err);
         this.loading.set(false);
         return of([]);
+      })
+    );
+  }
+
+  /** TASK-54: Submit a product review */
+  submitReview(payload: {
+    kind: "PRODUCT" | "TESTIMONIAL";
+    productId?: string;
+    orderLineId?: string;
+    rating?: number;
+    title?: string;
+    body: string;
+  }): Observable<any> {
+    const headers = {
+      "Idempotency-Key": crypto.randomUUID()
+    };
+    return this.http.post<any>("/api/v1/reviews", payload, { headers }).pipe(
+      catchError(err => {
+        console.error("[ReviewService] submitReview failed:", err);
+        return of(null);
       })
     );
   }

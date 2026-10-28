@@ -192,22 +192,13 @@ export class InventoryViewComponent implements OnInit {
             status: (d.quantity ?? d.stock ?? 0) <= 0 ? 'OUT_OF_STOCK' : ((d.quantity ?? d.stock ?? 0) < 15 ? 'LOW_STOCK' : 'IN_STOCK')
           })));
         } else {
-          // Fallback initial inventory
-          this.items.set([
-            { sku: 'NG-PWR-001', name: 'Nigson Industrial Surge Protector Pro 5000W', warehouse: 'Lagos Main Hub', stock: 120, reserved: 8, reorderPoint: 20, status: 'IN_STOCK' },
-            { sku: 'NG-PWR-002', name: 'Automatic Voltage Switcher 30A High Capacity', warehouse: 'Lagos Main Hub', stock: 12, reserved: 4, reorderPoint: 25, status: 'LOW_STOCK' },
-            { sku: 'NG-PWR-003', name: 'Smart Digital Voltage Monitor & Protector', warehouse: 'Abuja Distribution Hub', stock: 0, reserved: 0, reorderPoint: 15, status: 'OUT_OF_STOCK' },
-            { sku: 'NG-LOG-004', name: 'Heavy Duty Distribution Extension Reel 25M', warehouse: 'Port Harcourt Hub', stock: 45, reserved: 2, reorderPoint: 10, status: 'IN_STOCK' }
-          ]);
+          this.items.set([]);
         }
       },
-      error: () => {
+      error: (err: any) => {
+        console.error('[InventoryView] loadData error:', err);
         this.loading.set(false);
-        this.items.set([
-          { sku: 'NG-PWR-001', name: 'Nigson Industrial Surge Protector Pro 5000W', warehouse: 'Lagos Main Hub', stock: 120, reserved: 8, reorderPoint: 20, status: 'IN_STOCK' },
-          { sku: 'NG-PWR-002', name: 'Automatic Voltage Switcher 30A High Capacity', warehouse: 'Lagos Main Hub', stock: 12, reserved: 4, reorderPoint: 25, status: 'LOW_STOCK' },
-          { sku: 'NG-PWR-003', name: 'Smart Digital Voltage Monitor & Protector', warehouse: 'Abuja Distribution Hub', stock: 0, reserved: 0, reorderPoint: 15, status: 'OUT_OF_STOCK' }
-        ]);
+        this.items.set([]);
       }
     });
   }

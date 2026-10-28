@@ -3,7 +3,6 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
 import { BFF_BASE } from './api.service';
-import { ShopService } from './shop.service';
 
 /**
  * Shape of the GET /bff/session response from the Commerce BFF.
@@ -37,7 +36,6 @@ export interface BffSession {
 @Injectable({ providedIn: 'root' })
 export class SessionService {
   private http = inject(HttpClient);
-  private shop = inject(ShopService, { optional: true });
 
   /** CSRF token from /bff/session response */
   readonly csrfToken = signal<string | null>(null);
@@ -76,14 +74,6 @@ export class SessionService {
           this.applySession(session);
         }),
         catchError(err => {
-          // In foundation profile or if unauthenticated, 401 is expected
-          console.warn('[SessionService] Backend /bff/session returned status:', err?.status ?? err);
-          const dev = this.getDevSession();
-          if (dev) {
-            console.info('[SessionService] Restoring active dev session for:', dev.email);
-            this.applySession(dev);
-            return of(dev);
-          }
           this.clearSessionState();
           return of({ authenticated: false });
         })
@@ -91,22 +81,10 @@ export class SessionService {
   }
 
   /**
-   * Manually sets session state for testing and development.
-   * Synchronizes with sessionStorage and ShopService.
+   * Initiates Keycloak OIDC login through the Commerce BFF session flow.
    */
-  setSession(user: { userId?: string; email: string; fullName: string; roles: string[] }) {
-    const s: BffSession = {
-      authenticated: true,
-      userId: user.userId ?? 'dev-usr-' + Math.random().toString(36).substring(2, 9),
-      fullName: user.fullName,
-      email: user.email,
-      roles: user.roles,
-      csrfToken: 'dev-csrf-token'
-    };
-    try {
-      sessionStorage.setItem('nigson_dev_session', JSON.stringify(s));
-    } catch {}
-    this.applySession(s);
+  signIn(returnUrl = '/account'): void {
+    window.location.href = `${BFF_BASE}/bff/login?returnTo=${encodeURIComponent(returnUrl)}`;
   }
 
   /**
@@ -137,9 +115,6 @@ export class SessionService {
     this.roles.set([]);
     this.csrfToken.set(null);
     this.sessionLoaded.set(true);
-    if (this.shop) {
-      this.shop.user.set(null);
-    }
   }
 
   private applySession(s: BffSession) {
@@ -151,34 +126,23 @@ export class SessionService {
     this.roles.set(s.roles ?? []);
     this.csrfToken.set(s.csrfToken ?? null);
     this.sessionLoaded.set(true);
-
-    if (this.shop) {
-      if (isAuth) {
-        this.shop.user.set({
-          id: s.userId || 'dev-user-id',
-          fullName: s.fullName || 'Nigson User',
-          email: s.email || 'user@nigson.com',
-          roles: s.roles || ['CUSTOMER'],
-          createdAt: new Date().toISOString()
-        });
-      } else {
-        this.shop.user.set(null);
-      }
-    }
   }
 
-  private getDevSession(): BffSession | null {
-    try {
-      const stored = sessionStorage.getItem('nigson_dev_session');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed && parsed.authenticated) {
-          return parsed;
-        }
-      }
-    } catch {}
-    return null;
+  /**
+   * Sets the session state from an authenticated user object (e.g. from Keycloak callback).
+   */
+  setSession(user: { userId?: string; fullName?: string; email?: string; roles?: string[]; csrfToken?: string }): void {
+    this.applySession({
+      authenticated: true,
+      userId: user.userId,
+      fullName: user.fullName,
+      email: user.email,
+      roles: user.roles,
+      csrfToken: user.csrfToken
+    });
   }
+
+
 
   // ─── Role helpers ────────────────────────────────────────────────────────
 

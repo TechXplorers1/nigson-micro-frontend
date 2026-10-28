@@ -1,7 +1,10 @@
 import { SessionService } from './session.service';
-﻿import { Injectable, signal, computed, Injector, inject } from '@angular/core';
+import { Injectable, signal, computed, Injector, inject } from '@angular/core';
+import { CartService } from './cart.service';
+import { Injectable, signal, computed, Injector, inject, effect } from '@angular/core';
 import { Product } from './catalog.service';
 import { LS_CART, LS_SAVED, LS_ORDERS, LS_USER, LS_REVIEWS } from './utils';
+import { LS_SAVED, LS_ORDERS, LS_USER, LS_REVIEWS } from './utils';
 import { Review } from './reviews';
 
 /**
@@ -78,13 +81,28 @@ export interface Order {
   providedIn: 'root'
 })
 export class ShopService {
+  private cartService = inject(CartService);
+  private injector = inject(Injector);
+
   readonly hydrated = signal(false);
   readonly user = signal<User | null>(null);
   readonly cart = signal<CartItem[]>([]);
-    readonly saved = signal<SavedProduct[]>([]);
+  readonly saved = signal<SavedProduct[]>([]);
+  readonly saved = signal<SavedProduct[]>([]);
   readonly orders = signal<Order[]>([]);
   readonly reviews = signal<Review[]>([]);
   readonly loginRequired = signal<{ open: boolean; reason?: string }>({ open: false });
+
+  readonly cart = computed<CartItem[]>(() => {
+    return this.cartService.items().map(i => ({
+      sku: i.sku || i.skuId,
+      name: i.name,
+      category: i.categoryName || 'General',
+      price: i.unitPriceMinorUnits / 100,
+      image: i.imageUrl,
+      qty: i.quantity
+    }));
+  });
 
   readonly cartCount = computed(() => this.cart().reduce((n, i) => n + i.qty, 0));
   readonly cartSubtotal = computed(() => this.cart().reduce((n, i) => n + i.qty * i.price, 0));
@@ -92,6 +110,20 @@ export class ShopService {
 
   constructor() {
     this.init();
+    effect(() => {
+      const session = this.injector.get(SessionService, null, { optional: true });
+      if (session && session.authenticated()) {
+        this.user.set({
+          id: session.userId() || 'user',
+          fullName: session.fullName() || 'Nigson User',
+          email: session.email() || '',
+          roles: session.roles() || ['CUSTOMER'],
+          createdAt: new Date().toISOString()
+        });
+      } else {
+        this.user.set(null);
+      }
+    });
   }
 
   private init() {
@@ -99,7 +131,8 @@ export class ShopService {
       // TASK-47: User profile is populated from GET /api/v1/me on session restore
       const c = localStorage.getItem(LS_CART);
       if (c) this.cart.set(JSON.parse(c));
-            const s = localStorage.getItem(LS_SAVED);
+      const s = localStorage.getItem(LS_SAVED);
+      const s = localStorage.getItem(LS_SAVED);
       if (s) this.saved.set(JSON.parse(s));
       // TASK-77: Orders are loaded dynamically from OrderService via GET /api/v1/orders
     } catch { /* ignore */ }
@@ -141,15 +174,15 @@ export class ShopService {
 
   private persistCart(c: CartItem[]) {
     this.cart.set(c);
-    try { localStorage.setItem(LS_CART, JSON.stringify(c)); } catch {}
+    try { localStorage.setItem(LS_CART, JSON.stringify(c)); } catch { }
   }
 
   private persistSaved(s: SavedProduct[]) {
     this.saved.set(s);
-    try { localStorage.setItem(LS_SAVED, JSON.stringify(s)); } catch {}
+    try { localStorage.setItem(LS_SAVED, JSON.stringify(s)); } catch { }
   }
 
-    authenticate(user: User) {
+  authenticate(user: User) {
     this.user.set(user);
     // TASK-77: Authenticated state managed by SessionService /bff/session
   }
@@ -164,48 +197,55 @@ export class ShopService {
       sessionStorage.removeItem('nigson_auth_return_url');
       localStorage.removeItem('nigson_dev_session');
       localStorage.removeItem('nigson_user');
-    } catch {}
+    } catch { }
 
     try {
       const session = this.injector.get(SessionService, null, { optional: true });
       if (session) {
         session.clearSession();
       }
-    } catch {}
+    } catch { }
   }
 
   addToCart(item: Omit<CartItem, 'qty'>, qty = 1) {
     if (!this.user()) {
       alert("Please sign in to add products to your cart.");
-      return false;
+      const session = this.injector.get(SessionService, null, { optional: true });
+      if (!session?.authenticated()) {
+        session?.signIn('/shop');
+        return false;
+      }
+      const current = this.cart();
+      const idx = current.findIndex(c => c.sku === item.sku);
+      if (idx >= 0) {
+        const copy = [...current];
+        copy[idx] = { ...copy[idx], qty: copy[idx].qty + qty };
+        this.persistCart(copy);
+      } else {
+        this.persistCart([...current, { ...item, qty }]);
+      }
+      const skuId = (item as any).id || (item as any).skuId || item.sku;
+      this.cartService.addItem(skuId, qty).subscribe();
+      return true;
     }
-    const current = this.cart();
-    const idx = current.findIndex(c => c.sku === item.sku);
-    if (idx >= 0) {
-      const copy = [...current];
-      copy[idx] = { ...copy[idx], qty: copy[idx].qty + qty };
-      this.persistCart(copy);
-    } else {
-      this.persistCart([...current, { ...item, qty }]);
+
+    removeFromCart(sku: string) {
+      this.persistCart(this.cart().filter(c => c.sku !== sku));
+      this.cartService.removeItem(sku).subscribe();
     }
-    return true;
-  }
 
-  removeFromCart(sku: string) {
-    this.persistCart(this.cart().filter(c => c.sku !== sku));
-  }
-
-  updateQty(sku: string, qty: number) {
-    this.persistCart(
-      this.cart()
-        .map(c => (c.sku === sku ? { ...c, qty: Math.max(0, qty) } : c))
-        .filter(c => c.qty > 0)
-    );
-  }
+    updateQty(sku: string, qty: number) {
+      this.persistCart(
+        this.cart()
+          .map(c => (c.sku === sku ? { ...c, qty: Math.max(0, qty) } : c))
+          .filter(c => c.qty > 0)
+      );
+      this.cartService.updateQty(sku, qty).subscribe();
+    }
 
     private persistOrders(o: Order[]) {
     this.orders.set(o);
-    try { localStorage.setItem(LS_ORDERS, JSON.stringify(o)); } catch {}
+    try { localStorage.setItem(LS_ORDERS, JSON.stringify(o)); } catch { }
   }
 
   placeOrder(payload: Omit<Order, 'id' | 'number' | 'date' | 'status'>) {
@@ -223,6 +263,7 @@ export class ShopService {
 
   clearCart() {
     this.persistCart([]);
+    this.cartService.clearCart().subscribe();
   }
 
   toggleSaved(item: Omit<SavedProduct, 'savedAt'>) {

@@ -71,32 +71,19 @@ export class QuoteService {
     const params = new HttpParams().set("page", String(page)).set("size", String(size));
     return this.http.get<QuotesPage>("/api/v1/quotes", { params }).pipe(
       tap(pg => {
-        this.quotes.set(pg.content);
-        this.totalElements.set(pg.totalElements);
+        this.quotes.set(pg?.content ?? []);
+        this.totalElements.set(pg?.totalElements ?? 0);
         this.loading.set(false);
       }),
       catchError(err => {
-        console.warn("[QuoteService] Backend /api/v1/quotes unavailable, supplying test quote.");
-        const devQuotes: BackendQuote[] = [
-          {
-            quoteId: 'quot-dev-5001',
-            quoteNumber: 'QT-2026-5001',
-            productDescription: 'Commercial Structural Steel Beams (1000m)',
-            quantityRequested: 1000,
-            status: 'QUOTED',
-            quotedPriceMinorUnits: 45000000,
-                        createdAt: new Date(Date.now() - 86400000).toISOString(),
-            validUntil: new Date(Date.now() + 86400000 * 7).toISOString(),
-            updatedAt: new Date().toISOString()
-          }
-        ];
-        this.quotes.set(devQuotes);
-        this.totalElements.set(devQuotes.length);
+        console.warn("[QuoteService] Backend /api/v1/quotes unavailable or returned error:", err);
+        this.quotes.set([]);
+        this.totalElements.set(0);
         this.loading.set(false);
         return of({
-          content: devQuotes,
-          totalElements: devQuotes.length,
-          totalPages: 1,
+          content: [],
+          totalElements: 0,
+          totalPages: 0,
           number: 0,
           size: 20
         });
@@ -107,9 +94,12 @@ export class QuoteService {
   /** TASK-46: Submit a new quote request */
   submitQuote(payload: QuoteRequestPayload): Observable<BackendQuote | null> {
     this.submitting.set(true);
-    return this.http.post<BackendQuote>("/api/v1/quotes", payload).pipe(
+    const headers = {
+      "Idempotency-Key": crypto.randomUUID()
+    };
+    return this.http.post<BackendQuote>("/api/v1/quotes", payload, { headers }).pipe(
       tap(q => {
-        this.quotes.update(list => [q, ...list]);
+        if (q) this.quotes.update(list => [q, ...list]);
         this.submitting.set(false);
       }),
       catchError(err => {
@@ -126,16 +116,24 @@ export class QuoteService {
   }
 
   /** TASK-49: Accept quoted price */
-  acceptQuote(quoteId: string): Observable<BackendQuote | null> {
-    return this.http.post<BackendQuote>("/api/v1/quotes/" + quoteId + "/accept", {}).pipe(
+  acceptQuote(quoteId: string, version = 0): Observable<BackendQuote | null> {
+    const headers = {
+      "If-Match": `"${version}"`,
+      "Idempotency-Key": crypto.randomUUID()
+    };
+    return this.http.post<BackendQuote>("/api/v1/quotes/" + quoteId + "/accept", {}, { headers }).pipe(
       tap(q => this.quotes.update(list => list.map(x => x.quoteId === quoteId ? q : x))),
       catchError(err => { console.error("[QuoteService] acceptQuote:", err); return of(null); })
     );
   }
 
   /** TASK-50: Reject quoted price */
-  rejectQuote(quoteId: string): Observable<BackendQuote | null> {
-    return this.http.post<BackendQuote>("/api/v1/quotes/" + quoteId + "/reject", {}).pipe(
+  rejectQuote(quoteId: string, version = 0): Observable<BackendQuote | null> {
+    const headers = {
+      "If-Match": `"${version}"`,
+      "Idempotency-Key": crypto.randomUUID()
+    };
+    return this.http.post<BackendQuote>("/api/v1/quotes/" + quoteId + "/reject", {}, { headers }).pipe(
       tap(q => this.quotes.update(list => list.map(x => x.quoteId === quoteId ? q : x))),
       catchError(err => { console.error("[QuoteService] rejectQuote:", err); return of(null); })
     );

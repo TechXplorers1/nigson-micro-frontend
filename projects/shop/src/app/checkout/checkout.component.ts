@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
@@ -7,7 +7,8 @@ import {
   LucideArrowLeft, LucideArrowRight, LucideBuilding2, 
   LucideCreditCard, LucideLoader2, LucideLock, LucideWallet, LucideCheck 
 } from '@lucide/angular';
-import { CartService, CatalogService, ShopService } from 'shared-ui';
+import { CartService, CatalogService, ShopService, AccountService, SessionService } from 'shared-ui';
+import { firstValueFrom } from 'rxjs';
 
 type Step = 0 | 1 | 2;
 type PayId = "credit" | "debit" | "netbanking";
@@ -226,7 +227,7 @@ const BANKS = ["Access Bank", "First Bank", "Guaranty Trust Bank", "United Bank 
         </div>
       </section>
 
-      <!-- Mock Payment Modal -->
+      <!-- Payment Modal -->
       <div *ngIf="payOpen()" class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-ink/40 backdrop-blur-sm" (click)="payOpen.set(false)"></div>
         <div class="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-elegant animate-scale-in">
@@ -297,6 +298,8 @@ export class CheckoutComponent {
   shop = inject(ShopService);
   cart = inject(CartService);
   catalog = inject(CatalogService);
+  account = inject(AccountService);
+  session = inject(SessionService);
   http = inject(HttpClient);
   router = inject(Router);
 
@@ -321,13 +324,14 @@ export class CheckoutComponent {
   card = { name: "", number: "", expiry: "", cvv: "" };
   netbank = { bank: BANKS[0], userId: "", pin: "" };
 
-  // TASK-37: Use CartService signals — all in kobo minor units
-  subtotalMinor = computed((): number => { const items = this.cart.items() as import('shared-ui').CartLineItem[]; return items.reduce((sum, i) => sum + i.unitPriceMinorUnits * i.quantity, 0); });
-  shippingMinor = computed((): number => this.cart.items().length > 0 ? 350000 : 0); // NGN 3,500 in kobo
+  subtotalMinor = computed((): number => {
+    const items = this.cart.items();
+    return items.reduce((sum, i) => sum + i.unitPriceMinorUnits * i.quantity, 0);
+  });
+  shippingMinor = computed((): number => this.cart.items().length > 0 ? 350000 : 0);
   vatMinor = computed(() => Math.round(this.subtotalMinor() * 0.075));
   totalMinor = computed(() => this.subtotalMinor() + this.shippingMinor() + this.vatMinor());
 
-  // Keep legacy names for template formatPrice calls
   subtotal = computed(() => this.subtotalMinor());
   shipping = computed(() => this.shippingMinor());
   vat = computed(() => this.vatMinor());
@@ -371,58 +375,116 @@ export class CheckoutComponent {
     return null;
   }
 
-  /**
-   * payNow (TASK-38 to TASK-45)
-   *
-   * Checkout flow:
-   *  1. POST /api/v1/orders         — create order with delivery + buyer info
-   *  2. Backend returns orderId + Paystack payment URL
-   *  3. Redirect browser to Paystack hosted payment page
-   *  4. Paystack calls webhook → backend confirms → redirects to /checkout/success
-   */
-  payNow() {
+  async payNow() {
     this.modalError.set(null);
     const err = this.validatePayment();
     if (err) { this.modalError.set(err); return; }
+
+    const cartId = this.cart.cartId();
+    if (!cartId) {
+      this.modalError.set("Your cart is empty or not initialized.");
+      return;
+    }
+
+    if (!this.session.authenticated()) {
+      this.session.signIn('/checkout');
+      return;
+    }
+
     this.processing.set(true);
 
-    const payload = {
-      deliveryAddress: {
-        line1: this.address.street,
-        city: this.address.city,
-        state: this.address.state,
-        countryCode: "NG",
-        postalCode: this.address.postal || undefined,
-      },
-      buyerContact: {
-        fullName: this.customer.fullName,
-        email: this.customer.email,
-        phone: this.customer.phone,
-      },
-      // cartId ensures backend uses the server-side cart (idempotency via header)
-      cartId: this.cart.cartId(),
-      // deliveryMethod: Standard — FedEx integration is backend concern
-      deliveryMethod: "STANDARD",
-    };
-
-    this.http.post<{ orderId: string; paymentUrl: string }>("/api/v1/orders", payload)
-      .subscribe({
-        next: (res) => {
-          this.processing.set(false);
-          this.payOpen.set(false);
-          if (res.paymentUrl) {
-            // TASK-43: redirect to Paystack hosted page
-            window.location.href = res.paymentUrl;
-          } else {
-            // Fallback: navigate to success (e.g. for test/mock mode)
-            this.router.navigate(["/checkout/success"], { queryParams: { id: res.orderId } });
-          }
-        },
-        error: (err) => {
-          this.processing.set(false);
-          const msg = err?.error?.message ?? "Order failed. Please try again.";
-          this.modalError.set(msg);
+    try {
+      // 1. Ensure address is saved and obtain addressId
+      let addressId: string | null = null;
+      try {
+        const addrs = await firstValueFrom(this.http.get<any[]>('/api/v1/me/addresses'));
+        if (addrs && addrs.length > 0) {
+          addressId = addrs[0].id;
         }
-      });
+      } catch (e) {
+        // Address query error
+      }
+
+      if (!addressId) {
+        const newAddr = await firstValueFrom(
+          this.http.post<any>('/api/v1/me/addresses', {
+            label: 'Home',
+            recipient: this.customer.fullName || 'Customer',
+            phone: this.customer.phone || '+2348000000000',
+            line1: this.address.street || '10 Lagos Island',
+            line2: null,
+            city: this.address.city || 'Lagos',
+            region: this.address.state || 'Lagos',
+            postalCode: this.address.postal || '100001',
+            countryCode: 'NG',
+            isDefault: true
+          }, {
+            headers: new HttpHeaders({
+              'Content-Type': 'application/json',
+              'Idempotency-Key': crypto.randomUUID()
+            })
+          })
+        );
+        addressId = newAddr.id;
+      }
+
+      // 2. Request delivery quote
+      const delQuote = await firstValueFrom(
+        this.http.post<any>(`/api/v1/carts/${cartId}/delivery-quotes`, {
+          addressId: addressId
+        }, {
+          headers: new HttpHeaders({
+            'Content-Type': 'application/json',
+            'If-Match': `"${this.cart.cartVersion()}"`,
+            'Idempotency-Key': crypto.randomUUID()
+          })
+        })
+      );
+      const carrierQuoteId = delQuote.id;
+
+      // 3. Request checkout quote
+      const chkQuote = await firstValueFrom(
+        this.http.post<any>('/api/v1/checkout/quotes', {
+          cartId: cartId,
+          addressId: addressId,
+          carrierQuoteId: carrierQuoteId
+        }, {
+          headers: new HttpHeaders({
+            'Content-Type': 'application/json',
+            'Idempotency-Key': crypto.randomUUID()
+          })
+        })
+      );
+
+      // 4. Initiate checkout attempt
+      const attempt = await firstValueFrom(
+        this.http.post<any>('/api/v1/checkout/attempts', {
+          checkoutQuoteId: chkQuote.id,
+          quoteHash: chkQuote.quoteHash,
+          paymentMethod: 'HOSTED'
+        }, {
+          headers: new HttpHeaders({
+            'Content-Type': 'application/json',
+            'Idempotency-Key': crypto.randomUUID()
+          })
+        })
+      );
+
+      this.processing.set(false);
+      this.payOpen.set(false);
+      sessionStorage.removeItem('nigson_active_cart_id');
+      this.cart.clearCart().subscribe();
+
+      if (attempt.payment?.checkoutUrl) {
+        window.location.href = attempt.payment.checkoutUrl;
+      } else {
+        this.router.navigate(['/checkout/success'], { queryParams: { id: attempt.order.id } });
+      }
+    } catch (error: any) {
+      this.processing.set(false);
+      console.error('[Checkout] payNow error:', error);
+      const msg = error?.error?.detail || error?.error?.title || error?.message || "Order checkout failed. Please try again.";
+      this.modalError.set(msg);
+    }
   }
 }

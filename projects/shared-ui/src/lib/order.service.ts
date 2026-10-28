@@ -1,6 +1,6 @@
-﻿import { Injectable, inject, signal } from "@angular/core";
+import { Injectable, inject, signal } from "@angular/core";
 import { HttpClient, HttpParams } from "@angular/common/http";
-import { Observable, of, tap, catchError } from "rxjs";
+import { Observable, of, tap, catchError, map } from "rxjs";
 import { SessionService } from "./session.service";
 
 /**
@@ -84,62 +84,66 @@ export class OrderService {
     if (!this.session.authenticated()) return of(null);
     this.loading.set(true);
     const params = new HttpParams().set("page", String(page)).set("size", String(size));
-    return this.http.get<OrdersPage>("/api/v1/orders", { params }).pipe(
+    return this.http.get<any>("/api/v1/orders", { params }).pipe(
+      map(pg => {
+        const rawList = pg?.items || pg?.content || [];
+        const mappedOrders: BackendOrder[] = rawList.map((raw: any) => ({
+          orderId: raw.id || raw.orderId,
+          orderNumber: raw.orderNumber,
+          status: raw.status,
+          paymentStatus: raw.paymentStatus,
+          items: (raw.lines || raw.items || []).map((l: any) => ({
+            lineId: l.id || l.lineId,
+            skuId: l.skuId,
+            sku: l.skuCode || l.sku || '',
+            name: l.name || '',
+            quantity: Number(l.quantity) || 1,
+            unitPriceMinorUnits: Math.round(parseFloat(l.unitAmount || '0') * 100),
+            imageUrl: l.imageUrl
+          })),
+          subtotalMinorUnits: Math.round(parseFloat(raw.totals?.subtotal || '0') * 100),
+          shippingMinorUnits: Math.round(parseFloat(raw.totals?.delivery || '0') * 100),
+          taxMinorUnits: Math.round(parseFloat(raw.totals?.tax || '0') * 100),
+          totalMinorUnits: Math.round(parseFloat(raw.totals?.grandTotal || '0') * 100),
+          currency: raw.currency || 'NGN',
+          deliveryAddress: raw.address ? {
+            line1: raw.address.line1 || '',
+            city: raw.address.city || '',
+            state: raw.address.region || raw.address.state || '',
+            countryCode: raw.address.countryCode || 'NG',
+            postalCode: raw.address.postalCode
+          } : { line1: '', city: '', state: '', countryCode: 'NG' },
+          buyerContact: {
+            fullName: raw.address?.recipient || '',
+            email: '',
+            phone: raw.address?.phone || ''
+          },
+          deliveryMethod: raw.fulfillmentStatus || 'STANDARD',
+          trackingNumber: undefined,
+          createdAt: raw.createdAt || new Date().toISOString(),
+          updatedAt: raw.createdAt || new Date().toISOString()
+        }));
+
+        const resultPage: OrdersPage = {
+          content: mappedOrders,
+          totalElements: pg?.totalElements ?? mappedOrders.length,
+          totalPages: pg?.totalPages ?? 1,
+          number: pg?.page ?? page,
+          size: pg?.size ?? size
+        };
+        return resultPage;
+      }),
       tap(pg => {
         this.orders.set(pg.content);
         this.totalElements.set(pg.totalElements);
         this.loading.set(false);
       }),
       catchError(err => {
-        console.warn("[OrderService] Backend /api/v1/orders unavailable, supplying test order.");
-        const devOrders: BackendOrder[] = [
-          {
-            orderId: 'ord-dev-1001',
-            orderNumber: 'NIG-2026-1001',
-            status: 'CONFIRMED',
-            paymentStatus: 'CAPTURED',
-                        items: [
-              {
-                lineId: 'line-1',
-                skuId: 'sku-oil-5l',
-                sku: 'NIG-IND-OIL-5L',
-                name: 'Industrial Lubricant Premium 5L',
-                quantity: 2,
-                unitPriceMinorUnits: 1250000
-              }
-            ],
-            subtotalMinorUnits: 2500000,
-            shippingMinorUnits: 150000,
-            taxMinorUnits: 187500,
-            totalMinorUnits: 2837500,
-            currency: 'NGN',
-            deliveryAddress: {
-              line1: '14 Broad Street, Marina',
-              city: 'Lagos',
-              state: 'Lagos State',
-              countryCode: 'NG'
-            },
-            buyerContact: {
-              fullName: this.session.fullName() || 'Chidi Okonkwo',
-              email: this.session.email() || 'chidi.customer@nigson.ng',
-              phone: '+234 801 234 5678'
-            },
-            deliveryMethod: 'FedEx Priority Courier',
-            trackingNumber: 'FX-884920194NG',
-            createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
-            updatedAt: new Date().toISOString()
-          }
-        ];
-        this.orders.set(devOrders);
-        this.totalElements.set(devOrders.length);
+        console.error("[OrderService] Backend /api/v1/orders failed:", err?.status ?? err);
+        this.orders.set([]);
+        this.totalElements.set(0);
         this.loading.set(false);
-        return of({
-          content: devOrders,
-          totalElements: devOrders.length,
-          totalPages: 1,
-          number: 0,
-          size: 20
-        });
+        return of(null);
       })
     );
   }
