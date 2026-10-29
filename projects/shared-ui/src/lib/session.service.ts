@@ -62,6 +62,24 @@ export class SessionService {
   /** True once loadSession() has completed (success or failure) */
   readonly sessionLoaded = signal<boolean>(false);
 
+  constructor() {
+    this.restoreLocalSession();
+  }
+
+  private restoreLocalSession(): boolean {
+    try {
+      const raw = localStorage.getItem('nigson_dev_session') || sessionStorage.getItem('nigson_dev_session');
+      if (raw) {
+        const s = JSON.parse(raw);
+        if (s && s.authenticated) {
+          this.applySession(s);
+          return true;
+        }
+      }
+    } catch {}
+    return false;
+  }
+
   /**
    * Calls GET /bff/session and populates all signals.
    * Returns an Observable that resolves to the session state.
@@ -73,28 +91,20 @@ export class SessionService {
         tap(session => {
           if (session && session.authenticated) {
             this.applySession(session);
+            try {
+              localStorage.setItem('nigson_dev_session', JSON.stringify(session));
+              sessionStorage.setItem('nigson_dev_session', JSON.stringify(session));
+            } catch {}
           } else {
-            const saved = sessionStorage.getItem('nigson_dev_session');
-            if (saved) {
-              try {
-                this.applySession(JSON.parse(saved));
-                return;
-              } catch {}
+            const hasRestored = this.restoreLocalSession();
+            if (!hasRestored) {
+              this.applySession(session);
             }
-            this.applySession(session);
           }
         }),
         catchError(err => {
-          const saved = sessionStorage.getItem('nigson_dev_session');
-          if (saved) {
-            try {
-              const parsed = JSON.parse(saved);
-              this.applySession(parsed);
-              return of(parsed);
-            } catch {}
-          }
-          this.clearSessionState();
-          return of({ authenticated: false });
+          this.restoreLocalSession();
+          return of({ authenticated: this.authenticated() });
         })
       );
   }
@@ -139,6 +149,7 @@ export class SessionService {
   clearSessionState() {
     try {
       sessionStorage.removeItem('nigson_dev_session');
+      localStorage.removeItem('nigson_dev_session');
     } catch {}
     this.authenticated.set(false);
     this.userId.set(null);
@@ -175,6 +186,7 @@ export class SessionService {
     this.applySession(sessionObj);
     try {
       sessionStorage.setItem('nigson_dev_session', JSON.stringify(sessionObj));
+      localStorage.setItem('nigson_dev_session', JSON.stringify(sessionObj));
     } catch {}
   }
 

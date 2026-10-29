@@ -1,12 +1,12 @@
-﻿import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { CommonModule, Location } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { 
-  LucideArrowLeft, LucideChevronLeft, LucideChevronRight, 
+import {
+  LucideArrowLeft, LucideChevronLeft, LucideChevronRight,
   LucideZoomIn, LucideZoomOut, LucideRotateCcw, LucideStar,
   LucideFileText, LucideShieldCheck, LucideCheckCircle2
 } from '@lucide/angular';
-import { CatalogService, ShopService, ReviewService, QtyStepperComponent, relativeDate } from 'shared-ui';
+import { CatalogService, ShopService, ReviewService, QtyStepperComponent, relativeDate, OFFICIAL_SKU_PRICES } from 'shared-ui';
 import { WriteReviewComponent } from './write-review.component';
 import { ProductCardComponent } from './product-card.component';
 
@@ -14,8 +14,8 @@ import { ProductCardComponent } from './product-card.component';
   selector: 'app-product-detail',
   standalone: true,
   imports: [
-    CommonModule, RouterLink, LucideArrowLeft, LucideChevronLeft, 
-    LucideChevronRight, LucideZoomIn, LucideZoomOut, LucideRotateCcw, 
+    CommonModule, RouterLink, LucideArrowLeft, LucideChevronLeft,
+    LucideChevronRight, LucideZoomIn, LucideZoomOut, LucideRotateCcw,
     LucideStar, LucideFileText,
     QtyStepperComponent, ProductCardComponent, LucideShieldCheck, LucideCheckCircle2
   ],
@@ -104,6 +104,7 @@ import { ProductCardComponent } from './product-card.component';
               <p class="text-[11px] uppercase tracking-widest text-muted-foreground">Starting From</p>
               <p class="mt-1 text-3xl md:text-4xl font-bold text-[#D62828] leading-tight">{{ catalog.formatPrice(displayPrice()) }}</p>
               <p class="mt-2 text-sm text-muted-foreground">Wholesale pricing available for distributors.</p>
+              <p class="mt-2 text-sm text-muted-foreground">{{ product()?.priceSubtitle || 'Wholesale pricing available for distributors.' }}</p>
             </div>
 
             <p class="mt-6 text-base text-ink/80 leading-relaxed">{{ product()?.description }}</p>
@@ -113,6 +114,9 @@ import { ProductCardComponent } from './product-card.component';
               <li class="flex gap-3"><span class="text-brand">✓</span> Nationwide delivery from Lagos hub</li>
               <li class="flex gap-3"><span class="text-brand">✓</span> 12-month standard warranty</li>
               <li class="flex gap-3"><span class="text-brand">✓</span> Bulk discounts for distributors</li>
+              <li *ngFor="let feat of featuresList()" class="flex gap-3">
+                <span class="text-brand">✓</span> {{ feat }}
+              </li>
             </ul>
 
             <div class="mt-8 flex flex-wrap gap-3">
@@ -151,6 +155,7 @@ import { ProductCardComponent } from './product-card.component';
                 Engineered to meet the highest standards of durability and performance across Nigerian markets.
                 Suitable for both wholesale commercial resale and direct consumer use.
               </p>
+              <p>{{ product()?.overview || 'Engineered to meet the highest standards of durability and performance across Nigerian markets. Suitable for both wholesale commercial resale and direct consumer use.' }}</p>
               <div class="mt-6 rounded-2xl bg-surface-alt p-6 border border-hairline">
                 <p class="font-bold text-ink mb-3">Key Highlights:</p>
                 <ul class="grid sm:grid-cols-2 gap-2 text-sm text-ink/80">
@@ -158,6 +163,9 @@ import { ProductCardComponent } from './product-card.component';
                   <li class="flex items-center gap-2"><span class="text-brand font-bold">✓</span> Fast dispatch from central Lagos hub</li>
                   <li class="flex items-center gap-2"><span class="text-brand font-bold">✓</span> 12-month standard Nigson warranty</li>
                   <li class="flex items-center gap-2"><span class="text-brand font-bold">✓</span> Bulk order distributor volume discounts</li>
+                  <li *ngFor="let h of highlightsList()" class="flex items-center gap-2">
+                    <span class="text-brand font-bold">✓</span> {{ h }}
+                  </li>
                 </ul>
               </div>
             </div>
@@ -175,24 +183,47 @@ import { ProductCardComponent } from './product-card.component';
                       <td class="px-6 py-4 text-ink/80">{{ product()?.categoryName }}</td>
                     </tr>
                     <tr class="bg-surface-alt/50">
+                    <tr class="bg-surface-alt/50" *ngIf="specValue('warranty')">
                       <td class="px-6 py-4 font-bold text-ink">Warranty</td>
                       <td class="px-6 py-4 text-ink/80">12 Months Standard Manufacturer Warranty</td>
+                      <td class="px-6 py-4 text-ink/80">{{ specValue('warranty') }}</td>
                     </tr>
                     <tr>
                       <td class="px-6 py-4 font-bold text-ink">Build Material</td>
                       <td class="px-6 py-4 text-ink/80">Premium Grade Fire-Retardant Polymer & Alloy</td>
+                    <tr *ngIf="specValue('connectors')">
+                      <td class="px-6 py-4 font-bold text-ink">Connectors</td>
+                      <td class="px-6 py-4 text-ink/80">{{ specValue('connectors') }}</td>
                     </tr>
                     <tr class="bg-surface-alt/50">
+                    <tr class="bg-surface-alt/50" *ngIf="specValue('power_rating') || specValue('powerRating')">
+                      <td class="px-6 py-4 font-bold text-ink">Power Rating</td>
+                      <td class="px-6 py-4 text-ink/80">{{ specValue('power_rating') || specValue('powerRating') }}</td>
+                    </tr>
+                    <tr *ngIf="specValue('compatibility')">
                       <td class="px-6 py-4 font-bold text-ink">Compatibility</td>
                       <td class="px-6 py-4 text-ink/80">Universal iOS / Android / USB-C Standards Compliant</td>
+                      <td class="px-6 py-4 text-ink/80">{{ specValue('compatibility') }}</td>
                     </tr>
                     <tr>
+                    <tr class="bg-surface-alt/50" *ngIf="specValue('buildMaterial')">
+                      <td class="px-6 py-4 font-bold text-ink">Build Material</td>
+                      <td class="px-6 py-4 text-ink/80">{{ specValue('buildMaterial') }}</td>
+                    </tr>
+                    <tr *ngIf="specValue('certification')">
                       <td class="px-6 py-4 font-bold text-ink">Certification</td>
                       <td class="px-6 py-4 text-ink/80">CE / RoHS / FCC Quality Verified</td>
+                      <td class="px-6 py-4 text-ink/80">{{ specValue('certification') }}</td>
                     </tr>
                     <tr class="bg-surface-alt/50">
+                    <tr class="bg-surface-alt/50" *ngIf="specValue('importer')">
                       <td class="px-6 py-4 font-bold text-ink">Importer & Distributor</td>
                       <td class="px-6 py-4 text-ink/80">Nigson Group Ltd, Lagos Nigeria</td>
+                      <td class="px-6 py-4 text-ink/80">{{ specValue('importer') }}</td>
+                    </tr>
+                    <tr *ngFor="let s of extraSpecs(); let even = even" [class.bg-surface-alt]="even">
+                      <td class="px-6 py-4 font-bold text-ink">{{ s.key }}</td>
+                      <td class="px-6 py-4 text-ink/80">{{ s.value }}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -208,6 +239,7 @@ import { ProductCardComponent } from './product-card.component';
                     <li>• 1x {{ product()?.name }} unit</li>
                     <li>• 1x User Manual & Setup Guide</li>
                     <li>• 1x Nigson Warranty Card</li>
+                    <li *ngFor="let item of packagingContentsList()">• {{ item }}</li>
                   </ul>
                 </div>
                 <div class="rounded-2xl border border-hairline p-5 bg-white">
@@ -216,6 +248,7 @@ import { ProductCardComponent } from './product-card.component';
                     <li>• Carton Quantity: 40 Units / Box</li>
                     <li>• Gross Weight: ~ 0.45 kg per unit box</li>
                     <li>• Barcode: Individually Labelled for Resale</li>
+                    <li *ngFor="let spec of cartonSpecsList()">• {{ spec }}</li>
                   </ul>
                 </div>
               </div>
@@ -228,19 +261,24 @@ import { ProductCardComponent } from './product-card.component';
                   <span class="text-sm font-bold text-ink">Central Lagos Warehouse Status</span>
                   <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 text-emerald-700 px-3 py-1 text-xs font-bold">
                     <span class="h-2 w-2 rounded-full bg-emerald-600 animate-pulse"></span> In Stock & Ready to Ship
+                    <span class="h-2 w-2 rounded-full bg-emerald-600 animate-pulse"></span>
+                    {{ product()?.warehouseStatus || 'In Stock & Ready to Ship' }}
                   </span>
                 </div>
                 <div class="flex items-center justify-between border-b border-hairline pb-3">
                   <span class="text-sm font-bold text-ink">Dispatch Turnaround</span>
                   <span class="text-sm text-ink/80 font-medium">Dispatched within 24 Hours</span>
+                  <span class="text-sm text-ink/80 font-medium">{{ product()?.dispatchTurnaround || 'Dispatched within 24 Hours' }}</span>
                 </div>
                 <div class="flex items-center justify-between border-b border-hairline pb-3">
                   <span class="text-sm font-bold text-ink">Nationwide Shipping</span>
                   <span class="text-sm text-ink/80 font-medium">2 - 4 Business Days across Nigeria</span>
+                  <span class="text-sm text-ink/80 font-medium">{{ product()?.nationwideShipping || '2 - 4 Business Days across Nigeria' }}</span>
                 </div>
                 <div class="flex items-center justify-between pt-1">
                   <span class="text-sm font-bold text-ink">Minimum Wholesale Order</span>
                   <span class="text-sm text-brand font-bold">10 Units</span>
+                  <span class="text-sm text-brand font-bold">{{ product()?.minWholesaleOrder || '10 Units' }}</span>
                 </div>
               </div>
             </div>
@@ -355,11 +393,10 @@ export class ProductDetailComponent implements OnInit {
   gallery = computed((): string[] => {
     const p = this.product();
     if (!p) return [];
-    const imgs = p.images ?? [];
-    if (imgs.length >= 2) return imgs;
-    // Pad with category fallback while real images load
+    const imgs = (p.images ?? []).filter(img => !!img && img.trim().length > 0);
+    if (imgs.length > 0) return imgs;
     const fallback = this.catalog.imageFor(p.categoryName ?? '');
-    return [fallback, fallback, fallback, fallback];
+    return [fallback];
   });
 
   reviews = computed(() => {
@@ -376,33 +413,94 @@ export class ProductDetailComponent implements OnInit {
   displayPrice = computed((): number => {
     const p = this.product();
     if (!p) return 0;
+    if (p.retailPrice && p.retailPrice > 0) return p.retailPrice * 100;
+    if (p.price && p.price > 0) return p.price * 100;
     if (p.priceMinorUnits && p.priceMinorUnits > 0) return p.priceMinorUnits;
-    const skuMinorPrices: Record<string, number> = {
-      'NS03': 1850000,
-      'NS06': 2850000,
-      'NS107': 1650000,
-      'NS211C': 550000,
-      'NS211i': 480000,
-      'NS25': 650000,
-      'NS2526C': 2450000,
-      'NS2618': 2950000,
-      'NS3416': 3200000,
-      'NS3604C': 2750000,
-      'NS4': 950000,
-      'NS6': 1950000,
-      'NS6-1': 1450000,
-      'NS901C': 450000,
-      'NS901i': 420000,
-      'NS96U': 520000,
-      'PQ19': 1650000,
-      'PQ20': 2650000,
-      'PQ28': 1950000,
-      'PQ30': 3450000,
-      'PQ50': 4850000,
-      'ZS6': 2650000,
-      'ZS8': 2150000
-    };
-    return skuMinorPrices[p.sku] || 2850000;
+    const sku = p.sku || '';
+    return OFFICIAL_SKU_PRICES[sku] || 450000;
+  });
+
+  featuresList = computed((): string[] => {
+    const p = this.product();
+    if (!p) return [];
+    if (Array.isArray(p.features)) return p.features.filter(f => !!f);
+    if (typeof p.features === 'string' && p.features.trim()) {
+      return p.features.split('\n').map(s => s.replace(/^[•\-\*]\s*/, '').trim()).filter(Boolean);
+    }
+    return [
+      'Wholesale & retail pricing',
+      'Nationwide delivery from Lagos hub',
+      '12-month standard warranty',
+      'Bulk discounts for distributors'
+    ];
+  });
+
+  highlightsList = computed((): string[] => {
+    const p = this.product();
+    if (!p) return [];
+    if (Array.isArray(p.highlights)) return p.highlights.filter(h => !!h);
+    if (typeof p.highlights === 'string' && p.highlights.trim()) {
+      return p.highlights.split('\n').map(s => s.replace(/^[•\-\*]\s*/, '').trim()).filter(Boolean);
+    }
+    return [
+      'Wholesale & retail pricing tier',
+      'Fast dispatch from central Lagos hub',
+      '12-month standard Nigson warranty',
+      'Bulk order distributor volume discounts'
+    ];
+  });
+
+  packagingContentsList = computed((): string[] => {
+    const p = this.product();
+    if (!p) return [];
+    if (Array.isArray(p.packaging)) return p.packaging.filter(c => !!c);
+    if (typeof p.packaging === 'string' && p.packaging.trim()) {
+      return p.packaging.split('\n').map(s => s.replace(/^[•\-\*]\s*/, '').trim()).filter(Boolean);
+    }
+    return [
+      `1x ${p.name || 'Product'} unit`,
+      '1x User Manual & Setup Guide',
+      '1x Nigson Warranty Card'
+    ];
+  });
+
+  cartonSpecsList = computed((): string[] => {
+    const p = this.product();
+    if (!p) return [];
+    if (Array.isArray(p.cartonSpecs)) return p.cartonSpecs.filter(c => !!c);
+    if (typeof p.cartonSpecs === 'string' && p.cartonSpecs.trim()) {
+      return p.cartonSpecs.split('\n').map(s => s.replace(/^[•\-\*]\s*/, '').trim()).filter(Boolean);
+    }
+    return [
+      'Carton Quantity: 40 Units / Box',
+      'Gross Weight: ~ 0.45 kg per unit box',
+      'Barcode: Individually Labelled for Resale'
+    ];
+  });
+
+  specValue(key: string): string {
+    const p = this.product();
+    if (!p) return '';
+    const rawVal = p.specifications ? p.specifications[key] : undefined;
+    const val = rawVal !== undefined ? rawVal : (p as any)[key];
+    if (val == null) return '';
+    if (Array.isArray(val)) return val.join(', ');
+    return String(val);
+  }
+
+  extraSpecs = computed((): Array<{ key: string, value: string }> => {
+    const p = this.product();
+    if (!p?.specifications) return [];
+    const known = new Set(['warranty', 'connectors', 'power_rating', 'powerRating', 'compatibility', 'buildMaterial', 'certification', 'importer']);
+    const list: Array<{ key: string, value: string }> = [];
+    for (const [k, v] of Object.entries(p.specifications)) {
+      if (!known.has(k) && v != null && String(v).trim()) {
+        const title = k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        const displayVal = Array.isArray(v) ? v.join(', ') : String(v);
+        list.push({ key: title, value: displayVal });
+      }
+    }
+    return list;
   });
 
   productWithPrice = computed(() => {
@@ -427,7 +525,7 @@ export class ProductDetailComponent implements OnInit {
   activeTab = signal<'description' | 'specifications' | 'packaging' | 'availability'>('description');
   tabs = ['description', 'specifications', 'packaging', 'availability'] as const;
 
-  
+
   relativeDate = relativeDate;
 
   qtyInCart = computed((): number => {

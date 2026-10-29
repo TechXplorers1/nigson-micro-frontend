@@ -1,8 +1,8 @@
-﻿import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterOutlet, Router, RouterLinkActive } from '@angular/router';
-import { AccountService, OrderService, ShopService } from 'shared-ui';
-import { 
+import { AccountService, OrderService, ShopService, SessionService } from 'shared-ui';
+import {
   LucideUser, LucidePackage, LucideLogOut, LucideSettings,
   LucideHeart, LucideClipboardList, LucideMapPin
 } from '@lucide/angular';
@@ -16,11 +16,11 @@ import {
     LucideHeart, LucideClipboardList, LucideMapPin
   ],
   template: `
-    <div *ngIf="!shop.user()" class="pt-40 pb-24 text-center text-muted-ink">
+    <div *ngIf="!shop.user() && !session.authenticated()" class="pt-40 pb-24 text-center text-muted-ink">
       Redirecting to sign in...
     </div>
 
-    <section *ngIf="shop.user()" class="pt-32 pb-24 md:pt-40 bg-white min-h-screen">
+    <section *ngIf="shop.user() || session.authenticated()" class="pt-32 pb-24 md:pt-40 bg-white min-h-screen">
       <div class="mx-auto max-w-7xl px-6">
         <!-- Header -->
         <div class="mb-10 flex items-center gap-5">
@@ -28,12 +28,12 @@ import {
             class="grid h-16 w-16 place-items-center rounded-full text-white text-xl font-extrabold"
             [ngStyle]="{'background': avatarBg()}"
           >
-            {{ initialsOf(shop.user()?.fullName) }}
+            {{ initialsOf(shop.user()?.fullName || session.fullName()) }}
           </div>
           <div>
             <p class="text-[11px] font-semibold uppercase tracking-[0.25em] text-brand">Welcome back</p>
-            <h1 class="text-3xl md:text-4xl font-extrabold tracking-[-0.02em] text-ink">{{ shop.user()?.fullName || 'Customer' }}</h1>
-            <p class="text-sm text-muted-ink">{{ shop.user()?.email }}</p>
+            <h1 class="text-3xl md:text-4xl font-extrabold tracking-[-0.02em] text-ink">{{ shop.user()?.fullName || session.fullName() || 'Customer' }}</h1>
+            <p class="text-sm text-muted-ink">{{ shop.user()?.email || session.email() }}</p>
           </div>
         </div>
 
@@ -120,12 +120,23 @@ import {
 })
 export class AccountLayoutComponent implements OnInit {
   shop = inject(ShopService);
+  session = inject(SessionService);
   accountSvc = inject(AccountService);
   orderSvc = inject(OrderService);
   router = inject(Router);
 
   ngOnInit() {
-    if (!this.shop.user()) {
+    if (!this.shop.user() && this.session.authenticated()) {
+      this.shop.user.set({
+        id: this.session.userId() || 'user',
+        fullName: this.session.fullName() || 'Nigson Customer',
+        email: this.session.email() || '',
+        roles: this.session.roles() || ['CUSTOMER'],
+        createdAt: new Date().toISOString()
+      });
+    }
+
+    if (!this.shop.user() && !this.session.authenticated()) {
       this.router.navigate(['/auth/login'], { queryParams: { redirect: '/account' } });
     } else {
       this.accountSvc.loadAddresses().subscribe();
@@ -133,18 +144,20 @@ export class AccountLayoutComponent implements OnInit {
   }
 
   logout() {
+    this.session.clearSession();
     this.shop.signOut();
     this.router.navigate(['/']);
   }
 
-  initialsOf(name?: string) {
-    if (!name) return 'U';
-    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+  initialsOf(name?: string | null): string {
+    const n = name || this.session.fullName();
+    if (!n) return 'U';
+    return n.split(' ').map(s => s[0]).join('').substring(0, 2).toUpperCase();
   }
 
   avatarBg(): string {
-    const name = this.shop.user()?.fullName ?? "";
-    const colors = ["#10B981","#2563EB","#7C3AED","#DB2777","#D97706"];
+    const name = this.shop.user()?.fullName || this.session.fullName() || '';
+    const colors = ['#10B981', '#2563EB', '#7C3AED', '#DB2777', '#D97706'];
     let h = 0;
     for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
     return colors[h % colors.length];

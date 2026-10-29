@@ -1,7 +1,7 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
-import { tap, catchError, map } from 'rxjs/operators';
+import { tap, catchError, map, switchMap } from 'rxjs/operators';
 
 // ─── Backend DTOs ──────────────────────────────────────────────────────────────
 
@@ -36,11 +36,89 @@ export interface Product {
   priceMinorUnits?: number;
   price?: number;
   stock?: number;
+  lowLevel?: number;
   /** Publication status from backend */
   publicationStatus?: string;
   brand?: string;
   tags?: string[];
   createdAt?: string;
+
+  // Rich editable product details matching product page
+  status?: string;
+  priceSubtitle?: string;
+  retailPrice?: number;
+  retail?: number;
+  wholesalePrice?: number;
+  wholesale?: number;
+  distributorPrice?: number;
+  distributor?: number;
+  features?: string[] | string;
+  overview?: string;
+  overviewExtra?: string;
+  highlights?: string[] | string;
+  packaging?: string[] | string;
+  cartonSpecs?: string[] | string;
+  warehouseStatus?: string;
+  dispatchTurnaround?: string;
+  nationwideShipping?: string;
+  minWholesaleOrder?: string;
+  updatedAt?: string;
+}
+
+export const OFFICIAL_SKU_PRICES: Record<string, number> = {
+  'NS03': 1850000,
+  'NS06': 2850000,
+  'NS107': 1650000,
+  'NS211C': 550000,
+  'NS211i': 480000,
+  'NS25': 650000,
+  'NS2526C': 2450000,
+  'NS2618': 2950000,
+  'NS3416': 3200000,
+  'NS3604C': 2750000,
+  'NS4': 950000,
+  'NS6': 1950000,
+  'NS6-1': 1450000,
+  'NS901C': 450000,
+  'NS901i': 420000,
+  'NS96U': 520000,
+  'PQ19': 1650000,
+  'PQ20': 2650000,
+  'PQ28': 1950000,
+  'PQ30': 3450000,
+  'PQ50': 4850000,
+  'ZS6': 2650000,
+  'ZS8': 2150000
+};
+
+export function extractSku(slug?: string, name?: string): string {
+  if (slug) {
+    const clean = slug.replace(/^nigson-/, '');
+    if (clean.startsWith('ns6-1')) return 'NS6-1';
+    if (clean.startsWith('ns2526c')) return 'NS2526C';
+    if (clean.startsWith('ns3604c')) return 'NS3604C';
+    if (clean.startsWith('ns211c')) return 'NS211C';
+    if (clean.startsWith('ns211i')) return 'NS211i';
+    if (clean.startsWith('ns901c')) return 'NS901C';
+    if (clean.startsWith('ns901i')) return 'NS901i';
+    if (clean.startsWith('ns96u')) return 'NS96U';
+    return clean.split('-')[0].toUpperCase();
+  }
+  if (name) {
+    return name.split(' ')[0].toUpperCase();
+  }
+  return 'NG-SKU';
+}
+
+export function resolveCategoryFromSku(sku: string, fallback = 'General'): string {
+  const upper = (sku || '').toUpperCase();
+  if (upper.startsWith('NS03') || upper.startsWith('NS06')) return 'Earbuds';
+  if (upper.startsWith('PQ')) return 'Power Banks';
+  if (upper.startsWith('NS211') || upper.startsWith('NS25') || upper.startsWith('NS901') || upper.startsWith('NS96')) return 'Cables';
+  if (upper.startsWith('NS107') || upper.startsWith('NS2526') || upper.startsWith('NS2618') || upper.startsWith('NS4') || upper.startsWith('ZS')) return 'Chargers';
+  if (upper.startsWith('NS3416') || upper.startsWith('NS3604')) return 'Extension Sockets';
+  if (upper.startsWith('NS6')) return 'Motion-Activated Lights';
+  return fallback;
 }
 
 export interface Category {
@@ -136,16 +214,48 @@ export class CatalogService {
   resolveImageUrl(url: string | null | undefined): string {
     if (!url) return this.FALLBACK_IMG;
     if (url.includes('cdn.synthetic.test/assets/')) {
-      return url.replace(/^https?:\/\/[^\/]+\/assets\//, '/assets/');
+      return url.replace(/^https?:\/\/[^\/]+\/assets\//, 'http://localhost:4566/nigson-product-images/');
+    }
+    if (url.startsWith('/assets/products/')) {
+      return url.replace('/assets/products/', 'http://localhost:4566/nigson-product-images/products/');
     }
     return url;
+  }
+
+  // ─── Local Overrides / Synchronized Edits ────────────────────────────────
+
+  saveProductOverride(idOrSku: string, override: Partial<Product>): void {
+    try {
+      const existing = this.getProductOverride(idOrSku) || {};
+      const merged = { ...existing, ...override, updatedAt: new Date().toISOString() };
+      localStorage.setItem(`nigson_prod_override_${idOrSku}`, JSON.stringify(merged));
+      if (merged.id) localStorage.setItem(`nigson_prod_override_${merged.id}`, JSON.stringify(merged));
+      if (merged.sku) localStorage.setItem(`nigson_prod_override_${merged.sku}`, JSON.stringify(merged));
+
+      this.products.update(all => all.map(p =>
+        (p.id === idOrSku || p.sku === idOrSku || (merged.id && p.id === merged.id) || (merged.sku && p.sku === merged.sku))
+          ? { ...p, ...merged }
+          : p
+      ));
+    } catch (e) {
+      console.warn('[CatalogService] Error persisting override', e);
+    }
+  }
+
+  getProductOverride(idOrSku: string): Partial<Product> | null {
+    try {
+      const raw = localStorage.getItem(`nigson_prod_override_${idOrSku}`);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
   }
 
   // ─── Products ─────────────────────────────────────────────────────────────
 
   /**
    * TASK-15, TASK-23: Load products from backend with optional filters.
-   * Results stored in `products` signal.
+   * Results stored in `products` signal and enriched with real SKUs, prices, categories, and overrides.
    */
   loadProducts(filters: ProductFilters = {}): Observable<ProductsPage> {
     this.loading.set(true);
@@ -160,20 +270,31 @@ export class CatalogService {
     return this.http.get<any>('/api/v1/catalogue/products', { params }).pipe(
       map(res => {
         const rawItems = res?.items || res?.content || [];
-        const content: Product[] = rawItems.map((item: any) => ({
-          id: item.id,
-          sku: item.slug || item.id,
-          skuId: item.skus?.[0]?.id || item.id,
-          name: item.name,
-          categoryId: item.brandName || 'General',
-          categoryName: item.brandName || 'General',
-          description: item.name,
-          images: item.imageUrl ? [this.resolveImageUrl(item.imageUrl)] : [this.FALLBACK_IMG],
-          priceMinorUnits: 0,
-          publicationStatus: item.available ? 'PUBLISHED' : 'UNAVAILABLE',
-          brand: item.brandName || 'Nigson',
-          tags: []
-        }));
+        const content: Product[] = rawItems.map((item: any) => {
+          const sku = extractSku(item.slug, item.name);
+          const override = this.getProductOverride(item.id) || this.getProductOverride(sku);
+          const priceMinor = override?.priceMinorUnits || (override?.price ? override.price * 100 : (OFFICIAL_SKU_PRICES[sku] || 450000));
+          const primaryImg = override?.images?.[0] || (item.imageUrl ? this.resolveImageUrl(item.imageUrl) : this.FALLBACK_IMG);
+          const cat = override?.categoryName || resolveCategoryFromSku(sku, item.brandName || 'General');
+
+          const p: Product = {
+            id: item.id,
+            sku: override?.sku || sku,
+            skuId: item.skus?.[0]?.id || item.id,
+            name: override?.name || item.name,
+            categoryId: override?.categoryId || cat,
+            categoryName: cat,
+            description: override?.description || item.name,
+            images: override?.images?.length ? override.images : (item.imageUrl ? [this.resolveImageUrl(item.imageUrl)] : [primaryImg]),
+            priceMinorUnits: priceMinor,
+            price: priceMinor / 100,
+            publicationStatus: item.available ? 'PUBLISHED' : 'UNAVAILABLE',
+            brand: override?.brand || item.brandName || 'Nigson',
+            tags: [],
+            ...override
+          };
+          return p;
+        });
         return {
           content,
           totalElements: res?.totalElements ?? content.length,
@@ -206,28 +327,94 @@ export class CatalogService {
 
   /**
    * TASK-21: Load single product by UUID.
-   * Route now uses /products/:id (UUID) not /products/:sku.
+  /**
+   * TASK-21: Load single product by UUID or SKU.
+   * Resolves UUID, fetches backend record with all images/specifications, and merges overrides.
    */
-  getProduct(id: string): Observable<Product> {
-    return this.http.get<any>(`/api/v1/catalogue/products/${id}?market=NG`).pipe(
+  getProduct(idOrSku: string): Observable<Product> {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSku);
+    if (!isUuid) {
+      // Find UUID by SKU or slug from loaded products
+      const found = this.products().find(p =>
+        p.sku?.toUpperCase() === idOrSku.toUpperCase() ||
+        p.id === idOrSku ||
+        p.name?.toUpperCase().startsWith(idOrSku.toUpperCase())
+      );
+      if (found?.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(found.id)) {
+        return this.getProductByUuid(found.id, idOrSku);
+      }
+      return this.loadProducts({ size: 100 }).pipe(
+        switchMap(page => {
+          const match = page.content.find(p =>
+            p.sku?.toUpperCase() === idOrSku.toUpperCase() ||
+            p.id === idOrSku ||
+            p.name?.toUpperCase().startsWith(idOrSku.toUpperCase())
+          );
+          const targetId = match?.id || idOrSku;
+          return this.getProductByUuid(targetId, idOrSku);
+        })
+      );
+    }
+    return this.getProductByUuid(idOrSku);
+  }
+
+  private getProductByUuid(uuid: string, aliasSku?: string): Observable<Product> {
+    return this.http.get<any>(`/api/v1/catalogue/products/${uuid}?market=NG`).pipe(
       map(raw => {
+        const sku = raw.skus?.[0]?.code || extractSku(raw.slug, raw.name);
+        const override = this.getProductOverride(raw.id) || this.getProductOverride(sku) || (aliasSku ? this.getProductOverride(aliasSku) : null);
+        const catName = raw.categories?.[0]?.name || resolveCategoryFromSku(sku);
+        const priceMinor = override?.priceMinorUnits || (override?.price ? override.price * 100 : (OFFICIAL_SKU_PRICES[sku] || 450000));
+
+        // Map ALL backend assets into images array
+        const backendImages: string[] = raw.assets?.length
+          ? raw.assets.map((a: any) => this.resolveImageUrl(a.url)).filter(Boolean)
+          : (raw.imageUrl ? [this.resolveImageUrl(raw.imageUrl)] : [this.FALLBACK_IMG]);
+
+        // Merge images: keep any customized override images, and ensure all backend S3 assets are included
+        const mergedImages: string[] = [];
+        if (override?.images?.length) {
+          for (const img of override.images) {
+            if (img && typeof img === 'string' && img.trim() && !mergedImages.includes(img.trim())) {
+              mergedImages.push(img.trim());
+            }
+          }
+        }
+        for (const bImg of backendImages) {
+          if (bImg && !mergedImages.includes(bImg)) {
+            mergedImages.push(bImg);
+          }
+        }
+        if (mergedImages.length === 0) {
+          mergedImages.push(this.FALLBACK_IMG);
+        }
+
         const p: Product = {
           id: raw.id,
-          sku: raw.skus?.[0]?.code || raw.slug,
+          sku: override?.sku || sku,
           skuId: raw.skus?.[0]?.id || raw.id,
-          name: raw.name,
-          categoryId: raw.categories?.[0]?.name || 'General',
-          categoryName: raw.categories?.[0]?.name || 'General',
-          description: raw.description,
-          specifications: raw.specifications || {},
-          images: raw.assets?.length ? raw.assets.map((a: any) => this.resolveImageUrl(a.url)) : [this.FALLBACK_IMG],
-          priceMinorUnits: 0,
+          name: override?.name || raw.name,
+          categoryId: raw.categories?.[0]?.id || catName,
+          categoryName: override?.categoryName || catName,
+          description: override?.description || raw.description,
           publicationStatus: 'PUBLISHED',
-          brand: raw.brand?.name || 'Nigson'
+          brand: override?.brand || raw.brand?.name || 'Nigson',
+          ...override,
+          specifications: {
+            ...(raw.specifications || {}),
+            ...(override?.specifications || {})
+          },
+          images: mergedImages,
+          priceMinorUnits: priceMinor,
+          price: priceMinor / 100
         };
         return this.enrichWithCategories([p])[0];
       }),
       catchError(err => {
+        const override = this.getProductOverride(uuid) || (aliasSku ? this.getProductOverride(aliasSku) : null);
+        if (override) {
+          return of(override as Product);
+        }
         console.error('[CatalogService] getProduct failed:', err);
         throw err;
       })
@@ -254,7 +441,7 @@ export class CatalogService {
         slug: c.slug,
         imageUrl: this.CAT_IMG[c.name] || this.FALLBACK_IMG
       }))),
-      tap(cats => this.categories.set(cats)),
+    tap(cats => this.categories.set(cats)),
       catchError(err => {
         console.error('[CatalogService] loadCategories failed:', err);
         return of([]);
@@ -298,13 +485,13 @@ export class CatalogService {
   }
 
   /**
- * TASK-20: Format price from NGN minor units (kobo) to display string.
- * Backend always returns kobo — divide by 100 before showing.
- *
- * Examples:
- *   formatPrice(2850000) → '₦28,500.00'
- *   formatPrice(450000)  → '₦4,500.00'
- */
+   * TASK-20: Format price from NGN minor units (kobo) to display string.
+   * Backend always returns kobo — divide by 100 before showing.
+   *
+   * Examples:
+   *   formatPrice(2850000) → '₦28,500.00'
+   *   formatPrice(450000)  → '₦4,500.00'
+   */
   formatPrice(minorUnits: number): string {
     const naira = minorUnits / 100;
     return '₦' + naira.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -372,12 +559,11 @@ export class CatalogService {
         if (ng?.currency) this.marketCurrency.set(ng.currency);
         return active;
       }),
-      catchError(err => {
+      catchError(() => {
         // Fallback gracefully in development / test environments
         this.marketActive.set(true);
         return of(true);
       })
     );
   }
-
 }

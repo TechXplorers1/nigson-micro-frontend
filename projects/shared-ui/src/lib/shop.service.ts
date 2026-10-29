@@ -103,6 +103,22 @@ export class ShopService {
           createdAt: new Date().toISOString()
         });
       } else {
+        const rawSession = localStorage.getItem('nigson_dev_session') || sessionStorage.getItem('nigson_dev_session');
+        if (rawSession) {
+          try {
+            const parsed = JSON.parse(rawSession);
+            if (parsed && (parsed.authenticated || parsed.userId)) {
+              this.user.set({
+                id: parsed.userId || 'user',
+                fullName: parsed.fullName || 'Nigson User',
+                email: parsed.email || '',
+                roles: parsed.roles || ['CUSTOMER'],
+                createdAt: new Date().toISOString()
+              });
+              return;
+            }
+          } catch {}
+        }
         this.user.set(null);
       }
     });
@@ -114,6 +130,20 @@ export class ShopService {
       if (s) this.saved.set(JSON.parse(s));
       const o = localStorage.getItem(LS_ORDERS);
       if (o) this.orders.set(JSON.parse(o));
+
+      const rawSession = localStorage.getItem('nigson_dev_session') || sessionStorage.getItem('nigson_dev_session');
+      if (rawSession) {
+        const parsed = JSON.parse(rawSession);
+        if (parsed && (parsed.authenticated || parsed.userId)) {
+          this.user.set({
+            id: parsed.userId || 'user',
+            fullName: parsed.fullName || 'Nigson User',
+            email: parsed.email || '',
+            roles: parsed.roles || ['CUSTOMER'],
+            createdAt: new Date().toISOString()
+          });
+        }
+      }
     } catch { /* ignore */ }
     this.hydrated.set(true);
   }

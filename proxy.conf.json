@@ -1,4 +1,13 @@
 {
+  "/storage": {
+    "target": "http://localhost:4566",
+    "secure": false,
+    "changeOrigin": true,
+    "pathRewrite": {
+      "^/storage": ""
+    },
+    "logLevel": "warn"
+  },
   "/bff": {
     "target": "http://localhost:8081",
     "secure": false,

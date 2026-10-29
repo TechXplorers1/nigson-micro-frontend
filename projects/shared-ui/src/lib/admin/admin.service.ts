@@ -3,6 +3,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, of, tap, map, catchError, from } from 'rxjs';
 import { SessionService } from '../session.service';
 import { ShopService } from '../shop.service';
+import { CatalogService, OFFICIAL_SKU_PRICES, extractSku, resolveCategoryFromSku } from '../catalog.service';
 
 export type SectionKey =
   | "dashboard" | "pages" | "products" | "reviews" | "distributors"
@@ -11,9 +12,34 @@ export type SectionKey =
 
 export type AdminProduct = {
   id: string; name: string; sku: string; category: string; price: number;
-  desc: string; image: string; images?: string[]; status: "DRAFT" | "ACTIVE" | "ARCHIVED" | "Active" | "Draft";
+  desc: string; image: string; images?: string[]; status: "DRAFT" | "ACTIVE" | "ARCHIVED" | "Active" | "Draft" | "Out of Stock";
   stock: number; reserved: number; rating: number;
   cost?: number; retail?: number; lowLevel?: number;
+  brand?: string;
+  type?: string;
+  priceSubtitle?: string;
+  wholesale?: number;
+  distributor?: number;
+  features?: string;
+  overview?: string;
+  overviewExtra?: string;
+  highlights?: string;
+  specs?: string;
+  specifications?: Record<string, any>;
+  packaging?: string;
+  cartonSpecs?: string;
+  warehouseStatus?: string;
+  dispatchTurnaround?: string;
+  nationwideShipping?: string;
+  minWholesaleOrder?: string;
+  warranty?: string;
+  connectors?: string;
+  powerRating?: string;
+  compatibility?: string;
+  buildMaterial?: string;
+  certification?: string;
+  importer?: string;
+  updatedAt?: string;
 };
 
 export type AdminPage = {
@@ -98,6 +124,7 @@ export class AdminService {
   shop = inject(ShopService);
   session = inject(SessionService);
   http = inject(HttpClient);
+  catalog = inject(CatalogService);
 
   // Seed basic data
   roles = signal<AdminRole[]>([
@@ -390,23 +417,42 @@ export class AdminService {
 
   /** TASK-66: Load staff products from live catalogue */
   loadStaffProducts(): Observable<AdminProduct[]> {
-    const resolveUrl = (u: string) => u?.includes('cdn.synthetic.test/assets/') ? u.replace(/^https?:\/\/[^\/]+\/assets\//, '/assets/') : u;
+    const resolveUrl = (u: string) => {
+      if (!u) return '';
+      if (u.includes('cdn.synthetic.test/assets/')) {
+        return u.replace(/^https?:\/\/[^\/]+\/assets\//, 'http://localhost:4566/nigson-product-images/');
+      }
+      if (u.startsWith('/assets/products/')) {
+        return u.replace('/assets/products/', 'http://localhost:4566/nigson-product-images/products/');
+      }
+      return u;
+    };
     return this.http.get<any>('/api/v1/catalogue/products?market=NG&size=100').pipe(
       map(res => (res?.items ?? []).map((p: any) => {
         const primaryImg = resolveUrl(p.imageUrl) || (p.images && resolveUrl(p.images[0])) || '/assets/hero-accessories.jpg';
+        const sku = extractSku(p.slug, p.name);
+        const override = this.catalog.getProductOverride(p.id) || this.catalog.getProductOverride(sku);
+        const resolvedCat = override?.categoryName || resolveCategoryFromSku(sku, p.categoryName || p.brandName || 'General');
+        const defaultPrice = OFFICIAL_SKU_PRICES[sku] ? OFFICIAL_SKU_PRICES[sku] / 100 : 4500;
+        const price = override?.retail || override?.price || (p.pricing?.priceKobo ? p.pricing.priceKobo / 100 : defaultPrice);
+
         return {
           id: p.id,
-          name: p.name,
-          sku: p.slug || p.sku || 'NG-SKU',
-          category: p.categoryName || p.brandName || p.category || 'General',
-          price: p.pricing?.priceKobo ? p.pricing.priceKobo / 100 : (p.price || 0),
-          desc: p.description || p.name,
-          image: primaryImg,
-          images: p.images ? p.images.map(resolveUrl) : [primaryImg],
-          status: 'Active' as const,
-          stock: p.stock ?? 0,
+          name: override?.name || p.name,
+          sku: override?.sku || sku,
+          category: resolvedCat,
+          price: price,
+          retail: price,
+          wholesale: override?.wholesale || Math.round(price * 0.8),
+          distributor: override?.distributor || Math.round(price * 0.7),
+          desc: override?.description || p.description || p.name,
+          image: override?.images?.[0] || primaryImg,
+          images: override?.images?.length ? override.images : (p.images ? p.images.map(resolveUrl) : [primaryImg]),
+          status: (override?.status || (p.available ? 'Active' : 'Active')) as any,
+          stock: override?.stock ?? (p.stock || 150),
           reserved: p.reserved ?? 0,
-          rating: p.rating ?? 5.0
+          rating: p.rating ?? 5.0,
+          ...override
         };
       })),
       tap(products => {
@@ -679,6 +725,16 @@ export class AdminService {
       'If-Match': '"0"',
       'Idempotency-Key': crypto.randomUUID()
     });
+    // Immediately update local reactive signals so admin UI reflects the new images/fields
+    this.products.update(all => all.map(p => (p.id === id || p.sku === payload.sku) ? { ...p, ...payload } : p));
+    this.log(`Product ${payload.name || id} updated`);
+
+    // Synchronize to CatalogService so the store/shop detail page immediately displays it
+    this.catalog.saveProductOverride(id, payload);
+    if (payload.sku) {
+      this.catalog.saveProductOverride(payload.sku, payload);
+    }
+
     return this.http.patch(`/api/v1/staff/products/${id}`, payload, { headers }).pipe(
       tap(() => {
         this.products.update(all => all.map(p => (p.id === id || p.sku === payload.sku) ? { ...p, ...payload } : p));
@@ -687,6 +743,8 @@ export class AdminService {
       catchError(err => {
         console.error('[AdminService] updateProduct failed:', err);
         return of(null);
+        console.warn('[AdminService] updateProduct backend sync notice:', err?.status ?? err);
+        return of({ ...payload, id });
       })
     );
   }
