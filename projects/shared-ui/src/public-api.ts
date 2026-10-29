@@ -37,6 +37,7 @@ export * from './lib/session.service';
 export * from './lib/csrf.interceptor';
 export * from './lib/idempotency.interceptor';
 export * from './lib/if-match.interceptor';
+export * from './lib/auth-401.interceptor';
 
 export * from './lib/auth.guard';
 

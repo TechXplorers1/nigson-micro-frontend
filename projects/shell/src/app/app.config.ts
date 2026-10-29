@@ -1,4 +1,4 @@
-﻿import {
+import {
   ApplicationConfig,
   provideBrowserGlobalErrorListeners,
   APP_INITIALIZER,
@@ -10,6 +10,7 @@ import {
   csrfInterceptor,
   idempotencyInterceptor,
   ifMatchInterceptor,
+  auth401Interceptor,
   CartService,
   SessionService,
   AccountService,
@@ -37,7 +38,7 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
     provideHttpClient(
-      withInterceptors([csrfInterceptor, idempotencyInterceptor, ifMatchInterceptor])
+      withInterceptors([csrfInterceptor, idempotencyInterceptor, ifMatchInterceptor, auth401Interceptor])
     ),
     {
       provide: APP_INITIALIZER,

@@ -1,5 +1,5 @@
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -56,6 +56,31 @@ const BANKS = ["Access Bank", "First Bank", "Guaranty Trust Bank", "United Bank 
 
           <div class="mt-10 grid gap-10 lg:grid-cols-[1fr_400px]">
             <div class="rounded-2xl border border-hairline bg-white p-6 md:p-8">
+
+              <!-- Authentication Notice for Unsigned Guests -->
+              <div *ngIf="!session.authenticated()" class="mb-6 rounded-2xl border border-amber-200 bg-amber-50/80 p-5 animate-in fade-in">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <div class="flex items-center gap-2">
+                      <svg lucideLock class="h-4 w-4 text-amber-800"></svg>
+                      <h3 class="font-bold text-amber-900 text-sm">Sign in required to complete order</h3>
+                    </div>
+                    <p class="text-xs text-amber-800 mt-1">
+                      Nigson requires an authenticated account to bind your official warranty, issue trackable dispatch tokens, and record trade receipts.
+                    </p>
+                    <p class="text-[11px] text-amber-700 mt-1">
+                      Local test account: <strong class="font-mono text-ink">retailA</strong> &bull; Password: <strong class="font-mono text-ink">mock-local-user</strong>
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    (click)="session.signIn('/checkout')"
+                    class="inline-flex items-center justify-center gap-2 rounded-full bg-brand px-5 py-2.5 text-xs font-semibold text-white hover:bg-brand-deep transition-colors shrink-0 shadow-sm"
+                  >
+                    <svg lucideLock class="h-3.5 w-3.5"></svg> Sign In with Keycloak
+                  </button>
+                </div>
+              </div>
               
               <div *ngIf="step() === 0" class="space-y-5">
                 <h2 class="text-xl font-bold">Customer information</h2>
@@ -294,7 +319,7 @@ const BANKS = ["Access Bank", "First Bank", "Guaranty Trust Bank", "United Bank 
     </div>
   `
 })
-export class CheckoutComponent {
+export class CheckoutComponent implements OnInit {
   shop = inject(ShopService);
   cart = inject(CartService);
   catalog = inject(CatalogService);
@@ -316,13 +341,44 @@ export class CheckoutComponent {
   payLabel = computed(() => PAY_LABEL[this.payment()]);
 
   customer = {
-    fullName: this.shop.user()?.fullName ?? "",
-    email: this.shop.user()?.email ?? "",
+    fullName: this.shop.user()?.fullName || this.session.fullName() || "",
+    email: this.shop.user()?.email || this.session.email() || "",
     phone: "",
   };
   address = { street: "", city: "", state: "Lagos", country: "Nigeria", postal: "" };
   card = { name: "", number: "", expiry: "", cvv: "" };
   netbank = { bank: BANKS[0], userId: "", pin: "" };
+
+  ngOnInit() {
+    this.syncCustomer();
+    if (this.session.authenticated()) {
+      this.account.loadAddresses().subscribe(addrs => {
+        if (addrs && addrs.length > 0) {
+          const a = addrs.find(x => x.isDefault) || addrs[0];
+          this.address.street = a.line1 || '';
+          this.address.city = a.city || '';
+          this.address.state = a.region || 'Lagos';
+          this.address.country = a.countryCode === 'NG' ? 'Nigeria' : a.countryCode;
+          this.address.postal = a.postalCode || '100001';
+          if (a.recipient && !this.customer.fullName) this.customer.fullName = a.recipient;
+          if (a.phone && !this.customer.phone) this.customer.phone = a.phone;
+        }
+      });
+    }
+  }
+
+  private syncCustomer() {
+    const user = this.shop.user();
+    if (user) {
+      if (!this.customer.fullName && user.fullName) this.customer.fullName = user.fullName;
+      if (!this.customer.email && user.email) this.customer.email = user.email;
+      if (!this.customer.phone && user.phone) this.customer.phone = user.phone;
+    }
+    const sessionName = this.session.fullName();
+    if (sessionName && !this.customer.fullName) this.customer.fullName = sessionName;
+    const sessionEmail = this.session.email();
+    if (sessionEmail && !this.customer.email) this.customer.email = sessionEmail;
+  }
 
   subtotalMinor = computed((): number => {
     const items = this.cart.items();
@@ -356,6 +412,10 @@ export class CheckoutComponent {
 
   advance() {
     this.errorMsg.set(null);
+    if (!this.session.authenticated()) {
+      this.session.signIn('/checkout');
+      return;
+    }
     const err = this.validate();
     if (err) { this.errorMsg.set(err); return; }
     this.next();
@@ -380,12 +440,6 @@ export class CheckoutComponent {
     const err = this.validatePayment();
     if (err) { this.modalError.set(err); return; }
 
-    const cartId = this.cart.cartId();
-    if (!cartId) {
-      this.modalError.set("Your cart is empty or not initialized.");
-      return;
-    }
-
     if (!this.session.authenticated()) {
       this.session.signIn('/checkout');
       return;
@@ -394,6 +448,28 @@ export class CheckoutComponent {
     this.processing.set(true);
 
     try {
+      // Ensure server cart is initialized and populated with current items
+      let cartId = this.cart.cartId();
+      if (!cartId) {
+        try {
+          await firstValueFrom(this.cart.ensureCart());
+          for (const item of this.cart.items()) {
+            try {
+              await firstValueFrom(this.cart.addItem(item.skuId || item.sku, item.quantity));
+            } catch {}
+          }
+          cartId = this.cart.cartId();
+        } catch (e) {
+          console.warn('Cart initialization warning:', e);
+        }
+      }
+
+      if (!cartId) {
+        this.processing.set(false);
+        this.modalError.set("Your cart is empty or could not be synchronized with the server.");
+        return;
+      }
+
       // 1. Ensure address is saved and obtain addressId
       let addressId: string | null = null;
       try {

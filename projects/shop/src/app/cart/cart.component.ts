@@ -56,10 +56,10 @@ import { CartService, CatalogService, ShopService, QtyStepperComponent } from 's
                       <div class="min-w-0">
                         <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-ink">{{ item.sku }} • {{ item.categoryName }}</p>
                         <h3 class="mt-1 text-base md:text-lg font-semibold truncate">{{ item.name }}</h3>
-                        <p class="mt-1 text-sm text-muted-ink">Unit price {{ catalog.formatPrice((item.unitPriceMinorUnits / 100)) }}</p>
+                        <p class="mt-1 text-sm text-muted-ink">Unit price {{ catalog.formatPrice(item.unitPriceMinorUnits) }}</p>
                       </div>
                       <p class="text-lg font-bold text-[#D62828] whitespace-nowrap">
-                        {{ catalog.formatPrice((item.unitPriceMinorUnits / 100) * item.quantity) }}
+                        {{ catalog.formatPrice(item.unitPriceMinorUnits * item.quantity) }}
                       </p>
                     </div>
                     <div class="mt-auto pt-4 flex items-center justify-between">

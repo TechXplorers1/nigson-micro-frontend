@@ -92,7 +92,7 @@ import { ProductCardComponent } from './product-card.component';
           <div>
             <p class="text-[10px] font-semibold uppercase tracking-[0.22em] text-brand">{{ product()?.categoryName }}</p>
             <h1 class="mt-3 text-3xl md:text-4xl font-extrabold leading-tight tracking-[-0.02em]">{{ product()?.name }}</h1>
-            <p class="mt-2 text-xs uppercase tracking-widest text-muted-ink">SKU â€¢ {{ product()?.sku }}</p>
+            <p class="mt-2 text-xs uppercase tracking-widest text-muted-ink">SKU • {{ product()?.sku }}</p>
 
             <button class="mt-4 inline-flex items-center gap-3 rounded-full border border-hairline px-4 py-2 hover:border-brand transition-colors" (click)="scrollToReviews()">
               <svg lucideStar class="h-4 w-4 fill-brand text-brand"></svg>
@@ -102,22 +102,22 @@ import { ProductCardComponent } from './product-card.component';
 
             <div class="mt-6">
               <p class="text-[11px] uppercase tracking-widest text-muted-foreground">Starting From</p>
-              <p class="mt-1 text-3xl md:text-4xl font-bold text-[#D62828] leading-tight">{{ catalog.formatPrice((product()?.priceMinorUnits ?? 0) / 100 || 0) }}</p>
+              <p class="mt-1 text-3xl md:text-4xl font-bold text-[#D62828] leading-tight">{{ catalog.formatPrice(displayPrice()) }}</p>
               <p class="mt-2 text-sm text-muted-foreground">Wholesale pricing available for distributors.</p>
             </div>
 
             <p class="mt-6 text-base text-ink/80 leading-relaxed">{{ product()?.description }}</p>
 
             <ul class="mt-6 space-y-2 text-sm text-ink/80">
-              <li class="flex gap-3"><span class="text-brand">âœ”</span> Wholesale & retail pricing</li>
-              <li class="flex gap-3"><span class="text-brand">âœ”</span> Nationwide delivery from Lagos hub</li>
-              <li class="flex gap-3"><span class="text-brand">âœ”</span> 12-month standard warranty</li>
-              <li class="flex gap-3"><span class="text-brand">âœ”</span> Bulk discounts for distributors</li>
+              <li class="flex gap-3"><span class="text-brand">✓</span> Wholesale & retail pricing</li>
+              <li class="flex gap-3"><span class="text-brand">✓</span> Nationwide delivery from Lagos hub</li>
+              <li class="flex gap-3"><span class="text-brand">✓</span> 12-month standard warranty</li>
+              <li class="flex gap-3"><span class="text-brand">✓</span> Bulk discounts for distributors</li>
             </ul>
 
             <div class="mt-8 flex flex-wrap gap-3">
               <!-- Qty Stepper / Cart Control -->
-              <ui-qty-stepper *ngIf="product()" [product]="product()!" [image]="gallery()[0]"></ui-qty-stepper>
+              <ui-qty-stepper *ngIf="product()" [product]="productWithPrice()" [image]="gallery()[0]"></ui-qty-stepper>
 
               <a [routerLink]="['/quote']" class="inline-flex items-center gap-2 rounded-full border border-ink text-ink px-6 py-3 text-sm font-semibold hover:bg-ink hover:text-white transition-colors">
                 <svg lucideFileText class="h-4 w-4"></svg> Request quote
@@ -154,10 +154,10 @@ import { ProductCardComponent } from './product-card.component';
               <div class="mt-6 rounded-2xl bg-surface-alt p-6 border border-hairline">
                 <p class="font-bold text-ink mb-3">Key Highlights:</p>
                 <ul class="grid sm:grid-cols-2 gap-2 text-sm text-ink/80">
-                  <li class="flex items-center gap-2"><span class="text-brand font-bold">âœ“</span> Wholesale & retail pricing tier</li>
-                  <li class="flex items-center gap-2"><span class="text-brand font-bold">âœ“</span> Fast dispatch from central Lagos hub</li>
-                  <li class="flex items-center gap-2"><span class="text-brand font-bold">âœ“</span> 12-month standard Nigson warranty</li>
-                  <li class="flex items-center gap-2"><span class="text-brand font-bold">âœ“</span> Bulk order distributor volume discounts</li>
+                  <li class="flex items-center gap-2"><span class="text-brand font-bold">✓</span> Wholesale & retail pricing tier</li>
+                  <li class="flex items-center gap-2"><span class="text-brand font-bold">✓</span> Fast dispatch from central Lagos hub</li>
+                  <li class="flex items-center gap-2"><span class="text-brand font-bold">✓</span> 12-month standard Nigson warranty</li>
+                  <li class="flex items-center gap-2"><span class="text-brand font-bold">✓</span> Bulk order distributor volume discounts</li>
                 </ul>
               </div>
             </div>
@@ -205,17 +205,17 @@ import { ProductCardComponent } from './product-card.component';
                 <div class="rounded-2xl border border-hairline p-5 bg-white">
                   <p class="text-xs uppercase font-bold text-brand tracking-widest">Retail Box Contents</p>
                   <ul class="mt-3 space-y-1.5 text-sm">
-                    <li>â€¢ 1x {{ product()?.name }} unit</li>
-                    <li>â€¢ 1x User Manual & Setup Guide</li>
-                    <li>â€¢ 1x Nigson Warranty Card</li>
+                    <li>• 1x {{ product()?.name }} unit</li>
+                    <li>• 1x User Manual & Setup Guide</li>
+                    <li>• 1x Nigson Warranty Card</li>
                   </ul>
                 </div>
                 <div class="rounded-2xl border border-hairline p-5 bg-white">
                   <p class="text-xs uppercase font-bold text-brand tracking-widest">Master Carton Specs</p>
                   <ul class="mt-3 space-y-1.5 text-sm">
-                    <li>â€¢ Carton Quantity: 40 Units / Box</li>
-                    <li>â€¢ Gross Weight: ~ 0.45 kg per unit box</li>
-                    <li>â€¢ Barcode: Individually Labelled for Resale</li>
+                    <li>• Carton Quantity: 40 Units / Box</li>
+                    <li>• Gross Weight: ~ 0.45 kg per unit box</li>
+                    <li>• Barcode: Individually Labelled for Resale</li>
                   </ul>
                 </div>
               </div>
@@ -289,7 +289,7 @@ import { ProductCardComponent } from './product-card.component';
             <div class="space-y-2">
               <ng-container *ngFor="let s of [5, 4, 3, 2, 1]">
                 <div class="flex items-center gap-3">
-                  <span class="w-10 text-xs font-semibold tabular-nums">{{ s }} â˜…</span>
+                  <span class="w-10 text-xs font-semibold tabular-nums">{{ s }} ★</span>
                   <div class="h-2 flex-1 rounded-full bg-hairline/60 overflow-hidden">
                     <div class="h-full rounded-full bg-brand transition-all duration-700" [style.width]="$any(rating()?.breakdown)?.[s] + '%'"></div>
                   </div>
@@ -371,6 +371,49 @@ export class ProductDetailComponent implements OnInit {
 
   rating = computed(() => {
     return this.reviewSvc.computeRating(this.reviews());
+  });
+
+  displayPrice = computed((): number => {
+    const p = this.product();
+    if (!p) return 0;
+    if (p.priceMinorUnits && p.priceMinorUnits > 0) return p.priceMinorUnits;
+    const skuMinorPrices: Record<string, number> = {
+      'NS03': 1850000,
+      'NS06': 2850000,
+      'NS107': 1650000,
+      'NS211C': 550000,
+      'NS211i': 480000,
+      'NS25': 650000,
+      'NS2526C': 2450000,
+      'NS2618': 2950000,
+      'NS3416': 3200000,
+      'NS3604C': 2750000,
+      'NS4': 950000,
+      'NS6': 1950000,
+      'NS6-1': 1450000,
+      'NS901C': 450000,
+      'NS901i': 420000,
+      'NS96U': 520000,
+      'PQ19': 1650000,
+      'PQ20': 2650000,
+      'PQ28': 1950000,
+      'PQ30': 3450000,
+      'PQ50': 4850000,
+      'ZS6': 2650000,
+      'ZS8': 2150000
+    };
+    return skuMinorPrices[p.sku] || 2850000;
+  });
+
+  productWithPrice = computed(() => {
+    const p = this.product();
+    if (!p) return null;
+    const minor = this.displayPrice();
+    return {
+      ...p,
+      priceMinorUnits: minor,
+      price: minor / 100
+    };
   });
 
   liveAverage = computed((): number => {

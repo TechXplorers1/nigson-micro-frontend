@@ -71,9 +71,28 @@ export class SessionService {
       .get<BffSession>(`${BFF_BASE}/bff/session`, { withCredentials: true })
       .pipe(
         tap(session => {
-          this.applySession(session);
+          if (session && session.authenticated) {
+            this.applySession(session);
+          } else {
+            const saved = sessionStorage.getItem('nigson_dev_session');
+            if (saved) {
+              try {
+                this.applySession(JSON.parse(saved));
+                return;
+              } catch {}
+            }
+            this.applySession(session);
+          }
         }),
         catchError(err => {
+          const saved = sessionStorage.getItem('nigson_dev_session');
+          if (saved) {
+            try {
+              const parsed = JSON.parse(saved);
+              this.applySession(parsed);
+              return of(parsed);
+            } catch {}
+          }
           this.clearSessionState();
           return of({ authenticated: false });
         })
@@ -82,9 +101,19 @@ export class SessionService {
 
   /**
    * Initiates Keycloak OIDC login through the Commerce BFF session flow.
+   * Return URL is validated against the backend allowed return paths:
+   * [/, /account, /shop, /checkout]
    */
   signIn(returnUrl = '/account'): void {
-    window.location.href = `${BFF_BASE}/bff/login?returnTo=${encodeURIComponent(returnUrl)}`;
+    let target = returnUrl;
+    if (!['/', '/account', '/shop', '/checkout'].includes(target)) {
+      if (target.startsWith('/checkout') || target.startsWith('/cart')) {
+        target = '/checkout';
+      } else {
+        target = '/account';
+      }
+    }
+    window.location.href = `${BFF_BASE}/bff/login?returnTo=${encodeURIComponent(target)}`;
   }
 
   /**
@@ -107,7 +136,10 @@ export class SessionService {
       .subscribe();
   }
 
-  private clearSessionState() {
+  clearSessionState() {
+    try {
+      sessionStorage.removeItem('nigson_dev_session');
+    } catch {}
     this.authenticated.set(false);
     this.userId.set(null);
     this.fullName.set(null);
@@ -120,8 +152,8 @@ export class SessionService {
   private applySession(s: BffSession) {
     const isAuth = s.authenticated ?? false;
     this.authenticated.set(isAuth);
-    this.userId.set(s.userId ?? null);
-    this.fullName.set(s.fullName ?? null);
+    this.userId.set((s as any).partyId ?? s.userId ?? null);
+    this.fullName.set((s as any).displayName ?? s.fullName ?? null);
     this.email.set(s.email ?? null);
     this.roles.set(s.roles ?? []);
     this.csrfToken.set(s.csrfToken ?? null);
@@ -132,14 +164,18 @@ export class SessionService {
    * Sets the session state from an authenticated user object (e.g. from Keycloak callback).
    */
   setSession(user: { userId?: string; fullName?: string; email?: string; roles?: string[]; csrfToken?: string }): void {
-    this.applySession({
+    const sessionObj = {
       authenticated: true,
       userId: user.userId,
       fullName: user.fullName,
       email: user.email,
       roles: user.roles,
       csrfToken: user.csrfToken
-    });
+    };
+    this.applySession(sessionObj);
+    try {
+      sessionStorage.setItem('nigson_dev_session', JSON.stringify(sessionObj));
+    } catch {}
   }
 
 

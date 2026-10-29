@@ -131,40 +131,32 @@ import { SessionService, KeycloakService } from 'shared-ui';
 
         <!-- Quick Demo Profiles for Local Development -->
         <div *ngIf="!isProcessingCode()" class="space-y-2 pt-1">
-          <p class="text-[10px] font-bold uppercase tracking-widest text-muted-ink">Instant Development Profiles</p>
+          <div class="flex items-center justify-between">
+            <p class="text-[10px] font-bold uppercase tracking-widest text-muted-ink">Keycloak Test Accounts</p>
+            <span class="text-[10px] text-muted-ink">pw: mock-local-user</span>
+          </div>
 
-          <div class="grid grid-cols-3 gap-2">
+          <div class="grid grid-cols-2 gap-2">
             <button
               id="btn-login-customer"
               type="button"
               (click)="loginWithDemo('customer')"
-              class="flex flex-col items-center justify-center rounded-xl border border-hairline bg-surface-alt/60 p-2 hover:border-brand hover:bg-white transition-all text-center group"
+              class="flex flex-col items-center justify-center rounded-xl border border-hairline bg-surface-alt/60 p-2.5 hover:border-brand hover:bg-white transition-all text-center group"
             >
               <svg lucideUser class="h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform"></svg>
-              <span class="text-xs font-semibold text-ink mt-1">Customer</span>
-              <span class="text-[10px] text-muted-ink">Chidi</span>
+              <span class="text-xs font-semibold text-ink mt-1">Customer Account</span>
+              <span class="text-[10px] text-muted-ink font-mono">retailA</span>
             </button>
 
             <button
               id="btn-login-admin"
               type="button"
               (click)="loginWithDemo('admin')"
-              class="flex flex-col items-center justify-center rounded-xl border border-hairline bg-surface-alt/60 p-2 hover:border-brand hover:bg-white transition-all text-center group"
+              class="flex flex-col items-center justify-center rounded-xl border border-hairline bg-surface-alt/60 p-2.5 hover:border-brand hover:bg-white transition-all text-center group"
             >
               <svg lucideShieldCheck class="h-4 w-4 text-purple-600 group-hover:scale-110 transition-transform"></svg>
-              <span class="text-xs font-semibold text-ink mt-1">Admin</span>
-              <span class="text-[10px] text-muted-ink">Adaobi</span>
-            </button>
-
-            <button
-              id="btn-login-staff"
-              type="button"
-              (click)="loginWithDemo('staff')"
-              class="flex flex-col items-center justify-center rounded-xl border border-hairline bg-surface-alt/60 p-2 hover:border-brand hover:bg-white transition-all text-center group"
-            >
-              <svg lucideCheckCircle2 class="h-4 w-4 text-emerald-600 group-hover:scale-110 transition-transform"></svg>
-              <span class="text-xs font-semibold text-ink mt-1">Staff</span>
-              <span class="text-[10px] text-muted-ink">Emeka</span>
+              <span class="text-xs font-semibold text-ink mt-1">Admin Account</span>
+              <span class="text-[10px] text-muted-ink font-mono">admin</span>
             </button>
           </div>
         </div>
@@ -215,9 +207,12 @@ export class LoginComponent implements OnInit {
   }
 
   getReturnUrl(): string {
-    return this.route.snapshot.queryParams['returnTo'] ||
-           this.route.snapshot.queryParams['redirect'] ||
-           '/account';
+    const raw = this.route.snapshot.queryParams['returnTo'] ||
+                this.route.snapshot.queryParams['redirect'] ||
+                '/account';
+    if (raw.startsWith('/checkout') || raw.startsWith('/cart')) return '/checkout';
+    if (raw.startsWith('/admin')) return '/admin';
+    return '/account';
   }
 
   submitDirectLogin() {
@@ -264,15 +259,6 @@ export class LoginComponent implements OnInit {
         fullName: 'Adaobi Admin',
         email: 'admin@nigson.ng',
         roles: ['ADMIN', 'CUSTOMER', 'SALES', 'OPERATIONS', 'FINANCE', 'CONTENT_EDITOR', 'CONTENT_PUBLISHER', 'ANALYST']
-      });
-      const target = this.getReturnUrl();
-      this.router.navigateByUrl(target === '/' ? '/admin' : target);
-    } else {
-      this.session.setSession({
-        userId: 'dev-staff-001',
-        fullName: 'Emeka Logistics',
-        email: 'operations@nigson.ng',
-        roles: ['OPERATIONS', 'SALES', 'CUSTOMER']
       });
       const target = this.getReturnUrl();
       this.router.navigateByUrl(target === '/' ? '/admin' : target);

@@ -1,7 +1,6 @@
 import { Injectable, computed, signal, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Observable, of, tap, map, catchError } from 'rxjs';
+import { Observable, of, tap, map, catchError, from } from 'rxjs';
 import { SessionService } from '../session.service';
 import { ShopService } from '../shop.service';
 
@@ -145,10 +144,7 @@ export class AdminService {
     ];
     this.products.set(p);
 
-    this.customers.set([
-      { id: 'cu_1', name: 'David Okonkwo', email: 'david@mail.com', phone: '+234 8011111111', location: 'Lagos', joined: new Date().toISOString(), orders: 5, spend: 100000, saved: 2, quotes: 0, status: 'Active' },
-      { id: 'cu_2', name: 'Sarah Adeyemi', email: 'sarah@mail.com', phone: '+234 8022222222', location: 'Abuja', joined: new Date().toISOString(), orders: 2, spend: 30000, saved: 0, quotes: 1, status: 'Active' }
-    ]);
+    this.customers.set([]);
 
     this.hydrateFromStorage();
   }
@@ -161,6 +157,7 @@ export class AdminService {
       this.loadStaffUsers().subscribe();
       this.loadStaffApplications().subscribe();
       this.loadStaffReviews().subscribe();
+      this.loadStaffCustomers().subscribe();
     }
   }
 
@@ -272,6 +269,65 @@ export class AdminService {
     this.log(`Inquiry ${id} set to ${status}`);
   }
 
+  /** TASK-68: Load registered customers from identity realm */
+  loadStaffCustomers(): Observable<AdminCustomer[]> {
+    return from((async (): Promise<AdminCustomer[]> => {
+      try {
+        const adminBody = new URLSearchParams({
+          client_id: 'admin-cli',
+          username: 'local-bootstrap',
+          password: 'mock-local-identity-admin',
+          grant_type: 'password'
+        });
+        const tokenRes = await fetch('http://localhost:8180/realms/master/protocol/openid-connect/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: adminBody.toString()
+        });
+        if (!tokenRes.ok) return this.customers();
+        const { access_token } = await tokenRes.json();
+        const res = await fetch('http://localhost:8180/admin/realms/nigson-local/users?max=100', {
+          headers: { Authorization: 'Bearer ' + access_token }
+        });
+        if (!res.ok) return this.customers();
+        const users: any[] = await res.json();
+
+        const liveOrders = this.orders();
+        const mapped: AdminCustomer[] = users
+          .filter(u => u.email && !u.username?.startsWith('service-account') && !u.username?.startsWith('local-bootstrap'))
+          .map(u => {
+            const fullName = ((u.firstName || '') + ' ' + (u.lastName || '')).trim() || u.username || 'Customer';
+            const userOrders = liveOrders.filter(o => o.customer?.email?.toLowerCase() === u.email?.toLowerCase());
+            const spend = userOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+            const joinedDate = u.createdTimestamp ? new Date(u.createdTimestamp).toISOString() : new Date().toISOString();
+            const phone = (u.attributes && u.attributes.phone && u.attributes.phone[0]) || '+234 800 000 0000';
+
+            return {
+              id: u.id,
+              name: fullName,
+              email: u.email,
+              phone: phone,
+              location: 'Nigeria',
+              joined: joinedDate,
+              orders: userOrders.length,
+              spend: spend,
+              saved: 0,
+              quotes: 0,
+              status: u.enabled ? 'Active' : 'Suspended'
+            };
+          });
+
+        if (mapped.length > 0) {
+          this.customers.set(mapped);
+        }
+        return mapped;
+      } catch (err) {
+        console.warn('[AdminService] loadStaffCustomers error:', err);
+        return this.customers();
+      }
+    })());
+  }
+
   // --- Backend Staff APIs (TASK-64 to TASK-72) ---
 
   /** TASK-64: Load staff users from GET /api/v1/staff/users (API-011) */
@@ -283,7 +339,6 @@ export class AdminService {
         email: u.email,
         roleId: (u.roles && u.roles[0]) || 'ADMIN',
         status: (u.disabled ? 'Disabled' : 'Active') as 'Active' | 'Disabled',
-        lastLogin: u.lastLogin || new Date().toISOString()
         lastLogin: u.lastLogin || new Date().toISOString(),
         version: u.version ?? 0
       }))),
@@ -298,428 +353,193 @@ export class AdminService {
   }
 
   /** TASK-64: Update user roles via PUT /api/v1/staff/users/:id/roles (API-012) */
-  updateUserRoles(userId: string, roles: string[], reason = 'Administrative role update'): Observable<boolean> {
-    return this.http.put(`/api/v1/staff/users/${userId}/roles`, { roles, reason }).pipe(
-      updateUserRoles(userId: string, roles: string[], reason = 'Administrative role assignment update'): Observable < boolean > {
-        const user = this.admins().find(u => u.id === userId);
-        const headers = new HttpHeaders({
-          'Content-Type': 'application/json',
-          'If-Match': `"${user?.version ?? 0}"`,
-          'Idempotency-Key': crypto.randomUUID()
-        });
-        const finalReason = reason && reason.length >= 10 ? reason : 'Administrative role assignment update';
-        return this.http.put(`/api/v1/staff/users/${userId}/roles`, { roles, reason: finalReason }, { headers }).pipe(
-          map(() => true),
-          tap(() => {
-            this.admins.update(all => all.map(u => u.id === userId ? { ...u, roleId: roles[0] || 'ADMIN' } : u));
-            this.admins.update(all => all.map(u => u.id === userId ? { ...u, roleId: roles[0] || 'ADMIN', version: (u.version ?? 0) + 1 } : u));
-            this.log(`Roles for user ${userId} updated to ${roles.join(', ')}`);
-          }),
-          catchError(err => {
-            console.warn('[AdminService] updateUserRoles simulated:', err?.status ?? err);
-            this.admins.update(all => all.map(u => u.id === userId ? { ...u, roleId: roles[0] || 'ADMIN' } : u));
-            return of(true);
-            console.error('[AdminService] updateUserRoles failed:', err);
-            return of(false);
-          })
-        );
-      }
-  updateUserRoles(userId: string, roles: string[], reason = 'Administrative role assignment update'): Observable < boolean > {
-      const user = this.admins().find(u => u.id === userId);
-      const headers = new HttpHeaders({
-        'Content-Type': 'application/json',
-        'If-Match': `"${user?.version ?? 0}"`,
-        'Idempotency-Key': crypto.randomUUID()
-      });
-      const finalReason = reason && reason.length >= 10 ? reason : 'Administrative role assignment update';
-      return this.http.put(`/api/v1/staff/users/${userId}/roles`, { roles, reason: finalReason }, { headers }).pipe(
-        map(() => true),
-        tap(() => {
-          this.admins.update(all => all.map(u => u.id === userId ? { ...u, roleId: roles[0] || 'ADMIN', version: (u.version ?? 0) + 1 } : u));
-          this.log(`Roles for user ${userId} updated to ${roles.join(', ')}`);
-        }),
-        catchError(err => {
-          console.error('[AdminService] updateUserRoles failed:', err);
-          return of(false);
-        })
-      );
-    }
+  updateUserRoles(userId: string, roles: string[], reason = 'Administrative role assignment update'): Observable<boolean> {
+    const user = this.admins().find(u => u.id === userId);
+    const headers = new HttpHeaders({
+      'Content-Type': 'application/json',
+      'If-Match': `"${user?.version ?? 0}"`,
+      'Idempotency-Key': crypto.randomUUID()
+    });
+    const finalReason = reason && reason.length >= 10 ? reason : 'Administrative role assignment update';
+    return this.http.put(`/api/v1/staff/users/${userId}/roles`, { roles, reason: finalReason }, { headers }).pipe(
+      map(() => true),
+      tap(() => {
+        this.admins.update(all => all.map(u => u.id === userId ? { ...u, roleId: roles[0] || 'ADMIN', version: (u.version ?? 0) + 1 } : u));
+        this.log(`Roles for user ${userId} updated to ${roles.join(', ')}`);
+      }),
+      catchError(err => {
+        console.error('[AdminService] updateUserRoles failed:', err);
+        return of(false);
+      })
+    );
+  }
 
-  /** TASK-66: Load staff products from GET /api/v1/staff/products or catalogue */
-  /** Bulk create products into inventory */
-  bulkCreateProducts(newProducts: AdminProduct[]): Observable < AdminProduct[] > {
-      const formatted = newProducts.map(p => ({
-        ...p,
-        id: p.id || 'prod-' + Math.random().toString(36).substring(2, 9),
-        status: p.status || 'Active',
-        reserved: p.reserved || 0,
-        rating: p.rating || 5
-      }));
-      this.products.update(all => {
-        const updated = [...all, ...formatted];
-        try { localStorage.setItem('nigson_admin_products', JSON.stringify(updated)); } catch { }
-        return updated;
-      });
-      this.products.update(all => [...all, ...formatted]);
-      this.log(`Bulk added ${newProducts.length} products to inventory`);
-      return of(formatted);
-    }
   /** TASK-66: Bulk create products in UI state */
-  bulkCreateProducts(newProducts: AdminProduct[]): Observable < AdminProduct[] > {
-      const formatted = newProducts.map(p => ({
-        ...p,
-        id: p.id || 'prod-' + Math.random().toString(36).substring(2, 9),
-        status: p.status || 'Active',
-        reserved: p.reserved || 0,
-        rating: p.rating || 5
-      }));
-      this.products.update(all => [...all, ...formatted]);
-      this.log(`Bulk added ${newProducts.length} products to inventory`);
-      return of(formatted);
-    }
+  bulkCreateProducts(newProducts: AdminProduct[]): Observable<AdminProduct[]> {
+    const formatted = newProducts.map(p => ({
+      ...p,
+      id: p.id || 'prod-' + Math.random().toString(36).substring(2, 9),
+      status: (p.status || 'Active') as any,
+      reserved: p.reserved || 0,
+      rating: p.rating || 5
+    }));
+    this.products.update(all => [...all, ...formatted]);
+    this.log(`Bulk added ${newProducts.length} products to inventory`);
+    return of(formatted);
+  }
 
-    loadStaffProducts(): Observable < AdminProduct[] > {
-      return this.http.get<any>('/api/v1/catalogue/products?limit=50').pipe(
-        loadStaffProducts(): Observable < AdminProduct[] > {
-          return this.http.get<any>('/api/v1/catalogue/products?market=NG').pipe(
-            map(res => (res?.items ?? []).map((p: any) => ({
-              id: p.id,
-              name: p.name,
-              sku: p.sku || 'NG-SKU',
-              category: p.category || 'General',
-              price: p.pricing?.priceKobo ? p.pricing.priceKobo / 100 : (p.price || 0),
-              desc: p.description || '',
-              image: (p.images && p.images[0]) || '',
-              images: p.images || [],
-              status: (p.status === 'PUBLISHED' || p.status === 'Active') ? 'Active' as const : 'Draft' as const,
-              stock: p.stock ?? 100,
-              reserved: p.reserved ?? 0,
-              rating: p.rating ?? 5.0
   /** TASK-66: Load staff products from live catalogue */
   loadStaffProducts(): Observable<AdminProduct[]> {
-                return this.http.get<any>('/api/v1/catalogue/products?market=NG').pipe(
-                  map(res => (res?.items ?? []).map((p: any) => ({
-                    id: p.id,
-                    name: p.name,
-                    sku: p.slug || 'NG-SKU',
-                    category: p.brandName || 'General',
-                    price: 28500,
-                    desc: p.name,
-                    image: p.imageUrl || '/assets/hero-accessories.jpg',
-                    images: p.imageUrl ? [p.imageUrl] : ['/assets/hero-accessories.jpg'],
-                    status: (p.available ? 'Active' : 'Draft') as 'Active' | 'Draft',
-                    stock: 250,
-                    reserved: 0,
-                    rating: 5.0
-                  }))),
-                  tap(products => {
-                    if (products.length > 0) this.products.set(products);
-                    this.products.set(products);
-                  }),
-                  catchError(err => {
-                    console.warn('[AdminService] loadStaffProducts fallback:', err?.status ?? err);
-                    return of(this.products());
-                    console.error('[AdminService] loadStaffProducts failed:', err);
-                    return of([]);
-                  })
-                );
-              }
-        category: p.brandName || 'General',
-              price: 28500,
-              desc: p.name,
-              image: p.imageUrl || '/assets/hero-accessories.jpg',
-              images: p.imageUrl ? [p.imageUrl] : ['/assets/hero-accessories.jpg'],
-              status: (p.available ? 'Active' : 'Draft') as 'Active' | 'Draft',
-              stock: 250,
-              reserved: 0,
-              rating: 5.0
-            }))),
-            tap(products => {
-              this.products.set(products);
-            }),
-            catchError(err => {
-              console.error('[AdminService] loadStaffProducts failed:', err);
-              return of([]);
-            })
-          );
-        }
+    const resolveUrl = (u: string) => u?.includes('cdn.synthetic.test/assets/') ? u.replace(/^https?:\/\/[^\/]+\/assets\//, '/assets/') : u;
+    return this.http.get<any>('/api/v1/catalogue/products?market=NG&size=100').pipe(
+      map(res => (res?.items ?? []).map((p: any) => {
+        const primaryImg = resolveUrl(p.imageUrl) || (p.images && resolveUrl(p.images[0])) || '/assets/hero-accessories.jpg';
+        return {
+          id: p.id,
+          name: p.name,
+          sku: p.slug || p.sku || 'NG-SKU',
+          category: p.categoryName || p.brandName || p.category || 'General',
+          price: p.pricing?.priceKobo ? p.pricing.priceKobo / 100 : (p.price || 0),
+          desc: p.description || p.name,
+          image: primaryImg,
+          images: p.images ? p.images.map(resolveUrl) : [primaryImg],
+          status: 'Active' as const,
+          stock: p.stock ?? 0,
+          reserved: p.reserved ?? 0,
+          rating: p.rating ?? 5.0
+        };
+      })),
+      tap(products => {
+        if (products.length > 0) this.products.set(products);
+      }),
+      catchError(err => {
+        console.warn('[AdminService] loadStaffProducts fallback:', err?.status ?? err);
+        return of(this.products());
+      })
+    );
+  }
 
   /** TASK-67: Load staff orders from GET /api/v1/staff/orders (API-043) */
-  loadStaffOrders(): Observable < AdminOrder[] > {
-        return this.http.get<{ items: any[] }>('/api/v1/staff/orders').pipe(
-          map(res => (res?.items ?? []).map(o => ({
-            id: o.id,
-            number: o.orderNumber || o.number || ('ORD-' + o.id.slice(0, 8)),
-            date: o.placedAt || o.createdAt || new Date().toISOString(),
-            customer: {
-              name: o.customerName || 'Customer',
-              email: o.customerEmail || '',
-              phone: o.customerPhone || '',
-              address: o.shippingAddress?.city || 'Nigeria'
-            },
-            items: (o.items || []).map((i: any) => ({
-              sku: i.sku || '',
-              name: i.title || i.name || 'Item',
-              qty: i.quantity || i.qty || 1,
-              price: i.unitPriceKobo ? i.unitPriceKobo / 100 : (i.price || 0)
-            })),
-            total: o.totalKobo ? o.totalKobo / 100 : (o.total || 0),
-            paymentStatus: o.paymentStatus || 'Paid',
-            status: o.state || o.status || 'Processing',
-            delivery: o.shippingMethod || 'Standard Delivery',
-            timeline: []
-          }))),
-          tap(orders => {
-            if (orders.length > 0) this.orders.set(orders);
-            this.orders.set(orders);
-          }),
-          catchError(err => {
-            console.warn('[AdminService] loadStaffOrders fallback:', err?.status ?? err);
-            return of(this.orders());
-            console.error('[AdminService] loadStaffOrders failed:', err);
-            return of([]);
-          })
-        );
-      }
-  loadStaffOrders(): Observable < AdminOrder[] > {
-        return this.http.get<{ items: any[] }>('/api/v1/staff/orders').pipe(
-          map(res => (res?.items ?? []).map(o => ({
-            id: o.id,
-            number: o.orderNumber || o.number || ('ORD-' + o.id.slice(0, 8)),
-            date: o.placedAt || o.createdAt || new Date().toISOString(),
-            customer: {
-              name: o.customerName || 'Customer',
-              email: o.customerEmail || '',
-              phone: o.customerPhone || '',
-              address: o.shippingAddress?.city || 'Nigeria'
-            },
-            items: (o.items || []).map((i: any) => ({
-              sku: i.sku || '',
-              name: i.title || i.name || 'Item',
-              qty: i.quantity || i.qty || 1,
-              price: i.unitPriceKobo ? i.unitPriceKobo / 100 : (i.price || 0)
-            })),
-            total: o.totalKobo ? o.totalKobo / 100 : (o.total || 0),
-            paymentStatus: o.paymentStatus || 'Paid',
-            status: o.state || o.status || 'Processing',
-            delivery: o.shippingMethod || 'Standard Delivery',
-            timeline: []
-          }))),
-          tap(orders => {
-            this.orders.set(orders);
-          }),
-          catchError(err => {
-            console.error('[AdminService] loadStaffOrders failed:', err);
-            return of([]);
-          })
-        );
-      }
+  loadStaffOrders(): Observable<AdminOrder[]> {
+    return this.http.get<{ items: any[] }>('/api/v1/staff/orders').pipe(
+      map(res => (res?.items ?? []).map(o => ({
+        id: o.id,
+        number: o.orderNumber || o.number || ('ORD-' + o.id.slice(0, 8)),
+        date: o.placedAt || o.createdAt || new Date().toISOString(),
+        customer: {
+          name: o.customerName || 'Customer',
+          email: o.customerEmail || '',
+          phone: o.customerPhone || '',
+          address: o.shippingAddress?.city || 'Nigeria'
+        },
+        items: (o.items || []).map((i: any) => ({
+          sku: i.sku || '',
+          name: i.title || i.name || 'Item',
+          qty: i.quantity || i.qty || 1,
+          price: i.unitPriceKobo ? i.unitPriceKobo / 100 : (i.price || 0)
+        })),
+        total: o.totalKobo ? o.totalKobo / 100 : (o.total || 0),
+        paymentStatus: (o.paymentStatus === 'PAID' || o.paymentStatus === 'Paid') ? ('Paid' as const) : ('Pending' as const),
+        status: (o.state || o.status || 'Processing') as AdminOrderStatus,
+        delivery: o.shippingMethod || 'Standard Delivery',
+        timeline: []
+      }))),
+      tap(orders => {
+        if (orders.length > 0) this.orders.set(orders);
+      }),
+      catchError(err => {
+        console.warn('[AdminService] loadStaffOrders fallback:', err?.status ?? err);
+        return of(this.orders());
+      })
+    );
+  }
 
   /** TASK-69: Load distributor applications from GET /api/v1/staff/distributor-applications (API-094) */
-  loadStaffApplications(): Observable < AdminApplication[] > {
-        return this.http.get<{ content: any[] }>('/api/v1/staff/distributor-applications').pipe(
-          map(res => (res?.content ?? []).map(a => ({
-            id: a.id,
-            number: 'APP-' + a.id.slice(0, 6).toUpperCase(),
-            type: 'Distributor' as const,
-            businessName: a.organizationName || a.businessName || 'Business',
-            contactPerson: a.contactPerson || 'Contact',
-            email: a.email || '',
-            phone: a.phone || '',
-            location: a.countryCode || 'NG',
-            category: 'Wholesale',
-            date: a.submittedAt || new Date().toISOString(),
-            status: (a.state === 'APPROVED' ? 'Approved' : a.state === 'REJECTED' ? 'Rejected' : 'Pending') as LeadStatus,
-            note: a.businessReference
-          }))),
-          tap(apps => {
-            if (apps.length > 0) this.applications.set(apps);
-          }),
-          catchError(err => {
-            console.warn('[AdminService] loadStaffApplications fallback:', err?.status ?? err);
-            return of(this.applications());
-          })
-        );
-      }
-  loadStaffApplications(): Observable < AdminApplication[] > {
-        return this.http.get<{ content: any[] }>('/api/v1/staff/distributor-applications').pipe(
-          map(res => (res?.content ?? []).map(a => ({
-            id: a.id,
-            number: 'APP-' + a.id.slice(0, 6).toUpperCase(),
-            type: 'Distributor' as const,
-            businessName: a.organizationName || a.businessName || 'Business',
-            contactPerson: a.contactPerson || 'Contact',
-            email: a.email || '',
-            phone: a.phone || '',
-            location: a.countryCode || 'NG',
-            category: 'Wholesale',
-            date: a.submittedAt || new Date().toISOString(),
-            status: (a.state === 'APPROVED' ? 'Approved' : a.state === 'REJECTED' ? 'Rejected' : 'Pending') as LeadStatus,
-            note: a.businessReference
-          }))),
-          tap(apps => {
-            if (apps.length > 0) this.applications.set(apps);
-          }),
-          catchError(err => {
-            console.warn('[AdminService] loadStaffApplications error:', err?.status ?? err);
-            return of(this.applications());
-          })
-        );
-      }
+  loadStaffApplications(): Observable<AdminApplication[]> {
+    return this.http.get<{ content: any[] }>('/api/v1/staff/distributor-applications').pipe(
+      map(res => (res?.content ?? []).map(a => ({
+        id: a.id,
+        number: 'APP-' + a.id.slice(0, 6).toUpperCase(),
+        type: 'Distributor' as const,
+        businessName: a.organizationName || a.businessName || 'Business',
+        contactPerson: a.contactPerson || 'Contact',
+        email: a.email || '',
+        phone: a.phone || '',
+        location: a.countryCode || 'NG',
+        category: 'Wholesale',
+        date: a.submittedAt || new Date().toISOString(),
+        status: (a.state === 'APPROVED' ? 'Approved' : a.state === 'REJECTED' ? 'Rejected' : 'Pending') as LeadStatus,
+        note: a.businessReference
+      }))),
+      tap(apps => {
+        if (apps.length > 0) this.applications.set(apps);
+      }),
+      catchError(err => {
+        console.warn('[AdminService] loadStaffApplications fallback:', err?.status ?? err);
+        return of(this.applications());
+      })
+    );
+  }
 
   /** TASK-70: Load reviews for moderation from GET /api/v1/staff/reviews (API-098) */
-  loadStaffReviews(): Observable < AdminReview[] > {
-        return this.http.get<{ content: any[] }>('/api/v1/staff/reviews').pipe(
-          map(res => (res?.content ?? []).map(r => ({
-            id: r.id,
-            sku: r.sku || r.productId || '',
-            product: r.productName || 'Nigson Product',
-            author: r.displayName || r.author || 'Verified Buyer',
-            rating: r.rating || 5,
-            text: r.body || r.text || '',
-            date: r.submittedAt || r.date || new Date().toISOString(),
-            status: (r.state === 'PUBLISHED' ? 'Published' : 'Hidden') as 'Published' | 'Hidden'
-          }))),
-          tap(revs => {
-            if (revs.length > 0) this.reviews.set(revs);
-          }),
-          catchError(err => {
-            console.warn('[AdminService] loadStaffReviews fallback:', err?.status ?? err);
-            return of(this.reviews());
-          })
-        );
-      }
-  loadStaffReviews(): Observable < AdminReview[] > {
-        return this.http.get<{ items?: any[]; content?: any[] }>('/api/v1/staff/reviews').pipe(
-          map(res => (res?.items ?? res?.content ?? []).map(r => ({
-            id: r.id,
-            sku: r.sku || r.productId || '',
-            product: r.productName || 'Nigson Product',
-            author: r.displayName || r.author || 'Verified Buyer',
-            rating: r.rating || 5,
-            text: r.body || r.text || '',
-            date: r.submittedAt || r.date || new Date().toISOString(),
-            status: (r.state === 'PUBLISHED' ? 'Published' : 'Hidden') as 'Published' | 'Hidden'
-          }))),
-          tap(revs => {
-            if (revs.length > 0) this.reviews.set(revs);
-          }),
-          catchError(err => {
-            console.warn('[AdminService] loadStaffReviews error:', err?.status ?? err);
-            return of(this.reviews());
-          })
-        );
-      }
-
+  loadStaffReviews(): Observable<AdminReview[]> {
+    return this.http.get<{ items?: any[]; content?: any[] }>('/api/v1/staff/reviews').pipe(
+      map(res => (res?.items ?? res?.content ?? []).map(r => ({
+        id: r.id,
+        sku: r.sku || r.productId || '',
+        product: r.productName || 'Nigson Product',
+        author: r.displayName || r.author || 'Verified Buyer',
+        rating: r.rating || 5,
+        text: r.body || r.text || '',
+        date: r.submittedAt || r.date || new Date().toISOString(),
+        status: (r.state === 'PUBLISHED' ? 'Published' : 'Hidden') as 'Published' | 'Hidden'
+      }))),
+      tap(revs => {
+        if (revs.length > 0) this.reviews.set(revs);
+      }),
+      catchError(err => {
+        console.warn('[AdminService] loadStaffReviews fallback:', err?.status ?? err);
+        return of(this.reviews());
+      })
+    );
+  }
 
   /** TASK-75: Load inventory */
-  loadInventory(): Observable < any[] > {
-        return this.loadStaffInventory();
-      }
-  loadInventory(): Observable < any[] > {
-        return this.loadStaffInventory();
-      }
+  loadInventory(): Observable<any[]> {
+    return this.loadStaffInventory();
+  }
 
   /** TASK-75: Post stock adjustment to POST /api/v1/staff/stock-adjustments (API-046) */
-  postStockAdjustment(sku: string, change: number, reason: string): Observable < any > {
-        const resolvedSkuId = this.resolveSkuId(sku);
-        const headers = new HttpHeaders({
-          'Content-Type': 'application/json',
-          'If-Match': '"0"',
-          'Idempotency-Key': crypto.randomUUID()
-        });
-        const deltaStr = (change > 0 ? "" : "") + change.toFixed(3);
-        const validReason = reason && reason.trim().length >= 10 ? reason.trim() : 'Physical inventory count reconciliation';
-        const payload = {
-          skuId: sku,
-          quantityDelta: change,
-          reason: reason
   postStockAdjustment(sku: string, change: number, reason: string): Observable<any> {
-            const resolvedSkuId = this.resolveSkuId(sku);
-            const headers = new HttpHeaders({
-              'Content-Type': 'application/json',
-              'If-Match': '"0"',
-              'Idempotency-Key': crypto.randomUUID()
-            });
-            const deltaStr = (change > 0 ? "" : "") + change.toFixed(3);
-            const validReason = reason && reason.trim().length >= 10 ? reason.trim() : 'Physical inventory count reconciliation';
-            const payload = {
-              skuId: resolvedSkuId,
-              locationId: '11111111-1111-1111-1111-111111111111',
-              delta: deltaStr,
-              reason: validReason
-            };
-            return this.http.post<any>('/api/v1/staff/stock-adjustments', payload).pipe(
-              locationId: '11111111-1111-1111-1111-111111111111',
-              delta: deltaStr,
-              reason: validReason
+    const resolvedSkuId = this.resolveSkuId(sku);
+    const headers = new HttpHeaders({
+      'Content-Type': 'application/json',
+      'If-Match': '"0"',
+      'Idempotency-Key': crypto.randomUUID()
+    });
+    const deltaStr = change.toFixed(3);
+    const validReason = reason && reason.trim().length >= 10 ? reason.trim() : 'Physical inventory count reconciliation';
+    const payload = {
+      skuId: resolvedSkuId,
+      locationId: '11111111-1111-1111-1111-111111111111',
+      delta: deltaStr,
+      reason: validReason
     };
-          return this.http.post<any>('/api/v1/staff/stock-adjustments', payload, { headers }).pipe(
-            tap(() => {
-              this.adjustStock(sku, change, reason);
-              this.adjustStock(sku, change, validReason);
-              this.loadStaffInventory().subscribe();
-            }),
-            catchError(err => {
-              console.warn('[AdminService] postStockAdjustment HTTP fallback to local:', err?.status ?? err);
-              this.adjustStock(sku, change, reason);
-              return of(true);
-              console.error('[AdminService] postStockAdjustment failed:', err);
-              return of(false);
-            })
-          );
-        }
+    return this.http.post<any>('/api/v1/staff/stock-adjustments', payload, { headers }).pipe(
       tap(() => {
         this.adjustStock(sku, change, validReason);
         this.loadStaffInventory().subscribe();
       }),
       catchError(err => {
         console.error('[AdminService] postStockAdjustment failed:', err);
-      return of(false);
-    })
+        return of(false);
+      })
     );
   }
 
   /** TASK-71: Load inventory from GET /api/v1/staff/inventory (API-045) */
   loadStaffInventory(): Observable<any[]> {
-    return this.http.get<any[]>('/api/v1/staff/inventory').pipe(
-      tap(inv => {
-        if (inv && inv.length > 0) {
-          this.log('Staff inventory loaded from backend');
-        }
-      }),
-      loadStaffInventory(): Observable < any[] > {
-        return this.http.get<{ items: any[] }>('/api/v1/staff/inventory').pipe(
-          map(res => (res?.items ?? []).map(inv => {
-            const skuId = inv.skuId;
-            const codeMap: Record<string, string> = {
-              '55555555-2222-3333-4444-555555555501': 'NG-PB-20K',
-              '55555555-2222-3333-4444-555555555502': 'NG-CB-01',
-              '55555555-2222-3333-4444-555555555503': 'NG-CC-01',
-              '55555555-2222-3333-4444-555555555504': 'NG-EB-01'
-            };
-            const skuCode = codeMap[skuId] || skuId;
-            const onHand = parseFloat(inv.onHand) || 0;
-            const reserved = parseFloat(inv.reserved) || 0;
-            this.products.update(prods => prods.map(p => (p.id === skuId || p.sku === skuCode) ? { ...p, stock: onHand, reserved } : p));
-            return {
-              skuId: inv.skuId,
-              sku: skuCode,
-              locationId: inv.locationId,
-              onHand: onHand,
-              reserved: reserved,
-              allocated: parseFloat(inv.allocated) || 0,
-              available: parseFloat(inv.available) || 0,
-              version: inv.version
-            };
-          })),
-          catchError(err => {
-            console.warn('[AdminService] loadStaffInventory fallback:', err?.status ?? err);
-            console.error('[AdminService] loadStaffInventory failed:', err);
-            return of([]);
-          })
-        );
-      }
+    return this.http.get<{ items: any[] }>('/api/v1/staff/inventory').pipe(
       map(res => (res?.items ?? []).map(inv => {
         const skuId = inv.skuId;
         const codeMap: Record<string, string> = {
@@ -763,21 +583,8 @@ export class AdminService {
     };
     if (map[input]) return map[input];
     if (input.includes('-') && input.length === 36) return input;
-    const map: Record<string, string> = {
-      'NG-PB-20K': '55555555-2222-3333-4444-555555555501',
-      'NG-CB-01': '55555555-2222-3333-4444-555555555502',
-      'NG-CC-01': '55555555-2222-3333-4444-555555555503',
-      'NG-EB-01': '55555555-2222-3333-4444-555555555504',
-      'NG-PWR-001': '55555555-2222-3333-4444-555555555501',
-      'NG-PWR-002': '55555555-2222-3333-4444-555555555502',
-      'NG-PWR-003': '55555555-2222-3333-4444-555555555503',
-      'NG-LOG-004': '55555555-2222-3333-4444-555555555504'
-    };
-    if (map[input]) return map[input];
-    if (input.includes('-') && input.length === 36) return input;
     return '55555555-2222-3333-4444-555555555501';
   }
-
 
   /** TASK-69: Load staff quotes from GET /api/v1/quotes */
   loadStaffQuotes(): Observable<AdminQuote[]> {
@@ -802,7 +609,6 @@ export class AdminService {
         if (quotes.length > 0) this.quotes.set(quotes);
       }),
       catchError(err => {
-        console.warn('[AdminService] loadStaffQuotes fallback:', err?.status ?? err);
         console.warn('[AdminService] loadStaffQuotes error:', err?.status ?? err);
         return of(this.quotes());
       })
@@ -816,7 +622,6 @@ export class AdminService {
     const params = `?from=${encodeURIComponent(fromDate)}&to=${encodeURIComponent(toDate)}&currency=NGN`;
     return this.http.get<any>('/api/v1/staff/reports/commerce' + params).pipe(
       catchError(err => {
-        console.warn('[AdminService] loadCommerceReport fallback:', err?.status ?? err);
         console.warn('[AdminService] loadCommerceReport error:', err?.status ?? err);
         return of(null);
       })
@@ -830,7 +635,6 @@ export class AdminService {
     const params = `?from=${encodeURIComponent(fromDate)}&to=${encodeURIComponent(toDate)}`;
     return this.http.get<any>('/api/v1/staff/reports/engagement' + params).pipe(
       catchError(err => {
-        console.warn('[AdminService] loadEngagementReport fallback:', err?.status ?? err);
         console.warn('[AdminService] loadEngagementReport error:', err?.status ?? err);
         return of(null);
       })
@@ -839,7 +643,6 @@ export class AdminService {
 
   /** TASK-66: Create product via POST /api/v1/staff/products (API-017) */
   createProduct(payload: any): Observable<any> {
-    return this.http.post('/api/v1/staff/products', payload).pipe(
     const headers = new HttpHeaders({
       'Content-Type': 'application/json',
       'Idempotency-Key': crypto.randomUUID()
@@ -860,17 +663,9 @@ export class AdminService {
           reserved: 0,
           rating: 5
         }]);
-        try { localStorage.setItem('nigson_admin_products', JSON.stringify(this.products())); } catch { }
         this.log(`Product ${payload.name} created`);
       }),
       catchError(err => {
-        console.warn('[AdminService] createProduct simulated:', err?.status ?? err);
-        this.products.update(all => {
-          const updated = [...all, { ...payload, id: payload.id || 'prod-' + Math.random().toString(36).substring(2, 9) }];
-          try { localStorage.setItem('nigson_admin_products', JSON.stringify(updated)); } catch { }
-          return updated;
-        });
-        return of(payload);
         console.error('[AdminService] createProduct failed:', err);
         return of(null);
       })
@@ -879,7 +674,6 @@ export class AdminService {
 
   /** TASK-66: Update product via PATCH /api/v1/staff/products/:id (API-018) */
   updateProduct(id: string, payload: any): Observable<any> {
-    return this.http.patch(`/api/v1/staff/products/${id}`, payload).pipe(
     const headers = new HttpHeaders({
       'Content-Type': 'application/json',
       'If-Match': '"0"',
@@ -891,13 +685,9 @@ export class AdminService {
         this.log(`Product ${payload.name || id} updated`);
       }),
       catchError(err => {
-        console.warn('[AdminService] updateProduct simulated:', err?.status ?? err);
-        this.products.update(all => all.map(p => (p.id === id || p.sku === payload.sku) ? { ...p, ...payload } : p));
-        return of(payload);
         console.error('[AdminService] updateProduct failed:', err);
         return of(null);
       })
     );
   }
-
 }
