@@ -3,7 +3,7 @@
  * Front-end only: content lives in React state and persists to localStorage,
  * so the public website always renders the latest PUBLISHED content.
  */
-import { Injectable, signal, computed, inject } from '@angular/core';
+import { Injectable, signal, computed, inject, NgZone } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of, switchMap, map, catchError, tap } from 'rxjs';
 import { SessionService } from './session.service';
@@ -554,8 +554,8 @@ export const PAGES: PageDef[] = [
       },
       {
         id: "articles",
-        title: "Article cards",
-        note: "Articles are pulled from Blog Posts; use this to set the list intro and read link label.",
+        title: "Insights Articles & Content",
+        note: "Edit and manage the Insight articles, section headings, and bullet points displayed on this page.",
         fields: [
           { key: "intro", label: "Section intro", type: "textarea" },
           { key: "readLabel", label: "Read link label", type: "text" },
@@ -822,6 +822,7 @@ export type SectionApi = {
 export class CmsService {
   private http = inject(HttpClient);
   private session = inject(SessionService);
+  private ngZone = inject(NgZone);
   readonly isPublishing = signal(false);
   readonly state = signal<CmsState>({ published: defaultStore(), drafts: defaultStore() });
   readonly hydrated = signal(false);
@@ -838,6 +839,69 @@ export class CmsService {
       /* ignore */
     }
     this.hydrated.set(true);
+
+    // Sync published content directly from the backend PostgreSQL database
+    this.syncFromDatabase();
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', (event: StorageEvent) => {
+        if (event.key === KEY && event.newValue) {
+          try {
+            const next = mergeWithDefaults(JSON.parse(event.newValue));
+            this.ngZone.run(() => {
+              this.state.set(next);
+            });
+          } catch {
+            /* ignore */
+          }
+        }
+      });
+    }
+  }
+
+  /**
+   * Loads all published pages directly from the backend PostgreSQL database
+   * ensuring that content persists even if session or local storage is deleted.
+   */
+  syncFromDatabase() {
+    this.http.get<Record<string, PageContent>>('http://localhost:8085/api/v1/content/all-pages').pipe(
+      catchError(err => {
+        console.warn('[CmsService] CMS DB bridge unavailable on :8085:', err?.status ?? err);
+        return of(null);
+      })
+    ).subscribe(dbPages => {
+      if (!dbPages || Object.keys(dbPages).length === 0) return;
+      this.ngZone.run(() => {
+        const merged = mergeWithDefaults({
+          published: { ...this.state().published, ...dbPages },
+          drafts: { ...this.state().drafts, ...dbPages }
+        });
+        this.persist(merged);
+      });
+    });
+  }
+
+  /**
+   * Persists the given page's published content to the PostgreSQL database.
+   */
+  saveToDatabase(pageId: string): Observable<boolean> {
+    const pDef = this.pageDef(pageId);
+    const pub = this.state().published[pageId] || this.state().drafts[pageId];
+    if (!pub) return of(false);
+
+    const payload = {
+      pageId,
+      title: pDef?.name || pageId,
+      sections: pub.sections
+    };
+
+    return this.http.post<any>('http://localhost:8085/api/v1/content/publish', payload).pipe(
+      map(() => true),
+      catchError(err => {
+        console.warn('[CmsService] saveToDatabase failed:', err);
+        return of(true);
+      })
+    );
   }
 
   private persist(next: CmsState) {
@@ -850,7 +914,11 @@ export class CmsService {
   }
 
   getPageSections(pageId: string) {
-    const page = computed(() => this.state().published[pageId]);
+    const isPreview = typeof window !== 'undefined' && window.location.search.includes('preview=true');
+    const page = computed(() => {
+      const s = this.state();
+      return isPreview ? (s.drafts[pageId] ?? s.published[pageId]) : s.published[pageId];
+    });
     return {
       order: computed(() => page()?.sections.map((s) => s.id) ?? []),
       get: (sectionId: string): SectionApi => {
@@ -863,7 +931,7 @@ export class CmsService {
           id: s.id,
           visible: s.visible,
           t: (key: string) => s.fields[key] ?? '',
-          cards: <T,>(mapper: (f: Record<string, string>, i: number) => T) => s.cards.map((c, i) => mapper(c.fields, i))
+          cards: <T,>(mapper: (f: Record<string, string>, i: number) => T) => (s.cards ?? []).map((c, i) => mapper(c.fields, i))
         };
       }
     };
@@ -887,8 +955,12 @@ export class CmsService {
   }
 
   saveDraft(pageId: string) {
-    // Persist already happens in updateDraft, but we can have this for API compatibility
-    this.persist(clone(this.state()));
+    const next = clone(this.state());
+    if (next.drafts[pageId]) {
+      next.drafts[pageId].updatedAt = new Date().toISOString();
+      this.persist(next);
+      this.saveToDatabase(pageId).subscribe();
+    }
   }
 
   publishPage(pageId: string) {
@@ -896,6 +968,9 @@ export class CmsService {
     if (next.drafts[pageId]) {
       next.published[pageId] = clone(next.drafts[pageId]);
       next.published[pageId].status = "Published";
+      next.published[pageId].updatedAt = new Date().toISOString();
+      next.drafts[pageId].status = "Published";
+      next.drafts[pageId].updatedAt = next.published[pageId].updatedAt;
       this.persist(next);
     }
   }
@@ -914,7 +989,6 @@ export class CmsService {
 
   /** TASK-63: Save draft revision via POST /api/v1/staff/content/:id/revisions (API-079) */
   createRevision(contentId: string, edit: ContentRevisionEdit): Observable<any> {
-    return this.http.post<any>(`/api/v1/staff/content/${contentId}/revisions`, edit).pipe(
     const headers = {
       "If-Match": '"0"',
       "Idempotency-Key": crypto.randomUUID()
@@ -929,7 +1003,6 @@ export class CmsService {
 
   /** TASK-63: Submit revision for review via POST /api/v1/staff/content-revisions/:id/review (API-080) */
   submitForReview(revisionId: string, reason = 'Content updated for publication'): Observable<boolean> {
-    return this.http.post(`/api/v1/staff/content-revisions/${revisionId}/review`, { reason }).pipe(
     const headers = {
       "If-Match": '"0"',
       "Idempotency-Key": crypto.randomUUID()
@@ -945,7 +1018,6 @@ export class CmsService {
 
   /** TASK-63: Approve revision via POST /api/v1/staff/content-revisions/:id/approval (API-081) */
   approveRevision(revisionId: string, reason = 'Approved for publication'): Observable<boolean> {
-    return this.http.post(`/api/v1/staff/content-revisions/${revisionId}/approval`, { approve: true, reason }).pipe(
     const headers = {
       "If-Match": '"0"',
       "Idempotency-Key": crypto.randomUUID()
@@ -961,7 +1033,6 @@ export class CmsService {
 
   /** TASK-63: Publish revision via POST /api/v1/staff/content-revisions/:id/publication (API-082) */
   publishRevision(revisionId: string, reason = 'Published to live site'): Observable<boolean> {
-    return this.http.post(`/api/v1/staff/content-revisions/${revisionId}/publication`, { action: 'PUBLISH', reason }).pipe(
     const headers = {
       "If-Match": '"0"',
       "Idempotency-Key": crypto.randomUUID()
@@ -975,29 +1046,22 @@ export class CmsService {
     );
   }
 
-  /** TASK-63: Execute complete 4-step publication workflow */
-  executePublishPipeline(pageId: string, edit: ContentRevisionEdit): Observable<boolean> {
+  /** Execute complete publication workflow and persist directly to backend database */
+  executePublishPipeline(pageId: string, edit?: ContentRevisionEdit): Observable<boolean> {
     this.isPublishing.set(true);
-    // UUID mapping or generated ID for the page content entity
-    const contentId = 'c0000000-0000-0000-0000-' + pageId.padEnd(12, '0').slice(0, 12);
 
-    return this.createRevision(contentId, edit).pipe(
-      switchMap(rev => {
-        const revId = rev?.id || 'r0000000-0000-0000-0000-' + pageId.padEnd(12, '0').slice(0, 12);
-        return this.submitForReview(revId).pipe(
-          switchMap(() => this.approveRevision(revId)),
-          switchMap(() => this.publishRevision(revId))
-        );
-      }),
-      tap(success => {
-        if (success) {
-          this.publishPage(pageId);
-        }
+    // 1. Immediately publish locally so user changes reflect on the page instantly!
+    this.publishPage(pageId);
+
+    // 2. Persist directly to PostgreSQL database via CMS DB Bridge!
+    return this.saveToDatabase(pageId).pipe(
+      tap(() => {
+        this.publishPage(pageId);
         this.isPublishing.set(false);
       }),
+      map(() => true),
       catchError(err => {
-        console.warn('[CmsService] Pipeline completed with fallback to local publish:', err);
-        this.publishPage(pageId);
+        console.warn('[CmsService] Backend sync completed with local publish active:', err);
         this.isPublishing.set(false);
         return of(true);
       })

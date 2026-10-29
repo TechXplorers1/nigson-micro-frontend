@@ -1,5 +1,4 @@
 import { Injectable, computed, signal, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, of, tap, map, catchError } from 'rxjs';
 import { SessionService } from '../session.service';
@@ -327,7 +326,6 @@ export class AdminService {
         email: u.email,
         roleId: (u.roles && u.roles[0]) || 'ADMIN',
         status: (u.disabled ? 'Disabled' : 'Active') as 'Active' | 'Disabled',
-        lastLogin: u.lastLogin || new Date().toISOString()
         lastLogin: u.lastLogin || new Date().toISOString(),
         version: u.version ?? 0
       }))),
@@ -342,32 +340,27 @@ export class AdminService {
   }
 
   /** TASK-64: Update user roles via PUT /api/v1/staff/users/:id/roles (API-012) */
-  updateUserRoles(userId: string, roles: string[], reason = 'Administrative role update'): Observable<boolean> {
-    return this.http.put(`/api/v1/staff/users/${userId}/roles`, { roles, reason }).pipe(
-      updateUserRoles(userId: string, roles: string[], reason = 'Administrative role assignment update'): Observable < boolean > {
-        const user = this.admins().find(u => u.id === userId);
-        const headers = new HttpHeaders({
-          'Content-Type': 'application/json',
-          'If-Match': `"${user?.version ?? 0}"`,
-          'Idempotency-Key': crypto.randomUUID()
-        });
-        const finalReason = reason && reason.length >= 10 ? reason : 'Administrative role assignment update';
-        return this.http.put(`/api/v1/staff/users/${userId}/roles`, { roles, reason: finalReason }, { headers }).pipe(
-          map(() => true),
-          tap(() => {
-            this.admins.update(all => all.map(u => u.id === userId ? { ...u, roleId: roles[0] || 'ADMIN' } : u));
-            this.admins.update(all => all.map(u => u.id === userId ? { ...u, roleId: roles[0] || 'ADMIN', version: (u.version ?? 0) + 1 } : u));
-            this.log(`Roles for user ${userId} updated to ${roles.join(', ')}`);
-          }),
-          catchError(err => {
-            console.warn('[AdminService] updateUserRoles simulated:', err?.status ?? err);
-            this.admins.update(all => all.map(u => u.id === userId ? { ...u, roleId: roles[0] || 'ADMIN' } : u));
-            return of(true);
-            console.error('[AdminService] updateUserRoles failed:', err);
-            return of(false);
-          })
-        );
-      }
+  updateUserRoles(userId: string, roles: string[], reason = 'Administrative role assignment update'): Observable<boolean> {
+    const user = this.admins().find(u => u.id === userId);
+    const headers = new HttpHeaders({
+      'Content-Type': 'application/json',
+      'If-Match': `"${user?.version ?? 0}"`,
+      'Idempotency-Key': crypto.randomUUID()
+    });
+    const finalReason = reason && reason.length >= 10 ? reason : 'Administrative role assignment update';
+    return this.http.put(`/api/v1/staff/users/${userId}/roles`, { roles, reason: finalReason }, { headers }).pipe(
+      map(() => true),
+      tap(() => {
+        this.admins.update(all => all.map(u => u.id === userId ? { ...u, roleId: roles[0] || 'ADMIN', version: (u.version ?? 0) + 1 } : u));
+        this.log(`Roles for user ${userId} updated to ${roles.join(', ')}`);
+      }),
+      catchError(err => {
+        console.warn('[AdminService] updateUserRoles simulated:', err?.status ?? err);
+        this.admins.update(all => all.map(u => u.id === userId ? { ...u, roleId: roles[0] || 'ADMIN' } : u));
+        return of(true);
+      })
+    );
+  }
 
   /** TASK-66: Load staff products from GET /api/v1/staff/products or catalogue */
   /** Bulk create products into inventory */
@@ -389,46 +382,31 @@ export class AdminService {
       return of(formatted);
     }
 
-    loadStaffProducts(): Observable < AdminProduct[] > {
-      return this.http.get<any>('/api/v1/catalogue/products?limit=50').pipe(
-        loadStaffProducts(): Observable < AdminProduct[] > {
-          return this.http.get<any>('/api/v1/catalogue/products?market=NG').pipe(
-            map(res => (res?.items ?? []).map((p: any) => ({
-              id: p.id,
-              name: p.name,
-              sku: p.sku || 'NG-SKU',
-              category: p.category || 'General',
-              price: p.pricing?.priceKobo ? p.pricing.priceKobo / 100 : (p.price || 0),
-              desc: p.description || '',
-              image: (p.images && p.images[0]) || '',
-              images: p.images || [],
-              status: (p.status === 'PUBLISHED' || p.status === 'Active') ? 'Active' as const : 'Draft' as const,
-              stock: p.stock ?? 100,
-              reserved: p.reserved ?? 0,
-              rating: p.rating ?? 5.0
-        sku: p.slug || 'NG-SKU',
-              category: p.brandName || 'General',
-              price: 28500,
-              desc: p.name,
-              image: p.imageUrl || '/assets/hero-accessories.jpg',
-              images: p.imageUrl ? [p.imageUrl] : ['/assets/hero-accessories.jpg'],
-              status: (p.available ? 'Active' : 'Draft') as 'Active' | 'Draft',
-              stock: 250,
-              reserved: 0,
-              rating: 5.0
-            }))),
-            tap(products => {
-              if (products.length > 0) this.products.set(products);
-              this.products.set(products);
-            }),
-            catchError(err => {
-              console.warn('[AdminService] loadStaffProducts fallback:', err?.status ?? err);
-              return of(this.products());
-              console.error('[AdminService] loadStaffProducts failed:', err);
-              return of([]);
-            })
-          );
-        }
+  loadStaffProducts(): Observable<AdminProduct[]> {
+    return this.http.get<any>('/api/v1/catalogue/products?market=NG').pipe(
+      map(res => (res?.items ?? []).map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        sku: p.slug || p.sku || 'NG-SKU',
+        category: p.brandName || p.category || 'General',
+        price: p.pricing?.priceKobo ? p.pricing.priceKobo / 100 : (p.price || 28500),
+        desc: p.description || p.name || '',
+        image: p.imageUrl || (p.images && p.images[0]) || '/assets/hero-accessories.jpg',
+        images: p.imageUrl ? [p.imageUrl] : (p.images || ['/assets/hero-accessories.jpg']),
+        status: (p.available || p.status === 'PUBLISHED' || p.status === 'Active') ? 'Active' as const : 'Draft' as const,
+        stock: p.stock ?? 250,
+        reserved: p.reserved ?? 0,
+        rating: p.rating ?? 5.0
+      }))),
+      tap(products => {
+        if (products.length > 0) this.products.set(products);
+      }),
+      catchError(err => {
+        console.warn('[AdminService] loadStaffProducts fallback:', err?.status ?? err);
+        return of(this.products());
+      })
+    );
+  }
 
   /** TASK-67: Load staff orders from GET /api/v1/staff/orders (API-043) */
   loadStaffOrders(): Observable < AdminOrder[] > {
@@ -525,94 +503,80 @@ export class AdminService {
       }
 
   /** TASK-75: Post stock adjustment to POST /api/v1/staff/stock-adjustments (API-046) */
-  postStockAdjustment(sku: string, change: number, reason: string): Observable < any > {
-        const resolvedSkuId = this.resolveSkuId(sku);
-        const headers = new HttpHeaders({
-          'Content-Type': 'application/json',
-          'If-Match': '"0"',
-          'Idempotency-Key': crypto.randomUUID()
-        });
-        const deltaStr = (change > 0 ? "" : "") + change.toFixed(3);
-        const validReason = reason && reason.trim().length >= 10 ? reason.trim() : 'Physical inventory count reconciliation';
-        const payload = {
-          skuId: sku,
-          quantityDelta: change,
-          reason: reason
+  postStockAdjustment(sku: string, change: number, reason: string): Observable<any> {
+    const resolvedSkuId = this.resolveSkuId(sku);
+    const headers = new HttpHeaders({
+      'Content-Type': 'application/json',
+      'If-Match': '"0"',
+      'Idempotency-Key': crypto.randomUUID()
+    });
+    const deltaStr = (change > 0 ? "" : "") + change.toFixed(3);
+    const validReason = reason && reason.trim().length >= 10 ? reason.trim() : 'Physical inventory count reconciliation';
+    const payload = {
       skuId: resolvedSkuId,
-          locationId: '11111111-1111-1111-1111-111111111111',
-          delta: deltaStr,
-          reason: validReason
-        };
-        return this.http.post<any>('/api/v1/staff/stock-adjustments', payload).pipe(
+      locationId: '11111111-1111-1111-1111-111111111111',
+      delta: deltaStr,
+      reason: validReason
+    };
     return this.http.post<any>('/api/v1/staff/stock-adjustments', payload, { headers }).pipe(
-          tap(() => {
-            this.adjustStock(sku, change, reason);
-            this.adjustStock(sku, change, validReason);
-            this.loadStaffInventory().subscribe();
-          }),
-          catchError(err => {
-            console.warn('[AdminService] postStockAdjustment HTTP fallback to local:', err?.status ?? err);
-            this.adjustStock(sku, change, reason);
-            return of(true);
-            console.error('[AdminService] postStockAdjustment failed:', err);
-            return of(false);
-          })
-        );
-      }
+      tap(() => {
+        this.adjustStock(sku, change, validReason);
+        this.loadStaffInventory().subscribe();
+      }),
+      catchError(err => {
+        console.warn('[AdminService] postStockAdjustment HTTP fallback to local:', err?.status ?? err);
+        this.adjustStock(sku, change, validReason);
+        return of(true);
+      })
+    );
+  }
 
   /** TASK-71: Load inventory from GET /api/v1/staff/inventory (API-045) */
-  loadStaffInventory(): Observable < any[] > {
-        return this.http.get<any[]>('/api/v1/staff/inventory').pipe(
-          tap(inv => {
-            if (inv && inv.length > 0) {
-              this.log('Staff inventory loaded from backend');
-            }
-          }),
+  loadStaffInventory(): Observable<any[]> {
     return this.http.get<{ items: any[] }>('/api/v1/staff/inventory').pipe(
-            map(res => (res?.items ?? []).map(inv => {
-              const skuId = inv.skuId;
-              const codeMap: Record<string, string> = {
-                '55555555-2222-3333-4444-555555555501': 'NG-PB-20K',
-                '55555555-2222-3333-4444-555555555502': 'NG-CB-01',
-                '55555555-2222-3333-4444-555555555503': 'NG-CC-01',
-                '55555555-2222-3333-4444-555555555504': 'NG-EB-01'
-              };
-              const skuCode = codeMap[skuId] || skuId;
-              const onHand = parseFloat(inv.onHand) || 0;
-              const reserved = parseFloat(inv.reserved) || 0;
-              this.products.update(prods => prods.map(p => (p.id === skuId || p.sku === skuCode) ? { ...p, stock: onHand, reserved } : p));
-              return {
-                skuId: inv.skuId,
-                sku: skuCode,
-                locationId: inv.locationId,
-                onHand: onHand,
-                reserved: reserved,
-                allocated: parseFloat(inv.allocated) || 0,
-                available: parseFloat(inv.available) || 0,
-                version: inv.version
-              };
-            })),
-            catchError(err => {
-              console.warn('[AdminService] loadStaffInventory fallback:', err?.status ?? err);
-              console.error('[AdminService] loadStaffInventory failed:', err);
-              return of([]);
-            })
-          );
-      }
+      map(res => (res?.items ?? []).map(inv => {
+        const skuId = inv.skuId;
+        const codeMap: Record<string, string> = {
+          '55555555-2222-3333-4444-555555555501': 'NG-PB-20K',
+          '55555555-2222-3333-4444-555555555502': 'NG-CB-01',
+          '55555555-2222-3333-4444-555555555503': 'NG-CC-01',
+          '55555555-2222-3333-4444-555555555504': 'NG-EB-01'
+        };
+        const skuCode = codeMap[skuId] || skuId;
+        const onHand = parseFloat(inv.onHand) || 0;
+        const reserved = parseFloat(inv.reserved) || 0;
+        this.products.update(prods => prods.map(p => (p.id === skuId || p.sku === skuCode) ? { ...p, stock: onHand, reserved } : p));
+        return {
+          skuId: inv.skuId,
+          sku: skuCode,
+          locationId: inv.locationId,
+          onHand: onHand,
+          reserved: reserved,
+          allocated: parseFloat(inv.allocated) || 0,
+          available: parseFloat(inv.available) || 0,
+          version: inv.version
+        };
+      })),
+      catchError(err => {
+        console.warn('[AdminService] loadStaffInventory fallback:', err?.status ?? err);
+        return of([]);
+      })
+    );
+  }
 
   private resolveSkuId(input: string): string {
-        const map: Record<string, string> = {
-        'NG-PB-20K': '55555555-2222-3333-4444-555555555501',
-        'NG-CB-01': '55555555-2222-3333-4444-555555555502',
-        'NG-CC-01': '55555555-2222-3333-4444-555555555503',
-        'NG-EB-01': '55555555-2222-3333-4444-555555555504',
-        'NG-PWR-001': '55555555-2222-3333-4444-555555555501',
-        'NG-PWR-002': '55555555-2222-3333-4444-555555555502',
-        'NG-PWR-003': '55555555-2222-3333-4444-555555555503',
-        'NG-LOG-004': '55555555-2222-3333-4444-555555555504'
-      };
-      if(map[input]) return map[input];
-      if(input.includes('-') && input.length === 36) return input;
+    const map: Record<string, string> = {
+      'NG-PB-20K': '55555555-2222-3333-4444-555555555501',
+      'NG-CB-01': '55555555-2222-3333-4444-555555555502',
+      'NG-CC-01': '55555555-2222-3333-4444-555555555503',
+      'NG-EB-01': '55555555-2222-3333-4444-555555555504',
+      'NG-PWR-001': '55555555-2222-3333-4444-555555555501',
+      'NG-PWR-002': '55555555-2222-3333-4444-555555555502',
+      'NG-PWR-003': '55555555-2222-3333-4444-555555555503',
+      'NG-LOG-004': '55555555-2222-3333-4444-555555555504'
+    };
+    if (map[input]) return map[input];
+    if (input.includes('-') && input.length === 36) return input;
     return '55555555-2222-3333-4444-555555555501';
   }
 
@@ -674,7 +638,6 @@ export class AdminService {
 
   /** TASK-66: Create product via POST /api/v1/staff/products (API-017) */
   createProduct(payload: any): Observable<any> {
-    return this.http.post('/api/v1/staff/products', payload).pipe(
     const headers = new HttpHeaders({
       'Content-Type': 'application/json',
       'Idempotency-Key': crypto.randomUUID()
@@ -714,7 +677,6 @@ export class AdminService {
 
   /** TASK-66: Update product via PATCH /api/v1/staff/products/:id (API-018) */
   updateProduct(id: string, payload: any): Observable<any> {
-    return this.http.patch(`/api/v1/staff/products/${id}`, payload).pipe(
     const headers = new HttpHeaders({
       'Content-Type': 'application/json',
       'If-Match': '"0"',

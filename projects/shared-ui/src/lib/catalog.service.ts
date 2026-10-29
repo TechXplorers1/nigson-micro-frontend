@@ -132,7 +132,6 @@ export class CatalogService {
    */
   loadProducts(filters: ProductFilters = {}): Observable<ProductsPage> {
     this.loading.set(true);
-    let params = new HttpParams();
     let params = new HttpParams().set('market', 'NG');
     if (filters.q) params = params.set('q', filters.q);
     if (filters.categoryId) params = params.set('categoryId', filters.categoryId);
@@ -141,7 +140,6 @@ export class CatalogService {
     if (filters.size != null) params = params.set('size', String(filters.size));
     if (filters.sort) params = params.set('sort', filters.sort);
 
-    return this.http.get<ProductsPage>('/api/v1/catalogue/products', { params }).pipe(
     return this.http.get<any>('/api/v1/catalogue/products', { params }).pipe(
       map(res => {
         const rawItems = res.items || res.content || [];
@@ -196,8 +194,22 @@ export class CatalogService {
    * Route now uses /products/:id (UUID) not /products/:sku.
    */
   getProduct(id: string): Observable<Product> {
-    return this.http.get<Product>(`/api/v1/catalogue/products/${id}`).pipe(
-      map(p => this.enrichWithCategories([p])[0]),
+    return this.http.get<any>(`/api/v1/catalogue/products/${id}?market=NG`).pipe(
+      map(raw => {
+        const p: Product = {
+          id: raw.id,
+          sku: raw.skus?.[0]?.code || raw.slug,
+          name: raw.name,
+          categoryId: raw.categories?.[0]?.name || 'General',
+          categoryName: raw.categories?.[0]?.name || 'General',
+          description: raw.description,
+          images: raw.assets?.length ? raw.assets.map((a: any) => a.url) : [this.FALLBACK_IMG],
+          priceMinorUnits: 0,
+          publicationStatus: 'PUBLISHED',
+          brand: raw.brand?.name || 'Nigson'
+        };
+        return this.enrichWithCategories([p])[0];
+      }),
       catchError(err => {
         const found = this.products().find(p => p.id === id || p.sku === id) ||
           this.getFallbackProducts({}).find((p: Product) => p.id === id || p.sku === id);
@@ -205,37 +217,20 @@ export class CatalogService {
           return of(found);
         }
         throw err;
-        return this.http.get<any>(`/api/v1/catalogue/products/${id}?market=NG`).pipe(
-          map(raw => {
-            const p: Product = {
-              id: raw.id,
-              sku: raw.skus?.[0]?.code || raw.slug,
-              name: raw.name,
-              categoryId: raw.categories?.[0]?.name || 'General',
-              categoryName: raw.categories?.[0]?.name || 'General',
-              description: raw.description,
-              images: raw.assets?.length ? raw.assets.map((a: any) => a.url) : [this.FALLBACK_IMG],
-              priceMinorUnits: 0,
-              publicationStatus: 'PUBLISHED',
-              brand: raw.brand?.name || 'Nigson'
-            };
-            return this.enrichWithCategories([p])[0];
-          })
-        );
-      }
+      })
+    );
+  }
 
   /**
    * TASK-22: Recommended products for a given product UUID.
    * Replaces local same-category algorithm.
    */
-  getRecommended(id: string): Observable < Product[] > {
-        return this.http.get<Product[]>(`/api/v1/catalogue/products/${id}/recommendations`).pipe(
-          map(list => this.enrichWithCategories(list)),
+  getRecommended(id: string): Observable<Product[]> {
     return this.http.get<any[]>(`/api/v1/catalogue/products/${id}/recommendations?market=NG`).pipe(
-            map(list => this.enrichWithCategories(list || [])),
-            catchError(() => of([]))
-          );
-      }
+      map(list => this.enrichWithCategories(list || [])),
+      catchError(() => of([]))
+    );
+  }
 
   getFallbackProducts(filters: ProductFilters): Product[] {
         let prods: any[] = [];
@@ -288,7 +283,6 @@ export class CatalogService {
   // ─── Categories (TASK-17) ─────────────────────────────────────────────────
 
   loadCategories(): Observable<Category[]> {
-    return this.http.get<Category[]>('/api/v1/catalogue/categories').pipe(
     return this.http.get<any[]>('/api/v1/catalogue/categories?market=NG').pipe(
       map(cats => (cats || []).map(c => ({
         id: c.id,
@@ -310,7 +304,6 @@ export class CatalogService {
         this.categories.set(fallbackCats);
         return of(fallbackCats);
       })
-      catchError(() => of([]))
     );
   }
 
@@ -328,8 +321,6 @@ export class CatalogService {
         this.brands.set(fallbackBrands);
         return of(fallbackBrands);
       })
-      tap(brands => this.brands.set(brands || [])),
-      catchError(() => of([]))
     );
   }
 
@@ -339,18 +330,16 @@ export class CatalogService {
    * Load price for a SKU UUID. Returns price in minor units (kobo).
    * Use formatPrice() to convert for display.
    */
-  getPrice(skuId: string): Observable<PriceResponse> {
-    return this.http.get<PriceResponse>(`/api/v1/catalogue/skus/${skuId}/price`);
-    getPrice(skuId: string, quantity = 1): Observable < PriceResponse > {
-      return this.http.get<any>(`/api/v1/catalogue/skus/${skuId}/price?market=NG&quantity=${quantity}`).pipe(
-        map(res => ({
-          skuId: res.skuId,
-          priceMinorUnits: Math.round(parseFloat(res.unitAmount) * 100),
-          currency: res.currency,
-          marketId: '29b78d62-ec0d-5ff9-8319-b485ecb093d6'
-        }))
-      );
-    }
+  getPrice(skuId: string, quantity = 1): Observable<PriceResponse> {
+    return this.http.get<any>(`/api/v1/catalogue/skus/${skuId}/price?market=NG&quantity=${quantity}`).pipe(
+      map(res => ({
+        skuId: res.skuId,
+        priceMinorUnits: Math.round(parseFloat(res.unitAmount) * 100),
+        currency: res.currency,
+        marketId: '29b78d62-ec0d-5ff9-8319-b485ecb093d6'
+      }))
+    );
+  }
 
     /**
      * TASK-20: Format price from NGN minor units (kobo) to display string.

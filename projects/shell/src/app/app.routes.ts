@@ -1,4 +1,4 @@
-﻿import { Routes, UrlSegment } from '@angular/router';
+import { Routes, UrlSegment } from '@angular/router';
 import { loadRemoteModule } from '@angular-architects/native-federation';
 import { BffCallbackComponent } from './bff-callback/bff-callback.component';
 import { authGuard, adminGuard } from 'shared-ui';
@@ -62,23 +62,35 @@ export const routes: Routes = [
       // CMS routes (admin-cms MFE)
       {
         path: 'pages',
-        loadComponent: () => loadRemoteModule('admin-cms', './Pages')
-          .then(m => m.AdminPagesComponent)
+        loadComponent: () => loadRemoteModule({
+          remoteName: 'admin-cms',
+          remoteEntry: 'http://localhost:4211/remoteEntry.json',
+          exposedModule: './Pages'
+        }).then(m => m.AdminPagesComponent)
       },
       {
         path: 'pages/:id',
-        loadComponent: () => loadRemoteModule('admin-cms', './VisualHome')
-          .then(m => m.VisualHomeEditorComponent)
+        loadComponent: () => loadRemoteModule({
+          remoteName: 'admin-cms',
+          remoteEntry: 'http://localhost:4211/remoteEntry.json',
+          exposedModule: './VisualHome'
+        }).then(m => m.VisualHomeEditorComponent)
       },
       {
         path: 'reviews',
-        loadComponent: () => loadRemoteModule('admin-cms', './Reviews')
-          .then(m => m.AdminReviewsComponent)
+        loadComponent: () => loadRemoteModule({
+          remoteName: 'admin-cms',
+          remoteEntry: 'http://localhost:4211/remoteEntry.json',
+          exposedModule: './Reviews'
+        }).then(m => m.AdminReviewsComponent)
       },
       {
         path: 'blog',
-        loadComponent: () => loadRemoteModule('admin-cms', './Blog')
-          .then(m => m.AdminBlogComponent)
+        loadComponent: () => loadRemoteModule({
+          remoteName: 'admin-cms',
+          remoteEntry: 'http://localhost:4211/remoteEntry.json',
+          exposedModule: './Blog'
+        }).then(m => m.AdminBlogComponent)
       },
 
       // Inventory routes (admin-shop MFE)

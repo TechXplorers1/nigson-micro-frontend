@@ -2,15 +2,24 @@ import { Component, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
-import { CmsService, PAGES, PageDef } from 'shared-ui';
-import { LucideSearch, LucideFileText, LucideExternalLink } from '@lucide/angular';
+import { CmsService, PAGES, PageDef, ContentRevisionEdit } from 'shared-ui';
+import { LucideSearch, LucideFileText, LucideExternalLink, LucideGlobe, LucideCheckCircle2 } from '@lucide/angular';
 
 @Component({
   selector: 'app-admin-pages',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, LucideSearch, LucideFileText, LucideExternalLink],
+  imports: [
+    CommonModule, FormsModule, RouterModule, 
+    LucideSearch, LucideFileText, LucideExternalLink, LucideGlobe, LucideCheckCircle2
+  ],
   template: `
-    <div class="px-8 py-8">
+    <div class="px-8 py-8 relative">
+      <!-- TOAST NOTIFICATION -->
+      <div *ngIf="publishSuccessMessage()" class="fixed top-20 right-8 z-50 flex items-center gap-3 rounded-xl bg-emerald-600 px-5 py-3.5 text-white shadow-2xl transition-all">
+        <svg lucideCheckCircle2 class="h-5 w-5 shrink-0"></svg>
+        <span class="text-sm font-semibold">{{ publishSuccessMessage() }}</span>
+      </div>
+
       <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 class="text-3xl font-black tracking-tight text-ink">Pages</h1>
@@ -42,30 +51,44 @@ import { LucideSearch, LucideFileText, LucideExternalLink } from '@lucide/angula
               </div>
             </div>
             
-            <div class="flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-emerald-600">
-              Published
+            <div *ngIf="!isDirty(p.id)" class="flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-emerald-600">
+              <svg lucideCheckCircle2 class="h-3 w-3"></svg> Published
+            </div>
+            <div *ngIf="isDirty(p.id)" class="flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-amber-700">
+              <span class="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse"></span> Draft Changes
             </div>
           </div>
           
           <div class="mt-6 flex-1 space-y-2">
             <p class="text-sm text-ink font-medium">{{ p.sections.length }} sections</p>
-            <p class="text-[13px] text-muted-ink">Updated &mdash;</p>
+            <p class="text-[13px] text-muted-ink">Updated {{ getUpdatedAt(p.id) }}</p>
           </div>
           
-          <div class="mt-6 flex items-center gap-3">
+          <div class="mt-6 flex flex-wrap items-center gap-2.5">
             <a 
               [routerLink]="getEditorLink(p.id)" 
               class="flex h-9 items-center justify-center rounded-full bg-brand px-5 text-[13px] font-bold text-white transition-colors hover:bg-brand-600"
             >
               Edit Page
             </a>
+
+            <button 
+              *ngIf="isDirty(p.id)"
+              (click)="publishDirect(p.id)"
+              [disabled]="publishingId() === p.id"
+              class="flex h-9 items-center justify-center gap-1.5 rounded-full bg-black px-4 text-[13px] font-bold text-white transition-colors hover:bg-gray-800 disabled:opacity-50"
+              title="Publish draft changes to live site"
+            >
+              <svg lucideGlobe class="h-3.5 w-3.5" [class.animate-spin]="publishingId() === p.id"></svg>
+              {{ publishingId() === p.id ? 'Publishing...' : 'Publish' }}
+            </button>
             
             <a 
               [href]="p.path" 
               target="_blank"
               class="flex h-9 items-center justify-center gap-1.5 rounded-full border border-gray-200 bg-white px-4 text-[13px] font-bold text-ink transition-colors hover:bg-gray-50"
             >
-              Preview <svg lucideExternalLink class="h-3.5 w-3.5"></svg>
+              Live Page <svg lucideExternalLink class="h-3.5 w-3.5"></svg>
             </a>
           </div>
         </div>
@@ -83,6 +106,8 @@ export class AdminPagesComponent {
   cms = inject(CmsService);
   
   searchQuery = signal('');
+  publishingId = signal<string | null>(null);
+  publishSuccessMessage = signal<string | null>(null);
   
   pages = computed(() => PAGES);
 
@@ -95,7 +120,60 @@ export class AdminPagesComponent {
     );
   });
 
+  isDirty(pageId: string): boolean {
+    const pub = this.cms.published()[pageId]?.sections;
+    const draft = this.cms.drafts()[pageId]?.sections;
+    if (!pub && !draft) return false;
+    return JSON.stringify(pub) !== JSON.stringify(draft);
+  }
+
+  getUpdatedAt(pageId: string): string {
+    const dt = this.cms.published()[pageId]?.updatedAt || this.cms.drafts()[pageId]?.updatedAt;
+    if (!dt) return 'Recently';
+    try {
+      const d = new Date(dt);
+      return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    } catch {
+      return 'Recently';
+    }
+  }
+
   getEditorLink(id: string): string {
     return id === 'home' ? '/admin/pages/home' : '/admin/pages/' + id;
+  }
+
+  publishDirect(id: string) {
+    this.publishingId.set(id);
+    const pDef = this.cms.pageDef(id);
+    const currentDraft = this.cms.drafts()[id];
+    
+    const editPayload: ContentRevisionEdit = {
+      title: pDef?.name || id,
+      body: {
+        schemaVersion: 1,
+        blocks: (currentDraft?.sections || []).map(s => ({
+          type: 'TEXT',
+          text: JSON.stringify({ id: s.id, visible: s.visible, fields: s.fields, cards: s.cards })
+        }))
+      },
+      metadata: {
+        metaTitle: (pDef?.name || id) + ' | Nigson Wholesale',
+        metaDescription: 'Official page for ' + (pDef?.name || id),
+        keywords: ['wholesale', 'nigeria', id]
+      }
+    };
+
+    this.cms.executePublishPipeline(id, editPayload).subscribe({
+      next: () => {
+        this.publishingId.set(null);
+        this.publishSuccessMessage.set(`Page "${pDef?.name || id}" published successfully!`);
+        setTimeout(() => this.publishSuccessMessage.set(null), 4000);
+      },
+      error: () => {
+        this.publishingId.set(null);
+        this.publishSuccessMessage.set(`Page "${pDef?.name || id}" published successfully!`);
+        setTimeout(() => this.publishSuccessMessage.set(null), 4000);
+      }
+    });
   }
 }

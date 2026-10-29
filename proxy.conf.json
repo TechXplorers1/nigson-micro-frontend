@@ -1,54 +1,60 @@
 {
   "/bff": {
-    "target": "http://localhost:8081",
+    "target": "http://localhost:8091",
     "secure": false,
     "changeOrigin": true,
     "logLevel": "warn"
   },
   "/api/v1/catalogue": {
-    "target": "http://localhost:8081",
+    "target": "http://localhost:8091",
     "secure": false,
     "changeOrigin": true,
     "logLevel": "warn"
   },
   "/api/v1/carts": {
-    "target": "http://localhost:8081",
+    "target": "http://localhost:8091",
     "secure": false,
     "changeOrigin": true,
     "logLevel": "warn"
   },
   "/api/v1/checkout": {
-    "target": "http://localhost:8081",
+    "target": "http://localhost:8091",
     "secure": false,
     "changeOrigin": true,
     "logLevel": "warn"
   },
   "/api/v1/orders": {
-    "target": "http://localhost:8081",
+    "target": "http://localhost:8091",
     "secure": false,
     "changeOrigin": true,
     "logLevel": "warn"
   },
   "/api/v1/me": {
-    "target": "http://localhost:8081",
+    "target": "http://localhost:8091",
     "secure": false,
     "changeOrigin": true,
     "logLevel": "warn"
   },
   "/api/v1/markets": {
-    "target": "http://localhost:8081",
+    "target": "http://localhost:8091",
     "secure": false,
     "changeOrigin": true,
     "logLevel": "warn"
   },
   "/api/v1/staff": {
-    "target": "http://localhost:8081",
+    "target": "http://localhost:8091",
     "secure": false,
     "changeOrigin": true,
     "logLevel": "warn"
   },
   "/api/v1/webhooks": {
-    "target": "http://localhost:8081",
+    "target": "http://localhost:8091",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "warn"
+  },
+  "/api/v1/quotes": {
+    "target": "http://localhost:8091",
     "secure": false,
     "changeOrigin": true,
     "logLevel": "warn"

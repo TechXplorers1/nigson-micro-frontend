@@ -1,4 +1,3 @@
-import { Component, inject, computed } from '@angular/core';
 import { Component, inject, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AdminService, AdminHeadingComponent, StatCardComponent } from 'shared-ui';
@@ -141,7 +140,6 @@ import { RouterLink } from '@angular/router';
     </div>
   `
 })
-export class InventoryDashboardComponent {
 export class InventoryDashboardComponent implements OnInit {
   ngOnInit() {
     this.admin.loadStaffProducts().subscribe();

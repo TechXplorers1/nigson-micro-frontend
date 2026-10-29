@@ -1,6 +1,8 @@
-import { Component, signal, computed } from '@angular/core';
+import { Component, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
+import { catchError, of } from 'rxjs';
 import { AdminHeadingComponent, BadgeComponent } from 'shared-ui';
 import { LucideCheck, LucideMessageCircle, LucideTrash2 } from '@lucide/angular';
 
@@ -74,12 +76,23 @@ export class AdminReviewsComponent {
   statusFilter = signal('All');
   
   reviews = signal<any[]>([]);
+  private http = inject(HttpClient);
 
   constructor() {
     try {
       const stored = localStorage.getItem('nigson_reviews');
       if (stored) this.reviews.set(JSON.parse(stored));
     } catch {}
+
+    // Sync from PostgreSQL database
+    this.http.get<any[]>('http://localhost:8085/api/v1/content/store/reviews').pipe(
+      catchError(() => of(null))
+    ).subscribe(data => {
+      if (Array.isArray(data) && data.length > 0) {
+        this.reviews.set(data);
+        try { localStorage.setItem('nigson_reviews', JSON.stringify(data)); } catch {}
+      }
+    });
   }
 
   filteredReviews = computed(() => {
@@ -102,6 +115,9 @@ export class AdminReviewsComponent {
 
   save() {
     try { localStorage.setItem('nigson_reviews', JSON.stringify(this.reviews())); } catch {}
+    this.http.post('http://localhost:8085/api/v1/content/store/reviews', this.reviews()).pipe(
+      catchError(() => of(null))
+    ).subscribe();
   }
 }
 

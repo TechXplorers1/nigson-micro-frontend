@@ -1,10 +1,8 @@
-import { SessionService } from './session.service';
-import { Injectable, signal, computed, Injector, inject } from '@angular/core';
-import { CartService } from './cart.service';
 import { Injectable, signal, computed, Injector, inject, effect } from '@angular/core';
+import { SessionService } from './session.service';
+import { CartService } from './cart.service';
 import { Product } from './catalog.service';
 import { LS_CART, LS_SAVED, LS_ORDERS, LS_USER, LS_REVIEWS } from './utils';
-import { LS_SAVED, LS_ORDERS, LS_USER, LS_REVIEWS } from './utils';
 import { Review } from './reviews';
 
 /**
@@ -88,21 +86,9 @@ export class ShopService {
   readonly user = signal<User | null>(null);
   readonly cart = signal<CartItem[]>([]);
   readonly saved = signal<SavedProduct[]>([]);
-  readonly saved = signal<SavedProduct[]>([]);
   readonly orders = signal<Order[]>([]);
   readonly reviews = signal<Review[]>([]);
   readonly loginRequired = signal<{ open: boolean; reason?: string }>({ open: false });
-
-  readonly cart = computed<CartItem[]>(() => {
-    return this.cartService.items().map(i => ({
-      sku: i.sku || i.skuId,
-      name: i.name,
-      category: i.categoryName || 'General',
-      price: i.unitPriceMinorUnits / 100,
-      image: i.imageUrl,
-      qty: i.quantity
-    }));
-  });
 
   readonly cartCount = computed(() => this.cart().reduce((n, i) => n + i.qty, 0));
   readonly cartSubtotal = computed(() => this.cart().reduce((n, i) => n + i.qty * i.price, 0));
@@ -124,6 +110,20 @@ export class ShopService {
         this.user.set(null);
       }
     });
+
+    effect(() => {
+      const items = this.cartService.items();
+      if (items && items.length > 0) {
+        this.cart.set(items.map(i => ({
+          sku: i.sku || i.skuId,
+          name: i.name,
+          category: i.categoryName || 'General',
+          price: i.unitPriceMinorUnits / 100,
+          image: i.imageUrl,
+          qty: i.quantity
+        })));
+      }
+    }, { allowSignalWrites: true });
   }
 
   private init() {
@@ -131,7 +131,6 @@ export class ShopService {
       // TASK-47: User profile is populated from GET /api/v1/me on session restore
       const c = localStorage.getItem(LS_CART);
       if (c) this.cart.set(JSON.parse(c));
-      const s = localStorage.getItem(LS_SAVED);
       const s = localStorage.getItem(LS_SAVED);
       if (s) this.saved.set(JSON.parse(s));
       // TASK-77: Orders are loaded dynamically from OrderService via GET /api/v1/orders
@@ -187,8 +186,6 @@ export class ShopService {
     // TASK-77: Authenticated state managed by SessionService /bff/session
   }
 
-  private injector = inject(Injector);
-
   signOut() {
     this.user.set(null);
     try {
@@ -207,7 +204,7 @@ export class ShopService {
     } catch { }
   }
 
-  addToCart(item: Omit<CartItem, 'qty'>, qty = 1) {
+  addToCart(item: Omit<CartItem, 'qty'>, qty = 1): boolean {
     if (!this.user()) {
       alert("Please sign in to add products to your cart.");
       const session = this.injector.get(SessionService, null, { optional: true });
@@ -215,38 +212,40 @@ export class ShopService {
         session?.signIn('/shop');
         return false;
       }
-      const current = this.cart();
-      const idx = current.findIndex(c => c.sku === item.sku);
-      if (idx >= 0) {
-        const copy = [...current];
-        copy[idx] = { ...copy[idx], qty: copy[idx].qty + qty };
-        this.persistCart(copy);
-      } else {
-        this.persistCart([...current, { ...item, qty }]);
-      }
-      const skuId = (item as any).id || (item as any).skuId || item.sku;
-      this.cartService.addItem(skuId, qty).subscribe();
-      return true;
     }
-
-    removeFromCart(sku: string) {
-      this.persistCart(this.cart().filter(c => c.sku !== sku));
-      this.cartService.removeItem(sku).subscribe();
+    const current = this.cart();
+    const idx = current.findIndex(c => c.sku === item.sku);
+    if (idx >= 0) {
+      const copy = [...current];
+      copy[idx] = { ...copy[idx], qty: copy[idx].qty + qty };
+      this.persistCart(copy);
+    } else {
+      this.persistCart([...current, { ...item, qty }]);
     }
+    const skuId = (item as any).id || (item as any).skuId || item.sku;
+    this.cartService.addItem(skuId, qty).subscribe();
+    return true;
+  }
 
-    updateQty(sku: string, qty: number) {
-      this.persistCart(
-        this.cart()
-          .map(c => (c.sku === sku ? { ...c, qty: Math.max(0, qty) } : c))
-          .filter(c => c.qty > 0)
-      );
-      this.cartService.updateQty(sku, qty).subscribe();
-    }
+  removeFromCart(sku: string) {
+    this.persistCart(this.cart().filter(c => c.sku !== sku));
+    this.cartService.removeItem(sku).subscribe();
+  }
 
-    private persistOrders(o: Order[]) {
+  updateQty(sku: string, qty: number) {
+    this.persistCart(
+      this.cart()
+        .map(c => (c.sku === sku ? { ...c, qty: Math.max(0, qty) } : c))
+        .filter(c => c.qty > 0)
+    );
+    this.cartService.updateQty(sku, qty).subscribe();
+  }
+
+  private persistOrders(o: Order[]) {
     this.orders.set(o);
     try { localStorage.setItem(LS_ORDERS, JSON.stringify(o)); } catch { }
   }
+
 
   placeOrder(payload: Omit<Order, 'id' | 'number' | 'date' | 'status'>) {
     const newOrder: Order = {
