@@ -19,12 +19,16 @@ export const routes: Routes = [
   },
   {
     path: 'auth',
-    loadChildren: () => loadRemoteModule('auth', './Routes').then(m => m.routes)
+    loadChildren: () => loadRemoteModule('auth', './Routes')
+      .then(m => m.routes)
+      .catch(() => import('../../../auth/src/app/app.routes').then(m => m.routes))
   },
   {
     path: 'account',
     canActivate: [authGuard],
-    loadChildren: () => loadRemoteModule('account', './Routes').then(m => m.routes)
+    loadChildren: () => loadRemoteModule('account', './Routes')
+      .then(m => m.routes)
+      .catch(() => import('../../../account/src/app/app.routes').then(m => m.routes))
   },
 
   // â”€â”€ Admin section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -176,11 +180,18 @@ export const routes: Routes = [
   // â”€â”€ Public / Shop routes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   {
     path: '',
-    loadChildren: () => loadRemoteModule('marketing', './Routes').then(m => m.routes)
+    loadChildren: () => loadRemoteModule('marketing', './Routes')
+      .then(m => m.routes)
+      .catch(() => import('../../../marketing/src/app/app.routes').then(m => m.routes))
   },
   {
     matcher: shopMatcher,
-    loadChildren: () => loadRemoteModule('shop', './Routes').then(m => m.routes)
+    loadChildren: () => loadRemoteModule('shop', './Routes')
+      .then(m => m.routes)
+      .catch(err => {
+        console.warn('[Shell] Remote shop load failed, falling back to local shop routes:', err);
+        return import('../../../shop/src/app/app.routes').then(m => m.routes);
+      })
   }
 ];
 

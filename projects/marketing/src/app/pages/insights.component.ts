@@ -1,6 +1,8 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
+import { catchError, of } from 'rxjs';
 import { CmsService, PageHeaderComponent } from 'shared-ui';
 import { LucideArrowRight } from '@lucide/angular';
 import { getAllPublishedPosts, BlogPost } from './blog-posts';
@@ -20,7 +22,7 @@ import { getAllPublishedPosts, BlogPost } from './blog-posts';
         
         <div class="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
           <a
-            *ngFor="let p of posts"
+            *ngFor="let p of posts()"
             [routerLink]="['/insights', p.slug]"
             class="group rounded-2xl border border-border bg-background overflow-hidden hover:shadow-elegant hover:-translate-y-1 transition-all flex flex-col"
           >
@@ -62,13 +64,46 @@ import { getAllPublishedPosts, BlogPost } from './blog-posts';
     </div>
   `
 })
-export class InsightsComponent {
+export class InsightsComponent implements OnInit {
   cms = inject(CmsService);
+  private http = inject(HttpClient);
+  
   page = this.cms.getPageSections('insights');
 
   hero = computed(() => this.page.get('hero'));
   articles = computed(() => this.page.get('articles'));
   cta = computed(() => this.page.get('cta'));
 
-  posts: BlogPost[] = getAllPublishedPosts();
+  posts = signal<BlogPost[]>(getAllPublishedPosts());
+
+  ngOnInit() {
+    this.http.get<any[]>('http://localhost:8085/api/v1/content/store/blog_posts').pipe(
+      catchError(() => of(null))
+    ).subscribe(data => {
+      if (Array.isArray(data) && data.length > 0) {
+        const published = data.filter(p => p.status === 'Published');
+        if (published.length > 0) {
+          const mapped: BlogPost[] = published.map(p => ({
+            slug: p.slug || p.id,
+            title: p.title,
+            date: p.date,
+            tag: p.tag,
+            author: p.author,
+            readMinutes: 3,
+            excerpt: p.excerpt,
+            img: p.image || p.img || '/assets/blog-market.jpg',
+            body: [p.body || ''],
+            sections: p.sections || []
+          }));
+          this.posts.set(mapped);
+          try {
+            const raw = localStorage.getItem('nigson.admin.v2') || '{}';
+            const parsed = JSON.parse(raw);
+            parsed.posts = data;
+            localStorage.setItem('nigson.admin.v2', JSON.stringify(parsed));
+          } catch {}
+        }
+      }
+    });
+  }
 }

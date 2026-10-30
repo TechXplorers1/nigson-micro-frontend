@@ -1,4 +1,13 @@
 {
+  "/storage": {
+    "target": "http://localhost:4566",
+    "secure": false,
+    "changeOrigin": true,
+    "pathRewrite": {
+      "^/storage": ""
+    },
+    "logLevel": "warn"
+  },
   "/bff": {
     "target": "http://localhost:8091",
     "secure": false,
@@ -6,7 +15,7 @@
     "logLevel": "warn"
   },
   "/api/v1/catalogue": {
-    "target": "http://localhost:8091",
+    "target": "http://localhost:8085",
     "secure": false,
     "changeOrigin": true,
     "logLevel": "warn"
@@ -29,6 +38,12 @@
     "changeOrigin": true,
     "logLevel": "warn"
   },
+  "/api/v1/quotes": {
+    "target": "http://localhost:8091",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "warn"
+  },
   "/api/v1/me": {
     "target": "http://localhost:8091",
     "secure": false,
@@ -41,6 +56,12 @@
     "changeOrigin": true,
     "logLevel": "warn"
   },
+  "/api/v1/staff/products": {
+    "target": "http://localhost:8085",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "warn"
+  },
   "/api/v1/staff": {
     "target": "http://localhost:8091",
     "secure": false,
@@ -48,12 +69,6 @@
     "logLevel": "warn"
   },
   "/api/v1/webhooks": {
-    "target": "http://localhost:8091",
-    "secure": false,
-    "changeOrigin": true,
-    "logLevel": "warn"
-  },
-  "/api/v1/quotes": {
     "target": "http://localhost:8091",
     "secure": false,
     "changeOrigin": true,

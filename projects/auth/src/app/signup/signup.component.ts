@@ -185,21 +185,12 @@ export class SignupComponent {
   password = '';
 
   createDemoAccount() {
-    this.session.setSession({
-      userId: 'dev-cust-' + Math.random().toString(36).substring(2, 9),
-      fullName: 'New Customer',
-      email: 'customer@nigson.ng',
-      roles: ['CUSTOMER']
-    });
-    this.router.navigate(['/account']);
+    this.session.signIn('/account');
   }
 
   redirectToRegister() {
     this.redirecting.set(true);
-    this.keycloak.redirectToRegister('/account').catch(err => {
-      this.redirecting.set(false);
-      this.errorMessage.set('Could not initialize Keycloak registration portal: ' + (err?.message || err));
-    });
+    this.session.signIn('/account');
   }
 
   submitDirectRegistration() {

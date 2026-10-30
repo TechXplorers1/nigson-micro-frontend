@@ -16,5 +16,9 @@ export const routes: Routes = [
   {
     path: 'pages/home',
     loadComponent: () => import('./cms/visual-home-editor.component').then(m => m.VisualHomeEditorComponent)
+  },
+  {
+    path: 'pages/:id',
+    loadComponent: () => import('./cms/visual-home-editor.component').then(m => m.VisualHomeEditorComponent)
   }
 ];

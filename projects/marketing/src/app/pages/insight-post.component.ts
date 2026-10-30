@@ -1,7 +1,9 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { HttpClient } from '@angular/common/http';
+import { catchError, of } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { 
   LucideArrowLeft, 
@@ -10,7 +12,7 @@ import {
   LucideMessageCircle, 
   LucideUser 
 } from '@lucide/angular';
-import { getPost, getAllPublishedPosts } from './blog-posts';
+import { getPost, getAllPublishedPosts, BlogPost } from './blog-posts';
 
 @Component({
   selector: 'app-insight-post',
@@ -22,7 +24,7 @@ import { getPost, getAllPublishedPosts } from './blog-posts';
   ],
   template: `
     <div class="bg-surface min-h-screen">
-      <ng-container *ngIf="post(); else notFound">
+      <ng-container *ngIf="currentPost(); else notFound">
         <article class="pt-28">
           <div class="container-page max-w-3xl">
             <a routerLink="/insights" class="inline-flex items-center gap-2 text-sm font-semibold text-muted-ink hover:text-brand transition-colors">
@@ -30,31 +32,31 @@ import { getPost, getAllPublishedPosts } from './blog-posts';
             </a>
             
             <div class="mt-8 flex flex-wrap items-center gap-3 text-xs">
-              <span class="rounded-full bg-brand/10 px-3 py-1 font-semibold text-brand uppercase tracking-widest">{{ post()?.tag }}</span>
-              <span class="text-muted-ink">{{ post()?.date }}</span>
+              <span class="rounded-full bg-brand/10 px-3 py-1 font-semibold text-brand uppercase tracking-widest">{{ currentPost()?.tag }}</span>
+              <span class="text-muted-ink">{{ currentPost()?.date }}</span>
             </div>
             
             <h1 class="mt-6 text-3xl sm:text-4xl md:text-6xl font-extrabold leading-[1.05] tracking-[-0.02em] text-balance">
-              {{ post()?.title }}
+              {{ currentPost()?.title }}
             </h1>
             
-            <p class="mt-6 text-lg md:text-xl text-muted-ink leading-relaxed">{{ post()?.excerpt }}</p>
+            <p class="mt-6 text-lg md:text-xl text-muted-ink leading-relaxed">{{ currentPost()?.excerpt }}</p>
             
             <div class="mt-6 flex flex-wrap items-center gap-5 text-sm text-muted-ink">
-              <span class="inline-flex items-center gap-2"><svg lucideUser class="h-4 w-4 text-brand"></svg> {{ post()?.author }}</span>
-              <span class="inline-flex items-center gap-2"><svg lucideClock class="h-4 w-4 text-brand"></svg> {{ post()?.readMinutes }} min read</span>
+              <span class="inline-flex items-center gap-2"><svg lucideUser class="h-4 w-4 text-brand"></svg> {{ currentPost()?.author }}</span>
+              <span class="inline-flex items-center gap-2"><svg lucideClock class="h-4 w-4 text-brand"></svg> {{ currentPost()?.readMinutes }} min read</span>
             </div>
           </div>
 
           <div class="container-page max-w-5xl mt-12">
             <div class="aspect-[16/9] overflow-hidden rounded-3xl">
-              <img [src]="post()?.img" [alt]="post()?.title" class="h-full w-full object-cover" />
+              <img [src]="currentPost()?.img" [alt]="currentPost()?.title" class="h-full w-full object-cover" />
             </div>
           </div>
 
           <div class="container-page max-w-3xl py-16 space-y-10">
-            <ng-container *ngIf="post()?.sections?.length; else fallbackBody">
-              <section *ngFor="let s of post()?.sections" class="space-y-4">
+            <ng-container *ngIf="currentPost()?.sections?.length; else fallbackBody">
+              <section *ngFor="let s of currentPost()?.sections" class="space-y-4">
                 <h2 *ngIf="s.heading" class="text-2xl md:text-3xl font-extrabold tracking-[-0.01em]">{{ s.heading }}</h2>
                 <p *ngFor="let para of s.paragraphs" class="text-lg text-ink/85 leading-relaxed">{{ para }}</p>
                 
@@ -68,7 +70,7 @@ import { getPost, getAllPublishedPosts } from './blog-posts';
             </ng-container>
             
             <ng-template #fallbackBody>
-              <p *ngFor="let para of post()?.body" class="text-lg text-ink/85 leading-relaxed">{{ para }}</p>
+              <p *ngFor="let para of currentPost()?.body" class="text-lg text-ink/85 leading-relaxed">{{ para }}</p>
             </ng-template>
           </div>
 
@@ -130,20 +132,54 @@ import { getPost, getAllPublishedPosts } from './blog-posts';
     </div>
   `
 })
-export class InsightPostComponent {
+export class InsightPostComponent implements OnInit {
   route = inject(ActivatedRoute);
+  private http = inject(HttpClient);
   
   slug = toSignal(this.route.paramMap.pipe(map(params => params.get('slug'))));
+  customPost = signal<BlogPost | undefined>(undefined);
   
-  post = computed(() => {
-    const s = this.slug();
-    if (!s) return undefined;
-    return getPost(s);
+  currentPost = computed(() => {
+    return this.customPost() || (this.slug() ? getPost(this.slug()!) : undefined);
   });
 
   relatedPosts = computed(() => {
-    const p = this.post();
+    const p = this.currentPost();
     if (!p) return [];
     return getAllPublishedPosts().filter(x => x.slug !== p.slug).slice(0, 3);
   });
+
+  ngOnInit() {
+    this.http.get<any[]>('http://localhost:8085/api/v1/content/store/blog_posts').pipe(
+      catchError(() => of(null))
+    ).subscribe(data => {
+      if (Array.isArray(data) && data.length > 0) {
+        try {
+          const raw = localStorage.getItem('nigson.admin.v2') || '{}';
+          const parsed = JSON.parse(raw);
+          parsed.posts = data;
+          localStorage.setItem('nigson.admin.v2', JSON.stringify(parsed));
+        } catch {}
+
+        const s = this.slug();
+        if (s) {
+          const found = data.find(p => p.slug === s || p.id === s);
+          if (found) {
+            this.customPost.set({
+              slug: found.slug || found.id,
+              title: found.title,
+              date: found.date,
+              tag: found.tag,
+              author: found.author,
+              readMinutes: 3,
+              excerpt: found.excerpt,
+              img: found.image || found.img || '/assets/blog-market.jpg',
+              body: [found.body || ''],
+              sections: found.sections || []
+            });
+          }
+        }
+      }
+    });
+  }
 }

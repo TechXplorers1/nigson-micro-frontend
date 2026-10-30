@@ -1,16 +1,8 @@
-﻿import { Component, Input, inject, computed } from '@angular/core';
+import { Component, Input, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ShopService } from '../shop.service';
 import { LucideMinus, LucidePlus, LucideShoppingCart } from '@lucide/angular';
 
-/**
- * QtyStepperComponent (TASK-13 fix)
- *
- * stockFor() removed from CatalogService — real stock comes from inventory API.
- * Stock check now uses product.stock if provided by backend; otherwise
- * defaults to a generous limit (99) so the UI stays functional until
- * real inventory is wired (TASK-39).
- */
 @Component({
   selector: 'ui-qty-stepper',
   standalone: true,
@@ -27,12 +19,12 @@ import { LucideMinus, LucidePlus, LucideShoppingCart } from '@lucide/angular';
         *ngIf="qty() <= 0"
         type="button"
         (click)="add()"
-        class="inline-flex w-full shrink-0 whitespace-nowrap items-center justify-center gap-2 rounded-full bg-brand text-white px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold hover:bg-brand-deep transition-colors"
+        class="inline-flex w-full shrink-0 whitespace-nowrap items-center justify-center gap-2 rounded-full bg-brand text-white px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold hover:bg-brand-deep transition-colors shadow-sm"
       >
         <svg lucideShoppingCart class="h-4 w-4"></svg> Add to Cart
       </button>
 
-      <div *ngIf="qty() > 0" class="flex w-full items-center justify-between gap-1 rounded-full bg-brand text-white px-2 py-1.5">
+      <div *ngIf="qty() > 0" class="flex w-full items-center justify-between gap-1 rounded-full bg-brand text-white px-2 py-1.5 shadow-sm">
         <button
           type="button"
           aria-label="Decrease quantity"
@@ -63,17 +55,19 @@ export class QtyStepperComponent {
   @Input({ required: true }) product!: any;
   @Input() image?: string;
 
-  /**
-   * Available stock — uses backend-provided stock field when present,
-   * otherwise uses a safe default of 99 until real inventory API is wired (TASK-39).
-   */
   get stock(): number {
     return this.product?.stock ?? 99;
   }
 
   qty(): number {
+    const p = this.product;
+    if (!p) return 0;
     const item = this.shop.cart().find(
-      (c: any) => c.sku === this.product?.sku || c.skuId === this.product?.id
+      (c: any) =>
+        c.sku === p.sku ||
+        (p.id && (c.skuId === p.id || c.sku === p.id)) ||
+        (p.skuId && (c.skuId === p.skuId || c.sku === p.skuId)) ||
+        (p.lineId && (c.lineId === p.lineId || c.skuId === p.lineId || c.sku === p.lineId))
     );
     return item ? item.qty : 0;
   }
@@ -83,17 +77,24 @@ export class QtyStepperComponent {
   }
 
   add() {
+    const p = this.product;
+    if (!p) return;
+    const priceMinor = p.priceMinorUnits ?? (p.price != null ? Math.round(p.price * 100) : 0);
     this.shop.addToCart({
-      sku: this.product.sku,
-      skuId: this.product.id,
-      name: this.product.name,
-      category: this.product.categoryName ?? this.product.category ?? '',
-      price: this.product.price ?? (this.product.priceMinorUnits ?? 0) / 100,
-      image: this.image,
+      sku: p.sku || p.id,
+      skuId: p.skuId || p.id,
+      name: p.name || 'Product',
+      category: p.categoryName ?? p.category ?? 'General',
+      price: p.price ?? (priceMinor / 100),
+      priceMinorUnits: priceMinor,
+      image: this.image || p.imageUrl || (p.images ? p.images[0] : undefined),
     } as any);
   }
 
   update(newQty: number) {
-    this.shop.updateQty(this.product.sku, newQty);
+    const p = this.product;
+    if (!p) return;
+    const skuKey = p.sku || p.skuId || p.id || p.lineId;
+    this.shop.updateQty(skuKey, newQty);
   }
 }

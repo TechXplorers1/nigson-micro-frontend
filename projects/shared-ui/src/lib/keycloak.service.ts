@@ -141,7 +141,7 @@ export class KeycloakService {
     const names = (input.fullName || 'New User').trim().split(/\s+/);
     const firstName = names[0] || 'New';
     const lastName = names.slice(1).join(' ') || 'Customer';
-    const username = (input.username || input.email.split('@')[0] + '_' + Math.random().toString(36).substring(2, 6)).toLowerCase();
+    const username = (input.username || input.email).toLowerCase().trim();
     const password = input.password || 'NigsonPass123!';
 
     const promise = (async (): Promise<KeycloakLoginResult> => {
@@ -170,7 +170,7 @@ export class KeycloakService {
         // Step 2: Create User
         const userPayload = {
           username,
-          email: input.email,
+          email: input.email.trim(),
           firstName,
           lastName,
           enabled: true,
@@ -204,6 +204,87 @@ export class KeycloakService {
   }
 
   /**
+   * Helper to resolve a Keycloak username from an email address via Admin API.
+   */
+  async resolveUsernameFromEmail(email: string): Promise<string | null> {
+    try {
+      const adminBody = new URLSearchParams({
+        client_id: 'admin-cli',
+        username: 'local-bootstrap',
+        password: 'mock-local-identity-admin',
+        grant_type: 'password'
+      });
+      const tokenRes = await fetch(KEYCLOAK_BASE + '/realms/master/protocol/openid-connect/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: adminBody.toString()
+      });
+      if (!tokenRes.ok) return null;
+      const { access_token } = await tokenRes.json();
+      const usersRes = await fetch(KEYCLOAK_BASE + '/admin/realms/' + KEYCLOAK_REALM + '/users?email=' + encodeURIComponent(email.trim()), {
+        headers: { Authorization: 'Bearer ' + access_token }
+      });
+      if (!usersRes.ok) return null;
+      const users = await usersRes.json();
+      if (Array.isArray(users) && users.length > 0) {
+        return users[0].username || null;
+      }
+    } catch {
+      // ignore
+    }
+    return null;
+  }
+
+  /**
+   * Resets password directly in Keycloak without leaving the site.
+   */
+  resetPasswordDirect(email: string, newPassword: string): Observable<{ success: boolean; error?: string }> {
+    const promise = (async (): Promise<{ success: boolean; error?: string }> => {
+      try {
+        const adminBody = new URLSearchParams({
+          client_id: 'admin-cli',
+          username: 'local-bootstrap',
+          password: 'mock-local-identity-admin',
+          grant_type: 'password'
+        });
+        const tokenRes = await fetch(KEYCLOAK_BASE + '/realms/master/protocol/openid-connect/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: adminBody.toString()
+        });
+        if (!tokenRes.ok) return { success: false, error: 'Identity provider unavailable.' };
+        const { access_token } = await tokenRes.json();
+
+        const searchRes = await fetch(KEYCLOAK_BASE + '/admin/realms/' + KEYCLOAK_REALM + '/users?email=' + encodeURIComponent(email.trim()), {
+          headers: { Authorization: 'Bearer ' + access_token }
+        });
+        if (!searchRes.ok) return { success: false, error: 'Could not find account with that email.' };
+        const users = await searchRes.json();
+        if (!Array.isArray(users) || users.length === 0) {
+          return { success: false, error: 'No account found with that email address.' };
+        }
+        const user = users[0];
+
+        const resetRes = await fetch(KEYCLOAK_BASE + '/admin/realms/' + KEYCLOAK_REALM + '/users/' + user.id + '/reset-password', {
+          method: 'PUT',
+          headers: {
+            Authorization: 'Bearer ' + access_token,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ type: 'password', value: newPassword, temporary: false })
+        });
+        if (!resetRes.ok) {
+          return { success: false, error: 'Failed to update password in Keycloak.' };
+        }
+        return { success: true };
+      } catch (err: any) {
+        return { success: false, error: err?.message || 'Password reset failed.' };
+      }
+    })();
+    return from(promise);
+  }
+
+  /**
    * Direct password login via Keycloak Resource Owner Password Credentials.
    */
   loginWithPassword(username: string, password: string): Observable<KeycloakLoginResult> {
@@ -212,19 +293,47 @@ export class KeycloakService {
 
   private async loginWithPasswordAsync(username: string, password: string): Promise<KeycloakLoginResult> {
     try {
-      const body = new URLSearchParams({
+      let targetUsername = username.trim();
+      if (targetUsername.includes('@')) {
+        const resolved = await this.resolveUsernameFromEmail(targetUsername);
+        if (resolved) {
+          targetUsername = resolved;
+        }
+      }
+
+      let body = new URLSearchParams({
         grant_type: 'password',
         client_id: KEYCLOAK_CLIENT_ID,
-        username,
+        username: targetUsername,
         password,
         scope: 'openid profile email'
       });
 
-      const res = await fetch(KEYCLOAK_BASE + '/realms/' + KEYCLOAK_REALM + '/protocol/openid-connect/token', {
+      let res = await fetch(KEYCLOAK_BASE + '/realms/' + KEYCLOAK_REALM + '/protocol/openid-connect/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: body.toString()
       });
+
+      // If failed and targetUsername wasn't resolved by email yet, attempt email resolution fallback
+      if (!res.ok && !targetUsername.includes('@')) {
+        const resolved = await this.resolveUsernameFromEmail(username.trim());
+        if (resolved && resolved !== targetUsername) {
+          targetUsername = resolved;
+          body = new URLSearchParams({
+            grant_type: 'password',
+            client_id: KEYCLOAK_CLIENT_ID,
+            username: targetUsername,
+            password,
+            scope: 'openid profile email'
+          });
+          res = await fetch(KEYCLOAK_BASE + '/realms/' + KEYCLOAK_REALM + '/protocol/openid-connect/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: body.toString()
+          });
+        }
+      }
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
