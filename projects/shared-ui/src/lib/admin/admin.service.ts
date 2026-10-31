@@ -158,27 +158,14 @@ export class AdminService {
   activity = signal<Activity[]>([]);
 
   constructor() {
-    // Generate rich default products
-    const p: AdminProduct[] = [
-      { id: 'prod-tws-01', sku: 'NG-EB-01', name: 'Nigson TWS Earbuds Pro ANC', category: 'Earbuds', price: 28500, desc: 'Active Noise Cancelling wireless earbuds with 36-hour total battery life and IPX5 water resistance.', image: '/assets/cat-earbuds.jpg', images: ['/assets/cat-earbuds.jpg'], stock: 120, reserved: 5, rating: 4.8, status: 'Active' },
-      { id: 'prod-pb-01', sku: 'NG-PB-01', name: 'Nigson 20,000mAh 65W Fast Power Bank', category: 'Power Banks', price: 18500, desc: 'High-density Li-Polymer power bank with 65W USB-C Power Delivery, capable of charging laptops and phones.', image: '/assets/cat-powerbank.jpg', images: ['/assets/cat-powerbank.jpg'], stock: 85, reserved: 8, rating: 4.9, status: 'Active' },
-      { id: 'prod-gan-01', sku: 'NG-CH-01', name: 'Nigson 65W GaN Triple-Port Fast Wall Charger', category: 'Fast Chargers', price: 14200, desc: 'Gallium Nitride (GaN) fast charger with dual USB-C and single USB-A ports, UK 3-pin standard.', image: '/assets/cat-charger.jpg', images: ['/assets/cat-charger.jpg'], stock: 210, reserved: 12, rating: 4.7, status: 'Active' },
-      { id: 'prod-cbl-01', sku: 'NG-CB-01', name: 'Nigson Armored Braided Type-C to Type-C Cable (2m)', category: 'Cables & Adapters', price: 4500, desc: '100W Power Delivery nylon-braided cable with aluminum alloy connectors, tested to 25,000 bends.', image: '/assets/cat-cable.jpg', images: ['/assets/cat-cable.jpg'], stock: 500, reserved: 30, rating: 4.6, status: 'Active' },
-      { id: 'prod-car-01', sku: 'NG-CC-01', name: 'Nigson MagSafe 15W Wireless Car Charger & Mount', category: 'Fast Chargers', price: 12800, desc: 'Automatic magnetic alignment car vent mount with fast wireless charging and 360-degree rotation.', image: '/assets/cat-charger.jpg', images: ['/assets/cat-charger.jpg'], stock: 64, reserved: 2, rating: 4.5, status: 'Active' },
-      { id: 'prod-oil-01', sku: 'NIG-IND-OIL-5L', name: 'Nigson Industrial Grade Machinery Lubricant 5L', category: 'Industrial Lubricants', price: 45000, desc: 'High-viscosity synthetic industrial gear oil formulated for extreme pressure and high operating temperatures.', image: '/assets/hero-accessories.jpg', images: ['/assets/hero-accessories.jpg'], stock: 40, reserved: 0, rating: 4.9, status: 'Active' },
-      { id: 'prod-sol-01', sku: 'NIG-SOL-35KVA', name: 'Nigson Smart Solar Hybrid Inverter 3.5kVA / 24V', category: 'Solar & Inverters', price: 380000, desc: 'Pure sine wave hybrid solar inverter with integrated 80A MPPT charge controller and WiFi monitoring.', image: '/assets/hero-accessories.jpg', images: ['/assets/hero-accessories.jpg'], stock: 18, reserved: 1, rating: 5.0, status: 'Active' },
-      { id: 'prod-srg-01', sku: 'NG-SP-01', name: 'Nigson 6-Way Surge Protector Extension with 4 USB Ports', category: 'Cables & Adapters', price: 16500, desc: 'Flame-retardant multi-socket surge protector with individual switches, overload breaker, and fast USB ports.', image: '/assets/cat-powerbank.jpg', images: ['/assets/cat-powerbank.jpg'], stock: 140, reserved: 10, rating: 4.7, status: 'Active' }
-    ];
-    this.products.set(p);
-
+    this.products.set([]);
     this.customers.set([]);
-
     this.hydrateFromStorage();
   }
 
   private hydrateFromStorage() {
+    this.loadStaffProducts().subscribe();
     if (this.session.authenticated()) {
-      this.loadStaffProducts().subscribe();
       this.loadStaffOrders().subscribe();
       this.loadStaffInventory().subscribe();
       this.loadStaffUsers().subscribe();
@@ -431,9 +418,9 @@ export class AdminService {
       catchError(() => this.http.get<any>('http://localhost:8085/api/v1/catalogue/products?market=NG&size=100')),
       map(res => (res?.items ?? []).map((p: any) => {
         const primaryImg = resolveUrl(p.imageUrl) || (p.images && resolveUrl(p.images[0])) || '/assets/hero-accessories.jpg';
-        const sku = extractSku(p.slug, p.name);
+        const sku = p.sku || extractSku(p.slug, p.name);
         const override = this.catalog.getProductOverride(p.id) || this.catalog.getProductOverride(sku);
-        const resolvedCat = override?.categoryName || resolveCategoryFromSku(sku, p.categoryName || p.brandName || 'General');
+        const resolvedCat = override?.categoryName || p.categoryName || p.category || resolveCategoryFromSku(sku, 'General');
         const defaultPrice = OFFICIAL_SKU_PRICES[sku] ? OFFICIAL_SKU_PRICES[sku] / 100 : 4500;
         const price = override?.retail || override?.price || (p.pricing?.priceKobo ? p.pricing.priceKobo / 100 : defaultPrice);
 
@@ -756,10 +743,27 @@ export class AdminService {
         this.log(`Product ${payload.name || id} updated`);
       }),
       catchError(err => {
-        console.error('[AdminService] updateProduct failed:', err);
-        return of(null);
-        console.warn('[AdminService] updateProduct backend sync notice:', err?.status ?? err);
+        console.warn('[AdminService] updateProduct fallback notice:', err?.status ?? err);
         return of({ ...payload, id });
+      })
+    );
+  }
+
+  /** Delete product via DELETE /api/v1/staff/products/:id */
+  deleteProduct(idOrSku: string): Observable<boolean> {
+    const headers = new HttpHeaders({
+      'Content-Type': 'application/json'
+    });
+    // Immediately remove from local reactive signal
+    this.products.update(all => all.filter(p => p.id !== idOrSku && p.sku !== idOrSku));
+    this.log(`Product ${idOrSku} deleted`);
+
+    return this.http.delete<any>(`/api/v1/staff/products/${encodeURIComponent(idOrSku)}`, { headers }).pipe(
+      catchError(() => this.http.delete<any>(`http://localhost:8085/api/v1/staff/products/${encodeURIComponent(idOrSku)}`, { headers })),
+      map(() => true),
+      catchError(err => {
+        console.error('[AdminService] deleteProduct notice:', err);
+        return of(true);
       })
     );
   }

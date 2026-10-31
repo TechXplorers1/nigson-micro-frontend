@@ -19,230 +19,73 @@ const PAGE_MAPPING = {
   careers: { type: 'CAREERS', slug: 'careers', title: 'Careers' }
 };
 
-const DEFAULT_PRODUCTS = [
-  {
-    id: "11111111-2222-3333-4444-555555555501",
-    sku: "NG-EB-01",
-    skuId: "11111111-2222-3333-4444-555555555511",
-    name: "Nigson TWS Earbuds Pro ANC",
-    slug: "nigson-tws-earbuds-pro-anc",
-    category: "Earbuds",
-    categoryId: "10000000-0000-0000-0000-000000000001",
-    categoryName: "Earbuds",
-    brand: "Nigson",
-    brandName: "Nigson",
-    price: 28500,
-    retail: 28500,
-    retailPrice: 28500,
-    wholesale: 22800,
-    wholesalePrice: 22800,
-    distributor: 19950,
-    distributorPrice: 19950,
-    desc: "Active Noise Cancelling wireless earbuds with 36-hour total battery life and IPX5 water resistance.",
-    description: "Active Noise Cancelling wireless earbuds with 36-hour total battery life and IPX5 water resistance.",
-    image: "/assets/cat-earbuds.jpg",
-    imageUrl: "/assets/cat-earbuds.jpg",
-    images: ["/assets/cat-earbuds.jpg"],
-    stock: 120,
-    reserved: 5,
-    rating: 4.8,
-    status: "Active",
-    available: true,
-    pricing: { priceKobo: 2850000 },
-    specifications: {
-      warranty: "12 Months",
-      connectors: "Bluetooth 5.3, USB-C",
-      powerRating: "300mAh Case, 40mAh Earbuds",
-      buildMaterial: "Matte Polycarbonate",
-      certification: "CE, RoHS, SONCAP"
-    }
-  },
-  {
-    id: "22222222-2222-3333-4444-555555555502",
-    sku: "NG-PB-01",
-    skuId: "22222222-2222-3333-4444-555555555512",
-    name: "Nigson 20,000mAh 65W Fast Power Bank",
-    slug: "nigson-20000mah-65w-fast-power-bank",
-    category: "Power Banks",
-    categoryId: "10000000-0000-0000-0000-000000000002",
-    categoryName: "Power Banks",
-    brand: "Nigson",
-    brandName: "Nigson",
-    price: 18500,
-    retail: 18500,
-    retailPrice: 18500,
-    wholesale: 14800,
-    wholesalePrice: 14800,
-    distributor: 12950,
-    distributorPrice: 12950,
-    desc: "High-density Li-Polymer power bank with 65W USB-C Power Delivery, capable of charging laptops and phones.",
-    description: "High-density Li-Polymer power bank with 65W USB-C Power Delivery, capable of charging laptops and phones.",
-    image: "/assets/cat-powerbank.jpg",
-    imageUrl: "/assets/cat-powerbank.jpg",
-    images: ["/assets/cat-powerbank.jpg"],
-    stock: 85,
-    reserved: 8,
-    rating: 4.9,
-    status: "Active",
-    available: true,
-    pricing: { priceKobo: 1850000 },
-    specifications: {
-      warranty: "18 Months",
-      connectors: "2x USB-C, 1x USB-A",
-      powerRating: "20,000mAh 65W Max PD",
-      buildMaterial: "Anodized Aluminum",
-      certification: "SONCAP, CE, FCC"
-    }
-  },
-  {
-    id: "33333333-2222-3333-4444-555555555503",
-    sku: "NG-CH-01",
-    skuId: "33333333-2222-3333-4444-555555555513",
-    name: "Nigson 65W GaN Triple-Port Fast Wall Charger",
-    slug: "nigson-65w-gan-triple-port-fast-wall-charger",
-    category: "Fast Chargers",
-    categoryId: "10000000-0000-0000-0000-000000000003",
-    categoryName: "Fast Chargers",
-    brand: "Nigson",
-    brandName: "Nigson",
-    price: 14200,
-    retail: 14200,
-    retailPrice: 14200,
-    wholesale: 11360,
-    wholesalePrice: 11360,
-    distributor: 9940,
-    distributorPrice: 9940,
-    desc: "Gallium Nitride (GaN) fast charger with dual USB-C and single USB-A ports, UK 3-pin standard.",
-    description: "Gallium Nitride (GaN) fast charger with dual USB-C and single USB-A ports, UK 3-pin standard.",
-    image: "/assets/cat-charger.jpg",
-    imageUrl: "/assets/cat-charger.jpg",
-    images: ["/assets/cat-charger.jpg"],
-    stock: 210,
-    reserved: 12,
-    rating: 4.7,
-    status: "Active",
-    available: true,
-    pricing: { priceKobo: 1420000 },
-    specifications: {
-      warranty: "12 Months",
-      connectors: "2x USB-C (PD 3.0), 1x USB-A (QC 4.0)",
-      powerRating: "65W Max Output",
-      buildMaterial: "GaN Semiconductor + Flame Retardant PC",
-      certification: "UK Standard 3-Pin, CE, SONCAP"
-    }
-  },
-  {
-    id: "44444444-2222-3333-4444-555555555504",
-    sku: "NG-CB-01",
-    skuId: "44444444-2222-3333-4444-555555555514",
-    name: "Nigson Armored Braided Type-C to Type-C Cable (2m)",
-    slug: "nigson-armored-braided-type-c-to-type-c-cable-2m",
-    category: "Cables & Adapters",
-    categoryId: "10000000-0000-0000-0000-000000000004",
-    categoryName: "Cables & Adapters",
-    brand: "Nigson",
-    brandName: "Nigson",
-    price: 4500,
-    retail: 4500,
-    retailPrice: 4500,
-    wholesale: 3600,
-    wholesalePrice: 3600,
-    distributor: 3150,
-    distributorPrice: 3150,
-    desc: "100W Power Delivery nylon-braided cable with aluminum alloy connectors, tested to 25,000 bends.",
-    description: "100W Power Delivery nylon-braided cable with aluminum alloy connectors, tested to 25,000 bends.",
-    image: "/assets/cat-cable.jpg",
-    imageUrl: "/assets/cat-cable.jpg",
-    images: ["/assets/cat-cable.jpg"],
-    stock: 500,
-    reserved: 30,
-    rating: 4.6,
-    status: "Active",
-    available: true,
-    pricing: { priceKobo: 450000 },
-    specifications: {
-      warranty: "24 Months",
-      connectors: "USB-C to USB-C (E-Marker IC)",
-      powerRating: "100W (20V/5A), 480Mbps Data",
-      buildMaterial: "Double Braided Nylon + Aluminum Alloy",
-      certification: "USB-IF, CE, RoHS"
-    }
-  },
-  {
-    id: "55555555-2222-3333-4444-555555555505",
-    sku: "NG-CC-01",
-    skuId: "55555555-2222-3333-4444-555555555515",
-    name: "Nigson MagSafe 15W Wireless Car Charger & Mount",
-    slug: "nigson-magsafe-15w-wireless-car-charger-mount",
-    category: "Fast Chargers",
-    categoryId: "10000000-0000-0000-0000-000000000003",
-    categoryName: "Fast Chargers",
-    brand: "Nigson",
-    brandName: "Nigson",
-    price: 12800,
-    retail: 12800,
-    retailPrice: 12800,
-    wholesale: 10240,
-    wholesalePrice: 10240,
-    distributor: 8960,
-    distributorPrice: 8960,
-    desc: "Automatic magnetic alignment car vent mount with fast wireless charging and 360-degree rotation.",
-    description: "Automatic magnetic alignment car vent mount with fast wireless charging and 360-degree rotation.",
-    image: "/assets/cat-charger.jpg",
-    imageUrl: "/assets/cat-charger.jpg",
-    images: ["/assets/cat-charger.jpg"],
-    stock: 64,
-    reserved: 2,
-    rating: 4.5,
-    status: "Active",
-    available: true,
-    pricing: { priceKobo: 1280000 },
-    specifications: {
-      warranty: "12 Months",
-      connectors: "Qi Wireless, USB-C Input",
-      powerRating: "15W Max Wireless Output",
-      buildMaterial: "Tempered Glass + Aluminum Frame",
-      certification: "Qi Certified, CE, FCC"
-    }
-  },
-  {
-    id: "66666666-2222-3333-4444-555555555506",
-    sku: "NG-SP-01",
-    skuId: "66666666-2222-3333-4444-555555555516",
-    name: "Nigson 6-Way Surge Protector Extension with 4 USB Ports",
-    slug: "nigson-6-way-surge-protector-extension-with-4-usb-ports",
-    category: "Cables & Adapters",
-    categoryId: "10000000-0000-0000-0000-000000000004",
-    categoryName: "Cables & Adapters",
-    brand: "Nigson",
-    brandName: "Nigson",
-    price: 16500,
-    retail: 16500,
-    retailPrice: 16500,
-    wholesale: 13200,
-    wholesalePrice: 13200,
-    distributor: 11550,
-    distributorPrice: 11550,
-    desc: "Flame-retardant multi-socket surge protector with individual switches, overload breaker, and fast USB ports.",
-    description: "Flame-retardant multi-socket surge protector with individual switches, overload breaker, and fast USB ports.",
-    image: "/assets/cat-powerbank.jpg",
-    imageUrl: "/assets/cat-powerbank.jpg",
-    images: ["/assets/cat-powerbank.jpg"],
-    stock: 140,
-    reserved: 10,
-    rating: 4.7,
-    status: "Active",
-    available: true,
-    pricing: { priceKobo: 1650000 },
-    specifications: {
-      warranty: "12 Months",
-      connectors: "6 Universal Sockets + 4 USB Ports",
-      powerRating: "2500W / 10A Max, 1750 Joules Surge Protection",
-      buildMaterial: "750°C Flame Retardant Phosphor Bronze",
-      certification: "SONCAP, CE, ISO9001"
-    }
+const DEFAULT_PRODUCTS = [];
+
+const OFFICIAL_SKU_PRICES = {
+  'NS03': 1450000,
+  'NS06': 2450000,
+  'NS107': 1850000,
+  'NS211C': 350000,
+  'NS211i': 350000,
+  'NS25': 450000,
+  'NS2526C': 1650000,
+  'NS2618': 1850000,
+  'NS3416': 2650000,
+  'NS3604C': 1950000,
+  'NS4': 950000,
+  'NS6': 1950000,
+  'NS6-1': 1450000,
+  'NS901C': 450000,
+  'NS901i': 420000,
+  'NS96U': 520000,
+  'PQ19': 1650000,
+  'PQ20': 2650000,
+  'PQ28': 1950000,
+  'PQ30': 3450000,
+  'PQ50': 4850000,
+  'ZS6': 2650000,
+  'ZS8': 2150000
+};
+
+const CATEGORY_IMAGE_MAP = {
+  'Power Banks': '/assets/cat-powerbank.jpg',
+  'Earbuds': '/assets/cat-earbuds.jpg',
+  'Cables': '/assets/cat-cable.jpg',
+  'Chargers': '/assets/cat-charger.jpg',
+  'Fast Chargers': '/assets/cat-charger.jpg',
+  'Extension Sockets': '/assets/cat-powerbank.jpg',
+  'Motion-Activated Lights': '/assets/hero-accessories.jpg'
+};
+
+function extractSkuFromSlugOrName(slug, name) {
+  if (slug) {
+    const clean = slug.replace(/^nigson-/, '');
+    if (clean.startsWith('ns6-1')) return 'NS6-1';
+    if (clean.startsWith('ns2526c')) return 'NS2526C';
+    if (clean.startsWith('ns3604c')) return 'NS3604C';
+    if (clean.startsWith('ns211c')) return 'NS211C';
+    if (clean.startsWith('ns211i')) return 'NS211i';
+    if (clean.startsWith('ns901c')) return 'NS901C';
+    if (clean.startsWith('ns901i')) return 'NS901i';
+    if (clean.startsWith('ns96u')) return 'NS96U';
+    return clean.split('-')[0].toUpperCase();
   }
-];
+  if (name) {
+    return name.split(' ')[0].toUpperCase();
+  }
+  return 'NG-SKU';
+}
+
+function resolveCategoryFromSku(sku, fallback = 'General') {
+  const upper = (sku || '').toUpperCase();
+  if (upper.startsWith('NS03') || upper.startsWith('NS06')) return 'Earbuds';
+  if (upper.startsWith('PQ')) return 'Power Banks';
+  if (upper.startsWith('NS211') || upper.startsWith('NS25') || upper.startsWith('NS901') || upper.startsWith('NS96')) return 'Cables';
+  if (upper.startsWith('NS107') || upper.startsWith('NS2526') || upper.startsWith('NS2618') || upper.startsWith('NS4') || upper.startsWith('ZS')) return 'Chargers';
+  if (upper.startsWith('NS3416') || upper.startsWith('NS3604')) return 'Extension Sockets';
+  if (upper.startsWith('NS6')) return 'Motion-Activated Lights';
+  return fallback;
+}
 
 function queryPg(sql) {
   try {
@@ -287,32 +130,99 @@ function slugify(text) {
 
 function syncProductToPostgresTables(p) {
   try {
-    const uuid = ensureValidUuid(p.id);
+    const rawId = (p.id || '').replace(/'/g, "''");
+    const cleanSku = (p.sku || '').replace(/'/g, "''");
+    const cleanSlug = (p.slug || slugify(p.name || '')).replace(/'/g, "''");
+
+    // Look for existing product in PostgreSQL by ID, SKU, or slug
+    let targetUuid = '';
+    if (rawId || cleanSku || cleanSlug) {
+      targetUuid = queryPg(`
+        SELECT p.id FROM commerce.product p
+        LEFT JOIN commerce.sku s ON s.product_id = p.id
+        WHERE (${rawId ? `p.id::text = '${rawId}'` : 'false'}
+           OR ${cleanSku ? `s.code = '${cleanSku}'` : 'false'}
+           OR ${cleanSlug ? `p.slug = '${cleanSlug}'` : 'false'})
+        LIMIT 1;
+      `);
+    }
+
+    const uuid = targetUuid || ensureValidUuid(p.id);
     const skuUuid = ensureValidUuid(p.skuId);
     const skuCode = (p.sku || ('SKU-' + uuid.slice(0, 8))).replace(/'/g, "''");
     const name = (p.name || 'Product').replace(/'/g, "''");
-    const slug = (p.slug || slugify(p.name) || ('prod-' + uuid.slice(0, 8))).replace(/'/g, "''");
     const desc = (p.description || p.desc || '').replace(/'/g, "''");
     const specs = JSON.stringify(p.specifications || {}).replace(/'/g, "''");
 
-    const sql = `
-      INSERT INTO commerce.product (id, created_by, updated_by, name, slug, description, specifications, status, revision)
-      VALUES ('${uuid}', 'admin', 'admin', '${name}', '${slug}', '${desc}', '${specs}'::jsonb, 'ACTIVE', 1)
-      ON CONFLICT (id) DO UPDATE SET 
-        name = EXCLUDED.name, 
-        description = EXCLUDED.description, 
-        specifications = EXCLUDED.specifications, 
-        updated_at = now();
+    if (targetUuid) {
+      // Existing product: update fields and reactivate if soft-deleted
+      queryPg(`
+        UPDATE commerce.product SET 
+          name = '${name}',
+          description = '${desc}',
+          specifications = '${specs}'::jsonb,
+          status = 'ACTIVE',
+          deleted_at = NULL,
+          updated_at = now()
+        WHERE id = '${uuid}';
 
-      INSERT INTO commerce.sku (id, product_id, code, variant_name, unit, created_by, updated_by)
-      VALUES ('${skuUuid}', '${uuid}', '${skuCode}', 'Standard', 'PIECE', 'admin', 'admin')
-      ON CONFLICT (id) DO UPDATE SET 
-        code = EXCLUDED.code, 
-        updated_at = now();
-    `;
-    queryPg(sql);
+        INSERT INTO commerce.sku (id, product_id, code, variant_name, unit, created_by, updated_by, active, deleted_at)
+        VALUES ('${skuUuid}', '${uuid}', '${skuCode}', 'Standard', 'PIECE', 'admin', 'admin', true, NULL)
+        ON CONFLICT (code) DO UPDATE SET 
+          product_id = EXCLUDED.product_id,
+          variant_name = EXCLUDED.variant_name,
+          active = true,
+          deleted_at = NULL,
+          updated_at = now();
+      `);
+    } else {
+      // New product: ensure slug uniqueness
+      let finalSlug = cleanSlug || ('prod-' + uuid.slice(0, 8));
+      const existingCount = queryPg(`SELECT count(*) FROM commerce.product WHERE slug = '${finalSlug}';`);
+      if (Number(existingCount) > 0) {
+        finalSlug = `${finalSlug}-${uuid.slice(0, 6)}`;
+      }
+
+      queryPg(`
+        INSERT INTO commerce.product (id, created_by, updated_by, name, slug, description, specifications, status, revision, brand_id, published_at)
+        VALUES ('${uuid}', 'admin', 'admin', '${name}', '${finalSlug}', '${desc}', '${specs}'::jsonb, 'ACTIVE', 1, '22222222-2222-3333-4444-555555555501', now())
+        ON CONFLICT (id) DO UPDATE SET 
+          name = EXCLUDED.name, 
+          description = EXCLUDED.description, 
+          specifications = EXCLUDED.specifications, 
+          status = 'ACTIVE',
+          deleted_at = NULL,
+          updated_at = now();
+
+        INSERT INTO commerce.sku (id, product_id, code, variant_name, unit, created_by, updated_by, active, deleted_at)
+        VALUES ('${skuUuid}', '${uuid}', '${skuCode}', 'Standard', 'PIECE', 'admin', 'admin', true, NULL)
+        ON CONFLICT (code) DO UPDATE SET 
+          product_id = EXCLUDED.product_id,
+          variant_name = EXCLUDED.variant_name,
+          active = true,
+          deleted_at = NULL,
+          updated_at = now();
+      `);
+    }
+
+    // Link category in commerce.product_category
+    let catId = p.categoryId;
+    if (!catId || catId.startsWith('10000000')) {
+      const catName = (p.category || p.categoryName || '').replace(/'/g, "''");
+      if (catName) {
+        catId = queryPg(`SELECT id FROM commerce.category WHERE lower(name) = lower('${catName}') LIMIT 1;`);
+      }
+    }
+    if (catId && /^[0-9a-f-]{36}$/i.test(catId)) {
+      queryPg(`
+        DELETE FROM commerce.product_category WHERE product_id = '${uuid}';
+        INSERT INTO commerce.product_category (id, created_by, updated_by, product_id, category_id)
+        VALUES (gen_random_uuid(), 'admin', 'admin', '${uuid}', '${catId}')
+        ON CONFLICT (product_id, category_id) DO NOTHING;
+      `);
+    }
   } catch (err) {
-    console.warn('[CMS Bridge] Non-fatal notice syncing to commerce.product:', err.message);
+    console.error('[CMS Bridge] Non-fatal notice syncing to commerce.product:', err.message);
   }
 }
 
@@ -332,39 +242,27 @@ function ensureTablesAndPages() {
   try {
     queryPg(`
       INSERT INTO commerce.brand (id, created_by, updated_by, name, slug, active)
-      VALUES ('00000000-0000-0000-0000-000000000001', 'system', 'system', 'Nigson', 'nigson', true)
+      VALUES ('22222222-2222-3333-4444-555555555501', 'system', 'system', 'Nigson', 'nigson', true)
       ON CONFLICT (id) DO NOTHING;
 
-      INSERT INTO commerce.category (id, created_by, updated_by, name, slug, sort_order, active)
+      INSERT INTO commerce.category (id, created_by, updated_by, version, parent_id, name, slug, sort_order, active)
       VALUES 
-        ('10000000-0000-0000-0000-000000000001', 'system', 'system', 'Earbuds', 'earbuds', 1, true),
-        ('10000000-0000-0000-0000-000000000002', 'system', 'system', 'Power Banks', 'power-banks', 2, true),
-        ('10000000-0000-0000-0000-000000000003', 'system', 'system', 'Fast Chargers', 'fast-chargers', 3, true),
-        ('10000000-0000-0000-0000-000000000004', 'system', 'system', 'Cables & Adapters', 'cables-adapters', 4, true),
-        ('10000000-0000-0000-0000-000000000005', 'system', 'system', 'Industrial Lubricants', 'industrial-lubricants', 5, true),
-        ('10000000-0000-0000-0000-000000000006', 'system', 'system', 'Solar & Inverters', 'solar-inverters', 6, true)
+        ('11111111-2222-3333-4444-555555555501', 'system', 'system', 0, NULL, 'Power Banks', 'power-banks', 1, true),
+        ('11111111-2222-3333-4444-555555555502', 'system', 'system', 0, NULL, 'Earbuds', 'earbuds', 2, true),
+        ('11111111-2222-3333-4444-555555555503', 'system', 'system', 0, NULL, 'Cables', 'cables', 3, true),
+        ('11111111-2222-3333-4444-555555555504', 'system', 'system', 0, NULL, 'Chargers', 'chargers', 4, true),
+        ('11111111-2222-3333-4444-555555555505', 'system', 'system', 0, NULL, 'Extension Sockets', 'extension-sockets', 5, true),
+        ('11111111-2222-3333-4444-555555555506', 'system', 'system', 0, NULL, 'Motion-Activated Lights', 'motion-activated-lights', 6, true)
       ON CONFLICT (id) DO NOTHING;
+
+      -- Remove stale mock products from admin_cms_store
+      DELETE FROM experience.admin_cms_store WHERE key = 'products';
     `);
   } catch (e) {
     console.warn('[CMS Bridge] Note on commerce schema seed:', e.message);
   }
 
-  // Ensure products key exists in experience.admin_cms_store
-  try {
-    const existingProds = queryPg(`SELECT key FROM experience.admin_cms_store WHERE key = 'products' LIMIT 1;`);
-    if (!existingProds) {
-      console.log('[CMS Bridge] Initializing default products in experience.admin_cms_store...');
-      queryPg(`
-        INSERT INTO experience.admin_cms_store (key, data, updated_at)
-        VALUES ('products', '${JSON.stringify(DEFAULT_PRODUCTS).replace(/'/g, "''")}'::jsonb, now());
-      `);
-      for (const p of DEFAULT_PRODUCTS) {
-        syncProductToPostgresTables(p);
-      }
-    }
-  } catch (e) {
-    console.warn('[CMS Bridge] Error initializing products:', e.message);
-  }
+// Default products seeding disabled in favor of live commerce.product tables
 
   // Ensure page_insights exists in admin_cms_store
   try {
@@ -438,15 +336,113 @@ function ensureTablesAndPages() {
 
 function loadAllProductsFromDatabase() {
   try {
+    const sql = `
+      SELECT 
+        p.id,
+        p.name,
+        p.slug,
+        p.description,
+        p.specifications::text AS specifications_text,
+        p.status,
+        s.id AS sku_id,
+        s.code AS sku_code,
+        s.variant_name,
+        c.id AS category_id,
+        c.name AS category_name,
+        c.slug AS category_slug,
+        b.name AS brand_name,
+        (
+          SELECT json_agg(ar.object_key ORDER BY ar.sort_order)
+          FROM commerce.asset_reference ar
+          WHERE ar.product_id = p.id AND ar.status = 'PUBLISHED'
+        ) AS asset_keys
+      FROM commerce.product p
+      LEFT JOIN LATERAL (
+        SELECT id, code, variant_name 
+        FROM commerce.sku 
+        WHERE product_id = p.id AND active = true AND deleted_at IS NULL 
+        ORDER BY id 
+        LIMIT 1
+      ) s ON true
+      LEFT JOIN LATERAL (
+        SELECT c2.id, c2.name, c2.slug
+        FROM commerce.product_category pc
+        JOIN commerce.category c2 ON c2.id = pc.category_id AND c2.active = true AND c2.deleted_at IS NULL
+        WHERE pc.product_id = p.id
+        ORDER BY c2.sort_order ASC
+        LIMIT 1
+      ) c ON true
+      LEFT JOIN commerce.brand b ON b.id = p.brand_id AND b.active = true AND b.deleted_at IS NULL
+      WHERE p.deleted_at IS NULL
+      ORDER BY p.name ASC;
+    `;
+    const rows = queryPgJson(sql);
+    if (Array.isArray(rows) && rows.length > 0) {
+      return rows.map(r => {
+        const sku = r.sku_code || extractSkuFromSlugOrName(r.slug, r.name);
+        const categoryName = r.category_name || resolveCategoryFromSku(sku, 'General');
+        const defaultMinor = OFFICIAL_SKU_PRICES[sku] || 450000;
+        const price = defaultMinor / 100;
+
+        let images = [];
+        if (Array.isArray(r.asset_keys) && r.asset_keys.length > 0) {
+          images = r.asset_keys.map(k => `http://localhost:4566/nigson-product-images/${k}`);
+        } else {
+          images = [CATEGORY_IMAGE_MAP[categoryName] || '/assets/hero-accessories.jpg'];
+        }
+
+        let specs = {};
+        try {
+          specs = r.specifications_text ? JSON.parse(r.specifications_text) : {};
+        } catch {}
+
+        return {
+          id: r.id,
+          sku: sku,
+          skuId: r.sku_id || r.id,
+          name: r.name,
+          slug: r.slug,
+          category: categoryName,
+          categoryId: r.category_id || '',
+          categoryName: categoryName,
+          brand: r.brand_name || 'Nigson',
+          brandName: r.brand_name || 'Nigson',
+          price: price,
+          retail: price,
+          retailPrice: price,
+          wholesale: Math.round(price * 0.8),
+          wholesalePrice: Math.round(price * 0.8),
+          distributor: Math.round(price * 0.7),
+          distributorPrice: Math.round(price * 0.7),
+          desc: r.description || r.name,
+          description: r.description || r.name,
+          image: images[0],
+          imageUrl: images[0],
+          images: images,
+          stock: 120,
+          reserved: 0,
+          rating: 4.8,
+          status: r.status || 'Active',
+          available: true,
+          pricing: { priceKobo: defaultMinor },
+          specifications: specs
+        };
+      });
+    }
+  } catch (err) {
+    console.error('[CMS Bridge] Error loading products from commerce schema:', err.message);
+  }
+
+  // Fallback to experience.admin_cms_store
+  try {
     const rows = queryPgJson(`SELECT data::text AS data_text FROM experience.admin_cms_store WHERE key = 'products';`);
     if (rows.length > 0 && rows[0].data_text) {
       const prods = JSON.parse(rows[0].data_text);
       if (Array.isArray(prods) && prods.length > 0) return prods;
     }
-  } catch (err) {
-    console.error('[CMS Bridge] Error loading products:', err.message);
-  }
-  return DEFAULT_PRODUCTS;
+  } catch {}
+
+  return [];
 }
 
 function saveProductsToDatabase(products) {
@@ -625,10 +621,15 @@ const server = http.createServer((req, res) => {
   }
 
   // Single Product
-  if (url.pathname.startsWith('/api/v1/catalogue/products/') && req.method === 'GET') {
-    const idOrSku = url.pathname.replace('/api/v1/catalogue/products/', '').split('/')[0];
+  if ((url.pathname.startsWith('/api/v1/catalogue/products/') || url.pathname.startsWith('/api/v1/staff/products/')) && req.method === 'GET') {
+    const idOrSku = url.pathname.replace(/^\/api\/v1\/(catalogue|staff)\/products\//, '').split('/')[0];
     const all = loadAllProductsFromDatabase();
-    const found = all.find(p => p.id === idOrSku || p.sku === idOrSku || p.slug === idOrSku);
+    const search = decodeURIComponent(idOrSku || '').toLowerCase().trim();
+    const found = all.find(p => 
+      p.id?.toLowerCase() === search || 
+      p.sku?.toLowerCase() === search || 
+      p.slug?.toLowerCase() === search
+    );
     if (found) {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(found));
@@ -641,22 +642,58 @@ const server = http.createServer((req, res) => {
 
   // Categories & Brands
   if (url.pathname === '/api/v1/catalogue/categories' && req.method === 'GET') {
-    const cats = [
-      { id: '10000000-0000-0000-0000-000000000001', name: 'Earbuds', slug: 'earbuds', imageUrl: '/assets/cat-earbuds.jpg' },
-      { id: '10000000-0000-0000-0000-000000000002', name: 'Power Banks', slug: 'power-banks', imageUrl: '/assets/cat-powerbank.jpg' },
-      { id: '10000000-0000-0000-0000-000000000003', name: 'Fast Chargers', slug: 'fast-chargers', imageUrl: '/assets/cat-charger.jpg' },
-      { id: '10000000-0000-0000-0000-000000000004', name: 'Cables & Adapters', slug: 'cables-adapters', imageUrl: '/assets/cat-cable.jpg' },
-      { id: '10000000-0000-0000-0000-000000000005', name: 'Industrial Lubricants', slug: 'industrial-lubricants', imageUrl: '/assets/hero-accessories.jpg' },
-      { id: '10000000-0000-0000-0000-000000000006', name: 'Solar & Inverters', slug: 'solar-inverters', imageUrl: '/assets/hero-accessories.jpg' }
+    try {
+      const dbCats = queryPgJson(`
+        SELECT c.id, c.name, c.slug, 
+               COALESCE((SELECT count(*) FROM commerce.product_category pc WHERE pc.category_id = c.id), 0) as product_count
+        FROM commerce.category c
+        WHERE c.active = true AND c.deleted_at IS NULL
+        ORDER BY c.sort_order ASC, c.name ASC;
+      `);
+      if (Array.isArray(dbCats) && dbCats.length > 0) {
+        const mapped = dbCats.map(c => ({
+          id: c.id,
+          name: c.name,
+          slug: c.slug,
+          imageUrl: CATEGORY_IMAGE_MAP[c.name] || '/assets/hero-accessories.jpg'
+        }));
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(mapped));
+        return;
+      }
+    } catch (err) {
+      console.warn('[CMS Bridge] Error loading categories from DB:', err.message);
+    }
+
+    const fallbackCats = [
+      { id: '11111111-2222-3333-4444-555555555501', name: 'Power Banks', slug: 'power-banks', imageUrl: '/assets/cat-powerbank.jpg' },
+      { id: '11111111-2222-3333-4444-555555555502', name: 'Earbuds', slug: 'earbuds', imageUrl: '/assets/cat-earbuds.jpg' },
+      { id: '11111111-2222-3333-4444-555555555503', name: 'Cables', slug: 'cables', imageUrl: '/assets/cat-cable.jpg' },
+      { id: '11111111-2222-3333-4444-555555555504', name: 'Chargers', slug: 'chargers', imageUrl: '/assets/cat-charger.jpg' },
+      { id: '11111111-2222-3333-4444-555555555505', name: 'Extension Sockets', slug: 'extension-sockets', imageUrl: '/assets/cat-powerbank.jpg' },
+      { id: '11111111-2222-3333-4444-555555555506', name: 'Motion-Activated Lights', slug: 'motion-activated-lights', imageUrl: '/assets/hero-accessories.jpg' }
     ];
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(cats));
+    res.end(JSON.stringify(fallbackCats));
     return;
   }
 
   if (url.pathname === '/api/v1/catalogue/brands' && req.method === 'GET') {
+    try {
+      const dbBrands = queryPgJson(`
+        SELECT id, name, slug 
+        FROM commerce.brand 
+        WHERE active = true AND deleted_at IS NULL 
+        ORDER BY name ASC;
+      `);
+      if (Array.isArray(dbBrands) && dbBrands.length > 0) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(dbBrands));
+        return;
+      }
+    } catch {}
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify([{ id: '00000000-0000-0000-0000-000000000001', name: 'Nigson', slug: 'nigson' }]));
+    res.end(JSON.stringify([{ id: '22222222-2222-3333-4444-555555555501', name: 'Nigson', slug: 'nigson' }]));
     return;
   }
 
@@ -767,6 +804,37 @@ const server = http.createServer((req, res) => {
         res.end(JSON.stringify({ error: err.message }));
       }
     });
+    return;
+  }
+
+  // Delete Product via DELETE /api/v1/staff/products/:id
+  if (url.pathname.startsWith('/api/v1/staff/products/') && req.method === 'DELETE') {
+    const idOrSku = url.pathname.replace('/api/v1/staff/products/', '').split('/')[0];
+    try {
+      const clean = idOrSku.replace(/'/g, "''");
+      const targetUuid = queryPg(`
+        SELECT p.id FROM commerce.product p 
+        LEFT JOIN commerce.sku s ON s.product_id = p.id 
+        WHERE p.id::text = '${clean}' OR s.code = '${clean}' OR p.slug = '${clean}'
+        LIMIT 1;
+      `);
+
+      if (targetUuid) {
+        queryPg(`
+          UPDATE commerce.sku SET deleted_at = now(), active = false WHERE product_id = '${targetUuid}';
+          UPDATE commerce.product SET deleted_at = now(), status = 'ARCHIVED' WHERE id = '${targetUuid}';
+          DELETE FROM commerce.product_category WHERE product_id = '${targetUuid}';
+        `);
+        console.log(`[CMS Bridge] Successfully soft-deleted product ${targetUuid} (${idOrSku})`);
+      }
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true, deleted: idOrSku }));
+    } catch (err) {
+      console.error('[CMS Bridge] Delete product error:', err);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message }));
+    }
     return;
   }
 

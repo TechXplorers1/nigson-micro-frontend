@@ -272,7 +272,7 @@ export class CatalogService {
       map(res => {
         const rawItems = res?.items || res?.content || [];
         const content: Product[] = rawItems.map((item: any) => {
-          const sku = extractSku(item.slug, item.name);
+          const sku = item.sku || item.skus?.[0]?.code || extractSku(item.slug, item.name);
           const override = this.getProductOverride(item.id) || this.getProductOverride(sku);
           const priceMinor = override?.priceMinorUnits || (override?.price ? override.price * 100 : (OFFICIAL_SKU_PRICES[sku] || 450000));
           const primaryImg = override?.images?.[0] || (item.imageUrl ? this.resolveImageUrl(item.imageUrl) : this.FALLBACK_IMG);
@@ -363,7 +363,7 @@ export class CatalogService {
     return this.http.get<any>(`/api/v1/catalogue/products/${uuid}?market=NG`).pipe(
       catchError(() => this.http.get<any>(`http://localhost:8085/api/v1/catalogue/products/${uuid}?market=NG`)),
       map(raw => {
-        const sku = raw.skus?.[0]?.code || extractSku(raw.slug, raw.name);
+        const sku = raw.sku || raw.skus?.[0]?.code || extractSku(raw.slug, raw.name);
         const override = this.getProductOverride(raw.id) || this.getProductOverride(sku) || (aliasSku ? this.getProductOverride(aliasSku) : null);
         const catName = raw.categories?.[0]?.name || resolveCategoryFromSku(sku);
         const priceMinor = override?.priceMinorUnits || (override?.price ? override.price * 100 : (OFFICIAL_SKU_PRICES[sku] || 450000));

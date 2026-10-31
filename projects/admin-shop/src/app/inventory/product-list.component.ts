@@ -22,8 +22,8 @@ import { RouterLink } from '@angular/router';
         <input type="text" [(ngModel)]="searchQuery" placeholder="Search product or SKU..." class="w-full rounded-full border border-gray-200 bg-white py-2 pl-10 pr-4 text-sm text-ink shadow-sm outline-none transition-all focus:border-gray-300 focus:ring-4 focus:ring-gray-100">
       </div>
       
-      <select class="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm text-ink shadow-sm outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100">
-        <option>All categories</option>
+      <select [(ngModel)]="selectedCategory" class="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm text-ink shadow-sm outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100">
+        <option *ngFor="let c of categories()" [value]="c">{{ c }}</option>
       </select>
       
       <select class="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm text-ink shadow-sm outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100">
@@ -76,10 +76,10 @@ import { RouterLink } from '@angular/router';
                   <button class="grid h-8 w-8 place-items-center rounded-full border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all shadow-sm" title="View">
                     <svg lucideEye class="h-3.5 w-3.5"></svg>
                   </button>
-                  <a [routerLink]="[p.sku, 'edit']" class="grid h-8 w-8 place-items-center rounded-full border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all shadow-sm" title="Edit">
+                  <a [routerLink]="[p.sku || p.id, 'edit']" class="grid h-8 w-8 place-items-center rounded-full border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all shadow-sm" title="Edit">
                     <svg lucidePencil class="h-3.5 w-3.5"></svg>
                   </a>
-                  <button class="grid h-8 w-8 place-items-center rounded-full border border-red-100 bg-red-50 text-red-500 hover:bg-red-100 hover:text-red-600 transition-all shadow-sm" title="Delete">
+                  <button (click)="deleteProduct(p)" class="grid h-8 w-8 place-items-center rounded-full border border-red-100 bg-red-50 text-red-500 hover:bg-red-100 hover:text-red-600 transition-all shadow-sm" title="Delete">
                     <svg lucideTrash2 class="h-3.5 w-3.5"></svg>
                   </button>
                 </div>
@@ -107,6 +107,12 @@ export class ProductListComponent implements OnInit {
   }
   admin = inject(AdminService);
   searchQuery = signal('');
+  selectedCategory = signal('All categories');
+
+  categories = computed(() => {
+    const cats = new Set(this.admin.products().map(p => p.category).filter(Boolean));
+    return ['All categories', ...Array.from(cats)];
+  });
 
   filteredProducts = computed(() => {
     let list = this.admin.products();
@@ -114,7 +120,21 @@ export class ProductListComponent implements OnInit {
     if (q) {
       list = list.filter(p => p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q));
     }
+    const cat = this.selectedCategory();
+    if (cat && cat !== 'All categories') {
+      list = list.filter(p => p.category === cat);
+    }
     return list;
   });
+
+  deleteProduct(p: any) {
+    if (!confirm(`Are you sure you want to delete "${p.name}"?`)) return;
+    const target = p.sku || p.id;
+    this.admin.deleteProduct(target).subscribe({
+      next: () => {
+        this.admin.loadStaffProducts().subscribe();
+      }
+    });
+  }
 }
 

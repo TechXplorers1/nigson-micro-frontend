@@ -542,11 +542,50 @@ export class ProductEditComponent implements OnInit {
     minWholesaleOrder: '10 Units'
   };
 
+  resetProduct() {
+    this.product = {
+      id: '',
+      name: '',
+      sku: '',
+      category: 'Cables',
+      brand: 'Nigson',
+      status: 'Active',
+      price: null,
+      retail: null,
+      wholesale: null,
+      distributor: null,
+      priceSubtitle: 'Wholesale pricing available for distributors.',
+      images: ['', '', '', '', ''],
+      image: '',
+      desc: '',
+      features: 'Wholesale & retail pricing\nNationwide delivery from Lagos hub\n12-month standard warranty\nBulk discounts for distributors',
+      overview: 'Engineered to meet the highest standards of durability and performance across Nigerian markets. Suitable for both wholesale commercial resale and direct consumer use.',
+      highlights: 'Wholesale & retail pricing tier\nFast dispatch from central Lagos hub\n12-month standard Nigson warranty\nBulk order distributor volume discounts',
+      warranty: '12 Months Standard Manufacturer Warranty',
+      connectors: 'Type-C to Type-C',
+      powerRating: '65W PD',
+      compatibility: 'Universal iOS / Android / USB-C Standards Compliant',
+      buildMaterial: 'Premium Grade Fire-Retardant Polymer & Alloy',
+      certification: 'CE / RoHS / FCC Quality Verified',
+      importer: 'Nigson Group Ltd, Lagos Nigeria',
+      packaging: '1x Unit\n1x User Manual & Setup Guide\n1x Nigson Warranty Card',
+      cartonSpecs: 'Carton Quantity: 40 Units / Box\nGross Weight: ~ 0.45 kg per unit box\nBarcode: Individually Labelled for Resale',
+      stock: 100,
+      lowLevel: 10,
+      warehouseStatus: 'In Stock & Ready to Ship',
+      dispatchTurnaround: 'Dispatched within 24 Hours',
+      nationwideShipping: '2 - 4 Business Days across Nigeria',
+      minWholesaleOrder: '10 Units'
+    };
+    this.customSpecs = [];
+  }
+
   ngOnInit() {
     this.route.paramMap.subscribe(params => {
       const skuOrId = params.get('sku');
       if (!skuOrId || skuOrId === 'new') {
         this.isNew.set(true);
+        this.resetProduct();
         return;
       }
 
@@ -568,76 +607,119 @@ export class ProductEditComponent implements OnInit {
   }
 
   private loadProductData(skuOrId: string) {
-    this.catalog.getProduct(skuOrId).subscribe({
-      next: (full) => {
-        if (!full) return;
+    const search = (skuOrId || '').toLowerCase().trim();
 
-        const sku = full.sku || extractSku(undefined, full.name);
-        const resolvedCategory = full.categoryName || resolveCategoryFromSku(sku, 'Cables');
-        const defaultRetail = OFFICIAL_SKU_PRICES[sku] ? OFFICIAL_SKU_PRICES[sku] / 100 : 4500;
-        const retailPrice = full.retailPrice || full.retail || full.price || defaultRetail;
+    // 1. Check local admin products signal first (immediate reflection with zero latency)
+    const fromSignal = this.admin.products().find(p =>
+      p.sku?.toLowerCase() === search ||
+      p.id?.toLowerCase() === search ||
+      (p as any).slug?.toLowerCase() === search ||
+      p.name?.toLowerCase().includes(search)
+    );
 
-        // Populate images (all available from S3 and backend)
-        const loadedImages: string[] = full.images?.length 
-          ? [...full.images] 
-          : ((full as any).imageUrl ? [this.catalog.resolveImageUrl((full as any).imageUrl)] : []);
-        while (loadedImages.length < 5) loadedImages.push('');
+    if (fromSignal) {
+      this.populateProduct(fromSignal);
+      return;
+    }
 
-        // Extract any custom/extra specifications not in standard fields
-        const known = new Set(['warranty', 'connectors', 'power_rating', 'powerRating', 'compatibility', 'buildMaterial', 'certification', 'importer']);
-        this.customSpecs = [];
-        if (full.specifications) {
-          for (const [k, v] of Object.entries(full.specifications)) {
-            if (!known.has(k) && v != null && String(v).trim()) {
-              const displayVal = Array.isArray(v) ? v.join(', ') : String(v);
-              this.customSpecs.push({ key: k, value: displayVal });
-            }
-          }
+    // 2. Load from staff products if signal is not yet loaded (e.g. direct URL or browser reload)
+    this.admin.loadStaffProducts().subscribe({
+      next: (products) => {
+        const found = (products || []).find(p =>
+          p.sku?.toLowerCase() === search ||
+          p.id?.toLowerCase() === search ||
+          (p as any).slug?.toLowerCase() === search ||
+          p.name?.toLowerCase().includes(search)
+        );
+        if (found) {
+          this.populateProduct(found);
+        } else {
+          // 3. Fallback to CatalogService
+          this.catalog.getProduct(skuOrId).subscribe({
+            next: (full) => {
+              if (full) this.populateProduct(full);
+            },
+            error: (err) => console.warn('[ProductEdit] Could not load product via getProduct:', err)
+          });
         }
-
-        const connRaw = full.specifications?.['connectors'];
-        const connFormatted = Array.isArray(connRaw) ? connRaw.join(', ') : (connRaw || this.product.connectors);
-
-        this.product = {
-          ...this.product,
-          id: full.id,
-          name: full.name,
-          sku: sku,
-          category: resolvedCategory,
-          brand: full.brand || 'Nigson',
-          status: full.status || (full.stock && full.stock > 0 ? 'Active' : 'Active'),
-          retail: retailPrice,
-          price: retailPrice,
-          wholesale: full.wholesalePrice || full.wholesale || Math.round(retailPrice * 0.8),
-          distributor: full.distributorPrice || full.distributor || Math.round(retailPrice * 0.7),
-          priceSubtitle: full.priceSubtitle || 'Wholesale pricing available for distributors.',
-          images: loadedImages.slice(0, 5),
-          image: loadedImages[0] || '',
-          desc: full.description || this.product.desc,
-          features: full.features ? (Array.isArray(full.features) ? full.features.join('\n') : full.features) : this.product.features,
-          overview: full.overview || this.product.overview,
-          highlights: full.highlights ? (Array.isArray(full.highlights) ? full.highlights.join('\n') : full.highlights) : this.product.highlights,
-          warranty: full.specifications?.['warranty'] || this.product.warranty,
-          connectors: connFormatted,
-          powerRating: full.specifications?.['power_rating'] || full.specifications?.['powerRating'] || this.product.powerRating,
-          compatibility: full.specifications?.['compatibility'] || this.product.compatibility,
-          buildMaterial: full.specifications?.['buildMaterial'] || this.product.buildMaterial,
-          certification: full.specifications?.['certification'] || this.product.certification,
-          importer: full.specifications?.['importer'] || this.product.importer,
-          packaging: full.packaging ? (Array.isArray(full.packaging) ? full.packaging.join('\n') : full.packaging) : (`1x ${full.name} unit\n1x User Manual & Setup Guide\n1x Nigson Warranty Card`),
-          cartonSpecs: full.cartonSpecs ? (Array.isArray(full.cartonSpecs) ? full.cartonSpecs.join('\n') : full.cartonSpecs) : this.product.cartonSpecs,
-          stock: full.stock ?? 150,
-          lowLevel: full.lowLevel ?? 10,
-          warehouseStatus: full.warehouseStatus || 'In Stock & Ready to Ship',
-          dispatchTurnaround: full.dispatchTurnaround || 'Dispatched within 24 Hours',
-          nationwideShipping: full.nationwideShipping || '2 - 4 Business Days across Nigeria',
-          minWholesaleOrder: full.minWholesaleOrder || '10 Units'
-        };
       },
-      error: (err) => {
-        console.warn('[ProductEdit] Could not load product via getProduct:', err);
+      error: () => {
+        this.catalog.getProduct(skuOrId).subscribe({
+          next: (full) => {
+            if (full) this.populateProduct(full);
+          }
+        });
       }
     });
+  }
+
+  private populateProduct(full: any) {
+    if (!full) return;
+
+    const sku = full.sku || (full.skus?.[0]?.code) || extractSku(full.slug, full.name);
+    const resolvedCategory = full.category || full.categoryName || resolveCategoryFromSku(sku, 'Cables');
+    const defaultRetail = OFFICIAL_SKU_PRICES[sku] ? OFFICIAL_SKU_PRICES[sku] / 100 : 4500;
+    const retailPrice = full.retail ?? full.retailPrice ?? full.price ?? defaultRetail;
+
+    // Populate images (all available from S3 and backend)
+    const rawImages: string[] = full.images?.length 
+      ? [...full.images] 
+      : (full.image ? [full.image] : (full.imageUrl ? [this.catalog.resolveImageUrl(full.imageUrl)] : []));
+    
+    const loadedImages: string[] = rawImages.filter((img: string) => !!img && typeof img === 'string' && img.trim().length > 0);
+    while (loadedImages.length < 5) loadedImages.push('');
+
+    // Extract custom specifications
+    const known = new Set(['warranty', 'connectors', 'power_rating', 'powerRating', 'compatibility', 'buildMaterial', 'certification', 'importer']);
+    this.customSpecs = [];
+    const specs = full.specifications || {};
+    if (specs && typeof specs === 'object') {
+      for (const [k, v] of Object.entries(specs)) {
+        if (!known.has(k) && v != null && String(v).trim()) {
+          const displayVal = Array.isArray(v) ? v.join(', ') : String(v);
+          this.customSpecs.push({ key: k, value: displayVal });
+        }
+      }
+    }
+
+    const connRaw = specs['connectors'] || full.connectors;
+    const connFormatted = Array.isArray(connRaw) ? connRaw.join(', ') : (connRaw || this.product.connectors);
+
+    this.product = {
+      ...this.product,
+      id: full.id,
+      name: full.name,
+      sku: sku,
+      category: resolvedCategory,
+      brand: full.brand || full.brandName || 'Nigson',
+      status: full.status === 'ARCHIVED' ? 'Archived' : (full.status || 'Active'),
+      retail: retailPrice,
+      price: retailPrice,
+      wholesale: full.wholesale ?? full.wholesalePrice ?? Math.round(retailPrice * 0.8),
+      distributor: full.distributor ?? full.distributorPrice ?? Math.round(retailPrice * 0.7),
+      priceSubtitle: full.priceSubtitle || 'Wholesale pricing available for distributors.',
+      images: loadedImages.slice(0, 5),
+      image: loadedImages[0] || '',
+      desc: full.desc || full.description || this.product.desc,
+      features: full.features ? (Array.isArray(full.features) ? full.features.join('\n') : full.features) : this.product.features,
+      overview: full.overview || this.product.overview,
+      highlights: full.highlights ? (Array.isArray(full.highlights) ? full.highlights.join('\n') : full.highlights) : this.product.highlights,
+      warranty: specs['warranty'] || full.warranty || this.product.warranty,
+      connectors: connFormatted,
+      powerRating: specs['power_rating'] || specs['powerRating'] || full.powerRating || this.product.powerRating,
+      compatibility: specs['compatibility'] || full.compatibility || this.product.compatibility,
+      buildMaterial: specs['buildMaterial'] || full.buildMaterial || this.product.buildMaterial,
+      certification: specs['certification'] || full.certification || this.product.certification,
+      importer: specs['importer'] || full.importer || this.product.importer,
+      packaging: full.packaging ? (Array.isArray(full.packaging) ? full.packaging.join('\n') : full.packaging) : (`1x ${full.name} unit\n1x User Manual & Setup Guide\n1x Nigson Warranty Card`),
+      cartonSpecs: full.cartonSpecs ? (Array.isArray(full.cartonSpecs) ? full.cartonSpecs.join('\n') : full.cartonSpecs) : this.product.cartonSpecs,
+      stock: full.stock ?? 120,
+      lowLevel: full.lowLevel ?? 10,
+      warehouseStatus: full.warehouseStatus || 'In Stock & Ready to Ship',
+      dispatchTurnaround: full.dispatchTurnaround || 'Dispatched within 24 Hours',
+      nationwideShipping: full.nationwideShipping || '2 - 4 Business Days across Nigeria',
+      minWholesaleOrder: full.minWholesaleOrder || '10 Units'
+    };
   }
 
   onFileChange(event: any, index: number) {
@@ -711,17 +793,22 @@ export class ProductEditComponent implements OnInit {
       }
     }
 
+    const priceNum = Number(this.product.retail || this.product.price || 0);
     const payload = {
       ...this.product,
-      id: this.product.id || this.product.sku,
-      price: this.product.retail,
-      retailPrice: this.product.retail,
-      wholesalePrice: this.product.wholesale,
-      distributorPrice: this.product.distributor,
+      id: this.product.id || crypto.randomUUID(),
+      price: priceNum,
+      retail: priceNum,
+      retailPrice: priceNum,
+      wholesale: Number(this.product.wholesale || Math.round(priceNum * 0.8)),
+      wholesalePrice: Number(this.product.wholesale || Math.round(priceNum * 0.8)),
+      distributor: Number(this.product.distributor || Math.round(priceNum * 0.7)),
+      distributorPrice: Number(this.product.distributor || Math.round(priceNum * 0.7)),
+      desc: this.product.desc,
       description: this.product.desc,
       categoryName: this.product.category,
-      images: cleanImages,
-      image: cleanImages[0] || this.product.image || '',
+      images: cleanImages.length > 0 ? cleanImages : [this.product.image || '/assets/hero-accessories.jpg'],
+      image: cleanImages[0] || this.product.image || '/assets/hero-accessories.jpg',
       specifications: specsPayload
     };
 
@@ -730,9 +817,10 @@ export class ProductEditComponent implements OnInit {
         next: () => {
           this.catalog.saveProductOverride(payload.id, payload);
           if (payload.sku) this.catalog.saveProductOverride(payload.sku, payload);
+          this.admin.loadStaffProducts().subscribe();
           this.isSaving.set(false);
           this.saveSuccess.set(true);
-          setTimeout(() => this.router.navigate(['/admin/inventory/products']), 1500);
+          setTimeout(() => this.router.navigate(['/admin/inventory/products']), 1200);
         },
         error: () => {
           this.isSaving.set(false);
@@ -744,6 +832,7 @@ export class ProductEditComponent implements OnInit {
         next: () => {
           this.catalog.saveProductOverride(payload.id, payload);
           if (payload.sku) this.catalog.saveProductOverride(payload.sku, payload);
+          this.admin.loadStaffProducts().subscribe();
           this.isSaving.set(false);
           this.saveSuccess.set(true);
           setTimeout(() => this.saveSuccess.set(false), 5000);
