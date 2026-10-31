@@ -65,6 +65,7 @@ export interface Order {
 })
 export class ShopService {
   private cartService = inject(CartService);
+  private session = inject(SessionService);
   private injector = inject(Injector);
 
   readonly hydrated = signal(false);
@@ -212,6 +213,11 @@ export class ShopService {
   }
 
   addToCart(item: Omit<CartItem, 'qty'> & { skuId?: string; priceMinorUnits?: number }, qty = 1): boolean {
+    if (!this.session.authenticated()) {
+      this.loginRequired.set({ open: true, reason: 'Please sign in to add products to your cart.' });
+      this.session.signIn(window.location.pathname);
+      return false;
+    }
     const skuId = item.skuId || (item as any).id || item.sku;
     const priceMinor = item.priceMinorUnits ?? Math.round((item.price ?? 0) * 100);
     this.cartService.addItem(skuId, qty, {

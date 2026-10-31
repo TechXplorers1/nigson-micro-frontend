@@ -1,5 +1,5 @@
 import { Injectable, inject, signal } from "@angular/core";
-import { HttpClient, HttpParams } from "@angular/common/http";
+import { HttpClient, HttpParams, HttpHeaders } from "@angular/common/http";
 import { Observable, of, tap, catchError, map } from "rxjs";
 import { SessionService } from "./session.service";
 
@@ -83,8 +83,18 @@ export class OrderService {
   loadOrders(page = 0, size = 20): Observable<OrdersPage | null> {
     if (!this.session.authenticated()) return of(null);
     this.loading.set(true);
-    const params = new HttpParams().set("page", String(page)).set("size", String(size));
-    return this.http.get<any>("/api/v1/orders", { params }).pipe(
+    const email = this.session.email() || '';
+    const userId = this.session.userId() || '';
+
+    let params = new HttpParams().set("page", String(page)).set("size", String(size));
+    if (email) params = params.set("customerEmail", email);
+    if (userId) params = params.set("userId", userId);
+
+    let headers = new HttpHeaders();
+    if (email) headers = headers.set("x-user-email", email);
+    if (userId) headers = headers.set("x-user-id", userId);
+
+    return this.http.get<any>("/api/v1/orders", { params, headers }).pipe(
       map(pg => {
         const rawList = pg?.items || pg?.content || [];
         const mappedOrders: BackendOrder[] = rawList.map((raw: any) => ({
@@ -114,14 +124,14 @@ export class OrderService {
             postalCode: raw.address.postalCode
           } : { line1: '', city: '', state: '', countryCode: 'NG' },
           buyerContact: {
-            fullName: raw.address?.recipient || '',
-            email: '',
-            phone: raw.address?.phone || ''
+            fullName: raw.address?.recipient || raw.customerName || raw.customer?.name || raw.buyerContact?.fullName || '',
+            email: raw.customerEmail || raw.customer?.email || raw.buyerContact?.email || email,
+            phone: raw.address?.phone || raw.customerPhone || raw.customer?.phone || ''
           },
-          deliveryMethod: raw.fulfillmentStatus || 'STANDARD',
-          trackingNumber: undefined,
-          createdAt: raw.createdAt || new Date().toISOString(),
-          updatedAt: raw.createdAt || new Date().toISOString()
+          deliveryMethod: raw.fulfillmentStatus || raw.delivery || raw.shippingMethod || 'STANDARD',
+          trackingNumber: raw.trackingNumber,
+          createdAt: raw.createdAt || raw.date || new Date().toISOString(),
+          updatedAt: raw.updatedAt || raw.createdAt || raw.date || new Date().toISOString()
         }));
 
         const resultPage: OrdersPage = {
@@ -150,7 +160,12 @@ export class OrderService {
 
   /** TASK-42: Get single order detail */
   getOrder(orderId: string): Observable<BackendOrder> {
-    return this.http.get<BackendOrder>("/api/v1/orders/" + orderId);
+    const email = this.session.email() || '';
+    const userId = this.session.userId() || '';
+    let headers = new HttpHeaders();
+    if (email) headers = headers.set("x-user-email", email);
+    if (userId) headers = headers.set("x-user-id", userId);
+    return this.http.get<BackendOrder>("/api/v1/orders/" + orderId, { headers });
   }
 
   /** TASK-44: Cancel order (API-040: POST /api/v1/orders/:orderId/cancellation) */

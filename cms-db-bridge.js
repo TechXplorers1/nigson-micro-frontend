@@ -254,12 +254,206 @@ function ensureTablesAndPages() {
         ('11111111-2222-3333-4444-555555555505', 'system', 'system', 0, NULL, 'Extension Sockets', 'extension-sockets', 5, true),
         ('11111111-2222-3333-4444-555555555506', 'system', 'system', 0, NULL, 'Motion-Activated Lights', 'motion-activated-lights', 6, true)
       ON CONFLICT (id) DO NOTHING;
-
-      -- Remove stale mock products from admin_cms_store
-      DELETE FROM experience.admin_cms_store WHERE key = 'products';
     `);
   } catch (e) {
     console.warn('[CMS Bridge] Note on commerce schema seed:', e.message);
+  }
+
+  // Ensure default orders exist in experience.admin_cms_store
+  try {
+    const existingOrders = queryPg(`SELECT key FROM experience.admin_cms_store WHERE key = 'orders' LIMIT 1;`);
+    if (!existingOrders) {
+      console.log('[CMS Bridge] Initializing default orders in experience.admin_cms_store...');
+      const sampleOrders = [
+        {
+          id: 'e4a19b88-348e-4a68-9a7c-482029bfb401',
+          orderId: 'e4a19b88-348e-4a68-9a7c-482029bfb401',
+          orderNumber: 'ORD-2026-1089',
+          number: 'ORD-2026-1089',
+          createdAt: '2026-10-30T14:22:10.000Z',
+          placedAt: '2026-10-30T14:22:10.000Z',
+          date: '2026-10-30T14:22:10.000Z',
+          customer: {
+            name: 'E2E Retailer',
+            email: 'retailA@synthetic.test',
+            phone: '+234 803 123 4567',
+            address: '14 Commercial Avenue, Yaba, Lagos'
+          },
+          customerName: 'E2E Retailer',
+          customerEmail: 'retailA@synthetic.test',
+          customerPhone: '+234 803 123 4567',
+          shippingAddress: {
+            line1: '14 Commercial Avenue',
+            city: 'Yaba',
+            state: 'Lagos',
+            countryCode: 'NG',
+            postalCode: '100001'
+          },
+          deliveryAddress: {
+            line1: '14 Commercial Avenue',
+            city: 'Yaba',
+            state: 'Lagos',
+            countryCode: 'NG',
+            postalCode: '100001'
+          },
+          buyerContact: {
+            fullName: 'E2E Retailer',
+            email: 'retailA@synthetic.test',
+            phone: '+234 803 123 4567'
+          },
+          paymentMethod: 'Credit Card',
+          items: [
+            {
+              lineId: 'line-1089-1',
+              sku: 'NS06',
+              skuId: 'c52cf637-25d0-5eb6-862a-e737389c7ad4',
+              name: 'NS06 ANC/ENC Wireless Earbuds',
+              title: 'NS06 ANC/ENC Wireless Earbuds',
+              quantity: 2,
+              qty: 2,
+              price: 24500,
+              unitPriceMinorUnits: 2450000,
+              imageUrl: 'http://localhost:4566/nigson-product-images/products/ns06/img-1.png'
+            }
+          ],
+          lines: [
+            {
+              lineId: 'line-1089-1',
+              sku: 'NS06',
+              skuId: 'c52cf637-25d0-5eb6-862a-e737389c7ad4',
+              name: 'NS06 ANC/ENC Wireless Earbuds',
+              quantity: 2,
+              unitAmount: '24500.00',
+              imageUrl: 'http://localhost:4566/nigson-product-images/products/ns06/img-1.png'
+            }
+          ],
+          subtotal: 49000,
+          subtotalMinorUnits: 4900000,
+          shipping: 3500,
+          shippingMinorUnits: 350000,
+          tax: 3675,
+          taxMinorUnits: 367500,
+          total: 56175,
+          totalMinorUnits: 5617500,
+          totalKobo: 5617500,
+          totals: {
+            subtotal: '49000.00',
+            delivery: '3500.00',
+            tax: '3675.00',
+            grandTotal: '56175.00'
+          },
+          currency: 'NGN',
+          paymentStatus: 'Paid',
+          status: 'Delivered',
+          delivery: 'Standard Delivery',
+          shippingMethod: 'Standard Delivery',
+          deliveryMethod: 'Standard Delivery',
+          estimatedDeliveryDate: '2026-11-03',
+          timeline: [
+            { label: 'Order Placed', date: '2026-10-30T14:22:10.000Z' },
+            { label: 'Payment Confirmed', date: '2026-10-30T14:23:00.000Z' },
+            { label: 'Dispatched', date: '2026-10-31T09:00:00.000Z' }
+          ]
+        },
+        {
+          id: 'f82b7190-2211-4011-b552-39049929da92',
+          orderId: 'f82b7190-2211-4011-b552-39049929da92',
+          orderNumber: 'ORD-2026-1090',
+          number: 'ORD-2026-1090',
+          createdAt: '2026-10-31T11:05:40.000Z',
+          placedAt: '2026-10-31T11:05:40.000Z',
+          date: '2026-10-31T11:05:40.000Z',
+          customer: {
+            name: 'Bhari Wholesale',
+            email: 'wholesale@bhari.test',
+            phone: '+234 802 999 8888',
+            address: '8 Marina Road, Lagos Island, Lagos'
+          },
+          customerName: 'Bhari Wholesale',
+          customerEmail: 'wholesale@bhari.test',
+          customerPhone: '+234 802 999 8888',
+          shippingAddress: {
+            line1: '8 Marina Road',
+            city: 'Lagos Island',
+            state: 'Lagos',
+            countryCode: 'NG',
+            postalCode: '100001'
+          },
+          deliveryAddress: {
+            line1: '8 Marina Road',
+            city: 'Lagos Island',
+            state: 'Lagos',
+            countryCode: 'NG',
+            postalCode: '100001'
+          },
+          buyerContact: {
+            fullName: 'Bhari Wholesale',
+            email: 'wholesale@bhari.test',
+            phone: '+234 802 999 8888'
+          },
+          paymentMethod: 'Debit Card',
+          items: [
+            {
+              lineId: 'line-1090-1',
+              sku: '23-56',
+              skuId: '7c8ab40b-91c5-4516-9b68-668c55e83073',
+              name: 'bhari phones',
+              title: 'bhari phones',
+              quantity: 3,
+              qty: 3,
+              price: 4500,
+              unitPriceMinorUnits: 450000,
+              imageUrl: '/assets/cat-earbuds.jpg'
+            }
+          ],
+          lines: [
+            {
+              lineId: 'line-1090-1',
+              sku: '23-56',
+              skuId: '7c8ab40b-91c5-4516-9b68-668c55e83073',
+              name: 'bhari phones',
+              quantity: 3,
+              unitAmount: '4500.00',
+              imageUrl: '/assets/cat-earbuds.jpg'
+            }
+          ],
+          subtotal: 13500,
+          subtotalMinorUnits: 1350000,
+          shipping: 3500,
+          shippingMinorUnits: 350000,
+          tax: 1013,
+          taxMinorUnits: 101300,
+          total: 18013,
+          totalMinorUnits: 1801300,
+          totalKobo: 1801300,
+          totals: {
+            subtotal: '13500.00',
+            delivery: '3500.00',
+            tax: '1013.00',
+            grandTotal: '18013.00'
+          },
+          currency: 'NGN',
+          paymentStatus: 'Paid',
+          status: 'Processing',
+          delivery: 'Standard Delivery',
+          shippingMethod: 'Standard Delivery',
+          deliveryMethod: 'Standard Delivery',
+          estimatedDeliveryDate: '2026-11-04',
+          timeline: [
+            { label: 'Order Placed', date: '2026-10-31T11:05:40.000Z' },
+            { label: 'Payment Confirmed', date: '2026-10-31T11:06:00.000Z' }
+          ]
+        }
+      ];
+      queryPg(`
+        INSERT INTO experience.admin_cms_store (key, data, updated_at)
+        VALUES ('orders', '${JSON.stringify(sampleOrders).replace(/'/g, "''")}'::jsonb, now())
+        ON CONFLICT (key) DO NOTHING;
+      `);
+      console.log('[CMS Bridge] Initialized default orders in experience.admin_cms_store.');
+    }
+  } catch (e) {
+    console.warn('[CMS Bridge] Note on orders initialization:', e.message);
   }
 
 // Default products seeding disabled in favor of live commerce.product tables
@@ -835,6 +1029,710 @@ const server = http.createServer((req, res) => {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: err.message }));
     }
+    return;
+  }
+
+  // ─── CARTS (DATABASE PERSISTENCE) ──────────────────────────────────────────
+
+  function extractCartUserKey(req) {
+    return req.headers['x-user-id'] || req.headers['x-user-email'] || 'default_user';
+  }
+
+  // Create or get active user cart: POST /api/v1/carts
+  if (url.pathname === '/api/v1/carts' && req.method === 'POST') {
+    let bodyData = '';
+    req.on('data', chunk => { bodyData += chunk; });
+    req.on('end', () => {
+      try {
+        const payload = JSON.parse(bodyData || '{}');
+        const userKey = payload.userId || extractCartUserKey(req);
+        const storeKey = `cart_${userKey.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+
+        const rows = queryPgJson(`SELECT data::text AS data_text FROM experience.admin_cms_store WHERE key = '${storeKey}';`);
+        let cart = null;
+        if (rows.length > 0 && rows[0].data_text) {
+          try { cart = JSON.parse(rows[0].data_text); } catch {}
+        }
+
+        if (!cart) {
+          cart = {
+            id: crypto.randomUUID(),
+            marketId: payload.marketId || '29b78d62-ec0d-5ff9-8319-b485ecb093d6',
+            organizationId: null,
+            state: 'ACTIVE',
+            lines: [],
+            version: 1,
+            userId: userKey,
+            lastActivityAt: new Date().toISOString()
+          };
+          const jsonStr = JSON.stringify(cart).replace(/'/g, "''");
+          queryPg(`
+            INSERT INTO experience.admin_cms_store (key, data, updated_at)
+            VALUES ('${storeKey}', '${jsonStr}'::jsonb, now())
+            ON CONFLICT (key) DO UPDATE SET data = EXCLUDED.data, updated_at = now();
+          `);
+          console.log(`[CMS Bridge] Initialized new database cart ${cart.id} for user ${userKey}`);
+        } else {
+          console.log(`[CMS Bridge] Loaded existing database cart ${cart.id} for user ${userKey} (${cart.lines?.length || 0} lines)`);
+        }
+
+        res.writeHead(201, {
+          'Content-Type': 'application/json',
+          'ETag': `"${cart.version || 1}"`,
+          'Cache-Control': 'no-store'
+        });
+        res.end(JSON.stringify(cart));
+      } catch (err) {
+        console.error('[CMS Bridge] Create cart error:', err);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    });
+    return;
+  }
+
+  // Get active cart by user or ID: GET /api/v1/carts or GET /api/v1/carts/:id
+  if ((url.pathname === '/api/v1/carts' || (url.pathname.startsWith('/api/v1/carts/') && !url.pathname.includes('/lines'))) && req.method === 'GET') {
+    const rawId = url.pathname.replace('/api/v1/carts/', '').replace('/api/v1/carts', '').split('/')[0];
+    const cartId = rawId && rawId !== 'undefined' && rawId !== 'null' ? rawId : '';
+    const userKey = extractCartUserKey(req);
+    try {
+      const rows = queryPgJson(`SELECT key, data::text AS data_text FROM experience.admin_cms_store WHERE key LIKE 'cart_%';`);
+      let foundCart = null;
+
+      for (const r of rows) {
+        try {
+          const c = JSON.parse(r.data_text);
+          if (cartId && c.id === cartId) {
+            foundCart = c;
+            break;
+          }
+          if (userKey && c.userId === userKey) {
+            foundCart = c;
+            break;
+          }
+        } catch {}
+      }
+
+      if (foundCart) {
+        res.writeHead(200, {
+          'Content-Type': 'application/json',
+          'ETag': `"${foundCart.version || 1}"`,
+          'Cache-Control': 'no-store'
+        });
+        res.end(JSON.stringify(foundCart));
+      } else {
+        const newCart = {
+          id: cartId || crypto.randomUUID(),
+          marketId: '29b78d62-ec0d-5ff9-8319-b485ecb093d6',
+          organizationId: null,
+          state: 'ACTIVE',
+          lines: [],
+          version: 1,
+          userId: userKey,
+          lastActivityAt: new Date().toISOString()
+        };
+        const storeKey = `cart_${userKey.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+        queryPg(`
+          INSERT INTO experience.admin_cms_store (key, data, updated_at)
+          VALUES ('${storeKey}', '${JSON.stringify(newCart).replace(/'/g, "''")}'::jsonb, now())
+          ON CONFLICT (key) DO UPDATE SET data = EXCLUDED.data, updated_at = now();
+        `);
+        res.writeHead(200, {
+          'Content-Type': 'application/json',
+          'ETag': `"${newCart.version}"`,
+          'Cache-Control': 'no-store'
+        });
+        res.end(JSON.stringify(newCart));
+      }
+    } catch (err) {
+      console.error('[CMS Bridge] GET cart error:', err);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
+  // Add or update line item: PUT /api/v1/carts/:id/lines/:skuId
+  if (url.pathname.startsWith('/api/v1/carts/') && url.pathname.includes('/lines/') && req.method === 'PUT') {
+    const parts = url.pathname.replace('/api/v1/carts/', '').split('/lines/');
+    const cartId = parts[0];
+    const skuId = parts[1]?.split('/')[0];
+    let bodyData = '';
+    req.on('data', chunk => { bodyData += chunk; });
+    req.on('end', () => {
+      try {
+        const payload = JSON.parse(bodyData || '{}');
+        const qty = Number(payload.quantity ?? payload.qty ?? 1);
+
+        const rows = queryPgJson(`SELECT key, data::text AS data_text FROM experience.admin_cms_store WHERE key LIKE 'cart_%';`);
+        let targetCart = null;
+        let targetKey = null;
+
+        for (const r of rows) {
+          try {
+            const c = JSON.parse(r.data_text);
+            if (c.id === cartId) {
+              targetCart = c;
+              targetKey = r.key;
+              break;
+            }
+          } catch {}
+        }
+
+        if (!targetCart) {
+          const userKey = extractCartUserKey(req);
+          targetKey = `cart_${userKey.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+          targetCart = {
+            id: cartId,
+            marketId: '29b78d62-ec0d-5ff9-8319-b485ecb093d6',
+            organizationId: null,
+            state: 'ACTIVE',
+            lines: [],
+            version: 1,
+            userId: userKey,
+            lastActivityAt: new Date().toISOString()
+          };
+        }
+
+        targetCart.lines = targetCart.lines || [];
+        let existingLine = targetCart.lines.find(l => l.skuId === skuId || l.sku === skuId);
+
+        if (qty <= 0) {
+          targetCart.lines = targetCart.lines.filter(l => l.skuId !== skuId && l.sku !== skuId);
+        } else if (existingLine) {
+          existingLine.quantity = String(qty);
+        } else {
+          const allProds = loadAllProductsFromDatabase();
+          const prod = allProds.find(p => p.sku === skuId || p.skuId === skuId || p.id === skuId);
+          const lineId = crypto.randomUUID();
+          targetCart.lines.push({
+            id: lineId,
+            skuId: prod ? (prod.skuId || prod.id) : skuId,
+            sku: prod ? prod.sku : skuId,
+            name: prod ? prod.name : `Product (${skuId})`,
+            quantity: String(qty),
+            unitPriceMinorUnits: prod ? (prod.pricing?.priceKobo || Math.round(prod.price * 100)) : 2850000,
+            imageUrl: prod ? (prod.imageUrl || prod.image) : '/assets/hero-accessories.jpg',
+            categoryName: prod ? (prod.categoryName || prod.category) : 'General'
+          });
+        }
+
+        targetCart.version = (targetCart.version || 0) + 1;
+        targetCart.lastActivityAt = new Date().toISOString();
+
+        const jsonStr = JSON.stringify(targetCart).replace(/'/g, "''");
+        queryPg(`
+          INSERT INTO experience.admin_cms_store (key, data, updated_at)
+          VALUES ('${targetKey}', '${jsonStr}'::jsonb, now())
+          ON CONFLICT (key) DO UPDATE SET data = EXCLUDED.data, updated_at = now();
+        `);
+
+        console.log(`[CMS Bridge] Updated cart ${targetCart.id} line ${skuId} (qty: ${qty}) in PostgreSQL`);
+
+        res.writeHead(200, {
+          'Content-Type': 'application/json',
+          'ETag': `"${targetCart.version}"`,
+          'Cache-Control': 'no-store'
+        });
+        res.end(JSON.stringify(targetCart));
+      } catch (err) {
+        console.error('[CMS Bridge] Update cart line error:', err);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    });
+    return;
+  }
+
+  // Remove line item: DELETE /api/v1/carts/:id/lines/:skuId
+  if (url.pathname.startsWith('/api/v1/carts/') && url.pathname.includes('/lines/') && req.method === 'DELETE') {
+    const parts = url.pathname.replace('/api/v1/carts/', '').split('/lines/');
+    const cartId = parts[0];
+    const skuId = parts[1]?.split('/')[0];
+    try {
+      const rows = queryPgJson(`SELECT key, data::text AS data_text FROM experience.admin_cms_store WHERE key LIKE 'cart_%';`);
+      let targetCart = null;
+      let targetKey = null;
+
+      for (const r of rows) {
+        try {
+          const c = JSON.parse(r.data_text);
+          if (c.id === cartId) {
+            targetCart = c;
+            targetKey = r.key;
+            break;
+          }
+        } catch {}
+      }
+
+      if (targetCart) {
+        targetCart.lines = (targetCart.lines || []).filter(l => l.skuId !== skuId && l.sku !== skuId);
+        targetCart.version = (targetCart.version || 0) + 1;
+        targetCart.lastActivityAt = new Date().toISOString();
+
+        const jsonStr = JSON.stringify(targetCart).replace(/'/g, "''");
+        queryPg(`
+          UPDATE experience.admin_cms_store 
+          SET data = '${jsonStr}'::jsonb, updated_at = now()
+          WHERE key = '${targetKey}';
+        `);
+        console.log(`[CMS Bridge] Removed line ${skuId} from cart ${cartId} in PostgreSQL`);
+      }
+
+      res.writeHead(204, {
+        'Cache-Control': 'no-store',
+        'ETag': `"${targetCart?.version || 1}"`
+      });
+      res.end();
+    } catch (err) {
+      console.error('[CMS Bridge] Delete cart line error:', err);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
+  // Clear cart: DELETE /api/v1/carts/:id
+  if (url.pathname.startsWith('/api/v1/carts/') && req.method === 'DELETE') {
+    const cartId = url.pathname.replace('/api/v1/carts/', '').split('/')[0];
+    try {
+      const rows = queryPgJson(`SELECT key, data::text AS data_text FROM experience.admin_cms_store WHERE key LIKE 'cart_%';`);
+      for (const r of rows) {
+        try {
+          const c = JSON.parse(r.data_text);
+          if (c.id === cartId) {
+            c.lines = [];
+            c.version = (c.version || 0) + 1;
+            c.lastActivityAt = new Date().toISOString();
+            const jsonStr = JSON.stringify(c).replace(/'/g, "''");
+            queryPg(`
+              UPDATE experience.admin_cms_store 
+              SET data = '${jsonStr}'::jsonb, updated_at = now()
+              WHERE key = '${r.key}';
+            `);
+            console.log(`[CMS Bridge] Cleared cart ${cartId} in PostgreSQL`);
+            break;
+          }
+        } catch {}
+      }
+      res.writeHead(204, { 'Cache-Control': 'no-store' });
+      res.end();
+    } catch (err) {
+      console.error('[CMS Bridge] Clear cart error:', err);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
+  // ─── ORDERS & CHECKOUT ─────────────────────────────────────────────────────
+
+  // GET Staff Orders list (Admin view: all orders across all customers): GET /api/v1/staff/orders
+  if (url.pathname === '/api/v1/staff/orders' && req.method === 'GET') {
+    try {
+      const rows = queryPgJson(`SELECT data::text AS data_text FROM experience.admin_cms_store WHERE key = 'orders';`);
+      let orders = [];
+      if (rows.length > 0 && rows[0].data_text) {
+        orders = JSON.parse(rows[0].data_text);
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        items: orders,
+        content: orders,
+        totalElements: orders.length,
+        page: 0,
+        size: orders.length,
+        totalPages: 1
+      }));
+    } catch (err) {
+      console.error('[CMS Bridge] GET staff orders error:', err);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
+  // GET Customer Orders list (Customer view: filtered strictly to caller's account): GET /api/v1/orders
+  if (url.pathname === '/api/v1/orders' && req.method === 'GET') {
+    try {
+      const userEmail = (req.headers['x-user-email'] || url.searchParams.get('customerEmail') || '').toLowerCase().trim();
+      const userId = (req.headers['x-user-id'] || url.searchParams.get('userId') || '').trim();
+
+      const rows = queryPgJson(`SELECT data::text AS data_text FROM experience.admin_cms_store WHERE key = 'orders';`);
+      let orders = [];
+      if (rows.length > 0 && rows[0].data_text) {
+        orders = JSON.parse(rows[0].data_text);
+      }
+
+      // If user identity is provided, filter strictly to that user's orders.
+      // If neither email nor userId is provided, return empty list (prevents leaking store orders).
+      let customerOrders = [];
+      if (userEmail || userId) {
+        customerOrders = orders.filter(o => {
+          const oEmail = (o.customerEmail || o.customer?.email || o.buyerContact?.email || '').toLowerCase().trim();
+          const oUserId = (o.userId || o.customer?.id || '').trim();
+          const emailMatch = userEmail && oEmail && oEmail === userEmail;
+          const userMatch = userId && oUserId && oUserId === userId;
+          return Boolean(emailMatch || userMatch);
+        });
+      }
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        items: customerOrders,
+        content: customerOrders,
+        totalElements: customerOrders.length,
+        page: 0,
+        size: customerOrders.length,
+        totalPages: 1
+      }));
+    } catch (err) {
+      console.error('[CMS Bridge] GET customer orders error:', err);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
+  // GET Single Order Detail: GET /api/v1/orders/:id
+  if (url.pathname.startsWith('/api/v1/orders/') && !url.pathname.includes('/cancellation') && !url.pathname.includes('/cancel') && !url.pathname.includes('/tracking') && req.method === 'GET') {
+    const idOrNum = url.pathname.replace('/api/v1/orders/', '').split('/')[0];
+    try {
+      const rows = queryPgJson(`SELECT data::text AS data_text FROM experience.admin_cms_store WHERE key = 'orders';`);
+      let orders = [];
+      if (rows.length > 0 && rows[0].data_text) {
+        orders = JSON.parse(rows[0].data_text);
+      }
+      const match = orders.find(o => 
+        (o.id && o.id.toLowerCase() === idOrNum.toLowerCase()) ||
+        (o.orderId && o.orderId.toLowerCase() === idOrNum.toLowerCase()) ||
+        (o.orderNumber && o.orderNumber.toLowerCase() === idOrNum.toLowerCase()) ||
+        (o.number && o.number.toLowerCase() === idOrNum.toLowerCase())
+      );
+      if (match) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(match));
+      } else {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Order not found' }));
+      }
+    } catch (err) {
+      console.error('[CMS Bridge] GET single order error:', err);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
+  // GET Order Tracking: GET /api/v1/orders/:id/tracking
+  if (url.pathname.startsWith('/api/v1/orders/') && url.pathname.includes('/tracking') && req.method === 'GET') {
+    const idOrNum = url.pathname.replace('/api/v1/orders/', '').replace('/tracking', '').split('/')[0];
+    try {
+      const rows = queryPgJson(`SELECT data::text AS data_text FROM experience.admin_cms_store WHERE key = 'orders';`);
+      let orders = [];
+      if (rows.length > 0 && rows[0].data_text) {
+        orders = JSON.parse(rows[0].data_text);
+      }
+      const match = orders.find(o => 
+        (o.id && o.id.toLowerCase() === idOrNum.toLowerCase()) ||
+        (o.orderId && o.orderId.toLowerCase() === idOrNum.toLowerCase()) ||
+        (o.orderNumber && o.orderNumber.toLowerCase() === idOrNum.toLowerCase()) ||
+        (o.number && o.number.toLowerCase() === idOrNum.toLowerCase())
+      );
+      if (match) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          orderId: match.id,
+          trackingNumber: match.trackingNumber || `TRK-${match.orderNumber?.replace(/[^0-9]/g, '') || '9921'}`,
+          carrier: 'Nigson Logistics Express',
+          status: match.status,
+          estimatedDelivery: match.estimatedDeliveryDate,
+          scans: (match.timeline || []).map(t => ({
+            timestamp: t.date,
+            status: t.label,
+            location: 'Lagos Distribution Center',
+            description: t.label
+          }))
+        }));
+      } else {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Tracking not found' }));
+      }
+    } catch (err) {
+      console.error('[CMS Bridge] GET tracking error:', err);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
+  // Cancel Order: POST /api/v1/orders/:id/cancellation or POST /api/v1/orders/:id/cancel
+  if (url.pathname.startsWith('/api/v1/orders/') && (url.pathname.endsWith('/cancellation') || url.pathname.endsWith('/cancel')) && req.method === 'POST') {
+    const id = url.pathname.replace('/api/v1/orders/', '').replace(/\/cancellation|\/cancel/, '').split('/')[0];
+    try {
+      const rows = queryPgJson(`SELECT data::text AS data_text FROM experience.admin_cms_store WHERE key = 'orders';`);
+      let orders = [];
+      if (rows.length > 0 && rows[0].data_text) {
+        orders = JSON.parse(rows[0].data_text);
+      }
+      let targetOrder = null;
+      for (const o of orders) {
+        if (o.id === id || o.orderId === id || o.number === id || o.orderNumber === id) {
+          o.status = 'Cancelled';
+          o.timeline = o.timeline || [];
+          o.timeline.push({ label: 'Order Cancelled by Customer', date: new Date().toISOString() });
+          targetOrder = o;
+          break;
+        }
+      }
+      if (targetOrder) {
+        const jsonStr = JSON.stringify(orders).replace(/'/g, "''");
+        queryPg(`
+          UPDATE experience.admin_cms_store 
+          SET data = '${jsonStr}'::jsonb, updated_at = now()
+          WHERE key = 'orders';
+        `);
+        console.log(`[CMS Bridge] Order ${id} cancelled successfully.`);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(targetOrder));
+      } else {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Order not found' }));
+      }
+    } catch (err) {
+      console.error('[CMS Bridge] Cancel order error:', err);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
+  // Create Order / Checkout: POST /api/v1/orders or POST /api/v1/checkout/orders or POST /api/v1/checkout/attempts
+  if ((url.pathname === '/api/v1/orders' || url.pathname === '/api/v1/checkout/orders' || url.pathname === '/api/v1/checkout/attempts') && req.method === 'POST') {
+    let bodyData = '';
+    req.on('data', chunk => { bodyData += chunk; });
+    req.on('end', () => {
+      try {
+        const payload = JSON.parse(bodyData || '{}');
+        const orderId = crypto.randomUUID();
+        const randNum = Math.floor(1000 + Math.random() * 9000);
+        const orderNum = payload.orderNumber || `ORD-2026-${randNum}`;
+        const now = new Date().toISOString();
+
+        const custName = payload.customer?.name || payload.customerName || payload.fullName || 'Customer';
+        const custEmail = payload.customer?.email || payload.customerEmail || payload.email || req.headers['x-user-email'] || 'customer@synthetic.test';
+        const userId = payload.userId || payload.customer?.id || req.headers['x-user-id'] || '';
+        const custPhone = payload.customer?.phone || payload.customerPhone || payload.phone || '+234 800 000 0000';
+        const custAddress = payload.customer?.address || `${payload.shippingAddress?.line1 || ''}, ${payload.shippingAddress?.city || 'Lagos'}, ${payload.shippingAddress?.state || 'Lagos'}`;
+
+        const items = (payload.items || []).map((it, idx) => ({
+          lineId: it.lineId || `line-${randNum}-${idx + 1}`,
+          sku: it.sku || it.skuCode || 'NG-SKU',
+          skuId: it.skuId || ensureValidUuid(it.id),
+          name: it.name || it.title || 'Product Item',
+          title: it.name || it.title || 'Product Item',
+          quantity: Number(it.quantity || it.qty || 1),
+          qty: Number(it.quantity || it.qty || 1),
+          price: Number(it.price || (it.unitPriceMinorUnits ? it.unitPriceMinorUnits / 100 : 0)),
+          unitPriceMinorUnits: Number(it.unitPriceMinorUnits || (it.price ? Math.round(it.price * 100) : 0)),
+          imageUrl: it.imageUrl || it.image || '/assets/hero-accessories.jpg'
+        }));
+
+        const subtotalMinor = payload.subtotalMinorUnits ?? Math.round((payload.subtotal || items.reduce((s, i) => s + (i.price * i.qty), 0)) * 100);
+        const shippingMinor = payload.shippingMinorUnits ?? (items.length > 0 ? 350000 : 0);
+        const taxMinor = payload.taxMinorUnits ?? Math.round(subtotalMinor * 0.075);
+        const totalMinor = payload.totalMinorUnits ?? (subtotalMinor + shippingMinor + taxMinor);
+        const totalNaira = totalMinor / 100;
+
+        const newOrder = {
+          id: orderId,
+          orderId: orderId,
+          orderNumber: orderNum,
+          number: orderNum,
+          userId: userId,
+          createdAt: now,
+          placedAt: now,
+          date: now,
+          customer: {
+            id: userId,
+            name: custName,
+            email: custEmail,
+            phone: custPhone,
+            address: custAddress
+          },
+          customerName: custName,
+          customerEmail: custEmail,
+          customerPhone: custPhone,
+          shippingAddress: {
+            line1: payload.shippingAddress?.line1 || custAddress,
+            city: payload.shippingAddress?.city || 'Lagos',
+            state: payload.shippingAddress?.state || 'Lagos',
+            countryCode: payload.shippingAddress?.countryCode || 'NG',
+            postalCode: payload.shippingAddress?.postalCode || '100001'
+          },
+          deliveryAddress: {
+            line1: payload.shippingAddress?.line1 || custAddress,
+            city: payload.shippingAddress?.city || 'Lagos',
+            state: payload.shippingAddress?.state || 'Lagos',
+            countryCode: payload.shippingAddress?.countryCode || 'NG',
+            postalCode: payload.shippingAddress?.postalCode || '100001'
+          },
+          buyerContact: {
+            fullName: custName,
+            email: custEmail,
+            phone: custPhone
+          },
+          paymentMethod: payload.paymentMethod || 'Credit Card',
+          items: items,
+          lines: items.map(i => ({
+            lineId: i.lineId,
+            sku: i.sku,
+            skuId: i.skuId,
+            name: i.name,
+            quantity: i.quantity,
+            unitAmount: (i.unitPriceMinorUnits / 100).toFixed(2),
+            imageUrl: i.imageUrl
+          })),
+          subtotal: subtotalMinor / 100,
+          subtotalMinorUnits: subtotalMinor,
+          shipping: shippingMinor / 100,
+          shippingMinorUnits: shippingMinor,
+          tax: taxMinor / 100,
+          taxMinorUnits: taxMinor,
+          total: totalNaira,
+          totalMinorUnits: totalMinor,
+          totalKobo: totalMinor,
+          totals: {
+            subtotal: (subtotalMinor / 100).toFixed(2),
+            delivery: (shippingMinor / 100).toFixed(2),
+            tax: (taxMinor / 100).toFixed(2),
+            grandTotal: totalNaira.toFixed(2)
+          },
+          currency: 'NGN',
+          paymentStatus: 'Paid',
+          status: 'Processing',
+          delivery: payload.delivery || 'Standard Delivery',
+          shippingMethod: payload.shippingMethod || 'Standard Delivery',
+          deliveryMethod: 'Standard Delivery',
+          estimatedDeliveryDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          timeline: [
+            { label: 'Order Placed', date: now },
+            { label: 'Payment Confirmed', date: now }
+          ]
+        };
+
+        // Prepend to orders in experience.admin_cms_store
+        const rows = queryPgJson(`SELECT data::text AS data_text FROM experience.admin_cms_store WHERE key = 'orders';`);
+        let currentOrders = [];
+        if (rows.length > 0 && rows[0].data_text) {
+          try { currentOrders = JSON.parse(rows[0].data_text); } catch {}
+        }
+        currentOrders.unshift(newOrder);
+
+        const jsonStr = JSON.stringify(currentOrders).replace(/'/g, "''");
+        queryPg(`
+          INSERT INTO experience.admin_cms_store (key, data, updated_at)
+          VALUES ('orders', '${jsonStr}'::jsonb, now())
+          ON CONFLICT (key) DO UPDATE SET data = EXCLUDED.data, updated_at = now();
+        `);
+
+        console.log(`[CMS Bridge] Successfully created order ${orderNum} (${orderId}) for ${custName}`);
+
+        // Clear active cart for this user in PostgreSQL
+        try {
+          const userKey = payload.userId || custEmail || custName;
+          const storeKey = `cart_${userKey.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+          const emptyCart = {
+            id: crypto.randomUUID(),
+            marketId: '29b78d62-ec0d-5ff9-8319-b485ecb093d6',
+            organizationId: null,
+            state: 'ACTIVE',
+            lines: [],
+            version: 1,
+            userId: userKey,
+            lastActivityAt: now
+          };
+          queryPg(`
+            INSERT INTO experience.admin_cms_store (key, data, updated_at)
+            VALUES ('${storeKey}', '${JSON.stringify(emptyCart).replace(/'/g, "''")}'::jsonb, now())
+            ON CONFLICT (key) DO UPDATE SET data = EXCLUDED.data, updated_at = now();
+          `);
+        } catch (clearErr) {
+          console.warn('[CMS Bridge] Notice clearing cart after order:', clearErr.message);
+        }
+
+        const responseBody = {
+          ...newOrder,
+          order: newOrder,
+          payment: {
+            state: 'CAPTURED',
+            status: 'PAID'
+          }
+        };
+
+        res.writeHead(201, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(responseBody));
+      } catch (err) {
+        console.error('[CMS Bridge] Create order error:', err);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    });
+    return;
+  }
+
+  // Update Staff Order Status: POST /api/v1/staff/orders/:id/processing or PATCH /api/v1/staff/orders/:id
+  if (url.pathname.startsWith('/api/v1/staff/orders/') && (url.pathname.endsWith('/processing') || req.method === 'PATCH' || req.method === 'POST')) {
+    const id = url.pathname.replace('/api/v1/staff/orders/', '').replace('/processing', '').split('/')[0];
+    let bodyData = '';
+    req.on('data', chunk => { bodyData += chunk; });
+    req.on('end', () => {
+      try {
+        const payload = JSON.parse(bodyData || '{}');
+        const rows = queryPgJson(`SELECT data::text AS data_text FROM experience.admin_cms_store WHERE key = 'orders';`);
+        let orders = [];
+        if (rows.length > 0 && rows[0].data_text) {
+          orders = JSON.parse(rows[0].data_text);
+        }
+        let updatedOrder = null;
+        for (const o of orders) {
+          if (o.id === id || o.orderId === id || o.number === id || o.orderNumber === id) {
+            if (payload.status) {
+              o.status = payload.status;
+            } else if (payload.reason && payload.reason.includes('updated to ')) {
+              const matched = payload.reason.match(/updated to ([a-zA-Z]+)/i);
+              if (matched) o.status = matched[1];
+            } else if (!o.status || o.status === 'Pending') {
+              o.status = 'Processing';
+            }
+            if (payload.paymentStatus) o.paymentStatus = payload.paymentStatus;
+            o.timeline = o.timeline || [];
+            o.timeline.push({ label: `Status updated to ${o.status}`, date: new Date().toISOString() });
+            updatedOrder = o;
+            break;
+          }
+        }
+        if (updatedOrder) {
+          const jsonStr = JSON.stringify(orders).replace(/'/g, "''");
+          queryPg(`
+            UPDATE experience.admin_cms_store 
+            SET data = '${jsonStr}'::jsonb, updated_at = now()
+            WHERE key = 'orders';
+          `);
+          console.log(`[CMS Bridge] Updated order ${id} status to ${updatedOrder.status}`);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify(updatedOrder));
+        } else {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Order not found' }));
+        }
+      } catch (err) {
+        console.error('[CMS Bridge] Update order status error:', err);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    });
     return;
   }
 

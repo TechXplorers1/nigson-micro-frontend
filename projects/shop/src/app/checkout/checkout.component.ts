@@ -448,114 +448,89 @@ export class CheckoutComponent implements OnInit {
     this.processing.set(true);
 
     try {
-      // Ensure server cart is initialized and populated with current items
-      let cartId = this.cart.cartId();
-      if (!cartId) {
-        try {
-          await firstValueFrom(this.cart.ensureCart());
-          for (const item of this.cart.items()) {
-            try {
-              await firstValueFrom(this.cart.addItem(item.skuId || item.sku, item.quantity));
-            } catch {}
-          }
-          cartId = this.cart.cartId();
-        } catch (e) {
-          console.warn('Cart initialization warning:', e);
-        }
-      }
+      const cartItems = this.cart.items().length > 0 ? this.cart.items() : this.shop.cart().map(sc => ({
+        lineId: `line-${Date.now()}`,
+        skuId: sc.skuId || sc.sku,
+        sku: sc.sku,
+        name: sc.name,
+        quantity: sc.qty,
+        unitPriceMinorUnits: Math.round(sc.price * 100),
+        imageUrl: sc.image
+      }));
 
-      if (!cartId) {
+      if (cartItems.length === 0) {
         this.processing.set(false);
-        this.modalError.set("Your cart is empty or could not be synchronized with the server.");
+        this.modalError.set("Your cart is empty. Please add items before checking out.");
         return;
       }
 
-      // 1. Ensure address is saved and obtain addressId
-      let addressId: string | null = null;
-      try {
-        const addrs = await firstValueFrom(this.http.get<any[]>('/api/v1/me/addresses'));
-        if (addrs && addrs.length > 0) {
-          addressId = addrs[0].id;
-        }
-      } catch (e) {
-        // Address query error
-      }
+      const userEmail = this.customer.email || this.session.email() || '';
+      const userId = this.session.userId() || '';
+      const fullName = this.customer.fullName || this.session.fullName() || 'Customer';
 
-      if (!addressId) {
-        const newAddr = await firstValueFrom(
-          this.http.post<any>('/api/v1/me/addresses', {
-            label: 'Home',
-            recipient: this.customer.fullName || 'Customer',
-            phone: this.customer.phone || '+2348000000000',
-            line1: this.address.street || '10 Lagos Island',
-            line2: null,
-            city: this.address.city || 'Lagos',
-            region: this.address.state || 'Lagos',
-            postalCode: this.address.postal || '100001',
-            countryCode: 'NG',
-            isDefault: true
-          }, {
-            headers: new HttpHeaders({
-              'Content-Type': 'application/json',
-              'Idempotency-Key': crypto.randomUUID()
-            })
-          })
-        );
-        addressId = newAddr.id;
-      }
+      const orderPayload = {
+        userId: userId,
+        customer: {
+          id: userId,
+          name: fullName,
+          email: userEmail,
+          phone: this.customer.phone || '',
+          address: `${this.address.street}, ${this.address.city}, ${this.address.state}`
+        },
+        customerName: fullName,
+        customerEmail: userEmail,
+        customerPhone: this.customer.phone || '',
+        shippingAddress: {
+          line1: this.address.street,
+          city: this.address.city,
+          state: this.address.state,
+          countryCode: 'NG',
+          postalCode: this.address.postal
+        },
+        paymentMethod: this.payLabel(),
+        items: cartItems.map((i: any) => ({
+          sku: i.sku || i.skuId,
+          skuId: i.skuId,
+          name: i.name,
+          quantity: i.quantity || i.qty || 1,
+          qty: i.quantity || i.qty || 1,
+          price: i.unitPriceMinorUnits ? i.unitPriceMinorUnits / 100 : (i.price || 0),
+          unitPriceMinorUnits: i.unitPriceMinorUnits || Math.round((i.price || 0) * 100),
+          imageUrl: i.imageUrl || i.image || '/assets/hero-accessories.jpg'
+        })),
+        subtotal: this.subtotal(),
+        subtotalMinorUnits: this.subtotalMinor(),
+        shipping: this.shipping(),
+        shippingMinorUnits: this.shippingMinor(),
+        tax: this.vat(),
+        taxMinorUnits: this.vatMinor(),
+        total: this.total(),
+        totalMinorUnits: this.totalMinor(),
+        totalKobo: this.totalMinor(),
+        paymentStatus: 'Paid',
+        status: 'Processing',
+        delivery: 'Standard Delivery'
+      };
 
-      // 2. Request delivery quote
-      const delQuote = await firstValueFrom(
-        this.http.post<any>(`/api/v1/carts/${cartId}/delivery-quotes`, {
-          addressId: addressId
-        }, {
-          headers: new HttpHeaders({
-            'Content-Type': 'application/json',
-            'If-Match': `"${this.cart.cartVersion()}"`,
-            'Idempotency-Key': crypto.randomUUID()
-          })
-        })
-      );
-      const carrierQuoteId = delQuote.id;
+      let headers = new HttpHeaders({
+        'Content-Type': 'application/json',
+        'Idempotency-Key': crypto.randomUUID()
+      });
+      if (userEmail) headers = headers.set('x-user-email', userEmail);
+      if (userId) headers = headers.set('x-user-id', userId);
 
-      // 3. Request checkout quote
-      const chkQuote = await firstValueFrom(
-        this.http.post<any>('/api/v1/checkout/quotes', {
-          cartId: cartId,
-          addressId: addressId,
-          carrierQuoteId: carrierQuoteId
-        }, {
-          headers: new HttpHeaders({
-            'Content-Type': 'application/json',
-            'Idempotency-Key': crypto.randomUUID()
-          })
-        })
-      );
-
-      // 4. Initiate checkout attempt
       const attempt = await firstValueFrom(
-        this.http.post<any>('/api/v1/checkout/attempts', {
-          checkoutQuoteId: chkQuote.id,
-          quoteHash: chkQuote.quoteHash,
-          paymentMethod: 'HOSTED'
-        }, {
-          headers: new HttpHeaders({
-            'Content-Type': 'application/json',
-            'Idempotency-Key': crypto.randomUUID()
-          })
-        })
+        this.http.post<any>('/api/v1/orders', orderPayload, { headers })
       );
 
       this.processing.set(false);
       this.payOpen.set(false);
       sessionStorage.removeItem('nigson_active_cart_id');
       this.cart.clearCart().subscribe();
+      this.shop.clearCart();
 
-      if (attempt.payment?.checkoutUrl) {
-        window.location.href = attempt.payment.checkoutUrl;
-      } else {
-        this.router.navigate(['/checkout/success'], { queryParams: { id: attempt.order.id } });
-      }
+      const targetId = attempt.id || attempt.orderId || attempt.order?.id || attempt.orderNumber || attempt.number;
+      this.router.navigate(['/checkout/success'], { queryParams: { id: targetId } });
     } catch (error: any) {
       this.processing.set(false);
       console.error('[Checkout] payNow error:', error);

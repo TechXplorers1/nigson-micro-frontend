@@ -233,7 +233,7 @@ export class AdminService {
       'If-Match': '"0"',
       'Idempotency-Key': crypto.randomUUID()
     });
-    this.http.post(`/api/v1/staff/orders/${orderId}/processing`, { reason: `Status updated to ${status} by administrator` }, { headers }).subscribe({
+    this.http.post(`/api/v1/staff/orders/${orderId}/processing`, { status: status, reason: `Status updated to ${status} by administrator` }, { headers }).subscribe({
       next: () => this.log(`Order ${orderId} processing updated on backend to ${status}`),
       error: (err) => console.warn(`[AdminService] setOrderStatus backend error:`, err?.status ?? err)
     });
@@ -461,10 +461,10 @@ export class AdminService {
         number: o.orderNumber || o.number || ('ORD-' + o.id.slice(0, 8)),
         date: o.placedAt || o.createdAt || new Date().toISOString(),
         customer: {
-          name: o.customerName || 'Customer',
-          email: o.customerEmail || '',
-          phone: o.customerPhone || '',
-          address: o.shippingAddress?.city || 'Nigeria'
+          name: o.customerName || (o.customer && o.customer.name) || 'Customer',
+          email: o.customerEmail || (o.customer && o.customer.email) || '',
+          phone: o.customerPhone || (o.customer && o.customer.phone) || '',
+          address: o.shippingAddress?.city || (o.customer && o.customer.address) || 'Nigeria'
         },
         items: (o.items || []).map((i: any) => ({
           sku: i.sku || '',
@@ -475,8 +475,8 @@ export class AdminService {
         total: o.totalKobo ? o.totalKobo / 100 : (o.total || 0),
         paymentStatus: (o.paymentStatus === 'PAID' || o.paymentStatus === 'Paid') ? ('Paid' as const) : ('Pending' as const),
         status: (o.state || o.status || 'Processing') as AdminOrderStatus,
-        delivery: o.shippingMethod || 'Standard Delivery',
-        timeline: []
+        delivery: o.shippingMethod || o.delivery || 'Standard Delivery',
+        timeline: o.timeline || []
       }))),
       tap(orders => {
         if (orders.length > 0) this.orders.set(orders);

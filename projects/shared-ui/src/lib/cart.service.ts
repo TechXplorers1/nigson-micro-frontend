@@ -26,7 +26,12 @@ export interface CartSummary {
 interface BackendLine {
   id: string;
   skuId: string;
-  quantity: string;
+  quantity: string | number;
+  sku?: string;
+  name?: string;
+  unitPriceMinorUnits?: number;
+  imageUrl?: string;
+  categoryName?: string;
 }
 
 interface BackendCart {
@@ -37,6 +42,7 @@ interface BackendCart {
   lines: BackendLine[];
   version: number;
   lastActivityAt: string;
+  userId?: string;
 }
 
 export interface SkuMetadata {
@@ -73,18 +79,11 @@ const OFFICIAL_SKUS: SkuMetadata[] = [
   { skuId: '7faca25c-8831-5149-84e4-47e037580cac', productId: '4ad4e90d-ec4e-5caa-f7ad88e19e29', code: 'PQ28', name: 'PQ28 Magnetic Wireless Power Bank, 5,000mAh', priceMinor: 1950000, img: `${S3_PRODUCTS_BASE}/pq28/img-1.jpeg`, category: 'Power Banks' },
   { skuId: '3e82bda0-2606-580f-98ef-a01e322d325a', productId: 'c7db7adb-726b-5173-a385-004b258ea128', code: 'PQ30', name: 'PQ30 Power Bank, 30,000mAh', priceMinor: 3450000, img: `${S3_PRODUCTS_BASE}/pq30/img-1.png`, category: 'Power Banks' },
   { skuId: '3882394e-69bd-5c71-9b14-fcf7a82481bd', productId: 'c995e043-e1e8-5979-b4ea-e6d1dedc7322', code: 'PQ50', name: 'PQ50 Power Bank, 50,000mAh', priceMinor: 4850000, img: `${S3_PRODUCTS_BASE}/pq50/img-1.png`, category: 'Power Banks' },
-  { skuId: '992f2c15-f5ba-5fac-882c-bc21679b8fd2', productId: '9b52039f-6336-5776-978b-ecce81ed8c51', code: 'ZS6', name: 'ZS6 Universal Adapter, GaN65W', priceMinor: 2650000, img: `${S3_PRODUCTS_BASE}/zs6/img-1.png`, category: 'Chargers' },
-  { skuId: 'cb9716cc-f5b6-5b4a-8a64-b95e662a8346', productId: 'a03c0a21-9025-541e-9d88-e8f4ffbc4ad1', code: 'ZS8', name: 'ZS8 Universal Adapter, GaN45W', priceMinor: 2150000, img: `${S3_PRODUCTS_BASE}/zs8/img-1.png`, category: 'Chargers' },
-  // Backward-compatibility entries
-  { skuId: '55555555-2222-3333-4444-555555555501', code: 'NG-PB-20K', name: 'Nigson 20000mAh Ultra-Fast Power Bank', priceMinor: 2850000, img: '/assets/cat-powerbank.jpg', category: 'Power Banks' },
-  { skuId: '55555555-2222-3333-4444-555555555502', code: 'NG-CB-01', name: 'Nigson Armored Braided Type-C Cable (2m)', priceMinor: 450000, img: '/assets/cat-cable.jpg', category: 'Cables & Adapters' },
-  { skuId: '55555555-2222-3333-4444-555555555503', code: 'NG-CC-01', name: 'Nigson MagSafe 15W Wireless Car Charger', priceMinor: 1280000, img: '/assets/cat-charger.jpg', category: 'Fast Chargers' },
-  { skuId: '55555555-2222-3333-4444-555555555504', code: 'NG-EB-01', name: 'Nigson SoundPulse ANC Wireless Earbuds', priceMinor: 2200000, img: '/assets/cat-earbuds.jpg', category: 'Earbuds' }
+  { skuId: 'ecbe959f-d3e9-5f25-8cb5-1718bf14972e', productId: '4351a029-79f9-57e0-94e8-466d7ad4ef19', code: 'ZS6', name: 'ZS6 Multi-Device Desktop Fast Charger', priceMinor: 2650000, img: `${S3_PRODUCTS_BASE}/zs6/img-1.png`, category: 'Chargers' },
+  { skuId: '0df9e4fb-2794-55fe-a1f9-d8977114b7e9', productId: 'fa096df5-7313-5a7a-aa01-4475ee45b98f', code: 'ZS8', name: 'ZS8 Ultra-Fast GaN Travel Charger 65W', priceMinor: 2150000, img: `${S3_PRODUCTS_BASE}/zs8/img-1.png`, category: 'Chargers' }
 ];
 
-const LOCAL_STORAGE_KEY = 'nigson_cart_v1';
-
-@Injectable({ providedIn: "root" })
+@Injectable({ providedIn: 'root' })
 export class CartService {
   private http = inject(HttpClient);
   private session = inject(SessionService);
@@ -105,7 +104,6 @@ export class CartService {
   );
 
   constructor() {
-    this.restoreFromStorage();
     effect(() => {
       const isAuth = this.session.authenticated();
       const uid = this.session.userId();
@@ -117,48 +115,18 @@ export class CartService {
     });
   }
 
-  private get storageKey(): string {
-    const uid = this.session.userId();
-    if (this.session.authenticated() && uid) {
-      return `nigson_cart_user_${uid}`;
-    }
-    return 'nigson_cart_guest';
+  private getAuthHeaders(): HttpHeaders {
+    let headers = new HttpHeaders({
+      'Content-Type': 'application/json'
+    });
+    const uid = this.session.userId() || this.session.email() || 'default_user';
+    headers = headers.set('x-user-id', uid);
+    const email = this.session.email();
+    if (email) headers = headers.set('x-user-email', email);
+    return headers;
   }
 
   private handleUserLogin(userId: string) {
-    const userKey = `nigson_cart_user_${userId}`;
-    const guestKey = 'nigson_cart_guest';
-
-    let guestItems: CartLineItem[] = [];
-    try {
-      const g = localStorage.getItem(guestKey) || localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (g) guestItems = JSON.parse(g) || [];
-    } catch {}
-
-    let userItems: CartLineItem[] = [];
-    try {
-      const u = localStorage.getItem(userKey);
-      if (u) userItems = JSON.parse(u) || [];
-    } catch {}
-
-    if (guestItems.length > 0) {
-      for (const gi of guestItems) {
-        const existing = userItems.find(ui => ui.skuId === gi.skuId || ui.sku === gi.sku);
-        if (existing) {
-          existing.quantity += gi.quantity;
-        } else {
-          userItems.push(gi);
-        }
-      }
-      localStorage.removeItem(guestKey);
-      localStorage.removeItem(LOCAL_STORAGE_KEY);
-    }
-
-    this.items.set(userItems);
-    try {
-      localStorage.setItem(userKey, JSON.stringify(userItems));
-    } catch {}
-
     this.loadCart().subscribe();
   }
 
@@ -166,30 +134,7 @@ export class CartService {
     this.cartId.set(null);
     this.cartVersion.set(1);
     sessionStorage.removeItem('nigson_active_cart_id');
-    let guestItems: CartLineItem[] = [];
-    try {
-      const g = localStorage.getItem('nigson_cart_guest');
-      if (g) guestItems = JSON.parse(g) || [];
-    } catch {}
-    this.items.set(guestItems);
-  }
-
-  private restoreFromStorage() {
-    try {
-      const saved = localStorage.getItem(this.storageKey) || localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          this.items.set(parsed);
-        }
-      }
-    } catch { /* ignore */ }
-  }
-
-  private saveToStorage(items: CartLineItem[]) {
-    try {
-      localStorage.setItem(this.storageKey, JSON.stringify(items));
-    } catch { /* ignore */ }
+    this.items.set([]);
   }
 
   private resolveSkuMetadata(input: string, fallback?: Partial<SkuMetadata>): SkuMetadata {
@@ -223,13 +168,14 @@ export class CartService {
     if (this.cartId()) return of(this.cartId());
 
     const storedId = sessionStorage.getItem('nigson_active_cart_id');
+    const headers = this.getAuthHeaders();
+
     if (storedId) {
-      return this.http.get<BackendCart>(`/api/v1/carts/${storedId}`).pipe(
+      return this.http.get<BackendCart>(`/api/v1/carts/${storedId}`, { headers }).pipe(
         tap(cart => {
           this.cartId.set(cart.id);
-          this.cartVersion.set(cart.version);
+          this.cartVersion.set(cart.version || 1);
           this.items.set(this.mapLines(cart.lines));
-          this.saveToStorage(this.items());
         }),
         map(cart => cart.id),
         catchError(() => this.createNewCart())
@@ -239,21 +185,17 @@ export class CartService {
   }
 
   private createNewCart(): Observable<string | null> {
-    const headers = new HttpHeaders({
-      'Content-Type': 'application/json',
-      'Idempotency-Key': crypto.randomUUID()
-    });
+    const headers = this.getAuthHeaders().set('Idempotency-Key', crypto.randomUUID());
     return this.http.post<BackendCart>('/api/v1/carts', { marketId: '29b78d62-ec0d-5ff9-8319-b485ecb093d6' }, { headers }).pipe(
       tap(cart => {
         this.cartId.set(cart.id);
-        this.cartVersion.set(cart.version);
+        this.cartVersion.set(cart.version || 1);
         sessionStorage.setItem('nigson_active_cart_id', cart.id);
         this.items.set(this.mapLines(cart.lines));
-        this.saveToStorage(this.items());
       }),
       map(cart => cart.id),
       catchError(err => {
-        console.warn('[CartService] createNewCart failed, using local cart:', err);
+        console.warn('[CartService] createNewCart database error:', err);
         return of(null);
       })
     );
@@ -261,48 +203,24 @@ export class CartService {
 
   loadCart(): Observable<CartSummary | null> {
     if (!this.session.authenticated()) {
-      return of({
-        cartId: 'local-cart',
-        items: this.items(),
-        subtotalMinorUnits: Math.round(this.subtotalNaira() * 100),
-        currency: 'NGN',
-        marketId: 'NG',
-        version: 1
-      });
+      this.items.set([]);
+      this.cartId.set(null);
+      return of(null);
     }
     this.loading.set(true);
     return this.ensureCart().pipe(
       switchMap(cartId => {
         if (!cartId) {
           this.loading.set(false);
-          return of({
-            cartId: 'local-cart',
-            items: this.items(),
-            subtotalMinorUnits: Math.round(this.subtotalNaira() * 100),
-            currency: 'NGN',
-            marketId: 'NG',
-            version: 1
-          });
+          return of(null);
         }
-        return this.http.get<BackendCart>(`/api/v1/carts/${cartId}`).pipe(
+        const headers = this.getAuthHeaders();
+        return this.http.get<BackendCart>(`/api/v1/carts/${cartId}`, { headers }).pipe(
           map(cart => {
             this.cartId.set(cart.id);
-            this.cartVersion.set(cart.version);
+            this.cartVersion.set(cart.version || 1);
             const mapped = this.mapLines(cart.lines);
-            // If backend is empty but local has items, preserve local items
-            if (mapped.length === 0 && this.items().length > 0) {
-              this.loading.set(false);
-              return {
-                cartId: cart.id,
-                items: this.items(),
-                subtotalMinorUnits: Math.round(this.subtotalNaira() * 100),
-                currency: 'NGN',
-                marketId: cart.marketId,
-                version: cart.version
-              };
-            }
             this.items.set(mapped);
-            this.saveToStorage(mapped);
             this.loading.set(false);
             const summary: CartSummary = {
               cartId: cart.id,
@@ -310,12 +228,12 @@ export class CartService {
               subtotalMinorUnits: Math.round(this.subtotalNaira() * 100),
               currency: 'NGN',
               marketId: cart.marketId,
-              version: cart.version
+              version: cart.version || 1
             };
             return summary;
           }),
           catchError(err => {
-            console.warn('[CartService] loadCart failed:', err);
+            console.warn('[CartService] loadCart database error:', err);
             this.loading.set(false);
             return of(null);
           })
@@ -325,218 +243,125 @@ export class CartService {
   }
 
   addItem(skuId: string, quantity = 1, details?: { sku?: string; name?: string; category?: string; priceMinor?: number; image?: string }): Observable<CartSummary | null> {
-    const meta = this.resolveSkuMetadata(skuId, {
-      code: details?.sku,
-      name: details?.name,
-      category: details?.category,
-      priceMinor: details?.priceMinor,
-      img: details?.image
-    });
-
-    const currentItems = [...this.items()];
-    const existingIndex = currentItems.findIndex(i => 
-      i.skuId === meta.skuId || 
-      i.sku === meta.code || 
-      (details?.sku && i.sku === details.sku)
-    );
-
-    if (existingIndex >= 0) {
-      const existing = currentItems[existingIndex];
-      currentItems[existingIndex] = {
-        ...existing,
-        quantity: existing.quantity + quantity
-      };
-    } else {
-      currentItems.push({
-        lineId: 'line-' + Math.random().toString(36).substring(2, 9),
-        skuId: meta.skuId,
-        sku: meta.code,
-        name: meta.name,
-        unitPriceMinorUnits: meta.priceMinor,
-        quantity: quantity,
-        imageUrl: meta.img,
-        categoryName: meta.category
-      });
+    if (!this.session.authenticated()) {
+      this.session.signIn(window.location.pathname);
+      return of(null);
     }
 
-    this.items.set(currentItems);
-    this.saveToStorage(currentItems);
+    this.syncing.set(true);
+    return this.ensureCart().pipe(
+      switchMap(cartId => {
+        if (!cartId) {
+          this.syncing.set(false);
+          return of(null);
+        }
+        const currentLine = this.items().find(i => i.skuId === skuId || i.sku === skuId);
+        const targetQty = (currentLine?.quantity || 0) + quantity;
 
-    const summary: CartSummary = {
-      cartId: this.cartId() || 'local-cart',
-      items: currentItems,
-      subtotalMinorUnits: Math.round(this.subtotalNaira() * 100),
-      currency: 'NGN',
-      marketId: 'NG',
-      version: this.cartVersion()
-    };
-
-    if (this.session.authenticated()) {
-      this.syncing.set(true);
-      return this.ensureCart().pipe(
-        switchMap(cartId => {
-          if (!cartId) {
+        const headers = this.getAuthHeaders();
+        return this.http.put<BackendCart>(
+          `/api/v1/carts/${cartId}/lines/${skuId}`,
+          { quantity: targetQty },
+          { headers }
+        ).pipe(
+          map(cart => {
+            this.cartId.set(cart.id);
+            this.cartVersion.set(cart.version || 1);
+            const mapped = this.mapLines(cart.lines);
+            this.items.set(mapped);
             this.syncing.set(false);
-            return of(summary);
-          }
-          const headers = new HttpHeaders({
-            'Content-Type': 'application/json',
-            'If-Match': `"${this.cartVersion()}"`,
-            'Idempotency-Key': crypto.randomUUID()
-          });
-          const targetQty = currentItems.find(i => i.skuId === meta.skuId)?.quantity || quantity;
-          return this.http.put<BackendCart>(
-            `/api/v1/carts/${cartId}/lines/${meta.skuId}`,
-            { quantity: String(targetQty) },
-            { headers }
-          ).pipe(
-            map(cart => {
-              this.cartId.set(cart.id);
-              this.cartVersion.set(cart.version);
-              const mapped = this.mapLines(cart.lines);
-              this.items.set(mapped);
-              this.saveToStorage(mapped);
-              this.syncing.set(false);
-              return {
-                cartId: cart.id,
-                items: mapped,
-                subtotalMinorUnits: Math.round(this.subtotalNaira() * 100),
-                currency: 'NGN',
-                marketId: cart.marketId,
-                version: cart.version
-              };
-            }),
-            catchError(err => {
-              console.warn('[CartService] addItem server sync failed, keeping local cart:', err);
-              this.syncing.set(false);
-              return of(summary);
-            })
-          );
-        }),
-        catchError(() => of(summary))
-      );
-    }
-
-    return of(summary);
+            return {
+              cartId: cart.id,
+              items: mapped,
+              subtotalMinorUnits: Math.round(this.subtotalNaira() * 100),
+              currency: 'NGN',
+              marketId: cart.marketId,
+              version: cart.version || 1
+            };
+          }),
+          catchError(err => {
+            console.error('[CartService] addItem database sync error:', err);
+            this.syncing.set(false);
+            return of(null);
+          })
+        );
+      })
+    );
   }
 
-  updateQty(lineOrSkuId: string, quantity: number): Observable<CartSummary | null> {
-    if (quantity <= 0) return this.removeItem(lineOrSkuId);
-
-    const currentItems = [...this.items()];
-    const itIndex = currentItems.findIndex(i => i.lineId === lineOrSkuId || i.skuId === lineOrSkuId || i.sku === lineOrSkuId);
-    if (itIndex < 0) return of(null);
-
-    const it = currentItems[itIndex];
-    currentItems[itIndex] = { ...it, quantity };
-    this.items.set(currentItems);
-    this.saveToStorage(currentItems);
-
-    const summary: CartSummary = {
-      cartId: this.cartId() || 'local-cart',
-      items: currentItems,
-      subtotalMinorUnits: Math.round(this.subtotalNaira() * 100),
-      currency: 'NGN',
-      marketId: 'NG',
-      version: this.cartVersion()
-    };
-
-    if (this.session.authenticated() && this.cartId()) {
-      this.syncing.set(true);
-      const headers = new HttpHeaders({
-        'Content-Type': 'application/json',
-        'If-Match': `"${this.cartVersion()}"`,
-        'Idempotency-Key': crypto.randomUUID()
-      });
-
-      return this.http.put<BackendCart>(
-        `/api/v1/carts/${this.cartId()}/lines/${it.skuId}`,
-        { quantity: String(quantity) },
-        { headers }
-      ).pipe(
-        map(cart => {
-          this.cartVersion.set(cart.version);
-          const mapped = this.mapLines(cart.lines);
-          this.items.set(mapped);
-          this.saveToStorage(mapped);
-          this.syncing.set(false);
-          return {
-            cartId: cart.id,
-            items: mapped,
-            subtotalMinorUnits: Math.round(this.subtotalNaira() * 100),
-            currency: 'NGN',
-            marketId: cart.marketId,
-            version: cart.version
-          };
-        }),
-        catchError(err => {
-          console.warn('[CartService] updateQty server sync failed, kept local:', err);
-          this.syncing.set(false);
-          return of(summary);
-        })
-      );
+  updateQty(lineIdOrSku: string, quantity: number): Observable<CartSummary | null> {
+    if (!this.session.authenticated() || !this.cartId()) {
+      return of(null);
     }
+    if (quantity <= 0) {
+      return this.removeItem(lineIdOrSku);
+    }
+    const it = this.items().find(i => i.lineId === lineIdOrSku || i.skuId === lineIdOrSku || i.sku === lineIdOrSku);
+    if (!it) return of(null);
 
-    return of(summary);
+    this.syncing.set(true);
+    const headers = this.getAuthHeaders();
+    return this.http.put<BackendCart>(
+      `/api/v1/carts/${this.cartId()}/lines/${it.skuId || it.sku}`,
+      { quantity: quantity },
+      { headers }
+    ).pipe(
+      map(cart => {
+        this.cartVersion.set(cart.version || 1);
+        const mapped = this.mapLines(cart.lines);
+        this.items.set(mapped);
+        this.syncing.set(false);
+        return {
+          cartId: cart.id,
+          items: mapped,
+          subtotalMinorUnits: Math.round(this.subtotalNaira() * 100),
+          currency: 'NGN',
+          marketId: cart.marketId,
+          version: cart.version || 1
+        };
+      }),
+      catchError(err => {
+        console.error('[CartService] updateQty database error:', err);
+        this.syncing.set(false);
+        return of(null);
+      })
+    );
   }
 
   removeItem(lineOrSkuId: string): Observable<CartSummary | null> {
+    if (!this.session.authenticated() || !this.cartId()) {
+      return of(null);
+    }
     const currentItems = this.items();
     const it = currentItems.find(i => i.lineId === lineOrSkuId || i.skuId === lineOrSkuId || i.sku === lineOrSkuId);
     if (!it) return of(null);
 
-    const filtered = currentItems.filter(i => i.lineId !== it.lineId);
-    this.items.set(filtered);
-    this.saveToStorage(filtered);
+    this.syncing.set(true);
+    const headers = this.getAuthHeaders();
 
-    const summary: CartSummary = {
-      cartId: this.cartId() || 'local-cart',
-      items: filtered,
-      subtotalMinorUnits: Math.round(this.subtotalNaira() * 100),
-      currency: 'NGN',
-      marketId: 'NG',
-      version: this.cartVersion()
-    };
-
-    if (this.session.authenticated() && this.cartId()) {
-      this.syncing.set(true);
-      const headers = new HttpHeaders({
-        'If-Match': `"${this.cartVersion()}"`,
-        'Idempotency-Key': crypto.randomUUID()
-      });
-
-      return this.http.delete<void>(
-        `/api/v1/carts/${this.cartId()}/lines/${it.skuId}`,
-        { headers, observe: 'response' }
-      ).pipe(
-        map(res => {
-          const etag = res.headers.get('ETag');
-          if (etag) {
-            const v = parseInt(etag.replace(/"/g, ''), 10);
-            if (!isNaN(v)) this.cartVersion.set(v);
-          } else {
-            this.cartVersion.update(v => v + 1);
-          }
-          this.syncing.set(false);
-          return summary;
-        }),
-        catchError(err => {
-          console.warn('[CartService] removeItem server sync failed:', err);
-          this.syncing.set(false);
-          return of(summary);
-        })
-      );
-    }
-
-    return of(summary);
+    return this.http.delete<void>(
+      `/api/v1/carts/${this.cartId()}/lines/${it.skuId || it.sku}`,
+      { headers, observe: 'response' }
+    ).pipe(
+      switchMap(() => this.loadCart()),
+      catchError(err => {
+        console.warn('[CartService] removeItem database error:', err);
+        this.syncing.set(false);
+        return of(null);
+      })
+    );
   }
 
   clearCart(): Observable<void> {
     this.items.set([]);
-    this.saveToStorage([]);
     if (this.session.authenticated() && this.cartId()) {
+      const headers = this.getAuthHeaders();
+      const id = this.cartId();
       sessionStorage.removeItem('nigson_active_cart_id');
       this.cartId.set(null);
+      return this.http.delete<void>(`/api/v1/carts/${id}`, { headers }).pipe(
+        catchError(() => of(undefined))
+      );
     }
     return of(undefined);
   }
@@ -572,17 +397,17 @@ export class CartService {
   }
 
   private mapLines(lines: BackendLine[]): CartLineItem[] {
-    return lines.map(line => {
+    return (lines || []).map(line => {
       const meta = this.resolveSkuMetadata(line.skuId);
       return {
-        lineId: line.id,
+        lineId: line.id || ('line-' + Math.random().toString(36).substring(2, 9)),
         skuId: line.skuId,
-        sku: meta.code,
-        name: meta.name,
-        unitPriceMinorUnits: meta.priceMinor,
-        quantity: parseInt(line.quantity, 10) || 1,
-        imageUrl: meta.img,
-        categoryName: meta.category
+        sku: (line as any).sku || meta.code,
+        name: (line as any).name || meta.name,
+        unitPriceMinorUnits: Number((line as any).unitPriceMinorUnits) || meta.priceMinor,
+        quantity: parseInt(String(line.quantity), 10) || 1,
+        imageUrl: (line as any).imageUrl || meta.img,
+        categoryName: (line as any).categoryName || meta.category
       };
     });
   }

@@ -3,16 +3,16 @@ import { CommonModule } from '@angular/common';
 import { RouterLink, Router } from '@angular/router';
 import { 
   LucideTrash2, LucideShoppingBag, 
-  LucideShieldCheck, LucideTruck, LucideArrowRight 
+  LucideShieldCheck, LucideTruck, LucideArrowRight, LucideLock 
 } from '@lucide/angular';
-import { CartService, CatalogService, ShopService, QtyStepperComponent } from 'shared-ui';
+import { CartService, CatalogService, ShopService, SessionService, QtyStepperComponent } from 'shared-ui';
 
 @Component({
   selector: 'app-cart',
   standalone: true,
   imports: [
     CommonModule, RouterLink, LucideTrash2, 
-    LucideShoppingBag, LucideShieldCheck, LucideTruck, LucideArrowRight, QtyStepperComponent
+    LucideShoppingBag, LucideShieldCheck, LucideTruck, LucideArrowRight, LucideLock, QtyStepperComponent
   ],
   template: `
     <div class="min-h-[70vh] bg-background">
@@ -99,11 +99,17 @@ import { CartService, CatalogService, ShopService, QtyStepperComponent } from 's
                   </div>
                 </dl>
 
+                <div *ngIf="!session.authenticated()" class="mt-4 rounded-xl border border-amber-200 bg-amber-50/80 p-3 text-xs text-amber-800 flex items-center gap-2">
+                  <svg lucideLock class="h-4 w-4 text-amber-700 shrink-0"></svg>
+                  <span>Sign in is required at checkout to bind warranty and complete your order.</span>
+                </div>
+
                 <button
                   (click)="proceedToCheckout()"
-                  class="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand text-white py-3.5 text-sm font-semibold hover:bg-brand-deep transition-colors"
+                  class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand text-white py-3.5 text-sm font-semibold hover:bg-brand-deep transition-colors"
                 >
-                  Proceed to Checkout <svg lucideArrowRight class="h-4 w-4"></svg>
+                  <ng-container *ngIf="session.authenticated()">Proceed to Checkout <svg lucideArrowRight class="h-4 w-4"></svg></ng-container>
+                  <ng-container *ngIf="!session.authenticated()"><svg lucideLock class="h-4 w-4"></svg> Sign in to Checkout</ng-container>
                 </button>
                 
                 <div class="mt-5 grid grid-cols-2 gap-3 text-[11px] text-muted-ink">
@@ -127,6 +133,7 @@ export class CartComponent {
   cart = inject(CartService);
   catalog = inject(CatalogService);
   router = inject(Router);
+  session = inject(SessionService);
 
   /** Flat shipping fee in NGN minor units (kobo): NGN 3500 */
   SHIPPING_MINOR = 350000;
