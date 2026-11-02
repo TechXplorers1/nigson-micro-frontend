@@ -1,4 +1,5 @@
 import { Injectable, signal, computed, Injector, inject, effect } from '@angular/core';
+import { Observable, of } from 'rxjs';
 import { SessionService } from './session.service';
 import { CartService } from './cart.service';
 import { Product } from './catalog.service';
@@ -97,29 +98,13 @@ export class ShopService {
       const session = this.injector.get(SessionService, null, { optional: true });
       if (session && session.authenticated()) {
         this.user.set({
-          id: session.userId() || 'user',
+          id: session.userId() || '',
           fullName: session.fullName() || 'Nigson User',
           email: session.email() || '',
-          roles: session.roles() || ['CUSTOMER'],
+          roles: session.roles(),
           createdAt: new Date().toISOString()
         });
       } else {
-        const rawSession = localStorage.getItem('nigson_dev_session') || sessionStorage.getItem('nigson_dev_session');
-        if (rawSession) {
-          try {
-            const parsed = JSON.parse(rawSession);
-            if (parsed && (parsed.authenticated || parsed.userId)) {
-              this.user.set({
-                id: parsed.userId || 'user',
-                fullName: parsed.fullName || 'Nigson User',
-                email: parsed.email || '',
-                roles: parsed.roles || ['CUSTOMER'],
-                createdAt: new Date().toISOString()
-              });
-              return;
-            }
-          } catch { }
-        }
         this.user.set(null);
       }
     });
@@ -132,19 +117,7 @@ export class ShopService {
       const o = localStorage.getItem(LS_ORDERS);
       if (o) this.orders.set(JSON.parse(o));
 
-      const rawSession = localStorage.getItem('nigson_dev_session') || sessionStorage.getItem('nigson_dev_session');
-      if (rawSession) {
-        const parsed = JSON.parse(rawSession);
-        if (parsed && (parsed.authenticated || parsed.userId)) {
-          this.user.set({
-            id: parsed.userId || 'user',
-            fullName: parsed.fullName || 'Nigson User',
-            email: parsed.email || '',
-            roles: parsed.roles || ['CUSTOMER'],
-            createdAt: new Date().toISOString()
-          });
-        }
-      }
+
     } catch { /* ignore */ }
     this.hydrated.set(true);
   }
@@ -190,26 +163,12 @@ export class ShopService {
     try { localStorage.setItem(LS_ORDERS, JSON.stringify(o)); } catch { }
   }
 
-  authenticate(user: User) {
-    this.user.set(user);
-  }
-
-  signOut() {
+  signOut(): Observable<void> {
     this.user.set(null);
     try {
-      sessionStorage.removeItem('nigson_dev_session');
-      sessionStorage.removeItem('nigson_pkce_verifier');
-      sessionStorage.removeItem('nigson_auth_return_url');
-      localStorage.removeItem('nigson_dev_session');
-      localStorage.removeItem('nigson_user');
-    } catch { }
-
-    try {
       const session = this.injector.get(SessionService, null, { optional: true });
-      if (session) {
-        session.clearSession();
-      }
-    } catch { }
+      return session ? session.logout() : of(undefined);
+    } catch { return of(undefined); }
   }
 
   addToCart(item: Omit<CartItem, 'qty'> & { skuId?: string; priceMinorUnits?: number }, qty = 1): boolean {

@@ -45,9 +45,10 @@ export class HeaderComponent {
   }
 
   handleLogout() {
-    this.shop.signOut();
-    this.profileOpen.set(false);
-    this.router.navigate(['/']);
+    this.shop.signOut().subscribe(() => {
+      this.profileOpen.set(false);
+      this.router.navigate(['/']);
+    });
   }
 
   handleSearch(term: string) {

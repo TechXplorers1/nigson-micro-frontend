@@ -1,59 +1,29 @@
-# MicroFrontendWorkspace
+# Nigson Microfrontend
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.1.8.
+This Angular Native Federation workspace is the browser UI for the Java Nigson backend. It does not run a Node API or CMS database bridge. Angular’s development proxy forwards `/bff` and Commerce routes to `localhost:8081`, public Experience routes to `localhost:8082`, and LocalStack assets to `localhost:4566`.
 
-## Development server
+## Run locally
 
-To start a local development server, run:
+1. Start the Java services and local dependencies from the backend workspace using its local application guide. Commerce is expected on port `8081`, Experience on `8082`; LocalStack is optional for image assets.
+2. Install frontend dependencies and start the MFE from this directory:
 
-```bash
-ng serve
-```
+   ```bash
+   npm ci
+   npm start
+   ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+3. Open `http://localhost:4200`. Run `npm run start:all` when using the admin routes: they require the `admin-core` remote on port4205 and the `admin-shop` inventory remote on port4206 in addition to the shell. Every Angular serve target uses the same Java proxy. If a remote was started after the shell page was opened, refresh the page so federation initializes that remote.
 
-## Code scaffolding
+The backend Compose foundation profile disables BFF sessions by default. For sign-in, configure the complete local Commerce BFF session/security profile, register its callback as `http://localhost:4200/bff/callback`, and allow `http://localhost:4200` in `NIGSON_BFF_ALLOWED_ORIGINS`. If using `npm run start:all`, also allow each Angular remote origin in use (`http://localhost:4201` through `http://localhost:4206` and `http://localhost:4211`). The browser redirects to `/bff/login`; Keycloak returns to the Java BFF, which sets the server-side session cookie and redirects back into the Angular app. The signup page collects account details in the Nigson UI and sends them to the local-only Commerce `/bff/register` endpoint, which provisions users through a separate Keycloak service account. Passwords are never stored by the frontend or Commerce. The frontend does not store access tokens or role grants.
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+The local `nigson-local` realm enables self-registration. The signup screen starts the same BFF authorization-code flow as sign-in; choose **Register** on Keycloak's sign-in page. Existing Keycloak data volumes are not overwritten by realm import, so enable **Realm settings → Login → User registration** and add the exact callback URI to the `nigson-bff` client's valid redirect URIs when upgrading an existing local realm. Password reset stays disabled until local email delivery is configured.
 
-```bash
-ng generate component component-name
-```
+## API ownership
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+- Commerce and `/bff`: catalogue, market, cart, checkout, orders, account and Commerce staff endpoints.
+- Experience: public content, enquiries, newsletter, careers, channels, campaigns and quote requests.
+- AI: the shell assistant uses the Java AI service on port `8084`, with an anonymous conversation capability held only in memory.
+- Review reads go to Experience; review submissions and moderation go through Commerce’s BFF relay.
+- Protected Experience paths are proxied to Experience for correct service ownership, but the browser does not send actor assertions. The current Java Commerce BFF has no relay for distributor applications, quote requests, lead queues, or career application administration, so those calls correctly receive an authorization error until the corresponding trusted BFF routes are implemented.
 
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
-
-```bash
-ng build
-```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+`npm run build` builds the shell; `npm run build:all` builds the configured shell and remote applications. The AI Compose profile is optional. The assistant returns the service’s feature-disabled response until its conversation TTL/market, provider, policy and knowledge configuration are supplied. The Angular proxy is for local development only. Deployments must provide an equivalent same-origin reverse proxy for these Java paths and preserve the BFF session cookie and CSRF header. Use the backend API contracts and local guide for provider/security setup; no carrier, price, tax, sender, or identity configuration is supplied by the frontend.

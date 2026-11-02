@@ -840,8 +840,6 @@ export class CmsService {
     }
     this.hydrated.set(true);
 
-    // Sync published content directly from the backend PostgreSQL database
-    this.syncFromDatabase();
 
     if (typeof window !== 'undefined') {
       window.addEventListener('storage', (event: StorageEvent) => {
@@ -859,49 +857,14 @@ export class CmsService {
     }
   }
 
-  /**
-   * Loads all published pages directly from the backend PostgreSQL database
-   * ensuring that content persists even if session or local storage is deleted.
-   */
-  syncFromDatabase() {
-    this.http.get<Record<string, PageContent>>('http://localhost:8085/api/v1/content/all-pages').pipe(
-      catchError(err => {
-        console.warn('[CmsService] CMS DB bridge unavailable on :8085:', err?.status ?? err);
-        return of(null);
-      })
-    ).subscribe(dbPages => {
-      if (!dbPages || Object.keys(dbPages).length === 0) return;
-      this.ngZone.run(() => {
-        const merged = mergeWithDefaults({
-          published: { ...this.state().published, ...dbPages },
-          drafts: { ...this.state().drafts, ...dbPages }
-        });
-        this.persist(merged);
-      });
-    });
+  /** Legacy local page drafts are not compatible with the Java structured content DTO. */
+  syncFromDatabase(): void {
+    console.info('[CmsService] Published content is served by the Experience Java API. Legacy local drafts are not synchronized.');
   }
 
-  /**
-   * Persists the given page's published content to the PostgreSQL database.
-   */
-  saveToDatabase(pageId: string): Observable<boolean> {
-    const pDef = this.pageDef(pageId);
-    const pub = this.state().published[pageId] || this.state().drafts[pageId];
-    if (!pub) return of(false);
-
-    const payload = {
-      pageId,
-      title: pDef?.name || pageId,
-      sections: pub.sections
-    };
-
-    return this.http.post<any>('http://localhost:8085/api/v1/content/publish', payload).pipe(
-      map(() => true),
-      catchError(err => {
-        console.warn('[CmsService] saveToDatabase failed:', err);
-        return of(true);
-      })
-    );
+  saveToDatabase(_pageId: string): Observable<boolean> {
+    console.warn('[CmsService] Local page format is not accepted by the Java content revision API; use structured revision methods.');
+    return of(false);
   }
 
   private persist(next: CmsState) {
@@ -1050,20 +1013,14 @@ export class CmsService {
   executePublishPipeline(pageId: string, edit?: ContentRevisionEdit): Observable<boolean> {
     this.isPublishing.set(true);
 
-    // 1. Immediately publish locally so user changes reflect on the page instantly!
-    this.publishPage(pageId);
-
-    // 2. Persist directly to PostgreSQL database via CMS DB Bridge!
+    // Local CMS page records use a legacy DTO. Do not claim publication without an
+    // acknowledged Java structured-content publication revision.
     return this.saveToDatabase(pageId).pipe(
-      tap(() => {
-        this.publishPage(pageId);
-        this.isPublishing.set(false);
-      }),
-      map(() => true),
+      tap(() => this.isPublishing.set(false)),
       catchError(err => {
-        console.warn('[CmsService] Backend sync completed with local publish active:', err);
+        console.warn('[CmsService] Java content publication was not acknowledged:', err);
         this.isPublishing.set(false);
-        return of(true);
+        return of(false);
       })
     );
   }

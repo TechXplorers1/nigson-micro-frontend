@@ -6,7 +6,7 @@ import {
   LucideZoomIn, LucideZoomOut, LucideRotateCcw, LucideStar,
   LucideFileText, LucideShieldCheck, LucideCheckCircle2
 } from '@lucide/angular';
-import { CatalogService, ShopService, ReviewService, QtyStepperComponent, relativeDate, OFFICIAL_SKU_PRICES } from 'shared-ui';
+import { CatalogService, ShopService, ReviewService, QtyStepperComponent, relativeDate } from 'shared-ui';
 import { WriteReviewComponent } from './write-review.component';
 import { ProductCardComponent } from './product-card.component';
 
@@ -102,7 +102,7 @@ import { ProductCardComponent } from './product-card.component';
 
             <div class="mt-6">
               <p class="text-[11px] uppercase tracking-widest text-muted-foreground">Starting From</p>
-              <p class="mt-1 text-3xl md:text-4xl font-bold text-[#D62828] leading-tight">{{ catalog.formatPrice(displayPrice()) }}</p>
+              <p class="mt-1 text-3xl md:text-4xl font-bold text-[#D62828] leading-tight">{{ displayPrice() > 0 ? catalog.formatPrice(displayPrice()) : 'Contact for price' }}</p>
               <p class="mt-2 text-sm text-muted-foreground">Wholesale pricing available for distributors.</p>
               <p class="mt-2 text-sm text-muted-foreground">{{ product()?.priceSubtitle || 'Wholesale pricing available for distributors.' }}</p>
             </div>
@@ -410,15 +410,8 @@ export class ProductDetailComponent implements OnInit {
     return this.reviewSvc.computeRating(this.reviews());
   });
 
-  displayPrice = computed((): number => {
-    const p = this.product();
-    if (!p) return 0;
-    if (p.retailPrice && p.retailPrice > 0) return p.retailPrice * 100;
-    if (p.price && p.price > 0) return p.price * 100;
-    if (p.priceMinorUnits && p.priceMinorUnits > 0) return p.priceMinorUnits;
-    const sku = p.sku || '';
-    return OFFICIAL_SKU_PRICES[sku] || 450000;
-  });
+  readonly commercePriceMinor = signal<number | null>(null);
+  displayPrice = computed(() => this.commercePriceMinor() ?? this.product()?.priceMinorUnits ?? 0);
 
   featuresList = computed((): string[] => {
     const p = this.product();
@@ -551,6 +544,8 @@ export class ProductDetailComponent implements OnInit {
         this.catalog.getProduct(id).subscribe({
           next: p => {
             this.product.set(p);
+            this.commercePriceMinor.set(null);
+            if (p?.skuId) this.catalog.getPrice(p.skuId).subscribe({ next: price => this.commercePriceMinor.set(price.priceMinorUnits), error: () => this.commercePriceMinor.set(null) });
             this.productLoading.set(false);
             if (p) this.reviewSvc.getProductReviews(p.id).subscribe();
           },
@@ -585,7 +580,7 @@ export class ProductDetailComponent implements OnInit {
     if (!p) return;
     this.shop.addToCart({
       sku: p.sku,
-      skuId: p.id,
+      skuId: p.skuId || p.id,
       name: p.name,
       category: p.categoryName ?? '',
       price: (p.priceMinorUnits ?? 0) / 100,

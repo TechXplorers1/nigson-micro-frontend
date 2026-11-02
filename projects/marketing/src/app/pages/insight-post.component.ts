@@ -12,7 +12,7 @@ import {
   LucideMessageCircle, 
   LucideUser 
 } from '@lucide/angular';
-import { getPost, getAllPublishedPosts, BlogPost } from './blog-posts';
+import { BlogPost } from './blog-posts';
 
 @Component({
   selector: 'app-insight-post',
@@ -138,48 +138,29 @@ export class InsightPostComponent implements OnInit {
   
   slug = toSignal(this.route.paramMap.pipe(map(params => params.get('slug'))));
   customPost = signal<BlogPost | undefined>(undefined);
+  posts = signal<BlogPost[]>([]);
   
   currentPost = computed(() => {
-    return this.customPost() || (this.slug() ? getPost(this.slug()!) : undefined);
+    return this.customPost();
   });
 
   relatedPosts = computed(() => {
     const p = this.currentPost();
     if (!p) return [];
-    return getAllPublishedPosts().filter(x => x.slug !== p.slug).slice(0, 3);
+    return this.posts().filter(x => x.slug !== p.slug).slice(0, 3);
   });
 
   ngOnInit() {
-    this.http.get<any[]>('http://localhost:8085/api/v1/content/store/blog_posts').pipe(
+    this.http.get<any>('/api/v1/content?type=BLOG&locale=en&page=0&size=100').pipe(
       catchError(() => of(null))
-    ).subscribe(data => {
-      if (Array.isArray(data) && data.length > 0) {
-        try {
-          const raw = localStorage.getItem('nigson.admin.v2') || '{}';
-          const parsed = JSON.parse(raw);
-          parsed.posts = data;
-          localStorage.setItem('nigson.admin.v2', JSON.stringify(parsed));
-        } catch {}
-
-        const s = this.slug();
-        if (s) {
-          const found = data.find(p => p.slug === s || p.id === s);
-          if (found) {
-            this.customPost.set({
-              slug: found.slug || found.id,
-              title: found.title,
-              date: found.date,
-              tag: found.tag,
-              author: found.author,
-              readMinutes: 3,
-              excerpt: found.excerpt,
-              img: found.image || found.img || '/assets/blog-market.jpg',
-              body: [found.body || ''],
-              sections: found.sections || []
-            });
-          }
-        }
-      }
+    ).subscribe(page => {
+      const mapped: BlogPost[] = (page?.items ?? []).map((item: any) => {
+        const body = (item.body?.blocks ?? []).filter((block: any) => block.type === 'TEXT').map((block: any) => block.text).filter(Boolean);
+        return { slug: item.slug, title: item.title, date: item.publishedAt || '', tag: item.metadata?.tag || 'Insight', author: item.metadata?.author || '', readMinutes: 3, excerpt: item.metadata?.excerpt || body.join(' ').slice(0, 220), img: '/assets/blog-market.jpg', body, sections: [] };
+      });
+      this.posts.set(mapped);
+      const slug = this.slug();
+      this.customPost.set(mapped.find(item => item.slug === slug));
     });
   }
 }

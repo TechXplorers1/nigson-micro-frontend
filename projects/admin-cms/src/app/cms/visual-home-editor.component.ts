@@ -571,12 +571,14 @@ export class VisualHomeEditorComponent implements OnInit, AfterViewInit {
     } catch {}
 
     // 2. Fetch from PostgreSQL database bridge
-    this.http.get<AdminBlogPost[]>('http://localhost:8085/api/v1/content/store/blog_posts').pipe(
+    this.http.get<any>('/api/v1/content?type=BLOG&locale=en&page=0&size=100').pipe(
       catchError(() => of(null))
-    ).subscribe(data => {
-      if (Array.isArray(data) && data.length > 0) {
-        this.insightArticles.set(data);
-      }
+    ).subscribe(page => {
+      const data = (page?.items ?? []).map((item: any) => {
+        const body = (item.body?.blocks ?? []).filter((block: any) => block.type === 'TEXT').map((block: any) => block.text).join('\n\n');
+        return { id: item.id, title: item.title, slug: item.slug, tag: item.metadata?.tag || 'Insight', author: item.metadata?.author || '', date: item.publishedAt || '', status: 'Published', excerpt: item.metadata?.excerpt || body.slice(0, 220), image: '', body } as AdminBlogPost;
+      });
+      this.insightArticles.set(data);
     });
   }
 
@@ -590,10 +592,7 @@ export class VisualHomeEditorComponent implements OnInit, AfterViewInit {
       localStorage.setItem('nigson.admin.v2', JSON.stringify(parsed));
     } catch {}
 
-    // 2. Persist to PostgreSQL via database bridge
-    this.http.post('http://localhost:8085/api/v1/content/store/blog_posts', articles).pipe(
-      catchError(() => of(null))
-    ).subscribe();
+    this.toastMessage.set('Saved in this browser only. Use the structured Experience content revision workflow to publish.');
   }
 
   selectSection(id: string) {

@@ -2,7 +2,7 @@ import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { AdminService, CatalogService, OFFICIAL_SKU_PRICES, extractSku, resolveCategoryFromSku } from 'shared-ui';
+import { AdminService, CatalogService, extractSku, resolveCategoryFromSku } from 'shared-ui';
 
 export interface CustomSpec {
   key: string;
@@ -514,10 +514,10 @@ export class ProductEditComponent implements OnInit {
     category: 'Cables',
     brand: 'Nigson',
     status: 'Active',
-    price: 4500,
-    retail: 4500,
-    wholesale: 3600,
-    distributor: 3150,
+    price: 0,
+    retail: 0,
+    wholesale: 0,
+    distributor: 0,
     priceSubtitle: 'Wholesale pricing available for distributors.',
     images: ['', '', '', '', ''],
     image: '',
@@ -658,8 +658,7 @@ export class ProductEditComponent implements OnInit {
 
     const sku = full.sku || (full.skus?.[0]?.code) || extractSku(full.slug, full.name);
     const resolvedCategory = full.category || full.categoryName || resolveCategoryFromSku(sku, 'Cables');
-    const defaultRetail = OFFICIAL_SKU_PRICES[sku] ? OFFICIAL_SKU_PRICES[sku] / 100 : 4500;
-    const retailPrice = full.retail ?? full.retailPrice ?? full.price ?? defaultRetail;
+    const retailPrice = full.retail ?? full.retailPrice ?? full.price ?? 0;
 
     // Populate images (all available from S3 and backend)
     const rawImages: string[] = full.images?.length 

@@ -5,7 +5,7 @@ import { HttpClient } from '@angular/common/http';
 import { catchError, of } from 'rxjs';
 import { CmsService, PageHeaderComponent } from 'shared-ui';
 import { LucideArrowRight } from '@lucide/angular';
-import { getAllPublishedPosts, BlogPost } from './blog-posts';
+import { BlogPost } from './blog-posts';
 
 @Component({
   selector: 'app-insights',
@@ -74,36 +74,18 @@ export class InsightsComponent implements OnInit {
   articles = computed(() => this.page.get('articles'));
   cta = computed(() => this.page.get('cta'));
 
-  posts = signal<BlogPost[]>(getAllPublishedPosts());
+  posts = signal<BlogPost[]>([]);
 
   ngOnInit() {
-    this.http.get<any[]>('http://localhost:8085/api/v1/content/store/blog_posts').pipe(
+    this.http.get<any>('/api/v1/content?type=BLOG&locale=en&page=0&size=100').pipe(
       catchError(() => of(null))
-    ).subscribe(data => {
-      if (Array.isArray(data) && data.length > 0) {
-        const published = data.filter(p => p.status === 'Published');
-        if (published.length > 0) {
-          const mapped: BlogPost[] = published.map(p => ({
-            slug: p.slug || p.id,
-            title: p.title,
-            date: p.date,
-            tag: p.tag,
-            author: p.author,
-            readMinutes: 3,
-            excerpt: p.excerpt,
-            img: p.image || p.img || '/assets/blog-market.jpg',
-            body: [p.body || ''],
-            sections: p.sections || []
-          }));
-          this.posts.set(mapped);
-          try {
-            const raw = localStorage.getItem('nigson.admin.v2') || '{}';
-            const parsed = JSON.parse(raw);
-            parsed.posts = data;
-            localStorage.setItem('nigson.admin.v2', JSON.stringify(parsed));
-          } catch {}
-        }
-      }
+    ).subscribe(page => {
+      const mapped: BlogPost[] = (page?.items ?? []).map((item: any) => {
+        const blocks = item.body?.blocks ?? [];
+        const body = blocks.filter((block: any) => block.type === 'TEXT').map((block: any) => block.text).filter(Boolean);
+        return { slug: item.slug, title: item.title, date: item.publishedAt || '', tag: item.metadata?.tag || 'Insight', author: item.metadata?.author || '', readMinutes: 3, excerpt: item.metadata?.excerpt || body.join(' ').slice(0, 220), img: '/assets/blog-market.jpg', body, sections: [] };
+      });
+      this.posts.set(mapped);
     });
   }
 }

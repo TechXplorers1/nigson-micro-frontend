@@ -144,9 +144,7 @@ export class AccountLayoutComponent implements OnInit {
   }
 
   logout() {
-    this.session.clearSession();
-    this.shop.signOut();
-    this.router.navigate(['/']);
+    this.shop.signOut().subscribe(() => this.router.navigate(['/']));
   }
 
   initialsOf(name?: string | null): string {

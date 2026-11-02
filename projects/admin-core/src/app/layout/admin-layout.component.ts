@@ -196,8 +196,7 @@ export class AdminLayoutComponent implements OnInit {
   });
 
   handleLogout() {
-    this.shop.signOut();
-    this.router.navigate(['/auth/login']);
+    this.shop.signOut().subscribe(() => this.router.navigate(['/auth/login']));
   }
 
   initialsOf(name?: string) {

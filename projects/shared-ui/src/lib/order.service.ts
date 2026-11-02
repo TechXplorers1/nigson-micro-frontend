@@ -1,6 +1,6 @@
 import { Injectable, inject, signal } from "@angular/core";
 import { HttpClient, HttpParams, HttpHeaders } from "@angular/common/http";
-import { Observable, of, tap, catchError, map } from "rxjs";
+import { Observable, of, tap, catchError, map, switchMap } from "rxjs";
 import { SessionService } from "./session.service";
 
 /**
@@ -58,6 +58,7 @@ export interface BackendOrder {
   trackingNumber?: string;
   trackingUrl?: string;
   estimatedDeliveryDate?: string;
+  version: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -130,6 +131,7 @@ export class OrderService {
           },
           deliveryMethod: raw.fulfillmentStatus || raw.delivery || raw.shippingMethod || 'STANDARD',
           trackingNumber: raw.trackingNumber,
+          version: raw.version,
           createdAt: raw.createdAt || raw.date || new Date().toISOString(),
           updatedAt: raw.updatedAt || raw.createdAt || raw.date || new Date().toISOString()
         }));
@@ -160,27 +162,19 @@ export class OrderService {
 
   /** TASK-42: Get single order detail */
   getOrder(orderId: string): Observable<BackendOrder> {
-    const email = this.session.email() || '';
-    const userId = this.session.userId() || '';
-    let headers = new HttpHeaders();
-    if (email) headers = headers.set("x-user-email", email);
-    if (userId) headers = headers.set("x-user-id", userId);
-    return this.http.get<BackendOrder>("/api/v1/orders/" + orderId, { headers });
+    return this.http.get<BackendOrder>("/api/v1/orders/" + orderId);
   }
 
   /** TASK-44: Cancel order (API-040: POST /api/v1/orders/:orderId/cancellation) */
   cancelOrder(orderId: string): Observable<BackendOrder | null> {
-    return this.http.post<BackendOrder>("/api/v1/orders/" + orderId + "/cancellation", {}).pipe(
-      tap(updated => this.orders.update(list => list.map(o => o.orderId === orderId ? updated : o))),
+    return this.getOrder(orderId).pipe(
+      switchMap(order => this.http.post<BackendOrder>(`/api/v1/orders/${orderId}/cancellation`,
+        { reason: 'Customer requested order cancellation' },
+        { headers: new HttpHeaders({ 'If-Match': `\"${order.version}\"`, 'Idempotency-Key': crypto.randomUUID() }) })),
+      tap(updated => this.orders.update(list => list.map(order => order.orderId === orderId ? updated : order))),
       catchError(err => {
-        console.warn("[OrderService] cancelOrder /cancellation failed, retrying /cancel:", err);
-        return this.http.post<BackendOrder>("/api/v1/orders/" + orderId + "/cancel", {}).pipe(
-          tap(updated => this.orders.update(list => list.map(o => o.orderId === orderId ? updated : o))),
-          catchError(err2 => {
-            console.error("[OrderService] cancelOrder failed:", err2);
-            return of(null);
-          })
-        );
+        console.error('[OrderService] cancelOrder failed:', err);
+        return of(null);
       })
     );
   }

@@ -69,7 +69,7 @@ const BANKS = ["Access Bank", "First Bank", "Guaranty Trust Bank", "United Bank 
                       Nigson requires an authenticated account to bind your official warranty, issue trackable dispatch tokens, and record trade receipts.
                     </p>
                     <p class="text-[11px] text-amber-700 mt-1">
-                      Local test account: <strong class="font-mono text-ink">retailA</strong> &bull; Password: <strong class="font-mono text-ink">mock-local-user</strong>
+                      Sign-in is handled by the configured local Keycloak and Java BFF session.
                     </p>
                   </div>
                   <button
@@ -224,27 +224,27 @@ const BANKS = ["Access Bank", "First Bank", "Guaranty Trust Bank", "United Bank 
                     <p class="truncate font-semibold">{{ i.name }}</p>
                     <p class="text-xs text-muted-ink">Qty {{ i.qty }}</p>
                   </div>
-                  <p class="font-semibold">{{ catalog.formatPrice(i.price * i.qty) }}</p>
+                  <p class="font-semibold">{{ i.price > 0 ? catalog.formatPrice(i.price * i.qty) : 'Price from Commerce' }}</p>
                 </li>
               </ul>
               
               <dl class="mt-6 space-y-3 text-sm border-t border-hairline pt-6">
                 <div class="flex items-center justify-between">
                   <dt class="text-muted-ink">Subtotal</dt>
-                  <dd class="font-semibold">{{ catalog.formatPrice(subtotal()) }}</dd>
+                  <dd class="font-semibold">Calculated in Commerce quote</dd>
                 </div>
                 <div class="flex items-center justify-between">
                   <dt class="text-muted-ink">Shipping</dt>
-                  <dd class="font-semibold">{{ catalog.formatPrice(shipping()) }}</dd>
+                  <dd class="font-semibold">Calculated from delivery quote</dd>
                 </div>
                 <div class="flex items-center justify-between">
-                  <dt class="text-muted-ink">VAT (7.5%)</dt>
-                  <dd class="font-semibold">{{ catalog.formatPrice(vat()) }}</dd>
+                  <dt class="text-muted-ink">Tax</dt>
+                  <dd class="font-semibold">Calculated from approved market policy</dd>
                 </div>
                 <div class="h-px bg-hairline my-2"></div>
                 <div class="flex items-center justify-between">
                   <dt class="text-base font-bold">Total</dt>
-                  <dd class="text-2xl font-extrabold text-[#D62828]">{{ catalog.formatPrice(total()) }}</dd>
+                  <dd class="text-lg font-extrabold text-[#D62828]">Shown before payment</dd>
                 </div>
               </dl>
             </aside>
@@ -257,7 +257,7 @@ const BANKS = ["Access Bank", "First Bank", "Guaranty Trust Bank", "United Bank 
         <div class="absolute inset-0 bg-ink/40 backdrop-blur-sm" (click)="payOpen.set(false)"></div>
         <div class="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-elegant animate-scale-in">
           <h2 class="text-xl font-bold">Complete Payment</h2>
-          <p class="mt-1 text-sm text-muted-ink">Pay <span class="font-bold text-ink">{{ catalog.formatPrice(total()) }}</span> securely via {{ payLabel() }}.</p>
+          <p class="mt-1 text-sm text-muted-ink">Commerce will calculate the final total and create a hosted payment attempt.</p>
           
           <div class="mt-6" *ngIf="payment() === 'credit' || payment() === 'debit'">
             <div class="space-y-4">
@@ -312,7 +312,7 @@ const BANKS = ["Access Bank", "First Bank", "Guaranty Trust Bank", "United Bank 
           >
             <svg *ngIf="processing()" lucideLoader2 class="h-4 w-4 animate-spin"></svg>
             <svg *ngIf="!processing()" lucideLock class="h-4 w-4"></svg>
-            {{ processing() ? 'Processing...' : 'Pay ' + catalog.formatPrice(total()) }}
+            {{ processing() ? 'Processing...' : 'Continue to secure payment' }}
           </button>
         </div>
       </div>
@@ -384,14 +384,7 @@ export class CheckoutComponent implements OnInit {
     const items = this.cart.items();
     return items.reduce((sum, i) => sum + i.unitPriceMinorUnits * i.quantity, 0);
   });
-  shippingMinor = computed((): number => this.cart.items().length > 0 ? 350000 : 0);
-  vatMinor = computed(() => Math.round(this.subtotalMinor() * 0.075));
-  totalMinor = computed(() => this.subtotalMinor() + this.shippingMinor() + this.vatMinor());
-
-  subtotal = computed(() => this.subtotalMinor());
-  shipping = computed(() => this.shippingMinor());
-  vat = computed(() => this.vatMinor());
-  total = computed(() => this.totalMinor());
+  // Final prices, delivery and tax are calculated only by the Commerce quote APIs.
 
   next() { this.step.set(Math.min(2, this.step() + 1) as Step); }
   back() { this.step.set(Math.max(0, this.step() - 1) as Step); }
@@ -448,89 +441,54 @@ export class CheckoutComponent implements OnInit {
     this.processing.set(true);
 
     try {
-      const cartItems = this.cart.items().length > 0 ? this.cart.items() : this.shop.cart().map(sc => ({
-        lineId: `line-${Date.now()}`,
-        skuId: sc.skuId || sc.sku,
-        sku: sc.sku,
-        name: sc.name,
-        quantity: sc.qty,
-        unitPriceMinorUnits: Math.round(sc.price * 100),
-        imageUrl: sc.image
-      }));
+      const cartId = this.cart.cartId();
+      if (!cartId) throw new Error('No server-side Commerce cart is available. Add an item after signing in.');
 
-      if (cartItems.length === 0) {
-        this.processing.set(false);
-        this.modalError.set("Your cart is empty. Please add items before checking out.");
+      const recipient = this.customer.fullName || this.session.fullName() || 'Customer';
+      const address = await firstValueFrom(this.http.post<any>('/api/v1/me/addresses', {
+        label: 'Checkout',
+        recipient,
+        phone: this.customer.phone,
+        line1: this.address.street,
+        line2: null,
+        city: this.address.city,
+        region: this.address.state,
+        postalCode: this.address.postal || null,
+        countryCode: 'NG',
+        organizationId: null,
+        isDefault: false
+      }, { headers: new HttpHeaders({ 'Idempotency-Key': crypto.randomUUID() }) }));
+
+      const carrierQuote = await firstValueFrom(this.http.post<any>(`/api/v1/carts/${cartId}/delivery-quotes`, {
+        addressId: address.id
+      }, { headers: new HttpHeaders({
+        'If-Match': `\"${this.cart.cartVersion()}\"`,
+        'Idempotency-Key': crypto.randomUUID()
+      }) }));
+
+      const quote = await firstValueFrom(this.http.post<any>('/api/v1/checkout/quotes', {
+        cartId,
+        addressId: address.id,
+        carrierQuoteId: carrierQuote.id
+      }, { headers: new HttpHeaders({ 'Idempotency-Key': crypto.randomUUID() }) }));
+
+      const checkout = await firstValueFrom(this.http.post<any>('/api/v1/checkout/attempts', {
+        checkoutQuoteId: quote.id,
+        quoteHash: quote.quoteHash,
+        paymentMethod: 'HOSTED'
+      }, { headers: new HttpHeaders({ 'Idempotency-Key': crypto.randomUUID() }) }));
+
+      const checkoutUrl = checkout?.payment?.checkoutUrl;
+      if (typeof checkoutUrl === 'string' && checkoutUrl.startsWith('https://')) {
+        window.location.assign(checkoutUrl);
         return;
       }
 
-      const userEmail = this.customer.email || this.session.email() || '';
-      const userId = this.session.userId() || '';
-      const fullName = this.customer.fullName || this.session.fullName() || 'Customer';
-
-      const orderPayload = {
-        userId: userId,
-        customer: {
-          id: userId,
-          name: fullName,
-          email: userEmail,
-          phone: this.customer.phone || '',
-          address: `${this.address.street}, ${this.address.city}, ${this.address.state}`
-        },
-        customerName: fullName,
-        customerEmail: userEmail,
-        customerPhone: this.customer.phone || '',
-        shippingAddress: {
-          line1: this.address.street,
-          city: this.address.city,
-          state: this.address.state,
-          countryCode: 'NG',
-          postalCode: this.address.postal
-        },
-        paymentMethod: this.payLabel(),
-        items: cartItems.map((i: any) => ({
-          sku: i.sku || i.skuId,
-          skuId: i.skuId,
-          name: i.name,
-          quantity: i.quantity || i.qty || 1,
-          qty: i.quantity || i.qty || 1,
-          price: i.unitPriceMinorUnits ? i.unitPriceMinorUnits / 100 : (i.price || 0),
-          unitPriceMinorUnits: i.unitPriceMinorUnits || Math.round((i.price || 0) * 100),
-          imageUrl: i.imageUrl || i.image || '/assets/hero-accessories.jpg'
-        })),
-        subtotal: this.subtotal(),
-        subtotalMinorUnits: this.subtotalMinor(),
-        shipping: this.shipping(),
-        shippingMinorUnits: this.shippingMinor(),
-        tax: this.vat(),
-        taxMinorUnits: this.vatMinor(),
-        total: this.total(),
-        totalMinorUnits: this.totalMinor(),
-        totalKobo: this.totalMinor(),
-        paymentStatus: 'Paid',
-        status: 'Processing',
-        delivery: 'Standard Delivery'
-      };
-
-      let headers = new HttpHeaders({
-        'Content-Type': 'application/json',
-        'Idempotency-Key': crypto.randomUUID()
-      });
-      if (userEmail) headers = headers.set('x-user-email', userEmail);
-      if (userId) headers = headers.set('x-user-id', userId);
-
-      const attempt = await firstValueFrom(
-        this.http.post<any>('/api/v1/orders', orderPayload, { headers })
-      );
-
+      const state = checkout?.payment?.state || 'UNKNOWN';
+      const orderId = checkout?.order?.id;
       this.processing.set(false);
       this.payOpen.set(false);
-      sessionStorage.removeItem('nigson_active_cart_id');
-      this.cart.clearCart().subscribe();
-      this.shop.clearCart();
-
-      const targetId = attempt.id || attempt.orderId || attempt.order?.id || attempt.orderNumber || attempt.number;
-      this.router.navigate(['/checkout/success'], { queryParams: { id: targetId } });
+      this.modalError.set(`Payment status is ${state}${orderId ? ` for order ${orderId}` : ''}. Check your orders before trying again.`);
     } catch (error: any) {
       this.processing.set(false);
       console.error('[Checkout] payNow error:', error);

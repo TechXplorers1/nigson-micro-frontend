@@ -63,7 +63,7 @@ export class MarketingService {
     this.submittingEnquiry.set(true);
     const body = {
       ...payload,
-      antiSpamToken: payload.antiSpamToken || "token_" + Math.random().toString(36).substring(2)
+      antiSpamToken: payload.antiSpamToken
     };
 
     return this.http.post("/api/v1/enquiries", body).pipe(
@@ -82,8 +82,8 @@ export class MarketingService {
     this.subscribingNewsletter.set(true);
     const body = {
       email,
-      policyVersion: "1.0",
-      antiSpamToken: "token_" + Math.random().toString(36).substring(2)
+      policyVersion: "",
+      antiSpamToken: ""
     };
 
     return this.http.post("/api/v1/newsletter-subscriptions", body).pipe(

@@ -1,0 +1,284 @@
+{
+  "$version": "v4",
+  "name": "admin-shop",
+  "shared": [
+    {
+      "packageName": "@angular/common",
+      "outFileName": "_angular_common.07XYthzX9e-dev.js",
+      "requiredVersion": "^22.1.0",
+      "singleton": true,
+      "strictVersion": true,
+      "version": "22.1.6",
+      "bundle": "browser-angular_common"
+    },
+    {
+      "packageName": "@angular/common/http",
+      "outFileName": "_angular_common_http.bdLnTAziqz-dev.js",
+      "requiredVersion": "^22.1.0",
+      "singleton": true,
+      "strictVersion": true,
+      "version": "22.1.6",
+      "bundle": "browser-angular_common"
+    },
+    {
+      "packageName": "@angular/forms",
+      "outFileName": "_angular_forms.OdGMQXMXGb-dev.js",
+      "requiredVersion": "^22.1.0",
+      "singleton": true,
+      "strictVersion": true,
+      "version": "22.1.6",
+      "bundle": "browser-angular_forms"
+    },
+    {
+      "packageName": "@angular/platform-browser",
+      "outFileName": "_angular_platform_browser.frH14JPCYg-dev.js",
+      "requiredVersion": "^22.1.0",
+      "singleton": true,
+      "strictVersion": true,
+      "version": "22.1.6",
+      "bundle": "browser-angular_platform_browser"
+    },
+    {
+      "packageName": "@angular/router",
+      "outFileName": "_angular_router._0OUsP-lRh-dev.js",
+      "requiredVersion": "^22.1.0",
+      "singleton": true,
+      "strictVersion": true,
+      "version": "22.1.6",
+      "bundle": "browser-angular_router"
+    },
+    {
+      "packageName": "@lucide/angular",
+      "outFileName": "_lucide_angular.17DInjcUht-dev.js",
+      "requiredVersion": "^1.46.0",
+      "singleton": true,
+      "strictVersion": true,
+      "version": "1.46.0",
+      "bundle": "browser-lucide_angular"
+    },
+    {
+      "packageName": "class-variance-authority",
+      "outFileName": "class_variance_authority.ffcwhtSv9w-dev.js",
+      "requiredVersion": "^0.7.1",
+      "singleton": true,
+      "strictVersion": true,
+      "version": "0.7.1",
+      "bundle": "browser-class_variance_authority"
+    },
+    {
+      "packageName": "clsx",
+      "outFileName": "clsx.mSM7AlqsPk-dev.js",
+      "requiredVersion": "^2.1.1",
+      "singleton": true,
+      "strictVersion": true,
+      "version": "2.1.1",
+      "bundle": "browser-clsx"
+    },
+    {
+      "packageName": "rxjs",
+      "outFileName": "rxjs.QuTzipGIkH-dev.js",
+      "requiredVersion": "~7.8.0",
+      "singleton": true,
+      "strictVersion": true,
+      "version": "7.8.2",
+      "bundle": "browser-rxjs"
+    },
+    {
+      "packageName": "rxjs/operators",
+      "outFileName": "rxjs_operators.LzwWMPB1sj-dev.js",
+      "requiredVersion": "~7.8.0",
+      "singleton": true,
+      "strictVersion": true,
+      "version": "7.8.2",
+      "bundle": "browser-rxjs"
+    },
+    {
+      "packageName": "tailwind-merge",
+      "outFileName": "tailwind_merge.eH1gcW132v-dev.js",
+      "requiredVersion": "^3.7.0",
+      "singleton": true,
+      "strictVersion": true,
+      "version": "3.7.0",
+      "bundle": "browser-tailwind_merge"
+    },
+    {
+      "packageName": "tslib",
+      "outFileName": "tslib.CytO1sxhOS-dev.js",
+      "requiredVersion": "^2.3.0",
+      "singleton": true,
+      "strictVersion": true,
+      "version": "2.8.1",
+      "bundle": "browser-tslib"
+    },
+    {
+      "packageName": "@angular/core",
+      "outFileName": "_angular_core.oBhxM3nj4Q-dev.js",
+      "requiredVersion": "^22.1.0",
+      "singleton": true,
+      "strictVersion": true,
+      "version": "22.1.6",
+      "bundle": "browser-angular_core"
+    },
+    {
+      "packageName": "@angular/core/event-dispatch-contract.min.js",
+      "outFileName": "_angular_core_event_dispatch_contract_min_js.E9IikCROb--dev.js",
+      "requiredVersion": "^22.1.0",
+      "singleton": true,
+      "strictVersion": true,
+      "version": "22.1.6",
+      "bundle": "browser-angular_core"
+    },
+    {
+      "packageName": "@angular/core/primitives/di",
+      "outFileName": "_angular_core_primitives_di.HszPVDtGjR-dev.js",
+      "requiredVersion": "^22.1.0",
+      "singleton": true,
+      "strictVersion": true,
+      "version": "22.1.6",
+      "bundle": "browser-angular_core"
+    },
+    {
+      "packageName": "@angular/core/primitives/event-dispatch",
+      "outFileName": "_angular_core_primitives_event_dispatch.RagJbKCw11-dev.js",
+      "requiredVersion": "^22.1.0",
+      "singleton": true,
+      "strictVersion": true,
+      "version": "22.1.6",
+      "bundle": "browser-angular_core"
+    },
+    {
+      "packageName": "@angular/core/primitives/signals",
+      "outFileName": "_angular_core_primitives_signals.VFVuHZ56Wv-dev.js",
+      "requiredVersion": "^22.1.0",
+      "singleton": true,
+      "strictVersion": true,
+      "version": "22.1.6",
+      "bundle": "browser-angular_core"
+    },
+    {
+      "packageName": "@angular/core/rxjs-interop",
+      "outFileName": "_angular_core_rxjs_interop.7ITF85-xq5-dev.js",
+      "requiredVersion": "^22.1.0",
+      "singleton": true,
+      "strictVersion": true,
+      "version": "22.1.6",
+      "bundle": "browser-angular_core"
+    },
+    {
+      "packageName": "shared-ui",
+      "outFileName": "shared_ui.js",
+      "requiredVersion": "~0.0.1",
+      "singleton": true,
+      "strictVersion": true,
+      "version": "0.0.1",
+      "dev": {
+        "entryPoint": "/Users/gopiravi/workspace/techx/nigson-monorepo/nigson-micro-frontend/projects/shared-ui/src/public-api.ts"
+      }
+    }
+  ],
+  "exposes": [
+    {
+      "key": "./Routes",
+      "outFileName": "Routes.js",
+      "dev": {
+        "entryPoint": "/Users/gopiravi/workspace/techx/nigson-monorepo/nigson-micro-frontend/projects/admin-shop/src/app/app.routes.ts"
+      }
+    },
+    {
+      "key": "./InventoryDashboard",
+      "outFileName": "InventoryDashboard.js",
+      "dev": {
+        "entryPoint": "/Users/gopiravi/workspace/techx/nigson-monorepo/nigson-micro-frontend/projects/admin-shop/src/app/inventory/inventory-dashboard.component.ts"
+      }
+    },
+    {
+      "key": "./ProductList",
+      "outFileName": "ProductList.js",
+      "dev": {
+        "entryPoint": "/Users/gopiravi/workspace/techx/nigson-monorepo/nigson-micro-frontend/projects/admin-shop/src/app/inventory/product-list.component.ts"
+      }
+    },
+    {
+      "key": "./ProductEdit",
+      "outFileName": "ProductEdit.js",
+      "dev": {
+        "entryPoint": "/Users/gopiravi/workspace/techx/nigson-monorepo/nigson-micro-frontend/projects/admin-shop/src/app/inventory/product-edit.component.ts"
+      }
+    },
+    {
+      "key": "./StockAdjustment",
+      "outFileName": "StockAdjustment.js",
+      "dev": {
+        "entryPoint": "/Users/gopiravi/workspace/techx/nigson-monorepo/nigson-micro-frontend/projects/admin-shop/src/app/inventory/stock-adjustment.component.ts"
+      }
+    },
+    {
+      "key": "./StockMovements",
+      "outFileName": "StockMovements.js",
+      "dev": {
+        "entryPoint": "/Users/gopiravi/workspace/techx/nigson-monorepo/nigson-micro-frontend/projects/admin-shop/src/app/inventory/stock-movements.component.ts"
+      }
+    },
+    {
+      "key": "./StockReport",
+      "outFileName": "StockReport.js",
+      "dev": {
+        "entryPoint": "/Users/gopiravi/workspace/techx/nigson-monorepo/nigson-micro-frontend/projects/admin-shop/src/app/inventory/stock-report.component.ts"
+      }
+    },
+    {
+      "key": "./Orders",
+      "outFileName": "Orders.js",
+      "dev": {
+        "entryPoint": "/Users/gopiravi/workspace/techx/nigson-monorepo/nigson-micro-frontend/projects/admin-shop/src/app/sales/orders.component.ts"
+      }
+    },
+    {
+      "key": "./Customers",
+      "outFileName": "Customers.js",
+      "dev": {
+        "entryPoint": "/Users/gopiravi/workspace/techx/nigson-monorepo/nigson-micro-frontend/projects/admin-shop/src/app/sales/customers.component.ts"
+      }
+    },
+    {
+      "key": "./Quotes",
+      "outFileName": "Quotes.js",
+      "dev": {
+        "entryPoint": "/Users/gopiravi/workspace/techx/nigson-monorepo/nigson-micro-frontend/projects/admin-shop/src/app/sales/quotes.component.ts"
+      }
+    },
+    {
+      "key": "./Applications",
+      "outFileName": "Applications.js",
+      "dev": {
+        "entryPoint": "/Users/gopiravi/workspace/techx/nigson-monorepo/nigson-micro-frontend/projects/admin-shop/src/app/sales/applications.component.ts"
+      }
+    },
+    {
+      "key": "./Inquiries",
+      "outFileName": "Inquiries.js",
+      "dev": {
+        "entryPoint": "/Users/gopiravi/workspace/techx/nigson-monorepo/nigson-micro-frontend/projects/admin-shop/src/app/sales/inquiries.component.ts"
+      }
+    }
+  ],
+  "buildNotificationsEndpoint": "/@angular-architects/native-federation:build-notifications",
+  "chunks": {
+    "browser-angular_common": [
+      "chunk-NHYY26Y6.js"
+    ],
+    "browser-rxjs": [
+      "chunk-BBYK5H6S.js"
+    ],
+    "browser-angular_core": [
+      "chunk-W5PZSX23.js",
+      "chunk-RN4XMH2F.js",
+      "chunk-PQCEHEVZ.js",
+      "chunk-A4FDR3DH.js",
+      "chunk-FMGVFGPW.js"
+    ],
+    "mapping-or-exposed": [
+      "chunk-VUJOFXKG.js"
+    ]
+  }
+}

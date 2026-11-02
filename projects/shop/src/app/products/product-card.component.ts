@@ -70,24 +70,27 @@ export class ProductCardComponent implements OnInit {
   shop = inject(ShopService);
 
   readonly priceLoading = signal(true);
-  readonly displayPrice = signal('—');
+  readonly displayPrice = signal('Contact for price');
+  readonly resolvedSkuId = signal<string | null>(null);
 
   ngOnInit() {
-    // Use priceMinorUnits if already embedded in product response
-    if (this.p.priceMinorUnits != null) {
-      this.displayPrice.set(this.catalog.formatPrice(this.p.priceMinorUnits));
-      this.priceLoading.set(false);
+    const loadPrice = (skuId: string | undefined) => {
+      if (!skuId || skuId === this.p.id) {
+        this.priceLoading.set(false);
+        return;
+      }
+      this.resolvedSkuId.set(skuId);
+      this.catalog.getPrice(skuId).subscribe({
+        next: price => { this.displayPrice.set(price.priceMinorUnits > 0 ? this.catalog.formatPrice(price.priceMinorUnits) : 'Contact for price'); this.priceLoading.set(false); },
+        error: () => { this.displayPrice.set('Contact for price'); this.priceLoading.set(false); }
+      });
+    };
+    if (this.p.skuId && this.p.skuId !== this.p.id) {
+      loadPrice(this.p.skuId);
     } else {
-      // Fetch price separately from /api/v1/catalogue/skus/{id}/price
-      this.catalog.getPrice(this.p.id).subscribe({
-        next: pr => {
-          this.displayPrice.set(this.catalog.formatPrice(pr.priceMinorUnits));
-          this.priceLoading.set(false);
-        },
-        error: () => {
-          this.displayPrice.set('Contact for price');
-          this.priceLoading.set(false);
-        }
+      this.catalog.getProduct(this.p.id).subscribe({
+        next: product => loadPrice(product.skuId),
+        error: () => this.priceLoading.set(false)
       });
     }
   }
@@ -97,10 +100,11 @@ export class ProductCardComponent implements OnInit {
   }
 
   addToCart() {
-    // TASK-28: will be updated to use server cart in Phase 3
+    const skuId = this.resolvedSkuId() || (this.p.skuId !== this.p.id ? this.p.skuId : null);
+    if (!skuId) { this.displayPrice.set('SKU unavailable'); return; }
     this.shop.addToCart({
       sku: this.p.sku,
-      skuId: this.p.id,
+      skuId,
       name: this.p.name,
       category: this.p.categoryName ?? '',
       price: (this.p.priceMinorUnits ?? 0) / 100, // store in Naira for now

@@ -56,10 +56,10 @@ import { CartService, CatalogService, ShopService, SessionService, QtyStepperCom
                       <div class="min-w-0">
                         <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-ink">{{ item.sku }} • {{ item.categoryName }}</p>
                         <h3 class="mt-1 text-base md:text-lg font-semibold truncate">{{ item.name }}</h3>
-                        <p class="mt-1 text-sm text-muted-ink">Unit price {{ catalog.formatPrice(item.unitPriceMinorUnits) }}</p>
+                        <p class="mt-1 text-sm text-muted-ink">Unit price {{ item.unitPriceMinorUnits > 0 ? catalog.formatPrice(item.unitPriceMinorUnits) : 'Price from Commerce' }}</p>
                       </div>
                       <p class="text-lg font-bold text-[#D62828] whitespace-nowrap">
-                        {{ catalog.formatPrice(item.unitPriceMinorUnits * item.quantity) }}
+                        {{ item.unitPriceMinorUnits > 0 ? catalog.formatPrice(item.unitPriceMinorUnits * item.quantity) : 'Quote required' }}
                       </p>
                     </div>
                     <div class="mt-auto pt-4 flex items-center justify-between">
@@ -80,22 +80,22 @@ import { CartService, CatalogService, ShopService, SessionService, QtyStepperCom
                 <dl class="mt-5 space-y-3 text-sm">
                   <div class="flex items-center justify-between">
                     <dt class="text-muted-ink">Subtotal</dt>
-                    <dd class="font-semibold">{{ catalog.formatPrice(subtotal()) }}</dd>
+                    <dd class="font-semibold">Calculated in Commerce quote</dd>
                   </div>
                   <div class="flex items-center justify-between">
                     <dt class="text-muted-ink">Shipping</dt>
-                    <dd class="font-semibold">{{ catalog.formatPrice(shipping()) }}</dd>
+                    <dd class="font-semibold">Calculated from delivery quote</dd>
                   </div>
                   <div class="flex items-center justify-between">
-                    <dt class="text-muted-ink">VAT (7.5%)</dt>
-                    <dd class="font-semibold">{{ catalog.formatPrice(vat()) }}</dd>
+                    <dt class="text-muted-ink">Tax</dt>
+                    <dd class="font-semibold">Calculated from approved market policy</dd>
                   </div>
                   
                   <div class="h-px bg-hairline my-2"></div>
                   
                   <div class="flex items-center justify-between">
                     <dt class="text-base font-bold">Total</dt>
-                    <dd class="text-2xl font-extrabold text-[#D62828]">{{ catalog.formatPrice(total()) }}</dd>
+                    <dd class="text-lg font-extrabold text-[#D62828]">Shown in secure quote</dd>
                   </div>
                 </dl>
 
@@ -135,20 +135,7 @@ export class CartComponent {
   router = inject(Router);
   session = inject(SessionService);
 
-  /** Flat shipping fee in NGN minor units (kobo): NGN 3500 */
-  SHIPPING_MINOR = 350000;
-
-  /** Use CartService signals for real server cart data */
-  subtotalMinorUnits = computed(() => this.cart.items().reduce((n, i) => n + i.unitPriceMinorUnits * i.quantity, 0));
-  shippingMinorUnits = computed(() => this.cart.items().length ? this.SHIPPING_MINOR : 0);
-  vatMinorUnits = computed(() => Math.round(this.subtotalMinorUnits() * 0.075));
-  totalMinorUnits = computed(() => this.subtotalMinorUnits() + this.shippingMinorUnits() + this.vatMinorUnits());
-
-  // Keep backward-compat properties for the summary template (which calls catalog.formatPrice)
-  subtotal = computed(() => this.subtotalMinorUnits());
-  shipping = computed(() => this.shippingMinorUnits());
-  vat = computed(() => this.vatMinorUnits());
-  total = computed(() => this.totalMinorUnits());
+  // Final subtotal, delivery and tax are supplied by the Commerce quote APIs.
 
   updateQty(lineId: string, qty: number) {
     this.cart.updateQty(lineId, qty).subscribe();

@@ -887,16 +887,15 @@ export class AdminBlogComponent {
     } catch {}
 
     // 2. Fetch from PostgreSQL database bridge
-    this.http.get<AdminBlogPost[]>('http://localhost:8085/api/v1/content/store/blog_posts').pipe(
+    this.http.get<any>('/api/v1/content?type=BLOG&locale=en&page=0&size=100').pipe(
       catchError(() => of(null))
-    ).subscribe(data => {
-      if (Array.isArray(data) && data.length > 0 && data.some(p => p.body?.includes('###'))) {
-        this.posts.set(data);
-        this.syncLocalStorage(data);
-      } else {
-        // Seed default 5 posts matching the Insights page with full headings and bullets
-        this.resetToDefaults();
-      }
+    ).subscribe(page => {
+      const data = (page?.items ?? []).map((item: any) => {
+        const body = (item.body?.blocks ?? []).filter((block: any) => block.type === 'TEXT').map((block: any) => block.text).join('\n\n');
+        return { id: item.id, title: item.title, slug: item.slug, tag: item.metadata?.tag || 'Insight', author: item.metadata?.author || '', date: item.publishedAt || '', status: 'Published', excerpt: item.metadata?.excerpt || body.slice(0, 220), image: '', body } as AdminBlogPost;
+      });
+      this.posts.set(data);
+      if (data.length) this.syncLocalStorage(data);
     });
   }
 
@@ -919,10 +918,7 @@ export class AdminBlogComponent {
     const allPosts = this.posts();
     this.syncLocalStorage(allPosts);
 
-    // Persist to PostgreSQL via database bridge
-    this.http.post('http://localhost:8085/api/v1/content/store/blog_posts', allPosts).pipe(
-      catchError(() => of(null))
-    ).subscribe();
+    this.showToast('Saved in this browser only. Use the structured Experience content revision workflow to publish.');
   }
 
   showToast(message: string) {

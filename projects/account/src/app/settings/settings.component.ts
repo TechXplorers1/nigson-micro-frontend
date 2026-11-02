@@ -1,11 +1,11 @@
-﻿import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-import { ShopService, SessionService, BFF_BASE } from 'shared-ui';
+import { ShopService, SessionService } from 'shared-ui';
 import {
   LucideEye, LucideEyeOff, LucideLogOut, LucideTrash2, LucideX, LucideSave,
-  LucideExternalLink, LucideShieldCheck
+  LucideShieldCheck
 } from '@lucide/angular';
 
 /**
@@ -14,7 +14,7 @@ import {
  * Changes from fake implementation:
  * - saveAccount()   → PATCH /api/v1/me  (email field is now READ-ONLY)
  * - savePassword()  → redirects to Keycloak Account Console (Keycloak owns passwords)
- * - logoutAll()     → POST /bff/logout  (was: localStorage.removeItem)
+ * - logout()        → POST /bff/logout  (was: localStorage.removeItem)
  * - deleteAccount() → shows contact-support message (no backend delete API)
  */
 @Component({
@@ -23,7 +23,7 @@ import {
   imports: [
     CommonModule, FormsModule,
     LucideEye, LucideEyeOff, LucideLogOut, LucideTrash2,
-    LucideX, LucideSave, LucideExternalLink, LucideShieldCheck
+    LucideX, LucideSave, LucideShieldCheck
   ],
   template: `
     <div class="space-y-6" *ngIf="user()">
@@ -79,14 +79,10 @@ import {
             Password managed by Nigson Identity
           </p>
           <p class="mt-2 text-sm text-ink/70">
-            For security, passwords are managed by Nigson's secure identity
-            provider. Click below to open the password change portal.
+            Passwords are managed by Nigson Identity. The current BFF does not
+            expose a password-change action; use the identity provider's recovery
+            option on its sign-in page when that option is configured.
           </p>
-        </div>
-        <div class="mt-4">
-          <button (click)="openPasswordPortal()" class="inline-flex items-center gap-2 rounded-full border border-hairline px-5 py-2.5 text-xs font-semibold hover:border-brand hover:text-brand">
-            <svg lucideExternalLink class="h-3.5 w-3.5"></svg> Change Password
-          </button>
         </div>
       </div>
 
@@ -94,9 +90,9 @@ import {
       <div class="rounded-2xl border border-hairline bg-white p-6 md:p-8">
         <h3 class="text-sm font-extrabold uppercase tracking-widest">Privacy</h3>
         <div class="mt-5 grid gap-3 md:grid-cols-2">
-          <button (click)="logoutAll()" [disabled]="loggingOut()" class="inline-flex items-center justify-center gap-2 rounded-full border border-ink px-5 py-3 text-sm font-semibold text-ink hover:bg-ink hover:text-white transition-colors disabled:opacity-70">
+          <button (click)="logout()" [disabled]="loggingOut()" class="inline-flex items-center justify-center gap-2 rounded-full border border-ink px-5 py-3 text-sm font-semibold text-ink hover:bg-ink hover:text-white transition-colors disabled:opacity-70">
             <svg lucideLogOut class="h-4 w-4"></svg>
-            {{ loggingOut() ? 'Signing out...' : 'Logout all devices' }}
+            {{ loggingOut() ? 'Signing out...' : 'Sign out' }}
           </button>
           <button (click)="deleteAccount()" class="inline-flex items-center justify-center gap-2 rounded-full bg-brand text-white px-5 py-3 text-sm font-semibold hover:bg-brand-deep transition-colors">
             <svg lucideTrash2 class="h-4 w-4"></svg> Delete account
@@ -154,26 +150,9 @@ export class SettingsComponent implements OnInit {
       });
   }
 
-  openPasswordPortal() {
-    // Redirect to Keycloak Account Console for secure password change
-    window.open(`${BFF_BASE}/bff/login?kc_action=UPDATE_PASSWORD`, '_blank');
-  }
-
-  logoutAll() {
+  logout() {
     this.loggingOut.set(true);
-    // POST /bff/logout — CSRF interceptor attaches token automatically
-    this.http.post(`/bff/logout`, {}, { withCredentials: true })
-      .subscribe({
-        next: () => {
-          this.shop.signOut();
-          window.location.href = '/';
-        },
-        error: () => {
-          // Even on error, clear local state and redirect
-          this.shop.signOut();
-          window.location.href = '/';
-        }
-      });
+    this.shop.signOut().subscribe(() => { window.location.href = '/'; });
   }
 
   deleteAccount() {

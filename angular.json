@@ -40,7 +40,8 @@
             "cacheExternalArtifacts": true,
             "dev": true,
             "devServer": true,
-            "port": 4200
+            "port": 4200,
+            "proxyConfig": "proxy.conf.js"
           }
         },
         "test": {
@@ -101,7 +102,7 @@
           "defaultConfiguration": "development",
           "options": {
             "port": 4200,
-            "proxyConfig": "proxy.conf.json"
+            "proxyConfig": "proxy.conf.js"
           }
         }
       }
@@ -139,7 +140,8 @@
             "cacheExternalArtifacts": true,
             "dev": true,
             "devServer": true,
-            "port": 4201
+            "port": 4201,
+            "proxyConfig": "proxy.conf.js"
           }
         },
         "test": {
@@ -237,7 +239,8 @@
             "cacheExternalArtifacts": true,
             "dev": true,
             "devServer": true,
-            "port": 4202
+            "port": 4202,
+            "proxyConfig": "proxy.conf.js"
           }
         },
         "test": {
@@ -335,7 +338,8 @@
             "cacheExternalArtifacts": true,
             "dev": true,
             "devServer": true,
-            "port": 4203
+            "port": 4203,
+            "proxyConfig": "proxy.conf.js"
           }
         },
         "test": {
@@ -433,7 +437,8 @@
             "cacheExternalArtifacts": true,
             "dev": true,
             "devServer": true,
-            "port": 4204
+            "port": 4204,
+            "proxyConfig": "proxy.conf.js"
           }
         },
         "test": {
@@ -531,7 +536,8 @@
             "cacheExternalArtifacts": true,
             "dev": true,
             "devServer": true,
-            "port": 0
+            "port": 0,
+            "proxyConfig": "proxy.conf.js"
           }
         },
         "test": {
@@ -629,7 +635,8 @@
             "cacheExternalArtifacts": true,
             "dev": true,
             "devServer": true,
-            "port": 0
+            "port": 0,
+            "proxyConfig": "proxy.conf.js"
           }
         },
         "test": {
@@ -727,7 +734,8 @@
             "cacheExternalArtifacts": true,
             "dev": true,
             "devServer": true,
-            "port": 0
+            "port": 0,
+            "proxyConfig": "proxy.conf.js"
           }
         },
         "test": {
@@ -825,7 +833,8 @@
             "cacheExternalArtifacts": true,
             "dev": true,
             "devServer": true,
-            "port": 0
+            "port": 0,
+            "proxyConfig": "proxy.conf.js"
           }
         },
         "test": {
@@ -923,7 +932,8 @@
             "cacheExternalArtifacts": true,
             "dev": true,
             "devServer": true,
-            "port": 0
+            "port": 0,
+            "proxyConfig": "proxy.conf.js"
           }
         },
         "test": {
@@ -1021,7 +1031,8 @@
             "cacheExternalArtifacts": true,
             "dev": true,
             "devServer": true,
-            "port": 0
+            "port": 0,
+            "proxyConfig": "proxy.conf.js"
           }
         },
         "test": {
@@ -1119,7 +1130,8 @@
             "cacheExternalArtifacts": true,
             "dev": true,
             "devServer": true,
-            "port": 4211
+            "port": 4211,
+            "proxyConfig": "proxy.conf.js"
           }
         },
         "test": {
@@ -1217,7 +1229,8 @@
             "cacheExternalArtifacts": true,
             "dev": true,
             "devServer": true,
-            "port": 0
+            "port": 0,
+            "proxyConfig": "proxy.conf.js"
           }
         },
         "test": {
@@ -1315,7 +1328,8 @@
             "cacheExternalArtifacts": true,
             "dev": true,
             "devServer": true,
-            "port": 0
+            "port": 0,
+            "proxyConfig": "proxy.conf.js"
           }
         },
         "test": {
@@ -1413,7 +1427,8 @@
             "cacheExternalArtifacts": true,
             "dev": true,
             "devServer": true,
-            "port": 0
+            "port": 0,
+            "proxyConfig": "proxy.conf.js"
           }
         },
         "test": {
@@ -1562,7 +1577,8 @@
             "cacheExternalArtifacts": true,
             "dev": true,
             "devServer": true,
-            "port": 4205
+            "port": 4205,
+            "proxyConfig": "proxy.conf.js"
           }
         },
         "esbuild": {
@@ -1682,7 +1698,8 @@
             "cacheExternalArtifacts": true,
             "dev": true,
             "devServer": true,
-            "port": 4206
+            "port": 4206,
+            "proxyConfig": "proxy.conf.js"
           }
         },
         "esbuild": {

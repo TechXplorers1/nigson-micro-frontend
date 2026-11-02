@@ -4,10 +4,11 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve shell",
-    "start:all": "concurrently \"node cms-db-bridge.js\" \"ng serve marketing\" \"ng serve shop\" \"ng serve auth\" \"ng serve account\" \"ng serve admin-core\" \"ng serve admin-shop\" \"ng serve admin-cms\" \"ng serve shell\"",
-    "build": "ng build",
+    "start:all": "concurrently \"ng serve marketing\" \"ng serve shop\" \"ng serve auth\" \"ng serve account\" \"ng serve admin-core\" \"ng serve admin-shop\" \"ng serve admin-cms\" \"ng serve shell\"",
+    "build": "ng build shell",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "build:all": "ng build marketing && ng build shop && ng build auth && ng build account && ng build admin-core && ng build admin-shop && ng build admin-cms && ng build shell"
   },
   "private": true,
   "packageManager": "npm@11.19.0",

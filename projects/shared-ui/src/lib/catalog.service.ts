@@ -65,32 +65,6 @@ export interface Product {
   updatedAt?: string;
 }
 
-export const OFFICIAL_SKU_PRICES: Record<string, number> = {
-  'NS03': 1850000,
-  'NS06': 2850000,
-  'NS107': 1650000,
-  'NS211C': 550000,
-  'NS211i': 480000,
-  'NS25': 650000,
-  'NS2526C': 2450000,
-  'NS2618': 2950000,
-  'NS3416': 3200000,
-  'NS3604C': 2750000,
-  'NS4': 950000,
-  'NS6': 1950000,
-  'NS6-1': 1450000,
-  'NS901C': 450000,
-  'NS901i': 420000,
-  'NS96U': 520000,
-  'PQ19': 1650000,
-  'PQ20': 2650000,
-  'PQ28': 1950000,
-  'PQ30': 3450000,
-  'PQ50': 4850000,
-  'ZS6': 2650000,
-  'ZS8': 2150000
-};
-
 export function extractSku(slug?: string, name?: string): string {
   if (slug) {
     const clean = slug.replace(/^nigson-/, '');
@@ -138,7 +112,7 @@ export interface PriceResponse {
   /** Price in NGN minor units (kobo) */
   priceMinorUnits: number;
   currency: string;
-  marketId: string;
+  marketId?: string;
 }
 
 export interface ProductsPage {
@@ -268,13 +242,12 @@ export class CatalogService {
     if (filters.sort) params = params.set('sort', filters.sort);
 
     return this.http.get<any>('/api/v1/catalogue/products', { params }).pipe(
-      catchError(() => this.http.get<any>('http://localhost:8085/api/v1/catalogue/products', { params })),
       map(res => {
         const rawItems = res?.items || res?.content || [];
         const content: Product[] = rawItems.map((item: any) => {
           const sku = item.sku || item.skus?.[0]?.code || extractSku(item.slug, item.name);
           const override = this.getProductOverride(item.id) || this.getProductOverride(sku);
-          const priceMinor = override?.priceMinorUnits || (override?.price ? override.price * 100 : (OFFICIAL_SKU_PRICES[sku] || 450000));
+          const priceMinor = override?.priceMinorUnits ?? (override?.price != null ? override.price * 100 : undefined);
           const primaryImg = override?.images?.[0] || (item.imageUrl ? this.resolveImageUrl(item.imageUrl) : this.FALLBACK_IMG);
           const cat = override?.categoryName || resolveCategoryFromSku(sku, item.brandName || 'General');
 
@@ -288,7 +261,7 @@ export class CatalogService {
             description: override?.description || item.name,
             images: override?.images?.length ? override.images : (item.imageUrl ? [this.resolveImageUrl(item.imageUrl)] : [primaryImg]),
             priceMinorUnits: priceMinor,
-            price: priceMinor / 100,
+            price: priceMinor == null ? undefined : priceMinor / 100,
             publicationStatus: item.available ? 'PUBLISHED' : 'UNAVAILABLE',
             brand: override?.brand || item.brandName || 'Nigson',
             tags: [],
@@ -361,12 +334,11 @@ export class CatalogService {
 
   private getProductByUuid(uuid: string, aliasSku?: string): Observable<Product> {
     return this.http.get<any>(`/api/v1/catalogue/products/${uuid}?market=NG`).pipe(
-      catchError(() => this.http.get<any>(`http://localhost:8085/api/v1/catalogue/products/${uuid}?market=NG`)),
       map(raw => {
         const sku = raw.sku || raw.skus?.[0]?.code || extractSku(raw.slug, raw.name);
         const override = this.getProductOverride(raw.id) || this.getProductOverride(sku) || (aliasSku ? this.getProductOverride(aliasSku) : null);
         const catName = raw.categories?.[0]?.name || resolveCategoryFromSku(sku);
-        const priceMinor = override?.priceMinorUnits || (override?.price ? override.price * 100 : (OFFICIAL_SKU_PRICES[sku] || 450000));
+        const priceMinor = override?.priceMinorUnits ?? (override?.price != null ? override.price * 100 : undefined);
 
         // Map ALL backend assets into images array
         const backendImages: string[] = raw.assets?.length
@@ -408,7 +380,7 @@ export class CatalogService {
           },
           images: mergedImages,
           priceMinorUnits: priceMinor,
-          price: priceMinor / 100
+          price: priceMinor == null ? undefined : priceMinor / 100
         };
         return this.enrichWithCategories([p])[0];
       }),
@@ -437,7 +409,6 @@ export class CatalogService {
 
   loadCategories(): Observable<Category[]> {
     return this.http.get<any[]>('/api/v1/catalogue/categories?market=NG').pipe(
-      catchError(() => this.http.get<any[]>('http://localhost:8085/api/v1/catalogue/categories?market=NG')),
       map(cats => (cats || []).map(c => ({
         id: c.id,
         name: c.name,
@@ -471,19 +442,9 @@ export class CatalogService {
     return this.http.get<any>(`/api/v1/catalogue/skus/${skuId}/price?market=NG&quantity=${quantity}`).pipe(
       map(res => ({
         skuId: res.skuId,
-        priceMinorUnits: Math.round(parseFloat(res.unitAmount) * 100),
-        currency: res.currency,
-        marketId: '29b78d62-ec0d-5ff9-8319-b485ecb093d6'
-      })),
-      catchError(err => {
-        console.error('[CatalogService] getPrice failed:', err);
-        return of({
-          skuId,
-          priceMinorUnits: 0,
-          currency: 'NGN',
-          marketId: '29b78d62-ec0d-5ff9-8319-b485ecb093d6'
-        });
-      })
+        priceMinorUnits: Math.round(Number(res.unitAmount) * 100),
+        currency: res.currency
+      }))
     );
   }
 

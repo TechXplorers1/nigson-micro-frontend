@@ -1,9 +1,9 @@
-﻿import { Component, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { LucideLoader2, LucideShieldCheck, LucideLock } from '@lucide/angular';
 import { AuthShellComponent } from '../auth-shell/auth-shell.component';
-import { BFF_BASE } from 'shared-ui';
+import { SessionService } from 'shared-ui';
 
 /**
  * ResetPasswordComponent (TASK-11)
@@ -11,8 +11,9 @@ import { BFF_BASE } from 'shared-ui';
  * Password reset in Nigson is handled exclusively by Keycloak.
  * The browser never collects old/new passwords directly.
  *
- * This component redirects to the Keycloak forgot-password flow
- * via the BFF login endpoint with kc_action=UPDATE_PASSWORD hint.
+ * The BFF does not expose a password-reset action. This screen directs the
+ * user to the normal BFF sign-in flow, where the identity provider may expose
+ * its configured recovery option.
  */
 @Component({
   selector: 'app-reset-password',
@@ -22,7 +23,7 @@ import { BFF_BASE } from 'shared-ui';
     <app-auth-shell
       eyebrow="Reset Password"
       title="Create new password"
-      subtitle="You will be redirected to our secure portal to reset your password safely."
+      subtitle="Password recovery is handled by the identity provider."
       [hasFooter]="false"
     >
       <div class="flex flex-col items-center gap-6 py-4">
@@ -37,8 +38,8 @@ import { BFF_BASE } from 'shared-ui';
             Secure Password Reset
           </p>
           <p class="mt-2 text-sm text-ink/70">
-            For your security, password changes are handled by Nigson's
-            identity provider. You will receive an email with a secure reset link.
+            Nigson does not collect your password. Continue to the identity
+            provider sign-in page and use its recovery option if enabled.
           </p>
         </div>
 
@@ -60,11 +61,11 @@ import { BFF_BASE } from 'shared-ui';
   `
 })
 export class ResetPasswordComponent {
+  private session = inject(SessionService);
   readonly redirecting = signal(false);
 
   redirectToReset() {
     this.redirecting.set(true);
-    // Keycloak forgot-password flow via BFF with kc_action hint
-    window.location.href = `${BFF_BASE}/bff/login?kc_action=UPDATE_PASSWORD`;
+    this.session.signIn('/account');
   }
 }

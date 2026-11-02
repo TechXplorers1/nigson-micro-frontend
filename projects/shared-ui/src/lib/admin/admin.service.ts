@@ -1,9 +1,10 @@
 import { Injectable, computed, signal, inject } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Observable, of, tap, map, catchError, from } from 'rxjs';
+import { Observable, of, tap, map, catchError, from, forkJoin } from 'rxjs';
 import { SessionService } from '../session.service';
 import { ShopService } from '../shop.service';
-import { CatalogService, OFFICIAL_SKU_PRICES, extractSku, resolveCategoryFromSku } from '../catalog.service';
+import { CatalogService } from '../catalog.service';
+import { applyInventory, mapStaffProducts } from './inventory-mapping';
 
 export type SectionKey =
   | "dashboard" | "pages" | "products" | "reviews" | "distributors"
@@ -11,7 +12,7 @@ export type SectionKey =
   | "analytics" | "blog" | "admins" | "roles";
 
 export type AdminProduct = {
-  id: string; name: string; sku: string; category: string; price: number;
+  id: string; skuId?: string; name: string; sku: string; category: string; price: number;
   desc: string; image: string; images?: string[]; status: "DRAFT" | "ACTIVE" | "ARCHIVED" | "Active" | "Draft" | "Out of Stock";
   stock: number; reserved: number; rating: number;
   cost?: number; retail?: number; lowLevel?: number;
@@ -179,13 +180,13 @@ export class AdminService {
     const roles = this.session.roles();
     if (roles.includes('ADMIN')) return this.roles().find(r => r.id === 'ADMIN') ?? null;
     if (roles.length > 0) return this.roles().find(r => r.id === roles[0]) ?? null;
-    return this.roles().find(r => r.id === 'ADMIN') ?? null;
+    return null;
   });
 
   can(section: SectionKey): boolean {
     if (this.session.isAdmin()) return true;
     const userRoles = this.session.roles();
-    if (userRoles.length === 0) return true; // Default fallback in development
+    if (userRoles.length === 0) return false;
     return userRoles.some(r => ROLE_PERMISSIONS[r]?.includes(section));
   }
 
@@ -283,68 +284,31 @@ export class AdminService {
     this.log(`Inquiry ${id} set to ${status}`);
   }
 
-  /** TASK-68: Load registered customers from identity realm */
+  /** Load the Commerce-owned staff directory; browser code never calls Keycloak Admin APIs. */
   loadStaffCustomers(): Observable<AdminCustomer[]> {
-    return from((async (): Promise<AdminCustomer[]> => {
-      try {
-        const adminBody = new URLSearchParams({
-          client_id: 'admin-cli',
-          username: 'local-bootstrap',
-          password: 'mock-local-identity-admin',
-          grant_type: 'password'
-        });
-        const tokenRes = await fetch('http://localhost:8180/realms/master/protocol/openid-connect/token', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: adminBody.toString()
-        });
-        if (!tokenRes.ok) return this.customers();
-        const { access_token } = await tokenRes.json();
-        const res = await fetch('http://localhost:8180/admin/realms/nigson-local/users?max=100', {
-          headers: { Authorization: 'Bearer ' + access_token }
-        });
-        if (!res.ok) return this.customers();
-        const users: any[] = await res.json();
-
-        const liveOrders = this.orders();
-        const mapped: AdminCustomer[] = users
-          .filter(u => u.email && !u.username?.startsWith('service-account') && !u.username?.startsWith('local-bootstrap'))
-          .map(u => {
-            const fullName = ((u.firstName || '') + ' ' + (u.lastName || '')).trim() || u.username || 'Customer';
-            const userOrders = liveOrders.filter(o => o.customer?.email?.toLowerCase() === u.email?.toLowerCase());
-            const spend = userOrders.reduce((sum, o) => sum + (o.total || 0), 0);
-            const joinedDate = u.createdTimestamp ? new Date(u.createdTimestamp).toISOString() : new Date().toISOString();
-            const phone = (u.attributes && u.attributes.phone && u.attributes.phone[0]) || '+234 800 000 0000';
-
-            return {
-              id: u.id,
-              name: fullName,
-              email: u.email,
-              phone: phone,
-              location: 'Nigeria',
-              joined: joinedDate,
-              orders: userOrders.length,
-              spend: spend,
-              saved: 0,
-              quotes: 0,
-              status: u.enabled ? 'Active' : 'Suspended'
-            };
-          });
-
-        if (mapped.length > 0) {
-          this.customers.set(mapped);
-        }
-        return mapped;
-      } catch (err) {
-        console.warn('[AdminService] loadStaffCustomers error:', err);
-        return this.customers();
-      }
-    })());
+    return this.http.get<any>('/api/v1/staff/users?size=100').pipe(
+      map(page => (page?.items ?? []).map((user: any) => ({
+        id: user.id,
+        name: user.displayName || 'User',
+        email: user.email || '',
+        phone: '',
+        location: '',
+        joined: '',
+        orders: 0,
+        spend: 0,
+        saved: 0,
+        quotes: 0,
+        status: 'Active'
+      } as AdminCustomer))),
+      tap(users => this.customers.set(users)),
+      catchError(err => {
+        console.warn('[AdminService] staff directory request failed:', err?.status ?? err);
+        this.customers.set([]);
+        return of([]);
+      })
+    );
   }
 
-  // --- Backend Staff APIs (TASK-64 to TASK-72) ---
-
-  /** TASK-64: Load staff users from GET /api/v1/staff/users (API-011) */
   loadStaffUsers(): Observable<AdminUser[]> {
     return this.http.get<{ items: any[] }>('/api/v1/staff/users').pipe(
       map(res => (res?.items ?? []).map(u => ({
@@ -402,52 +366,16 @@ export class AdminService {
     return of(formatted);
   }
 
-  /** TASK-66: Load staff products from live catalogue */
+  /** Load drafts and archived products from the staff catalogue with real warehouse stock. */
   loadStaffProducts(): Observable<AdminProduct[]> {
-    const resolveUrl = (u: string) => {
-      if (!u) return '';
-      if (u.includes('cdn.synthetic.test/assets/')) {
-        return u.replace(/^https?:\/\/[^\/]+\/assets\//, 'http://localhost:4566/nigson-product-images/');
-      }
-      if (u.startsWith('/assets/products/')) {
-        return u.replace('/assets/products/', 'http://localhost:4566/nigson-product-images/products/');
-      }
-      return u;
-    };
-    return this.http.get<any>('/api/v1/catalogue/products?market=NG&size=100').pipe(
-      catchError(() => this.http.get<any>('http://localhost:8085/api/v1/catalogue/products?market=NG&size=100')),
-      map(res => (res?.items ?? []).map((p: any) => {
-        const primaryImg = resolveUrl(p.imageUrl) || (p.images && resolveUrl(p.images[0])) || '/assets/hero-accessories.jpg';
-        const sku = p.sku || extractSku(p.slug, p.name);
-        const override = this.catalog.getProductOverride(p.id) || this.catalog.getProductOverride(sku);
-        const resolvedCat = override?.categoryName || p.categoryName || p.category || resolveCategoryFromSku(sku, 'General');
-        const defaultPrice = OFFICIAL_SKU_PRICES[sku] ? OFFICIAL_SKU_PRICES[sku] / 100 : 4500;
-        const price = override?.retail || override?.price || (p.pricing?.priceKobo ? p.pricing.priceKobo / 100 : defaultPrice);
-
-        return {
-          id: p.id,
-          name: override?.name || p.name,
-          sku: override?.sku || sku,
-          category: resolvedCat,
-          price: price,
-          retail: price,
-          wholesale: override?.wholesale || Math.round(price * 0.8),
-          distributor: override?.distributor || Math.round(price * 0.7),
-          desc: override?.description || p.description || p.name,
-          image: override?.images?.[0] || primaryImg,
-          images: override?.images?.length ? override.images : (p.images ? p.images.map(resolveUrl) : [primaryImg]),
-          status: (override?.status || (p.available ? 'Active' : 'Active')) as any,
-          stock: override?.stock ?? (p.stock || 150),
-          reserved: p.reserved ?? 0,
-          rating: p.rating ?? 5.0,
-          ...override
-        };
-      })),
-      tap(products => {
-        if (products.length > 0) this.products.set(products);
-      }),
+    return forkJoin({
+      catalogue: this.http.get<{ items: any[] }>('/api/v1/staff/products?size=100'),
+      inventory: this.http.get<{ items: any[] }>('/api/v1/staff/inventory?size=100')
+    }).pipe(
+      map(({ catalogue, inventory }) => mapStaffProducts(catalogue.items ?? [], inventory.items ?? [])),
+      tap(products => this.products.set(products)),
       catchError(err => {
-        console.warn('[AdminService] loadStaffProducts fallback:', err?.status ?? err);
+        console.warn('[AdminService] loadStaffProducts failed:', err?.status ?? err);
         return of(this.products());
       })
     );
@@ -571,32 +499,20 @@ export class AdminService {
     );
   }
 
-  /** TASK-71: Load inventory from GET /api/v1/staff/inventory (API-045) */
+  /** Load balances using actual catalogue SKU IDs, including zero and low stock. */
   loadStaffInventory(): Observable<any[]> {
-    return this.http.get<{ items: any[] }>('/api/v1/staff/inventory').pipe(
-      map(res => (res?.items ?? []).map(inv => {
-        const skuId = inv.skuId;
-        const codeMap: Record<string, string> = {
-          '55555555-2222-3333-4444-555555555501': 'NG-PB-20K',
-          '55555555-2222-3333-4444-555555555502': 'NG-CB-01',
-          '55555555-2222-3333-4444-555555555503': 'NG-CC-01',
-          '55555555-2222-3333-4444-555555555504': 'NG-EB-01'
-        };
-        const skuCode = codeMap[skuId] || skuId;
-        const onHand = parseFloat(inv.onHand) || 0;
-        const reserved = parseFloat(inv.reserved) || 0;
-        this.products.update(prods => prods.map(p => (p.id === skuId || p.sku === skuCode) ? { ...p, stock: onHand, reserved } : p));
-        return {
-          skuId: inv.skuId,
-          sku: skuCode,
-          locationId: inv.locationId,
-          onHand: onHand,
-          reserved: reserved,
-          allocated: parseFloat(inv.allocated) || 0,
-          available: parseFloat(inv.available) || 0,
-          version: inv.version
-        };
-      })),
+    return this.http.get<{ items: any[] }>('/api/v1/staff/inventory?size=100').pipe(
+      tap(res => this.products.update(products => applyInventory(products, res.items ?? []))),
+      map(res => (res.items ?? []).map(inv => ({
+        skuId: inv.skuId,
+        sku: this.products().find(product => product.skuId === inv.skuId)?.sku ?? inv.skuId,
+        locationId: inv.locationId,
+        onHand: Number(inv.onHand),
+        reserved: Number(inv.reserved),
+        allocated: Number(inv.allocated),
+        available: Number(inv.available),
+        version: inv.version
+      }))),
       catchError(err => {
         console.error('[AdminService] loadStaffInventory failed:', err);
         return of([]);
@@ -683,8 +599,8 @@ export class AdminService {
     });
     return this.http.post('/api/v1/staff/products', payload, { headers }).pipe(
       catchError(err => {
-        console.warn('[AdminService] /api/v1/staff/products notice, falling back to DB bridge directly:', err?.status);
-        return this.http.post('http://localhost:8085/api/v1/staff/products', payload, { headers });
+        console.warn('[AdminService] Java Commerce product create failed:', err?.status);
+        throw err;
       }),
       tap((created: any) => {
         const id = created?.id || payload.id || crypto.randomUUID();
@@ -737,14 +653,13 @@ export class AdminService {
     }
 
     return this.http.patch(`/api/v1/staff/products/${id}`, payload, { headers }).pipe(
-      catchError(() => this.http.patch(`http://localhost:8085/api/v1/staff/products/${id}`, payload, { headers })),
       tap(() => {
         this.products.update(all => all.map(p => (p.id === id || p.sku === payload.sku) ? { ...p, ...payload } : p));
         this.log(`Product ${payload.name || id} updated`);
       }),
       catchError(err => {
-        console.warn('[AdminService] updateProduct fallback notice:', err?.status ?? err);
-        return of({ ...payload, id });
+        console.error('[AdminService] updateProduct failed:', err);
+        return of(null);
       })
     );
   }
@@ -759,11 +674,10 @@ export class AdminService {
     this.log(`Product ${idOrSku} deleted`);
 
     return this.http.delete<any>(`/api/v1/staff/products/${encodeURIComponent(idOrSku)}`, { headers }).pipe(
-      catchError(() => this.http.delete<any>(`http://localhost:8085/api/v1/staff/products/${encodeURIComponent(idOrSku)}`, { headers })),
       map(() => true),
       catchError(err => {
-        console.error('[AdminService] deleteProduct notice:', err);
-        return of(true);
+        console.error('[AdminService] deleteProduct failed:', err);
+        return of(false);
       })
     );
   }

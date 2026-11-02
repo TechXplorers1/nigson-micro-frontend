@@ -1,224 +1,105 @@
-import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
-import {
-  LucideLoader2,
-  LucideShieldCheck,
-  LucideUserPlus,
-  LucideExternalLink,
-  LucideUser,
-  LucideMail,
-  LucideLock,
-  LucideArrowRight,
-  LucideCheckCircle2
-} from '@lucide/angular';
+import { RouterLink } from '@angular/router';
+import { BFF_BASE } from 'shared-ui';
 import { AuthShellComponent } from '../auth-shell/auth-shell.component';
-import { SessionService, KeycloakService } from 'shared-ui';
 
-/**
- * SignupComponent (TASK-10)
- *
- * Provides self-registration options:
- * 1. Direct registration into Keycloak realm with immediate session initialization.
- * 2. Keycloak official registration portal flow with PKCE.
- * 3. Instant test customer creation for development and verification.
- */
+interface RegistrationRequest {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+}
+
 @Component({
   selector: 'app-signup',
   standalone: true,
-  imports: [
-    CommonModule,
-    FormsModule,
-    RouterLink,
-    AuthShellComponent,
-    LucideLoader2,
-    LucideShieldCheck,
-    LucideUserPlus,
-    LucideExternalLink,
-    LucideUser,
-    LucideMail,
-    LucideLock,
-    LucideArrowRight,
-    LucideCheckCircle2
-  ],
+  imports: [CommonModule, FormsModule, RouterLink, AuthShellComponent],
   template: `
-    <app-auth-shell
-      eyebrow="Create an account"
-      title="Join Nigson Group"
-      subtitle="Register securely to manage your procurement, tracking, and trade credit accounts."
-      [hasFooter]="true"
-    >
-      <div class="flex flex-col gap-5 py-2">
-        <!-- Status / Error banners -->
-        <div *ngIf="errorMessage()" class="rounded-2xl border border-red-200 bg-red-50 p-3.5 text-xs text-red-700 flex items-start gap-2.5 animate-in fade-in">
-          <span class="font-bold flex-shrink-0">Error:</span>
-          <span>{{ errorMessage() }}</span>
+    <app-auth-shell eyebrow="Create an account" title="Join Nigson"
+      subtitle="Create your Nigson account. Your password is securely sent to our identity service and is never stored by this application." [hasFooter]="true">
+      <form *ngIf="!complete()" #signupForm="ngForm" (ngSubmit)="submit(signupForm)" class="flex flex-col gap-4">
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <label class="flex flex-col gap-1.5 text-sm font-medium text-ink">First name
+            <input name="firstName" [(ngModel)]="firstName" required maxlength="80" autocomplete="given-name"
+              class="rounded-xl border border-hairline px-4 py-3 font-normal" />
+          </label>
+          <label class="flex flex-col gap-1.5 text-sm font-medium text-ink">Last name
+            <input name="lastName" [(ngModel)]="lastName" required maxlength="80" autocomplete="family-name"
+              class="rounded-xl border border-hairline px-4 py-3 font-normal" />
+          </label>
         </div>
-
-        <div *ngIf="successMessage()" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-3.5 text-xs text-emerald-800 flex items-center gap-2.5 animate-in fade-in">
-          <svg lucideCheckCircle2 class="h-4 w-4 text-emerald-600 flex-shrink-0"></svg>
-          <span class="font-semibold">{{ successMessage() }}</span>
-        </div>
-
-        <!-- In-app Keycloak Registration Form -->
-        <form (ngSubmit)="submitDirectRegistration()" class="space-y-3.5">
-          <div>
-            <label class="block text-xs font-semibold text-ink/80 mb-1.5" for="signup-name">Full Name</label>
-            <div class="relative">
-              <svg lucideUser class="absolute left-3.5 top-3.5 h-4 w-4 text-muted-ink"></svg>
-              <input
-                id="signup-name"
-                name="fullName"
-                type="text"
-                [(ngModel)]="fullName"
-                required
-                placeholder="e.g. Chidi Okonkwo"
-                class="w-full rounded-xl border border-hairline bg-surface-alt/50 pl-10 pr-3.5 py-2.5 text-sm text-ink placeholder:text-muted-ink focus:border-brand focus:bg-white focus:outline-none transition-all"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label class="block text-xs font-semibold text-ink/80 mb-1.5" for="signup-email">Work / Personal Email</label>
-            <div class="relative">
-              <svg lucideMail class="absolute left-3.5 top-3.5 h-4 w-4 text-muted-ink"></svg>
-              <input
-                id="signup-email"
-                name="email"
-                type="email"
-                [(ngModel)]="email"
-                required
-                placeholder="name@company.com"
-                class="w-full rounded-xl border border-hairline bg-surface-alt/50 pl-10 pr-3.5 py-2.5 text-sm text-ink placeholder:text-muted-ink focus:border-brand focus:bg-white focus:outline-none transition-all"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label class="block text-xs font-semibold text-ink/80 mb-1.5" for="signup-password">Password</label>
-            <div class="relative">
-              <svg lucideLock class="absolute left-3.5 top-3.5 h-4 w-4 text-muted-ink"></svg>
-              <input
-                id="signup-password"
-                name="password"
-                type="password"
-                [(ngModel)]="password"
-                required
-                minlength="6"
-                placeholder="At least 6 characters"
-                class="w-full rounded-xl border border-hairline bg-surface-alt/50 pl-10 pr-3.5 py-2.5 text-sm text-ink placeholder:text-muted-ink focus:border-brand focus:bg-white focus:outline-none transition-all"
-              />
-            </div>
-          </div>
-
-          <button
-            id="btn-submit-signup"
-            type="submit"
-            [disabled]="submitting() || redirecting()"
-            class="w-full inline-flex items-center justify-center gap-2 rounded-full bg-brand text-white py-3 text-sm font-semibold hover:bg-brand-deep transition-colors shadow-sm disabled:opacity-70 mt-2"
-          >
-            <svg *ngIf="submitting()" lucideLoader2 class="h-4 w-4 animate-spin"></svg>
-            <svg *ngIf="!submitting()" lucideUserPlus class="h-4 w-4"></svg>
-            {{ submitting() ? 'Creating Keycloak Account...' : 'Create Account' }}
-          </button>
-        </form>
-
-        <div class="relative flex items-center justify-center my-1">
-          <div class="w-full border-t border-hairline"></div>
-          <span class="absolute bg-white px-3 text-[11px] font-semibold uppercase tracking-widest text-muted-ink">OR</span>
-        </div>
-
-        <!-- Keycloak Portal Flow -->
-        <button
-          id="btn-bff-register"
-          type="button"
-          (click)="redirectToRegister()"
-          [disabled]="redirecting() || submitting()"
-          class="w-full inline-flex items-center justify-center gap-2 rounded-full border border-hairline bg-white py-2.5 text-sm font-semibold text-ink hover:border-brand hover:text-brand transition-colors disabled:opacity-70"
-        >
-          <svg *ngIf="redirecting()" lucideLoader2 class="h-4 w-4 animate-spin"></svg>
-          <svg *ngIf="!redirecting()" lucideExternalLink class="h-4 w-4 text-brand"></svg>
-          {{ redirecting() ? 'Opening Keycloak...' : 'Register on Keycloak Portal' }}
+        <label class="flex flex-col gap-1.5 text-sm font-medium text-ink">Email
+          <input name="email" [(ngModel)]="email" type="email" required maxlength="254" autocomplete="email"
+            class="rounded-xl border border-hairline px-4 py-3 font-normal" />
+        </label>
+        <label class="flex flex-col gap-1.5 text-sm font-medium text-ink">Password
+          <input name="password" [(ngModel)]="password" type="password" required minlength="12" maxlength="128" autocomplete="new-password"
+            class="rounded-xl border border-hairline px-4 py-3 font-normal" />
+          <span class="text-xs font-normal text-muted-ink">Use at least 12 characters.</span>
+        </label>
+        <label class="flex flex-col gap-1.5 text-sm font-medium text-ink">Confirm password
+          <input name="confirmPassword" [(ngModel)]="confirmPassword" type="password" required minlength="12" maxlength="128" autocomplete="new-password"
+            class="rounded-xl border border-hairline px-4 py-3 font-normal" />
+        </label>
+        <p *ngIf="error()" role="alert" class="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{{ error() }}</p>
+        <button type="submit" [disabled]="signupForm.invalid || submitting()"
+          class="w-full rounded-full bg-brand py-3 text-sm font-semibold text-white disabled:opacity-60">
+          {{ submitting() ? 'Creating account…' : 'Create account' }}
         </button>
-
-        <!-- Fast Dev Test Profile -->
-        <div class="rounded-2xl border border-hairline bg-surface-alt p-3.5 flex items-center justify-between">
-          <div>
-            <p class="text-xs font-bold text-ink">Fast Development Bypass</p>
-            <p class="text-[11px] text-muted-ink">Create temporary test customer session instantly.</p>
-          </div>
-          <button
-            id="btn-dev-register"
-            type="button"
-            (click)="createDemoAccount()"
-            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-hairline bg-white text-xs font-semibold text-brand hover:border-brand transition-colors"
-          >
-            <svg lucideUser class="h-3.5 w-3.5"></svg> Instant Test
-          </button>
+        <p class="text-center text-xs leading-5 text-muted-ink">Nigson does not store your password. Account credentials are managed by our secure identity service.</p>
+      </form>
+      <div *ngIf="complete()" class="flex flex-col gap-4 py-2">
+        <div role="status" class="rounded-2xl border border-green-200 bg-green-50 p-4 text-sm leading-6 text-green-900">
+          If this email is available, registration is complete. Sign in to continue. If you already have an account, use the sign-in page.
         </div>
-
-        <p class="text-center text-[11px] text-muted-ink">
-          By registering, you agree to Nigson Group's Terms of Service and Privacy Policy.
-        </p>
+        <a routerLink="/auth/login" class="w-full rounded-full bg-brand py-3 text-center text-sm font-semibold text-white">Continue to sign in</a>
       </div>
-
-      <div footer>
-        Already have an account?
-        <a routerLink="/auth/login" class="font-semibold text-brand hover:underline">Sign in</a>
-      </div>
+      <div footer>Already have an account? <a routerLink="/auth/login" class="font-semibold text-brand hover:underline">Sign in</a></div>
     </app-auth-shell>
   `
 })
 export class SignupComponent {
-  private keycloak = inject(KeycloakService);
-  private session = inject(SessionService);
-  private router = inject(Router);
-
-  readonly redirecting = signal(false);
+  private readonly http = inject(HttpClient);
   readonly submitting = signal(false);
-  readonly errorMessage = signal<string | null>(null);
-  readonly successMessage = signal<string | null>(null);
-
-  fullName = '';
+  readonly complete = signal(false);
+  readonly error = signal<string | null>(null);
+  firstName = '';
+  lastName = '';
   email = '';
   password = '';
+  confirmPassword = '';
 
-  createDemoAccount() {
-    this.session.signIn('/account');
-  }
-
-  redirectToRegister() {
-    this.redirecting.set(true);
-    this.session.signIn('/account');
-  }
-
-  submitDirectRegistration() {
-    if (!this.email || !this.fullName || !this.password) {
-      this.errorMessage.set('Please fill in your name, email, and password.');
+  submit(form: { valid: boolean | null }): void {
+    this.error.set(null);
+    if (form.valid !== true) return;
+    if (this.password !== this.confirmPassword) {
+      this.error.set('Passwords do not match.');
       return;
     }
-    if (this.password.length < 6) {
-      this.errorMessage.set('Password must be at least 6 characters.');
-      return;
-    }
-
-    this.submitting.set(true);
-    this.errorMessage.set(null);
-
-    this.keycloak.registerDirect({
-      fullName: this.fullName,
-      email: this.email,
+    const request: RegistrationRequest = {
+      firstName: this.firstName.trim(),
+      lastName: this.lastName.trim(),
+      email: this.email.trim(),
       password: this.password
-    }).subscribe(res => {
-      this.submitting.set(false);
-      if (res.success) {
-        this.successMessage.set('Account registered in Keycloak! Redirecting...');
-        setTimeout(() => {
-          this.router.navigate(['/account']);
-        }, 1000);
-      } else {
-        this.errorMessage.set(res.error || 'Registration failed. The email may already be in use.');
+    };
+    this.submitting.set(true);
+    this.http.post<void>(`${BFF_BASE}/bff/register`, request, { withCredentials: true }).subscribe({
+      next: () => {
+        this.password = '';
+        this.confirmPassword = '';
+        this.complete.set(true);
+        this.submitting.set(false);
+      },
+      error: (failure: HttpErrorResponse) => {
+        this.submitting.set(false);
+        this.error.set(failure.status === 429
+          ? 'Too many attempts. Wait a minute before trying again.'
+          : failure.status === 400 || failure.status === 422
+            ? 'Check the information and password requirements, then try again.'
+            : 'Registration is temporarily unavailable. Please try again later.');
       }
     });
   }

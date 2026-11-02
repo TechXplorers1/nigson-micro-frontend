@@ -107,7 +107,7 @@ import {
               <dl class="space-y-2 text-sm">
                 <div class="flex justify-between text-muted-ink"><dt>Subtotal</dt><dd>{{ formatPrice(order()?.subtotalMinorUnits ?? 0) }}</dd></div>
                 <div class="flex justify-between text-muted-ink"><dt>Shipping (FedEx)</dt><dd>{{ formatPrice(order()?.shippingMinorUnits ?? 0) }}</dd></div>
-                <div class="flex justify-between text-muted-ink"><dt>VAT (7.5%)</dt><dd>{{ formatPrice(order()?.taxMinorUnits ?? 0) }}</dd></div>
+                <div class="flex justify-between text-muted-ink"><dt>Tax</dt><dd>{{ formatPrice(order()?.taxMinorUnits ?? 0) }}</dd></div>
                 <div class="mt-4 border-t border-hairline pt-4 flex justify-between text-base font-extrabold text-ink">
                   <dt>Total Paid</dt><dd>{{ formatPrice(order()?.totalMinorUnits ?? 0) }}</dd>
                 </div>

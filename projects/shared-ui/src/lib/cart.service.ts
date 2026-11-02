@@ -1,6 +1,6 @@
 import { Injectable, inject, signal, computed, effect } from "@angular/core";
 import { HttpClient, HttpHeaders } from "@angular/common/http";
-import { Observable, of, tap, catchError, switchMap, map } from "rxjs";
+import { Observable, of, tap, catchError, switchMap, map, forkJoin } from "rxjs";
 import { SessionService } from "./session.service";
 
 export interface CartLineItem {
@@ -58,29 +58,29 @@ export interface SkuMetadata {
 const S3_PRODUCTS_BASE = 'http://localhost:4566/nigson-product-images/products';
 
 const OFFICIAL_SKUS: SkuMetadata[] = [
-  { skuId: 'ecac9622-ee78-5c52-8eb5-7c244e055d03', productId: '5570995e-1b59-5592-ba5c-fa95a0c02c20', code: 'NS03', name: 'NS03 Wireless Earbuds (TWS)', priceMinor: 1850000, img: `${S3_PRODUCTS_BASE}/ns03/img-1.png`, category: 'Earbuds' },
-  { skuId: 'c52cf637-25d0-5eb6-862a-e737389c7ad4', productId: '8ba363e8-815a-52ee-be26-74da166eba83', code: 'NS06', name: 'NS06 ANC/ENC Wireless Earbuds', priceMinor: 2850000, img: `${S3_PRODUCTS_BASE}/ns06/img-1.png`, category: 'Earbuds' },
-  { skuId: '63573bb9-a11d-542a-97aa-ca6cb2c92290', productId: '41934e70-179f-5c0a-9498-28c8b6a4fd9f', code: 'NS107', name: 'NS107 High-Power Car Charger with Retractable Cable', priceMinor: 1650000, img: `${S3_PRODUCTS_BASE}/ns107/img-1.png`, category: 'Chargers' },
-  { skuId: '4907f781-8654-5559-88cf-1ce35df2cb15', productId: 'bff4b7e3-8e19-566b-9c95-bc941390f84f', code: 'NS211C', name: 'NS211C Type-C to Type-C PD65W Cable', priceMinor: 550000, img: `${S3_PRODUCTS_BASE}/ns211c/img-1.png`, category: 'Cables' },
-  { skuId: 'c3002b2f-4326-59ec-b460-09ba406bc800', productId: '3bd11da9-6a93-5f56-ae87-8afdad3d52ab', code: 'NS211i', name: 'NS211i Type-C to Lightning PD30W Cable', priceMinor: 480000, img: `${S3_PRODUCTS_BASE}/ns211i/img-1.png`, category: 'Cables' },
-  { skuId: 'f65f2023-ef23-53ca-bfa2-8b40877ed658', productId: '1908dc43-accf-5578-870c-ec519d73367c', code: 'NS25', name: 'NS25 4-in-1 Charging Cable', priceMinor: 650000, img: `${S3_PRODUCTS_BASE}/ns25/img-1.png`, category: 'Cables' },
-  { skuId: '812f8742-6c94-5b92-a313-f0c0fdee9559', productId: '51c9cd3c-5d6c-5049-b821-d80c7c512305', code: 'NS2526C', name: 'NS2526C High Power Fast Wall Charger, GaN65W', priceMinor: 2450000, img: `${S3_PRODUCTS_BASE}/ns2526c/img-1.png`, category: 'Chargers' },
-  { skuId: 'b5cf3ecb-5ed0-5e6f-9cea-4da88f91baa3', productId: '1fc9d7b4-1716-54fb-905a-ea5a80620a07', code: 'NS2618', name: 'NS2618 All-in-One Universal Multiway Adapter, GaN65W', priceMinor: 2950000, img: `${S3_PRODUCTS_BASE}/ns2618/img-1.png`, category: 'Chargers' },
-  { skuId: 'c4f089fb-7a27-5b3e-bc02-f9565d5653ff', productId: '28cd1e1a-bc40-5728-bf56-4c785b8613f2', code: 'NS3416', name: 'NS3416 65W GaN Power Socket', priceMinor: 3200000, img: `${S3_PRODUCTS_BASE}/ns3416/img-1.png`, category: 'Extension Sockets' },
-  { skuId: '51c2d6f5-82ae-5eae-8f5d-5975fd7318fc', productId: 'cd9acab9-5bce-5274-a051-773e756d1b0e', code: 'NS3604C', name: 'NS3604C Multi-Socket Extension Box', priceMinor: 2750000, img: `${S3_PRODUCTS_BASE}/ns3604c/img-1.png`, category: 'Extension Sockets' },
-  { skuId: 'b9f0156b-c3d2-5bf6-8113-b88f83c01e6d', productId: '95be469d-489f-5d09-9308-18f6941e4d41', code: 'NS4', name: 'NS4 Home Charger', priceMinor: 950000, img: `${S3_PRODUCTS_BASE}/ns4/img-1.png`, category: 'Chargers' },
-  { skuId: 'e5e75b4f-26fa-56bd-a68f-c10aa50082f3', productId: '240af070-7cac-5840-93f7-731aff6bf976', code: 'NS6', name: 'NS6 Large Motion-Activated Cabinet Light (410MM)', priceMinor: 1950000, img: `${S3_PRODUCTS_BASE}/ns6/img-1.png`, category: 'Motion-Activated Lights' },
-  { skuId: '4af2eb38-f4cc-5bc0-b182-01e667ed00b7', productId: '82478136-b526-5238-94c9-d076af6ebc47', code: 'NS6-1', name: 'NS6-1 Medium Motion-Activated Cabinet Light (220MM)', priceMinor: 1450000, img: `${S3_PRODUCTS_BASE}/ns6_1/img-1.png`, category: 'Motion-Activated Lights' },
-  { skuId: '21d1fa9a-6d1e-54fb-98e0-72439394fe00', productId: '0a51dae9-2795-507b-84a6-100c06513332', code: 'NS901C', name: 'NS901C Type-C to Type-C Charging Cable', priceMinor: 450000, img: `${S3_PRODUCTS_BASE}/ns901c/img-1.png`, category: 'Cables' },
-  { skuId: '70bdf50e-781f-5578-9afb-bcf69125a1f3', productId: '0de50201-b6bf-5270-b7d4-79766c7f9447', code: 'NS901i', name: 'NS901i Type-C to Lightning Charging Cable', priceMinor: 420000, img: `${S3_PRODUCTS_BASE}/ns901i/img-1.png`, category: 'Cables' },
-  { skuId: '49aca633-ca39-5771-aabd-0cd1448db881', productId: '033336d7-5025-5112-9af2-726e6e02caf4', code: 'NS96U', name: 'NS96U 3-in-1 Charging Cable', priceMinor: 520000, img: `${S3_PRODUCTS_BASE}/ns96u/img-1.png`, category: 'Cables' },
-  { skuId: '04ae2d72-94ab-5ff8-82a4-28272755ee75', productId: 'fee9c518-4071-5aa7-a72b-6ed0ed1b83d3', code: 'PQ19', name: 'PQ19 Power Bank, 10,000mAh', priceMinor: 1650000, img: `${S3_PRODUCTS_BASE}/pq19/img-1.png`, category: 'Power Banks' },
-  { skuId: '75e0a2eb-54e6-552e-b99c-a956f8557592', productId: '1bac82ef-a37c-56b7-a290-afbddbd914a5', code: 'PQ20', name: 'PQ20 Power Bank, 20,000mAh', priceMinor: 2650000, img: `${S3_PRODUCTS_BASE}/pq20/img-1.png`, category: 'Power Banks' },
-  { skuId: '7faca25c-8831-5149-84e4-47e037580cac', productId: '4ad4e90d-ec4e-5caa-f7ad88e19e29', code: 'PQ28', name: 'PQ28 Magnetic Wireless Power Bank, 5,000mAh', priceMinor: 1950000, img: `${S3_PRODUCTS_BASE}/pq28/img-1.jpeg`, category: 'Power Banks' },
-  { skuId: '3e82bda0-2606-580f-98ef-a01e322d325a', productId: 'c7db7adb-726b-5173-a385-004b258ea128', code: 'PQ30', name: 'PQ30 Power Bank, 30,000mAh', priceMinor: 3450000, img: `${S3_PRODUCTS_BASE}/pq30/img-1.png`, category: 'Power Banks' },
-  { skuId: '3882394e-69bd-5c71-9b14-fcf7a82481bd', productId: 'c995e043-e1e8-5979-b4ea-e6d1dedc7322', code: 'PQ50', name: 'PQ50 Power Bank, 50,000mAh', priceMinor: 4850000, img: `${S3_PRODUCTS_BASE}/pq50/img-1.png`, category: 'Power Banks' },
-  { skuId: 'ecbe959f-d3e9-5f25-8cb5-1718bf14972e', productId: '4351a029-79f9-57e0-94e8-466d7ad4ef19', code: 'ZS6', name: 'ZS6 Multi-Device Desktop Fast Charger', priceMinor: 2650000, img: `${S3_PRODUCTS_BASE}/zs6/img-1.png`, category: 'Chargers' },
-  { skuId: '0df9e4fb-2794-55fe-a1f9-d8977114b7e9', productId: 'fa096df5-7313-5a7a-aa01-4475ee45b98f', code: 'ZS8', name: 'ZS8 Ultra-Fast GaN Travel Charger 65W', priceMinor: 2150000, img: `${S3_PRODUCTS_BASE}/zs8/img-1.png`, category: 'Chargers' }
+  { skuId: 'ecac9622-ee78-5c52-8eb5-7c244e055d03', productId: '5570995e-1b59-5592-ba5c-fa95a0c02c20', code: 'NS03', name: 'NS03 Wireless Earbuds (TWS)', priceMinor: 0, img: `${S3_PRODUCTS_BASE}/ns03/img-1.png`, category: 'Earbuds' },
+  { skuId: 'c52cf637-25d0-5eb6-862a-e737389c7ad4', productId: '8ba363e8-815a-52ee-be26-74da166eba83', code: 'NS06', name: 'NS06 ANC/ENC Wireless Earbuds', priceMinor: 0, img: `${S3_PRODUCTS_BASE}/ns06/img-1.png`, category: 'Earbuds' },
+  { skuId: '63573bb9-a11d-542a-97aa-ca6cb2c92290', productId: '41934e70-179f-5c0a-9498-28c8b6a4fd9f', code: 'NS107', name: 'NS107 High-Power Car Charger with Retractable Cable', priceMinor: 0, img: `${S3_PRODUCTS_BASE}/ns107/img-1.png`, category: 'Chargers' },
+  { skuId: '4907f781-8654-5559-88cf-1ce35df2cb15', productId: 'bff4b7e3-8e19-566b-9c95-bc941390f84f', code: 'NS211C', name: 'NS211C Type-C to Type-C PD65W Cable', priceMinor: 0, img: `${S3_PRODUCTS_BASE}/ns211c/img-1.png`, category: 'Cables' },
+  { skuId: 'c3002b2f-4326-59ec-b460-09ba406bc800', productId: '3bd11da9-6a93-5f56-ae87-8afdad3d52ab', code: 'NS211i', name: 'NS211i Type-C to Lightning PD30W Cable', priceMinor: 0, img: `${S3_PRODUCTS_BASE}/ns211i/img-1.png`, category: 'Cables' },
+  { skuId: 'f65f2023-ef23-53ca-bfa2-8b40877ed658', productId: '1908dc43-accf-5578-870c-ec519d73367c', code: 'NS25', name: 'NS25 4-in-1 Charging Cable', priceMinor: 0, img: `${S3_PRODUCTS_BASE}/ns25/img-1.png`, category: 'Cables' },
+  { skuId: '812f8742-6c94-5b92-a313-f0c0fdee9559', productId: '51c9cd3c-5d6c-5049-b821-d80c7c512305', code: 'NS2526C', name: 'NS2526C High Power Fast Wall Charger, GaN65W', priceMinor: 0, img: `${S3_PRODUCTS_BASE}/ns2526c/img-1.png`, category: 'Chargers' },
+  { skuId: 'b5cf3ecb-5ed0-5e6f-9cea-4da88f91baa3', productId: '1fc9d7b4-1716-54fb-905a-ea5a80620a07', code: 'NS2618', name: 'NS2618 All-in-One Universal Multiway Adapter, GaN65W', priceMinor: 0, img: `${S3_PRODUCTS_BASE}/ns2618/img-1.png`, category: 'Chargers' },
+  { skuId: 'c4f089fb-7a27-5b3e-bc02-f9565d5653ff', productId: '28cd1e1a-bc40-5728-bf56-4c785b8613f2', code: 'NS3416', name: 'NS3416 65W GaN Power Socket', priceMinor: 0, img: `${S3_PRODUCTS_BASE}/ns3416/img-1.png`, category: 'Extension Sockets' },
+  { skuId: '51c2d6f5-82ae-5eae-8f5d-5975fd7318fc', productId: 'cd9acab9-5bce-5274-a051-773e756d1b0e', code: 'NS3604C', name: 'NS3604C Multi-Socket Extension Box', priceMinor: 0, img: `${S3_PRODUCTS_BASE}/ns3604c/img-1.png`, category: 'Extension Sockets' },
+  { skuId: 'b9f0156b-c3d2-5bf6-8113-b88f83c01e6d', productId: '95be469d-489f-5d09-9308-18f6941e4d41', code: 'NS4', name: 'NS4 Home Charger', priceMinor: 0, img: `${S3_PRODUCTS_BASE}/ns4/img-1.png`, category: 'Chargers' },
+  { skuId: 'e5e75b4f-26fa-56bd-a68f-c10aa50082f3', productId: '240af070-7cac-5840-93f7-731aff6bf976', code: 'NS6', name: 'NS6 Large Motion-Activated Cabinet Light (410MM)', priceMinor: 0, img: `${S3_PRODUCTS_BASE}/ns6/img-1.png`, category: 'Motion-Activated Lights' },
+  { skuId: '4af2eb38-f4cc-5bc0-b182-01e667ed00b7', productId: '82478136-b526-5238-94c9-d076af6ebc47', code: 'NS6-1', name: 'NS6-1 Medium Motion-Activated Cabinet Light (220MM)', priceMinor: 0, img: `${S3_PRODUCTS_BASE}/ns6_1/img-1.png`, category: 'Motion-Activated Lights' },
+  { skuId: '21d1fa9a-6d1e-54fb-98e0-72439394fe00', productId: '0a51dae9-2795-507b-84a6-100c06513332', code: 'NS901C', name: 'NS901C Type-C to Type-C Charging Cable', priceMinor: 0, img: `${S3_PRODUCTS_BASE}/ns901c/img-1.png`, category: 'Cables' },
+  { skuId: '70bdf50e-781f-5578-9afb-bcf69125a1f3', productId: '0de50201-b6bf-5270-b7d4-79766c7f9447', code: 'NS901i', name: 'NS901i Type-C to Lightning Charging Cable', priceMinor: 0, img: `${S3_PRODUCTS_BASE}/ns901i/img-1.png`, category: 'Cables' },
+  { skuId: '49aca633-ca39-5771-aabd-0cd1448db881', productId: '033336d7-5025-5112-9af2-726e6e02caf4', code: 'NS96U', name: 'NS96U 3-in-1 Charging Cable', priceMinor: 0, img: `${S3_PRODUCTS_BASE}/ns96u/img-1.png`, category: 'Cables' },
+  { skuId: '04ae2d72-94ab-5ff8-82a4-28272755ee75', productId: 'fee9c518-4071-5aa7-a72b-6ed0ed1b83d3', code: 'PQ19', name: 'PQ19 Power Bank, 10,000mAh', priceMinor: 0, img: `${S3_PRODUCTS_BASE}/pq19/img-1.png`, category: 'Power Banks' },
+  { skuId: '75e0a2eb-54e6-552e-b99c-a956f8557592', productId: '1bac82ef-a37c-56b7-a290-afbddbd914a5', code: 'PQ20', name: 'PQ20 Power Bank, 20,000mAh', priceMinor: 0, img: `${S3_PRODUCTS_BASE}/pq20/img-1.png`, category: 'Power Banks' },
+  { skuId: '7faca25c-8831-5149-84e4-47e037580cac', productId: '4ad4e90d-ec4e-5caa-f7ad88e19e29', code: 'PQ28', name: 'PQ28 Magnetic Wireless Power Bank, 5,000mAh', priceMinor: 0, img: `${S3_PRODUCTS_BASE}/pq28/img-1.jpeg`, category: 'Power Banks' },
+  { skuId: '3e82bda0-2606-580f-98ef-a01e322d325a', productId: 'c7db7adb-726b-5173-a385-004b258ea128', code: 'PQ30', name: 'PQ30 Power Bank, 30,000mAh', priceMinor: 0, img: `${S3_PRODUCTS_BASE}/pq30/img-1.png`, category: 'Power Banks' },
+  { skuId: '3882394e-69bd-5c71-9b14-fcf7a82481bd', productId: 'c995e043-e1e8-5979-b4ea-e6d1dedc7322', code: 'PQ50', name: 'PQ50 Power Bank, 50,000mAh', priceMinor: 0, img: `${S3_PRODUCTS_BASE}/pq50/img-1.png`, category: 'Power Banks' },
+  { skuId: 'ecbe959f-d3e9-5f25-8cb5-1718bf14972e', productId: '4351a029-79f9-57e0-94e8-466d7ad4ef19', code: 'ZS6', name: 'ZS6 Multi-Device Desktop Fast Charger', priceMinor: 0, img: `${S3_PRODUCTS_BASE}/zs6/img-1.png`, category: 'Chargers' },
+  { skuId: '0df9e4fb-2794-55fe-a1f9-d8977114b7e9', productId: 'fa096df5-7313-5a7a-aa01-4475ee45b98f', code: 'ZS8', name: 'ZS8 Ultra-Fast GaN Travel Charger 65W', priceMinor: 0, img: `${S3_PRODUCTS_BASE}/zs8/img-1.png`, category: 'Chargers' }
 ];
 
 @Injectable({ providedIn: 'root' })
@@ -91,7 +91,7 @@ export class CartService {
   readonly items = signal<CartLineItem[]>([]);
   readonly savedItems = signal<CartLineItem[]>([]);
   readonly cartId = signal<string | null>(null);
-  readonly cartVersion = signal<number>(1);
+  readonly cartVersion = signal<number>(0);
   readonly loading = signal(false);
   readonly syncing = signal(false);
 
@@ -116,14 +116,7 @@ export class CartService {
   }
 
   private getAuthHeaders(): HttpHeaders {
-    let headers = new HttpHeaders({
-      'Content-Type': 'application/json'
-    });
-    const uid = this.session.userId() || this.session.email() || 'default_user';
-    headers = headers.set('x-user-id', uid);
-    const email = this.session.email();
-    if (email) headers = headers.set('x-user-email', email);
-    return headers;
+    return new HttpHeaders({ 'Content-Type': 'application/json' });
   }
 
   private handleUserLogin(userId: string) {
@@ -132,7 +125,7 @@ export class CartService {
 
   private handleUserLogout() {
     this.cartId.set(null);
-    this.cartVersion.set(1);
+    this.cartVersion.set(0);
     sessionStorage.removeItem('nigson_active_cart_id');
     this.items.set([]);
   }
@@ -148,7 +141,7 @@ export class CartService {
       return {
         ...found,
         name: fallback?.name || found.name,
-        priceMinor: (fallback?.priceMinor != null && fallback.priceMinor > 0) ? fallback.priceMinor : found.priceMinor,
+        priceMinor: fallback?.priceMinor ?? 0,
         img: fallback?.img || found.img,
         category: fallback?.category || found.category
       };
@@ -156,8 +149,8 @@ export class CartService {
     return {
       skuId: input,
       code: fallback?.code || input,
-      name: fallback?.name || `Product (${input.slice(0, 8)})`,
-      priceMinor: (fallback?.priceMinor != null && fallback.priceMinor > 0) ? fallback.priceMinor : 2850000,
+      name: fallback?.name || `SKU ${input.slice(0, 8)}`,
+      priceMinor: fallback?.priceMinor ?? 0,
       img: fallback?.img || '/assets/hero-accessories.jpg',
       category: fallback?.category || 'General'
     };
@@ -174,7 +167,7 @@ export class CartService {
       return this.http.get<BackendCart>(`/api/v1/carts/${storedId}`, { headers }).pipe(
         tap(cart => {
           this.cartId.set(cart.id);
-          this.cartVersion.set(cart.version || 1);
+          this.cartVersion.set(cart.version);
           this.items.set(this.mapLines(cart.lines));
         }),
         map(cart => cart.id),
@@ -186,16 +179,20 @@ export class CartService {
 
   private createNewCart(): Observable<string | null> {
     const headers = this.getAuthHeaders().set('Idempotency-Key', crypto.randomUUID());
-    return this.http.post<BackendCart>('/api/v1/carts', { marketId: '29b78d62-ec0d-5ff9-8319-b485ecb093d6' }, { headers }).pipe(
+    return this.http.get<Array<{ id: string; code: string; currency: string }>>('/api/v1/markets').pipe(
+      map(markets => markets.find(market => market.code === 'NG' && market.currency === 'NGN')?.id || null),
+      switchMap(marketId => marketId ? this.http.post<BackendCart>('/api/v1/carts', { marketId }, { headers }) : of(null)),
+      switchMap(cart => cart ? of(cart) : of(null)),
       tap(cart => {
+        if (!cart) return;
         this.cartId.set(cart.id);
-        this.cartVersion.set(cart.version || 1);
+        this.cartVersion.set(cart.version);
         sessionStorage.setItem('nigson_active_cart_id', cart.id);
         this.items.set(this.mapLines(cart.lines));
       }),
-      map(cart => cart.id),
+      map(cart => cart?.id ?? null),
       catchError(err => {
-        console.warn('[CartService] createNewCart database error:', err);
+        console.warn('[CartService] Java Commerce cart creation failed:', err);
         return of(null);
       })
     );
@@ -216,21 +213,21 @@ export class CartService {
         }
         const headers = this.getAuthHeaders();
         return this.http.get<BackendCart>(`/api/v1/carts/${cartId}`, { headers }).pipe(
-          map(cart => {
+          switchMap(cart => {
             this.cartId.set(cart.id);
-            this.cartVersion.set(cart.version || 1);
-            const mapped = this.mapLines(cart.lines);
-            this.items.set(mapped);
-            this.loading.set(false);
-            const summary: CartSummary = {
-              cartId: cart.id,
-              items: mapped,
-              subtotalMinorUnits: Math.round(this.subtotalNaira() * 100),
-              currency: 'NGN',
-              marketId: cart.marketId,
-              version: cart.version || 1
-            };
-            return summary;
+            this.cartVersion.set(cart.version);
+            return this.loadLinePrices(this.mapLines(cart.lines)).pipe(map(mapped => {
+              this.items.set(mapped);
+              this.loading.set(false);
+              return {
+                cartId: cart.id,
+                items: mapped,
+                subtotalMinorUnits: mapped.reduce((sum, line) => sum + line.unitPriceMinorUnits * line.quantity, 0),
+                currency: 'NGN',
+                marketId: cart.marketId,
+                version: cart.version
+              };
+            }));
           }),
           catchError(err => {
             console.warn('[CartService] loadCart database error:', err);
@@ -261,24 +258,23 @@ export class CartService {
         const headers = this.getAuthHeaders();
         return this.http.put<BackendCart>(
           `/api/v1/carts/${cartId}/lines/${skuId}`,
-          { quantity: targetQty },
-          { headers }
+          { quantity: String(targetQty) },
+          { headers: headers.set('If-Match', `"${this.cartVersion()}"`) }
         ).pipe(
-          map(cart => {
+          switchMap(cart => this.loadLinePrices(this.mapLines(cart.lines)).pipe(map(mapped => {
             this.cartId.set(cart.id);
-            this.cartVersion.set(cart.version || 1);
-            const mapped = this.mapLines(cart.lines);
+            this.cartVersion.set(cart.version);
             this.items.set(mapped);
             this.syncing.set(false);
             return {
               cartId: cart.id,
               items: mapped,
-              subtotalMinorUnits: Math.round(this.subtotalNaira() * 100),
+              subtotalMinorUnits: mapped.reduce((sum, line) => sum + line.unitPriceMinorUnits * line.quantity, 0),
               currency: 'NGN',
               marketId: cart.marketId,
-              version: cart.version || 1
+              version: cart.version
             };
-          }),
+          }))),
           catchError(err => {
             console.error('[CartService] addItem database sync error:', err);
             this.syncing.set(false);
@@ -303,23 +299,22 @@ export class CartService {
     const headers = this.getAuthHeaders();
     return this.http.put<BackendCart>(
       `/api/v1/carts/${this.cartId()}/lines/${it.skuId || it.sku}`,
-      { quantity: quantity },
-      { headers }
+      { quantity: String(quantity) },
+      { headers: headers.set('If-Match', `"${this.cartVersion()}"`) }
     ).pipe(
-      map(cart => {
-        this.cartVersion.set(cart.version || 1);
-        const mapped = this.mapLines(cart.lines);
+      switchMap(cart => this.loadLinePrices(this.mapLines(cart.lines)).pipe(map(mapped => {
+        this.cartVersion.set(cart.version);
         this.items.set(mapped);
         this.syncing.set(false);
         return {
           cartId: cart.id,
           items: mapped,
-          subtotalMinorUnits: Math.round(this.subtotalNaira() * 100),
+          subtotalMinorUnits: mapped.reduce((sum, line) => sum + line.unitPriceMinorUnits * line.quantity, 0),
           currency: 'NGN',
           marketId: cart.marketId,
-          version: cart.version || 1
+          version: cart.version
         };
-      }),
+      }))),
       catchError(err => {
         console.error('[CartService] updateQty database error:', err);
         this.syncing.set(false);
@@ -341,7 +336,7 @@ export class CartService {
 
     return this.http.delete<void>(
       `/api/v1/carts/${this.cartId()}/lines/${it.skuId || it.sku}`,
-      { headers, observe: 'response' }
+      { headers: headers.set('If-Match', `"${this.cartVersion()}"`), observe: 'response' }
     ).pipe(
       switchMap(() => this.loadCart()),
       catchError(err => {
@@ -354,15 +349,9 @@ export class CartService {
 
   clearCart(): Observable<void> {
     this.items.set([]);
-    if (this.session.authenticated() && this.cartId()) {
-      const headers = this.getAuthHeaders();
-      const id = this.cartId();
-      sessionStorage.removeItem('nigson_active_cart_id');
-      this.cartId.set(null);
-      return this.http.delete<void>(`/api/v1/carts/${id}`, { headers }).pipe(
-        catchError(() => of(undefined))
-      );
-    }
+    this.cartId.set(null);
+    this.cartVersion.set(0);
+    sessionStorage.removeItem('nigson_active_cart_id');
     return of(undefined);
   }
 
@@ -396,6 +385,16 @@ export class CartService {
     return String.fromCharCode(8358) + (minorUnits / 100).toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
+  private loadLinePrices(lines: CartLineItem[]): Observable<CartLineItem[]> {
+    if (!lines.length) return of([]);
+    return forkJoin(lines.map(line => this.http.get<any>(
+      `/api/v1/catalogue/skus/${encodeURIComponent(line.skuId)}/price?market=NG&quantity=${line.quantity}`
+    ).pipe(
+      map(price => ({ ...line, unitPriceMinorUnits: Math.round(Number(price.unitAmount) * 100) })),
+      catchError(() => of({ ...line, unitPriceMinorUnits: 0 }))
+    )));
+  }
+
   private mapLines(lines: BackendLine[]): CartLineItem[] {
     return (lines || []).map(line => {
       const meta = this.resolveSkuMetadata(line.skuId);
@@ -404,7 +403,7 @@ export class CartService {
         skuId: line.skuId,
         sku: (line as any).sku || meta.code,
         name: (line as any).name || meta.name,
-        unitPriceMinorUnits: Number((line as any).unitPriceMinorUnits) || meta.priceMinor,
+        unitPriceMinorUnits: Number((line as any).unitPriceMinorUnits) || meta.priceMinor || 0,
         quantity: parseInt(String(line.quantity), 10) || 1,
         imageUrl: (line as any).imageUrl || meta.img,
         categoryName: (line as any).categoryName || meta.category
