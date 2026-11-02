@@ -1,10 +1,11 @@
 import { Injectable, computed, signal, inject } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Observable, of, tap, map, catchError, from, forkJoin } from 'rxjs';
+import { Observable, of, tap, map, catchError, from, forkJoin, switchMap } from 'rxjs';
 import { SessionService } from '../session.service';
 import { ShopService } from '../shop.service';
 import { CatalogService } from '../catalog.service';
 import { applyInventory, mapStaffProducts } from './inventory-mapping';
+import { distributorCommand, distributorDisplayState } from './distributor-workflow';
 
 export type SectionKey =
   | "dashboard" | "pages" | "products" | "reviews" | "distributors"
@@ -58,7 +59,7 @@ export type LeadStatus = "Pending" | "Under Review" | "Approved" | "Rejected";
 export type AdminApplication = {
   id: string; number: string; type: "Distributor" | "Wholesaler"; businessName: string;
   contactPerson: string; email: string; phone: string; location: string; category: string;
-  date: string; status: LeadStatus; note?: string;
+  date: string; status: LeadStatus; note?: string; version?: number;
 };
 
 export type AdminQuote = {
@@ -150,6 +151,8 @@ export class AdminService {
   pages = signal<AdminPage[]>([]);
   reviews = signal<AdminReview[]>([]);
   applications = signal<AdminApplication[]>([]);
+  applicationError = signal<string | null>(null);
+  distributorMarket = signal<{ id: string; code: string; currency: string } | null>(null);
   quotes = signal<AdminQuote[]>([]);
   inquiries = signal<AdminInquiry[]>([]);
   orders = signal<AdminOrder[]>([]);
@@ -162,6 +165,14 @@ export class AdminService {
     this.products.set([]);
     this.customers.set([]);
     this.hydrateFromStorage();
+    this.http.get<Array<{id: string; code: string; currency: string}>>('/api/v1/markets').subscribe({
+      next: markets => this.distributorMarket.set(markets.find(market => market.code === 'NG') ?? null), error: () => {}
+    });
+    if (['localhost','127.0.0.1'].includes(window.location.hostname)) {
+      this.http.get<{localOnly: boolean; phase: number; market: {id: string; code: string; currency: string}}>('/local-distributor-fixtures.json').subscribe({
+        next: data => { if (data.localOnly && data.phase === 3 && data.market?.code === 'NG') this.distributorMarket.set(data.market); }, error: () => {}
+      });
+    }
   }
 
   private hydrateFromStorage() {
@@ -255,19 +266,31 @@ export class AdminService {
     this.log(`Quote ${id} set to ${status}`);
   }
 
-  setApplicationStatus(id: string, status: string, note?: string) {
-    this.applications.update(apps => apps.map(a => a.id === id ? { ...a, status: status as any, note: note !== undefined ? note : a.note } : a));
-    const action = status.toLowerCase() === 'approved' ? 'approval' : 'rejection';
-    const headers = new HttpHeaders({
-      'Content-Type': 'application/json',
-      'If-Match': '"0"',
-      'Idempotency-Key': crypto.randomUUID()
-    });
-    this.http.post(`/api/v1/staff/distributor-applications/${id}/${action}`, { reason: note || `Application ${status}` }, { headers }).subscribe({
-      next: () => this.log(`Application ${id} set to ${status}`),
-      error: (err) => console.warn(`[AdminService] setApplicationStatus backend error:`, err?.status ?? err)
-    });
-    if (status) this.log(`Application ${id} set to ${status}`);
+  setApplicationStatus(id: string, status: string, note?: string, documentsVerified = false): Observable<any | null> {
+    this.applicationError.set(null);
+    const current = this.applications().find(application => application.id === id);
+    if (current?.version == null || !['Under Review','Approved','Rejected'].includes(status)) {
+      this.applicationError.set('Load the current application and choose a review or decision.');
+      return of(null);
+    }
+    if (status === 'Under Review' && !documentsVerified) {
+      this.applicationError.set('Confirm that you have reviewed the registration document.');
+      return of(null);
+    }
+    if (status === 'Approved' && !this.distributorMarket()) {
+      this.applicationError.set('A configured approval market is required.');
+      return of(null);
+    }
+    const reason = note?.trim() || 'Distributor application reviewed by staff';
+    const { action, body } = distributorCommand(status, reason, documentsVerified, this.distributorMarket()?.id);
+    const headers = new HttpHeaders({ 'Content-Type': 'application/json', 'If-Match': `"${current.version}"`, 'Idempotency-Key': crypto.randomUUID() });
+    return this.http.post<any>(`/api/v1/staff/distributor-applications/${id}/${action}`, body, { headers }).pipe(
+      tap(() => this.loadStaffApplications().subscribe()),
+      catchError(err => {
+        this.applicationError.set(err?.error?.detail || 'The application could not be updated. Reload it and try again.');
+        return of(null);
+      })
+    );
   }
 
   setInquiryStatus(id: string, status: string) {
@@ -416,28 +439,28 @@ export class AdminService {
     );
   }
 
-  /** TASK-69: Load distributor applications from GET /api/v1/staff/distributor-applications (API-094) */
+  /** Load queue summaries and their authorized details without inventing applicant data. */
   loadStaffApplications(): Observable<AdminApplication[]> {
     return this.http.get<{ content: any[] }>('/api/v1/staff/distributor-applications').pipe(
-      map(res => (res?.content ?? []).map(a => ({
-        id: a.id,
-        number: 'APP-' + a.id.slice(0, 6).toUpperCase(),
+      switchMap(res => !res.content?.length ? of([]) : forkJoin(res.content.map(application =>
+        this.http.get<any>(`/api/v1/staff/distributor-applications/${application.id}`).pipe(map(detail => ({ ...application, ...detail })))
+      ))),
+      map(applications => applications.map(application => ({
+        id: application.id,
+        number: 'APP-' + application.id.slice(0, 6).toUpperCase(),
         type: 'Distributor' as const,
-        businessName: a.organizationName || a.businessName || 'Business',
-        contactPerson: a.contactPerson || 'Contact',
-        email: a.email || '',
-        phone: a.phone || '',
-        location: a.countryCode || 'NG',
+        businessName: application.organizationName,
+        contactPerson: '', email: '', phone: '',
+        location: application.countryCode,
         category: 'Wholesale',
-        date: a.submittedAt || new Date().toISOString(),
-        status: (a.state === 'APPROVED' ? 'Approved' : a.state === 'REJECTED' ? 'Rejected' : 'Pending') as LeadStatus,
-        note: a.businessReference
+        date: application.submittedAt,
+        status: distributorDisplayState(application.state),
+        note: application.reviewReason || application.businessReference,
+        version: application.version
       }))),
-      tap(apps => {
-        if (apps.length > 0) this.applications.set(apps);
-      }),
+      tap(applications => this.applications.set(applications)),
       catchError(err => {
-        console.warn('[AdminService] loadStaffApplications fallback:', err?.status ?? err);
+        this.applicationError.set(err?.error?.detail || 'Distributor applications could not be loaded.');
         return of(this.applications());
       })
     );

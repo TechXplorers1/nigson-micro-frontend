@@ -10,6 +10,7 @@ import { LucideSearch, LucideEye, LucideCheck, LucideX } from '@lucide/angular';
   imports: [CommonModule, FormsModule, AdminHeadingComponent, BadgeComponent, StatCardComponent, LucideSearch, LucideEye, LucideCheck, LucideX],
   template: `
     <lib-admin-heading title="Distributor Applications" subtitle="Distributor and wholesaler partnership requests"></lib-admin-heading>
+    <p *ngIf="admin.applicationError()" role="alert" class="mb-4 text-sm text-red-700">{{ admin.applicationError() }}</p>
     
     <div class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <lib-stat-card label="Total applications" [value]="admin.applications().length.toString()"></lib-stat-card>
@@ -127,12 +128,15 @@ import { LucideSearch, LucideEye, LucideCheck, LucideX } from '@lucide/angular';
             <textarea rows="3" [(ngModel)]="view().note" class="w-full rounded-[20px] border border-gray-200 bg-white px-5 py-4 text-sm text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20"></textarea>
           </div>
           
+          <p *ngIf="admin.applicationError()" role="alert" class="text-sm text-red-700">{{ admin.applicationError() }}</p>
+          <label class="flex items-center gap-2 text-sm"><input type="checkbox" [(ngModel)]="documentsVerified" /> I have reviewed the registration document</label>
+          <p class="text-xs text-muted-ink">Approval requires a different staff member from the reviewer. Market: {{ admin.distributorMarket()?.code || "Not configured" }}.</p>
           <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
-            <select [(ngModel)]="view().status" (change)="setStatus(view().id, view().status)" class="rounded-full border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-ink shadow-sm outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100">
+            <select [ngModel]="view().status" (ngModelChange)="setStatus(view().id, $event)" class="rounded-full border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-ink shadow-sm outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100">
               <option *ngFor="let s of rawStatuses" [value]="s">{{ s }}</option>
             </select>
             <div class="flex gap-2">
-              <button (click)="saveNote(view())" class="rounded-full border border-gray-200 bg-white px-6 py-2.5 text-sm font-bold text-ink hover:bg-gray-50 shadow-sm transition-colors">Save note</button>
+              
               <button (click)="setStatus(view().id, 'Approved')" class="rounded-full bg-brand px-6 py-2.5 text-sm font-bold text-white hover:bg-brand-600 shadow-sm transition-colors">Approve</button>
             </div>
           </div>
@@ -153,6 +157,7 @@ export class AdminApplicationsComponent implements OnInit {
   catFilter = signal('All categories');
   view = signal<any>(null);
 
+  documentsVerified = false;
   rawStatuses = ["Pending", "Under Review", "Approved", "Rejected"];
   statuses = ["All statuses", ...this.rawStatuses];
   categories = ["All categories", 'Earbuds', 'Power Banks', 'Wireless Chargers', 'Car Chargers', 'Home Chargers', 'Cables', 'Accessories'];
@@ -188,18 +193,19 @@ export class AdminApplicationsComponent implements OnInit {
 
   viewDetail(app: any) {
     // Create a copy so we can edit the note without immediate side-effects
+    this.documentsVerified = false;
+    this.admin.applicationError.set(null);
     this.view.set({ ...app });
   }
 
-  setStatus(id: string, s: any) {
-    this.admin.setApplicationStatus(id, s);
-    if (this.view() && this.view().id === id) {
-      this.view.update((v: any) => ({ ...v, status: s }));
-    }
+  setStatus(id: string, status: string) {
+    this.admin.setApplicationStatus(id, status, this.view()?.note, this.documentsVerified).subscribe(result => {
+      if (result && this.view()?.id === id) {
+        const displayed = ({ APPROVED: 'Approved', REJECTED: 'Rejected', UNDER_REVIEW: 'Under Review' } as Record<string,string>)[result.state] || 'Pending';
+        this.view.update((view: any) => ({ ...view, status: displayed, version: result.version }));
+      }
+    });
   }
 
-  saveNote(app: any) {
-    this.admin.setApplicationStatus(app.id, app.status, app.note);
-  }
 }
 

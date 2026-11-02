@@ -1,5 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
+import { SessionService } from 'shared-ui';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { CmsService, ShopService, MarketingService, PageHeaderComponent } from 'shared-ui';
@@ -84,8 +86,15 @@ import { LucideCheckCircle2 } from '@lucide/angular';
             </div>
 
             <div>
-              <label class="block text-sm font-medium mb-1.5">Business identity card (upload)</label>
-              <input type="file" class="w-full text-sm file:rounded-full file:border-0 file:bg-ink file:text-background file:px-4 file:py-2 file:font-medium" />
+              <label class="block text-sm font-medium mb-1.5">Business registration document</label>
+              <ng-container *ngIf="sampleDocument() as sample; else proofUnavailable">
+                <label class="flex items-center gap-2 text-sm"><input type="checkbox" [(ngModel)]="useSampleDocument" name="useSampleDocument" /> Use the sample registration document for local testing</label>
+                <a [href]="sample.url" target="_blank" rel="noopener" class="text-sm underline">View sample document</a>
+                <p class="mt-1 text-xs text-muted-ink">Synthetic test document. This is not a real business registration.</p>
+              </ng-container>
+              <ng-template #proofUnavailable><p class="text-sm text-muted-ink">A verified business registration document is required. Document upload is not configured in this environment.</p></ng-template>
+              <label class="mt-3 block text-sm font-medium">Registration reference (optional)</label>
+              <input type="text" [(ngModel)]="f.registrationReference" name="registrationReference" maxlength="100" class="w-full rounded-lg border border-border px-4 py-2.5" />
             </div>
 
             <button type="submit" class="w-full rounded-full bg-brand text-brand-foreground py-3 text-sm font-semibold hover:bg-brand-deep transition-colors">
@@ -98,6 +107,19 @@ import { LucideCheckCircle2 } from '@lucide/angular';
   `
 })
 export class DistributorComponent {
+  private http = inject(HttpClient);
+  private session = inject(SessionService);
+  private localDocuments = signal<Record<string, { id: string; url: string }>>({});
+  sampleDocument = computed(() => this.localDocuments()[this.session.userId() ?? '']);
+  useSampleDocument = false;
+  constructor() {
+    if (['localhost','127.0.0.1'].includes(window.location.hostname)) {
+      this.http.get<{ localOnly: boolean; phase: number; documents: Record<string,{ id: string; url: string }> }>('/local-distributor-fixtures.json').subscribe({
+        next: data => { if (data.localOnly && data.phase === 3) this.localDocuments.set(data.documents); },
+        error: () => {}
+      });
+    }
+  }
   marketingSvc = inject(MarketingService);
   submitting = this.marketingSvc.submittingDistributor;
   submitError = signal<string | null>(null);
@@ -116,6 +138,7 @@ export class DistributorComponent {
   submitted = signal(false);
   
   f = {
+    registrationReference: '',
     company: '',
     contact: '',
     phone: '',
@@ -135,18 +158,17 @@ export class DistributorComponent {
       return;
     }
 
-    const businessReference = [
-      'Contact: ' + this.f.contact,
-      'Phone: ' + this.f.phone,
-      'Email: ' + this.f.email,
-      'Location: ' + this.f.state + ', ' + this.f.address,
-      'Years in operation: ' + (this.f.years || '1'),
-      'Category interest: ' + this.f.category
-    ].join(' | ');
+    const document = this.sampleDocument();
+    if (!this.useSampleDocument || !document) {
+      this.submitError.set('A verified registration document is required. Select the local sample document to test this form.');
+      return;
+    }
+    const businessReference = this.f.registrationReference.trim() || undefined;
 
     this.marketingSvc.submitDistributorApplication({
       organizationName: this.f.company.trim(),
       countryCode: 'NG',
+      documentIds: [document.id],
       businessReference: businessReference
     }).subscribe({
       next: (res) => {

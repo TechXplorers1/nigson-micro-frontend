@@ -3,6 +3,7 @@
 # Compiled output
 /dist
 /tmp
+/private/tmp/
 /out-tsc
 /bazel-out
 
@@ -42,3 +43,7 @@ __screenshots__/
 # System files
 .DS_Store
 Thumbs.db
+
+/projects/shell/public/local-distributor-fixtures.json
+
+/projects/shell/public/local-distributor-sample.pdf

@@ -153,8 +153,8 @@ export class MarketingService {
   /** TASK-60: Get my distributor applications (GET /api/v1/me/distributor-applications) */
   getMyDistributorApplications(): Observable<BackendDistributorApplication[]> {
     if (!this.session.authenticated()) return of([]);
-    return this.http.get<{ content: BackendDistributorApplication[] }>("/api/v1/me/distributor-applications").pipe(
-      map(res => res?.content ?? []),
+    return this.http.get<BackendDistributorApplication[]>("/api/v1/me/distributor-applications").pipe(
+      map(res => res ?? []),
       catchError(err => {
         console.warn("[MarketingService] getMyDistributorApplications failed:", err);
         return of([]);
