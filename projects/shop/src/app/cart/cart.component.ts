@@ -1,4 +1,4 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, Router } from '@angular/router';
 import { 
@@ -80,24 +80,25 @@ import { CartService, CatalogService, ShopService, SessionService, QtyStepperCom
                 <dl class="mt-5 space-y-3 text-sm">
                   <div class="flex items-center justify-between">
                     <dt class="text-muted-ink">Subtotal</dt>
-                    <dd class="font-semibold">Calculated in Commerce quote</dd>
+                    <dd class="font-semibold">{{ cart.subtotalDisplay() }}</dd>
                   </div>
                   <div class="flex items-center justify-between">
                     <dt class="text-muted-ink">Shipping</dt>
-                    <dd class="font-semibold">Calculated from delivery quote</dd>
+                    <dd class="font-semibold">At checkout</dd>
                   </div>
                   <div class="flex items-center justify-between">
                     <dt class="text-muted-ink">Tax</dt>
-                    <dd class="font-semibold">Calculated from approved market policy</dd>
+                    <dd class="font-semibold">At checkout</dd>
                   </div>
                   
                   <div class="h-px bg-hairline my-2"></div>
                   
                   <div class="flex items-center justify-between">
-                    <dt class="text-base font-bold">Total</dt>
-                    <dd class="text-lg font-extrabold text-[#D62828]">Shown in secure quote</dd>
+                    <dt class="text-base font-bold">Estimated total</dt>
+                    <dd class="text-lg font-extrabold text-[#D62828]">{{ cart.subtotalDisplay() }}</dd>
                   </div>
                 </dl>
+                <p class="mt-3 text-xs text-muted-ink">Shipping and tax will be added at checkout.</p>
 
                 <div *ngIf="!session.authenticated()" class="mt-4 rounded-xl border border-amber-200 bg-amber-50/80 p-3 text-xs text-amber-800 flex items-center gap-2">
                   <svg lucideLock class="h-4 w-4 text-amber-700 shrink-0"></svg>
@@ -135,7 +136,6 @@ export class CartComponent {
   router = inject(Router);
   session = inject(SessionService);
 
-  // Final subtotal, delivery and tax are supplied by the Commerce quote APIs.
 
   updateQty(lineId: string, qty: number) {
     this.cart.updateQty(lineId, qty).subscribe();

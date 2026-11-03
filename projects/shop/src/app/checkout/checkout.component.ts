@@ -224,29 +224,30 @@ const BANKS = ["Access Bank", "First Bank", "Guaranty Trust Bank", "United Bank 
                     <p class="truncate font-semibold">{{ i.name }}</p>
                     <p class="text-xs text-muted-ink">Qty {{ i.qty }}</p>
                   </div>
-                  <p class="font-semibold">{{ i.price > 0 ? catalog.formatPrice(i.price * i.qty) : 'Price from Commerce' }}</p>
+                  <p class="font-semibold">{{ i.price > 0 ? catalog.formatPrice(i.price * i.qty * 100) : 'Price from Commerce' }}</p>
                 </li>
               </ul>
               
               <dl class="mt-6 space-y-3 text-sm border-t border-hairline pt-6">
                 <div class="flex items-center justify-between">
                   <dt class="text-muted-ink">Subtotal</dt>
-                  <dd class="font-semibold">Calculated in Commerce quote</dd>
+                  <dd class="font-semibold">{{ catalog.formatPrice(subtotalMinor()) }}</dd>
                 </div>
                 <div class="flex items-center justify-between">
                   <dt class="text-muted-ink">Shipping</dt>
-                  <dd class="font-semibold">Calculated from delivery quote</dd>
+                  <dd class="font-semibold">After delivery quote</dd>
                 </div>
                 <div class="flex items-center justify-between">
                   <dt class="text-muted-ink">Tax</dt>
-                  <dd class="font-semibold">Calculated from approved market policy</dd>
+                  <dd class="font-semibold">Before payment</dd>
                 </div>
                 <div class="h-px bg-hairline my-2"></div>
                 <div class="flex items-center justify-between">
-                  <dt class="text-base font-bold">Total</dt>
-                  <dd class="text-lg font-extrabold text-[#D62828]">Shown before payment</dd>
+                  <dt class="text-base font-bold">Estimated total</dt>
+                  <dd class="text-lg font-extrabold text-[#D62828]">{{ catalog.formatPrice(subtotalMinor()) }}</dd>
                 </div>
               </dl>
+              <p class="mt-3 text-xs text-muted-ink">Shipping and tax will be included in your final quote.</p>
             </aside>
           </div>
         </div>
