@@ -1,6 +1,6 @@
 ﻿import { Injectable, inject, signal } from "@angular/core";
 import { HttpClient } from "@angular/common/http";
-import { Observable, of, tap, catchError, map } from "rxjs";
+import { Observable, of, tap, catchError, map, finalize } from "rxjs";
 import { SessionService } from "./session.service";
 
 /**
@@ -131,7 +131,7 @@ export class MarketingService {
   }
 
   /** TASK-60: Submit distributor application (POST /api/v1/distributor-applications) */
-  submitDistributorApplication(payload: DistributorApplicationPayload): Observable<BackendDistributorApplication | null> {
+  submitDistributorApplication(payload: DistributorApplicationPayload, idempotencyKey: string = crypto.randomUUID()): Observable<BackendDistributorApplication | null> {
     this.submittingDistributor.set(true);
     const body = {
       organizationName: payload.organizationName,
@@ -140,14 +140,9 @@ export class MarketingService {
       businessReference: payload.businessReference || undefined
     };
 
-    return this.http.post<BackendDistributorApplication>("/api/v1/distributor-applications", body).pipe(
-      tap(() => this.submittingDistributor.set(false)),
-      catchError(err => {
-        console.error("[MarketingService] submitDistributorApplication failed:", err);
-        this.submittingDistributor.set(false);
-        return of(null);
-      })
-    );
+    return this.http.post<BackendDistributorApplication>("/api/v1/distributor-applications", body, {
+      headers: { 'Idempotency-Key': idempotencyKey }
+    }).pipe(finalize(() => this.submittingDistributor.set(false)));
   }
 
   /** TASK-60: Get my distributor applications (GET /api/v1/me/distributor-applications) */

@@ -2,7 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { SessionService } from 'shared-ui';
-import { FormsModule } from '@angular/forms';
+import { FormsModule, NgForm } from '@angular/forms';
 import { Router } from '@angular/router';
 import { CmsService, ShopService, MarketingService, PageHeaderComponent } from 'shared-ui';
 import { LucideCheckCircle2 } from '@lucide/angular';
@@ -28,7 +28,7 @@ import { LucideCheckCircle2 } from '@lucide/angular';
           </ul>
         </div>
 
-        <form (submit)="onSubmit($event)" class="rounded-2xl border border-border bg-background p-8 shadow-elegant space-y-5" [ngClass]="benefits().visible ? 'lg:col-span-2' : 'lg:col-span-3'">
+        <form #applicationForm="ngForm" (ngSubmit)="onSubmit(applicationForm)" class="rounded-2xl border border-border bg-background p-8 shadow-elegant space-y-5" [ngClass]="benefits().visible ? 'lg:col-span-2' : 'lg:col-span-3'">
           <ng-container *ngIf="submitted(); else formFields">
             <div class="text-center py-10">
               <svg lucideCheckCircle2 class="mx-auto h-14 w-14 text-brand"></svg>
@@ -46,7 +46,7 @@ import { LucideCheckCircle2 } from '@lucide/angular';
             <div class="grid gap-5 md:grid-cols-2">
               <div>
                 <label class="block text-sm font-medium mb-1.5">Company name <span class="text-brand">*</span></label>
-                <input type="text" required [(ngModel)]="f.company" name="company" class="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm focus:outline-none focus:border-brand" />
+                <input type="text" required maxlength="200" [(ngModel)]="f.company" name="company" class="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm focus:outline-none focus:border-brand" />
               </div>
               <div>
                 <label class="block text-sm font-medium mb-1.5">Contact person <span class="text-brand">*</span></label>
@@ -58,7 +58,7 @@ import { LucideCheckCircle2 } from '@lucide/angular';
               </div>
               <div>
                 <label class="block text-sm font-medium mb-1.5">Email <span class="text-brand">*</span></label>
-                <input type="email" required [(ngModel)]="f.email" name="email" class="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm focus:outline-none focus:border-brand" />
+                <input type="email" email required [(ngModel)]="f.email" name="email" class="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm focus:outline-none focus:border-brand" />
               </div>
               <div>
                 <label class="block text-sm font-medium mb-1.5">State <span class="text-brand">*</span></label>
@@ -97,8 +97,9 @@ import { LucideCheckCircle2 } from '@lucide/angular';
               <input type="text" [(ngModel)]="f.registrationReference" name="registrationReference" maxlength="100" class="w-full rounded-lg border border-border px-4 py-2.5" />
             </div>
 
-            <button type="submit" class="w-full rounded-full bg-brand text-brand-foreground py-3 text-sm font-semibold hover:bg-brand-deep transition-colors">
-              {{ form().t('btnLabel') }}
+            <p *ngIf="submitError()" role="alert" aria-live="polite" class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{{ submitError() }}</p>
+            <button type="submit" [disabled]="submitting()" [attr.aria-busy]="submitting()" class="w-full rounded-full bg-brand text-brand-foreground py-3 text-sm font-semibold hover:bg-brand-deep transition-colors disabled:opacity-60 disabled:cursor-wait">
+              {{ submitting() ? 'Submitting…' : form().t('btnLabel') }}
             </button>
           </ng-template>
         </form>
@@ -108,13 +109,13 @@ import { LucideCheckCircle2 } from '@lucide/angular';
 })
 export class DistributorComponent {
   private http = inject(HttpClient);
-  private session = inject(SessionService);
+  readonly session = inject(SessionService);
   private localDocuments = signal<Record<string, { id: string; url: string }>>({});
   sampleDocument = computed(() => this.localDocuments()[this.session.userId() ?? '']);
   useSampleDocument = false;
   constructor() {
     if (['localhost','127.0.0.1'].includes(window.location.hostname)) {
-      this.http.get<{ localOnly: boolean; phase: number; documents: Record<string,{ id: string; url: string }> }>('/local-distributor-fixtures.json').subscribe({
+      this.http.get<{ localOnly: boolean; phase: number; documents: Record<string,{ id: string; url: string }> }>('/local-distributor-fixtures.json', { params: { v: Date.now().toString() } }).subscribe({
         next: data => { if (data.localOnly && data.phase === 3) this.localDocuments.set(data.documents); },
         error: () => {}
       });
@@ -149,12 +150,20 @@ export class DistributorComponent {
     category: 'Phone accessories'
   };
 
-  onSubmit(event: Event) {
-    event.preventDefault();
+  private pendingSubmission: { body: string; key: string } | null = null;
+
+  onSubmit(applicationForm: NgForm) {
+    if (this.submitting()) return;
     this.submitError.set(null);
 
-    if (!this.shop.user()) {
-      this.shop.openLoginRequired("Please sign in to submit a verified wholesale distributor application.");
+    if (!this.session.authenticated()) {
+      this.session.signIn(window.location.pathname);
+      return;
+    }
+
+    applicationForm.control.markAllAsTouched();
+    if (applicationForm.invalid || !this.f.company.trim()) {
+      this.submitError.set('Please complete all required fields and enter a valid email address.');
       return;
     }
 
@@ -165,12 +174,17 @@ export class DistributorComponent {
     }
     const businessReference = this.f.registrationReference.trim() || undefined;
 
-    this.marketingSvc.submitDistributorApplication({
+    const payload = {
       organizationName: this.f.company.trim(),
       countryCode: 'NG',
       documentIds: [document.id],
-      businessReference: businessReference
-    }).subscribe({
+      businessReference
+    };
+    const body = JSON.stringify({ party: this.session.userId(), ...payload });
+    if (this.pendingSubmission?.body !== body) {
+      this.pendingSubmission = { body, key: crypto.randomUUID() };
+    }
+    this.marketingSvc.submitDistributorApplication(payload, this.pendingSubmission.key).subscribe({
       next: (res) => {
         if (res) {
           this.submitted.set(true);
@@ -178,8 +192,17 @@ export class DistributorComponent {
           this.submitError.set('Failed to submit application. Please check all fields and ensure your business is eligible.');
         }
       },
-      error: () => {
-        this.submitError.set('An unexpected error occurred while submitting your application.');
+      error: (error) => {
+        const messages: Record<string, string> = {
+          AUTH_REQUIRED: 'Your session has expired. Please sign in and try again.',
+          ACCESS_DENIED: 'Your account cannot submit this application. Please contact support.',
+          FEATURE_DISABLED: 'Distributor applications are not available right now.',
+          VALIDATION_ERROR: 'Please check the company name and registration reference.',
+          BUSINESS_RULE_VIOLATION: 'This registration document cannot be used. Select an unused document and try again.',
+          PROVIDER_OUTCOME_UNKNOWN: 'We could not confirm receipt. Try again to check this same submission.',
+          PROVIDER_UNAVAILABLE: 'Applications are temporarily unavailable. Please try again.'
+        };
+        this.submitError.set(messages[error?.error?.code] ?? 'Unable to submit the application. Please try again.');
       }
     });
   }
