@@ -16,12 +16,22 @@ export interface User {
 }
 
 export interface CartItem {
+  lineId?: string;
   sku: string;
   skuId?: string;
+  productId?: string;
   name: string;
   category: string;
   price: number;
   image?: string;
+  qty: number;
+}
+
+export interface CartToast {
+  id: string;
+  name: string;
+  image?: string;
+  price?: number;
   qty: number;
 }
 
@@ -75,11 +85,15 @@ export class ShopService {
   readonly orders = signal<Order[]>([]);
   readonly reviews = signal<Review[]>([]);
   readonly loginRequired = signal<{ open: boolean; reason?: string }>({ open: false });
+  readonly lastAddedToast = signal<CartToast | null>(null);
+  private toastTimeout: any = null;
 
   readonly cart = computed<CartItem[]>(() => {
     return this.cartService.items().map(i => ({
+      lineId: i.lineId,
       sku: i.sku || i.skuId,
       skuId: i.skuId,
+      productId: i.productId,
       name: i.name,
       category: i.categoryName || 'General',
       price: i.unitPriceMinorUnits / 100,
@@ -171,7 +185,26 @@ export class ShopService {
     } catch { return of(undefined); }
   }
 
-  addToCart(item: Omit<CartItem, 'qty'> & { skuId?: string; priceMinorUnits?: number }, qty = 1): boolean {
+  showToast(item: { name: string; image?: string; price?: number; qty?: number }) {
+    if (this.toastTimeout) clearTimeout(this.toastTimeout);
+    this.lastAddedToast.set({
+      id: Math.random().toString(36).substring(2, 9),
+      name: item.name,
+      image: item.image,
+      price: item.price,
+      qty: item.qty ?? 1
+    });
+    this.toastTimeout = setTimeout(() => {
+      this.lastAddedToast.set(null);
+    }, 4000);
+  }
+
+  dismissToast() {
+    if (this.toastTimeout) clearTimeout(this.toastTimeout);
+    this.lastAddedToast.set(null);
+  }
+
+  addToCart(item: Omit<CartItem, 'qty'> & { skuId?: string; productId?: string; priceMinorUnits?: number }, qty = 1): boolean {
     if (!this.session.authenticated()) {
       this.loginRequired.set({ open: true, reason: 'Please sign in to add products to your cart.' });
       this.session.signIn(window.location.pathname);
@@ -181,11 +214,13 @@ export class ShopService {
     const priceMinor = item.priceMinorUnits ?? Math.round((item.price ?? 0) * 100);
     this.cartService.addItem(skuId, qty, {
       sku: item.sku,
+      productId: item.productId || (item as any).id,
       name: item.name,
       category: item.category,
       priceMinor: priceMinor,
       image: item.image
     }).subscribe();
+    this.showToast({ name: item.name, image: item.image, price: priceMinor / 100, qty });
     return true;
   }
 

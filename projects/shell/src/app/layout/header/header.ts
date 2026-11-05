@@ -1,4 +1,4 @@
-﻿import { Component, HostListener, computed, signal, effect } from '@angular/core';
+import { Component, HostListener, computed, signal, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { LucideMenu, LucideX, LucideChevronDown, LucideChevronRight, LucideShoppingCart, LucideShoppingBag, LucideUser, LucideUserRound, LucidePackage, LucideLogOut, LucideHandshake, LucideTruck, LucideSearch } from '@lucide/angular';

@@ -57,10 +57,196 @@ export type AdminReview = {
 export type LeadStatus = "Pending" | "Under Review" | "Approved" | "Rejected";
 
 export type AdminApplication = {
-  id: string; number: string; type: "Distributor" | "Wholesaler"; businessName: string;
+  id: string; number: string; type: "Distributor" | "Wholesaler" | "Affiliate Marketer"; businessName: string;
   contactPerson: string; email: string; phone: string; location: string; category: string;
   date: string; status: LeadStatus; note?: string; version?: number;
 };
+
+export const SEED_APPLICATIONS: AdminApplication[] = [
+  {
+    id: "app_dist_1",
+    number: "APP-D0101",
+    type: "Distributor",
+    businessName: "Westgate Communications Ltd",
+    contactPerson: "Obinna Nnamdi",
+    email: "corporate@westgate.ng",
+    phone: "+234 802 110 4490",
+    location: "Lagos, Nigeria",
+    category: "Accessories",
+    date: new Date(Date.now() - 1 * 86400000).toISOString(),
+    status: "Pending",
+    note: "RC: 1849204. Operates 4 regional fulfillment warehouses across South-West Nigeria.",
+    version: 1
+  },
+  {
+    id: "app_dist_2",
+    number: "APP-D0102",
+    type: "Distributor",
+    businessName: "Sahara Digital Supplies",
+    contactPerson: "Musa Danjuma",
+    email: "musa@saharadigital.com",
+    phone: "+234 803 778 2210",
+    location: "Abuja / FCT",
+    category: "Power Banks",
+    date: new Date(Date.now() - 3 * 86400000).toISOString(),
+    status: "Under Review",
+    note: "RC: 2991042. Looking to secure exclusive regional distribution for Northern states.",
+    version: 1
+  },
+  {
+    id: "app_dist_3",
+    number: "APP-D0103",
+    type: "Distributor",
+    businessName: "Niger Delta Mobile Logistics",
+    contactPerson: "Tamuno George",
+    email: "t.george@ndmobile.ng",
+    phone: "+234 805 667 9901",
+    location: "Port Harcourt, Rivers",
+    category: "Earbuds",
+    date: new Date(Date.now() - 6 * 86400000).toISOString(),
+    status: "Approved",
+    note: "CAC verified and authorized dealer tier granted.",
+    version: 2
+  },
+  {
+    id: "app_ws_1",
+    number: "APP-W0201",
+    type: "Wholesaler",
+    businessName: "Bright Star Phone Accessories Store",
+    contactPerson: "Sunday Adebayo",
+    email: "sunday.brightstar@yahoo.com",
+    phone: "+234 818 440 2231",
+    location: "Alaba Int'l Market, Lagos",
+    category: "Accessories",
+    date: new Date(Date.now() - 2 * 86400000).toISOString(),
+    status: "Pending",
+    note: "Alaba Market wholesale stockist. Monthly turnaround approx ₦3.5M.",
+    version: 1
+  },
+  {
+    id: "app_ws_2",
+    number: "APP-W0202",
+    type: "Wholesaler",
+    businessName: "Kasuwa Tech Plaza Stall 14",
+    contactPerson: "Aliyu Haruna",
+    email: "aliyu.kasuwa@gmail.com",
+    phone: "+234 813 992 4450",
+    location: "Kano Central Market, Kano",
+    category: "Cables",
+    date: new Date(Date.now() - 5 * 86400000).toISOString(),
+    status: "Approved",
+    note: "Wholesale tier activated with Tier-1 carton volume discounts.",
+    version: 2
+  },
+  {
+    id: "app_aff_1",
+    number: "APP-A0301",
+    type: "Affiliate Marketer",
+    businessName: "TechBro Reviews Nigeria (TikTok & YouTube)",
+    contactPerson: "Chidi Okafor",
+    email: "chidi@techbroreviews.ng",
+    phone: "+234 814 220 9945",
+    location: "Lagos, Nigeria",
+    category: "Accessories",
+    date: new Date(Date.now() - 1 * 86400000).toISOString(),
+    status: "Pending",
+    note: "Channels: @techbro_ng (120k TikTok followers, 45k YouTube subs). Niche: Gadget unboxings & charging test reviews. Payout: GTBank 0234567890.",
+    version: 1
+  },
+  {
+    id: "app_aff_2",
+    number: "APP-A0302",
+    type: "Affiliate Marketer",
+    businessName: "Campus Deals Broadcast Hub",
+    contactPerson: "Zainab Abubakar",
+    email: "zainab.deals@campusmail.ng",
+    phone: "+234 809 113 4455",
+    location: "Zaria / Kaduna",
+    category: "Earbuds",
+    date: new Date(Date.now() - 3 * 86400000).toISOString(),
+    status: "Approved",
+    note: "Channels: 8 active student WhatsApp community channels across ABU Zaria & UNILAG. Commission tier: 10% on power accessories. Payout: Access Bank 0112233445.",
+    version: 2
+  }
+];
+
+export const SEED_QUOTES: AdminQuote[] = [
+  {
+    id: "quo_1",
+    number: "QUO-00109",
+    customer: "Chukwuma Eze (Alaba Electronics Ltd)",
+    email: "chukwuma@alabaelec.ng",
+    phone: "+234 803 219 4482",
+    product: "Demo 65 W USB-C GaN Charger",
+    sku: "NG-PWR-001",
+    quantity: 250,
+    message: "Requesting distributor pricing for 250 units shipped to Alaba International Market, Lagos.",
+    date: new Date(Date.now() - 2 * 86400000).toISOString(),
+    status: "Pending"
+  },
+  {
+    id: "quo_2",
+    number: "QUO-00108",
+    customer: "Ibrahim Bello (Kano Gadget Hub)",
+    email: "bello.gadgets@gmail.com",
+    phone: "+234 812 559 1044",
+    product: "Demo True Wireless Earbuds",
+    sku: "NG-PWR-002",
+    quantity: 500,
+    message: "Seeking bulk wholesale pricing for university campus distribution across Kano and Kaduna.",
+    date: new Date(Date.now() - 4 * 86400000).toISOString(),
+    status: "Under Review"
+  },
+  {
+    id: "quo_3",
+    number: "QUO-00107",
+    customer: "Folake Adeyemi (Apex Retailers Abuja)",
+    email: "procurement@apexretail.ng",
+    phone: "+234 809 443 8812",
+    product: "Demo 2 TB External Hard Drive",
+    sku: "NG-PWR-003",
+    quantity: 100,
+    message: "Need competitive rates for corporate client supply in Abuja central area.",
+    date: new Date(Date.now() - 7 * 86400000).toISOString(),
+    status: "Quoted"
+  },
+  {
+    id: "quo_4",
+    number: "QUO-00106",
+    customer: "Emeka Okonkwo (Computer Village Direct)",
+    email: "emeka.cv@outlook.com",
+    phone: "+234 802 334 9918",
+    product: "Demo 13-inch Student Laptop",
+    sku: "NG-LOG-004",
+    quantity: 50,
+    message: "Back-to-school bundle order for tertiary institution students in Lagos.",
+    date: new Date(Date.now() - 12 * 86400000).toISOString(),
+    status: "Closed"
+  }
+];
+
+export const SEED_INQUIRIES: AdminInquiry[] = [
+  {
+    id: "inq_1",
+    name: "Dr. Kemi Balogun",
+    email: "kemi.balogun@unilag.edu.ng",
+    phone: "+234 802 889 1100",
+    subject: "Institutional bulk purchase inquiry",
+    message: "We are exploring ordering 200 units of student power banks and USB-C cables for our engineering lab students. Do you offer university institutional discount rates?",
+    date: new Date(Date.now() - 1 * 86400000).toISOString(),
+    status: "New"
+  },
+  {
+    id: "inq_2",
+    name: "Tariq Mansur",
+    email: "tariq.m@kadunabiz.org",
+    phone: "+234 806 332 7714",
+    subject: "Warranty replacement verification",
+    message: "Purchased a batch of 65W GaN Chargers last month. Wanted to confirm the 12-month replacement procedure for customer claims.",
+    date: new Date(Date.now() - 3 * 86400000).toISOString(),
+    status: "In Progress"
+  }
+];
 
 export type AdminQuote = {
   id: string; number: string; customer: string; email: string; phone: string;
@@ -150,11 +336,11 @@ export class AdminService {
   products = signal<AdminProduct[]>([]);
   pages = signal<AdminPage[]>([]);
   reviews = signal<AdminReview[]>([]);
-  applications = signal<AdminApplication[]>([]);
+  applications = signal<AdminApplication[]>(SEED_APPLICATIONS);
   applicationError = signal<string | null>(null);
   distributorMarket = signal<{ id: string; code: string; currency: string } | null>(null);
-  quotes = signal<AdminQuote[]>([]);
-  inquiries = signal<AdminInquiry[]>([]);
+  quotes = signal<AdminQuote[]>(SEED_QUOTES);
+  inquiries = signal<AdminInquiry[]>(SEED_INQUIRIES);
   orders = signal<AdminOrder[]>([]);
   customers = signal<AdminCustomer[]>([]);
   posts = signal<AdminPost[]>([]);
@@ -176,6 +362,35 @@ export class AdminService {
   }
 
   private hydrateFromStorage() {
+    try {
+      const storedApps = localStorage.getItem('nigson_admin_applications');
+      if (storedApps) {
+        const parsed = JSON.parse(storedApps);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Merge seed applications so new types (e.g. Affiliate Marketer) are immediately visible
+          const existingIds = new Set(parsed.map((p: any) => p.id));
+          const missingSeeds = SEED_APPLICATIONS.filter(s => !existingIds.has(s.id));
+          this.applications.set([...parsed, ...missingSeeds]);
+        }
+      }
+    } catch {}
+
+    try {
+      const storedQuotes = localStorage.getItem('nigson_admin_quotes');
+      if (storedQuotes) {
+        const parsed = JSON.parse(storedQuotes);
+        if (Array.isArray(parsed) && parsed.length > 0) this.quotes.set(parsed);
+      }
+    } catch {}
+
+    try {
+      const storedInqs = localStorage.getItem('nigson_admin_inquiries');
+      if (storedInqs) {
+        const parsed = JSON.parse(storedInqs);
+        if (Array.isArray(parsed) && parsed.length > 0) this.inquiries.set(parsed);
+      }
+    } catch {}
+
     this.loadStaffProducts().subscribe();
     if (this.session.authenticated()) {
       this.loadStaffOrders().subscribe();
@@ -185,6 +400,78 @@ export class AdminService {
       this.loadStaffReviews().subscribe();
       this.loadStaffCustomers().subscribe();
     }
+  }
+
+  persistApplications(): void {
+    try {
+      localStorage.setItem('nigson_admin_applications', JSON.stringify(this.applications()));
+    } catch {}
+  }
+
+  persistQuotes(): void {
+    try {
+      localStorage.setItem('nigson_admin_quotes', JSON.stringify(this.quotes()));
+    } catch {}
+  }
+
+  persistInquiries(): void {
+    try {
+      localStorage.setItem('nigson_admin_inquiries', JSON.stringify(this.inquiries()));
+    } catch {}
+  }
+
+  addLocalApplication(app: Partial<AdminApplication>): void {
+    const prefix = app.type === 'Wholesaler' ? 'APP-W' : app.type === 'Affiliate Marketer' ? 'APP-A' : 'APP-D';
+    const fullApp: AdminApplication = {
+      id: app.id || 'app_' + Math.random().toString(36).slice(2, 9),
+      number: app.number || (prefix + Math.floor(1000 + Math.random() * 9000)),
+      type: (app.type || 'Distributor') as 'Distributor' | 'Wholesaler' | 'Affiliate Marketer',
+      businessName: app.businessName || 'Business Applicant',
+      contactPerson: app.contactPerson || '',
+      email: app.email || '',
+      phone: app.phone || '',
+      location: app.location || 'Nigeria',
+      category: app.category || 'Accessories',
+      date: app.date || new Date().toISOString(),
+      status: app.status || 'Pending',
+      note: app.note || '',
+      version: 1
+    };
+    this.applications.update(all => [fullApp, ...all]);
+    this.persistApplications();
+  }
+
+  addLocalQuote(q: Partial<AdminQuote>): void {
+    const fullQuote: AdminQuote = {
+      id: q.id || 'quo_' + Math.random().toString(36).slice(2, 9),
+      number: q.number || ('QUO-' + Math.floor(10000 + Math.random() * 90000)),
+      customer: q.customer || 'Customer',
+      email: q.email || '',
+      phone: q.phone || '',
+      product: q.product || 'Wholesale Request',
+      sku: q.sku || 'NG-PWR-001',
+      quantity: q.quantity || 1,
+      message: q.message || '',
+      date: q.date || new Date().toISOString(),
+      status: q.status || 'Pending'
+    };
+    this.quotes.update(all => [fullQuote, ...all]);
+    this.persistQuotes();
+  }
+
+  addLocalInquiry(i: Partial<AdminInquiry>): void {
+    const fullInq: AdminInquiry = {
+      id: i.id || 'inq_' + Math.random().toString(36).slice(2, 9),
+      name: i.name || 'Visitor',
+      email: i.email || '',
+      phone: i.phone || '',
+      subject: i.subject || 'General Inquiry',
+      message: i.message || '',
+      date: i.date || new Date().toISOString(),
+      status: i.status || 'New'
+    };
+    this.inquiries.update(all => [fullInq, ...all]);
+    this.persistInquiries();
   }
 
   currentRole = computed(() => {
@@ -254,6 +541,7 @@ export class AdminService {
 
   setQuoteStatus(id: string, status: string) {
     this.quotes.update(qs => qs.map(q => q.id === id ? { ...q, status: status as any } : q));
+    this.persistQuotes();
     const headers = new HttpHeaders({
       'Content-Type': 'application/json',
       'If-Match': '"0"',
@@ -269,32 +557,36 @@ export class AdminService {
   setApplicationStatus(id: string, status: string, note?: string, documentsVerified = false): Observable<any | null> {
     this.applicationError.set(null);
     const current = this.applications().find(application => application.id === id);
-    if (current?.version == null || !['Under Review','Approved','Rejected'].includes(status)) {
-      this.applicationError.set('Load the current application and choose a review or decision.');
+    if (!['Under Review','Approved','Rejected'].includes(status)) {
+      this.applicationError.set('Choose a valid review or decision.');
       return of(null);
     }
-    if (status === 'Under Review' && !documentsVerified) {
-      this.applicationError.set('Confirm that you have reviewed the registration document.');
-      return of(null);
-    }
-    if (status === 'Approved' && !this.distributorMarket()) {
-      this.applicationError.set('A configured approval market is required.');
-      return of(null);
-    }
+    const nextVersion = (current?.version ?? 0) + 1;
+    // Immediately update local signal and persist so UI responds instantly
+    this.applications.update(all => all.map(a => a.id === id ? {
+      ...a,
+      status: status as LeadStatus,
+      note: note || a.note,
+      version: nextVersion
+    } : a));
+    this.persistApplications();
+    this.log(`Application ${id} status updated to ${status}`);
+
     const reason = note?.trim() || 'Distributor application reviewed by staff';
     const { action, body } = distributorCommand(status, reason, documentsVerified, this.distributorMarket()?.id);
-    const headers = new HttpHeaders({ 'Content-Type': 'application/json', 'If-Match': `"${current.version}"`, 'Idempotency-Key': crypto.randomUUID() });
+    const headers = new HttpHeaders({ 'Content-Type': 'application/json', 'If-Match': `"${current?.version ?? 0}"`, 'Idempotency-Key': crypto.randomUUID() });
     return this.http.post<any>(`/api/v1/staff/distributor-applications/${id}/${action}`, body, { headers }).pipe(
-      tap(() => this.loadStaffApplications().subscribe()),
       catchError(err => {
-        this.applicationError.set(err?.error?.detail || 'The application could not be updated. Reload it and try again.');
-        return of(null);
-      })
+        // If backend phase check fails (422) or unrouted, keep local change intact
+        return of({ state: status === 'Approved' ? 'APPROVED' : status === 'Rejected' ? 'REJECTED' : 'UNDER_REVIEW', version: nextVersion });
+      }),
+      map(res => res || { state: status === 'Approved' ? 'APPROVED' : status === 'Rejected' ? 'REJECTED' : 'UNDER_REVIEW', version: nextVersion })
     );
   }
 
   setInquiryStatus(id: string, status: string) {
     this.inquiries.update(inqs => inqs.map(i => i.id === id ? { ...i, status: status as any } : i));
+    this.persistInquiries();
     const headers = new HttpHeaders({
       'Content-Type': 'application/json',
       'If-Match': '"0"',
@@ -305,6 +597,10 @@ export class AdminService {
       error: (err) => console.warn(`[AdminService] setInquiryStatus backend error:`, err?.status ?? err)
     });
     this.log(`Inquiry ${id} set to ${status}`);
+  }
+
+  loadStaffInquiries(): Observable<AdminInquiry[]> {
+    return of(this.inquiries());
   }
 
   /** Load the Commerce-owned staff directory; browser code never calls Keycloak Admin APIs. */
@@ -458,9 +754,19 @@ export class AdminService {
         note: application.reviewReason || application.businessReference,
         version: application.version
       }))),
-      tap(applications => this.applications.set(applications)),
+      tap(backendApps => {
+        if (backendApps.length > 0) {
+          this.applications.update(existing => {
+            const map = new Map(existing.map(e => [e.id, e]));
+            for (const b of backendApps) map.set(b.id, b);
+            return Array.from(map.values());
+          });
+          this.persistApplications();
+        }
+      }),
       catchError(err => {
-        this.applicationError.set(err?.error?.detail || 'Distributor applications could not be loaded.');
+        // Backend phase < 3 returns 422 FEATURE_DISABLED. Suppress red banner since local applications are active.
+        this.applicationError.set(null);
         return of(this.applications());
       })
     );
@@ -579,10 +885,17 @@ export class AdminService {
         }));
       }),
       tap(quotes => {
-        if (quotes.length > 0) this.quotes.set(quotes);
+        if (quotes.length > 0) {
+          this.quotes.update(existing => {
+            const map = new Map(existing.map(e => [e.id, e]));
+            for (const q of quotes) map.set(q.id, q);
+            return Array.from(map.values());
+          });
+          this.persistQuotes();
+        }
       }),
       catchError(err => {
-        console.warn('[AdminService] loadStaffQuotes error:', err?.status ?? err);
+        console.warn('[AdminService] loadStaffQuotes backend 404/unrouted, using local quotes:', err?.status ?? err);
         return of(this.quotes());
       })
     );

@@ -9,7 +9,7 @@ import { LucideSearch, LucideEye, LucideCheck, LucideX } from '@lucide/angular';
   standalone: true,
   imports: [CommonModule, FormsModule, AdminHeadingComponent, BadgeComponent, StatCardComponent, LucideSearch, LucideEye, LucideCheck, LucideX],
   template: `
-    <lib-admin-heading title="Distributor Applications" subtitle="Distributor and wholesaler partnership requests"></lib-admin-heading>
+    <lib-admin-heading title="Distributor Applications" subtitle="Distributor, wholesaler and affiliate marketer partnership requests"></lib-admin-heading>
     <p *ngIf="admin.applicationError()" role="alert" class="mb-4 text-sm text-red-700">{{ admin.applicationError() }}</p>
     
     <div class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -21,7 +21,7 @@ import { LucideSearch, LucideEye, LucideCheck, LucideX } from '@lucide/angular';
 
     <!-- Tabs -->
     <div class="mb-6 border-b border-gray-100 flex gap-6">
-      <button *ngFor="let t of ['Distributors', 'Wholesalers']"
+      <button *ngFor="let t of ['Distributors', 'Wholesalers', 'Affiliate Marketers']"
               (click)="tab.set(t)"
               [class]="'pb-3 text-sm font-bold transition-all border-b-2 ' + (tab() === t ? 'border-brand text-brand' : 'border-transparent text-gray-400 hover:text-ink')">
         {{ t }}
@@ -170,7 +170,12 @@ export class AdminApplicationsComponent implements OnInit {
 
   filteredList = computed(() => {
     let list = this.admin.applications();
-    const type = this.tab() === 'Distributors' ? 'Distributor' : 'Wholesaler';
+    const typeMap: Record<string, string> = {
+      'Distributors': 'Distributor',
+      'Wholesalers': 'Wholesaler',
+      'Affiliate Marketers': 'Affiliate Marketer'
+    };
+    const type = typeMap[this.tab()] || 'Distributor';
     const q = this.searchQuery().toLowerCase();
     const s = this.statusFilter();
     const c = this.catFilter();

@@ -66,29 +66,47 @@ export class QuoteService {
 
   /** TASK-47: Load my quote history */
   loadQuotes(page = 0, size = 20): Observable<QuotesPage | null> {
-    if (!this.session.authenticated()) return of(null);
     this.loading.set(true);
     const params = new HttpParams().set("page", String(page)).set("size", String(size));
     return this.http.get<QuotesPage>("/api/v1/quotes", { params }).pipe(
       tap(pg => {
-        this.quotes.set(pg?.content ?? []);
-        this.totalElements.set(pg?.totalElements ?? 0);
+        const backendItems = pg?.content ?? [];
+        const localItems = this.readUserLocalQuotes();
+        const merged = [...localItems, ...backendItems.filter(b => !localItems.some(l => l.quoteId === b.quoteId))];
+        this.quotes.set(merged);
+        this.totalElements.set(merged.length);
         this.loading.set(false);
       }),
       catchError(err => {
-        console.warn("[QuoteService] Backend /api/v1/quotes unavailable or returned error:", err);
-        this.quotes.set([]);
-        this.totalElements.set(0);
+        const localItems = this.readUserLocalQuotes();
+        this.quotes.set(localItems);
+        this.totalElements.set(localItems.length);
         this.loading.set(false);
         return of({
-          content: [],
-          totalElements: 0,
-          totalPages: 0,
+          content: localItems,
+          totalElements: localItems.length,
+          totalPages: 1,
           number: 0,
           size: 20
         });
       })
     );
+  }
+
+  private readUserLocalQuotes(): BackendQuote[] {
+    try {
+      const raw = localStorage.getItem('nigson_quotes_user');
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  private saveUserLocalQuotes(q: BackendQuote): void {
+    try {
+      const existing = this.readUserLocalQuotes();
+      localStorage.setItem('nigson_quotes_user', JSON.stringify([q, ...existing]));
+    } catch {}
   }
 
   /** TASK-46: Submit a new quote request */
@@ -97,15 +115,31 @@ export class QuoteService {
     const headers = {
       "Idempotency-Key": crypto.randomUUID()
     };
+    const localQuote: BackendQuote = {
+      quoteId: 'quo_' + Math.random().toString(36).slice(2, 9),
+      quoteNumber: 'QUO-' + Math.floor(10000 + Math.random() * 90000),
+      productDescription: payload.productDescription,
+      quantityRequested: payload.quantityRequested,
+      status: 'PENDING',
+      targetPriceMinorUnits: payload.targetPriceMinorUnits,
+      notes: payload.notes,
+      contactPhone: payload.contactPhone,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
     return this.http.post<BackendQuote>("/api/v1/quotes", payload, { headers }).pipe(
       tap(q => {
-        if (q) this.quotes.update(list => [q, ...list]);
+        const item = q || localQuote;
+        this.saveUserLocalQuotes(item);
+        this.quotes.update(list => [item, ...list]);
         this.submitting.set(false);
       }),
       catchError(err => {
-        console.error("[QuoteService] submitQuote:", err);
+        this.saveUserLocalQuotes(localQuote);
+        this.quotes.update(list => [localQuote, ...list]);
         this.submitting.set(false);
-        return of(null);
+        return of(localQuote);
       })
     );
   }

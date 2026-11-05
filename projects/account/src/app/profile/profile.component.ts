@@ -1,4 +1,4 @@
-﻿import { Component, inject, signal, ViewChild, ElementRef, OnInit } from '@angular/core';
+import { Component, inject, signal, ViewChild, ElementRef, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AccountService, OrderService, QuoteService, ShopService } from 'shared-ui';

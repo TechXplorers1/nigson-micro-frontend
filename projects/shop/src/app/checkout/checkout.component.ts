@@ -216,21 +216,21 @@ const BANKS = ["Access Bank", "First Bank", "Guaranty Trust Bank", "United Bank 
             <aside class="lg:sticky lg:top-28 h-fit rounded-2xl border border-hairline bg-white p-6">
               <h3 class="text-base font-bold">Order summary</h3>
               <ul class="mt-4 space-y-3 max-h-64 overflow-auto pr-1">
-                <li *ngFor="let i of shop.cart()" class="flex items-center gap-3 text-sm">
-                  <div class="h-12 w-12 rounded-lg overflow-hidden bg-surface-alt shrink-0">
-                    <img *ngIf="i.image" [src]="i.image" alt="" class="h-full w-full object-cover" />
+                <li *ngFor="let i of checkoutItems()" class="flex items-center gap-3 text-sm">
+                  <div class="h-12 w-12 rounded-lg overflow-hidden bg-surface-alt shrink-0 border border-hairline">
+                    <img *ngIf="i.imageUrl" [src]="i.imageUrl" alt="" class="h-full w-full object-cover" />
                   </div>
                   <div class="flex-1 min-w-0">
                     <p class="truncate font-semibold">{{ i.name }}</p>
-                    <p class="text-xs text-muted-ink">Qty {{ i.qty }}</p>
+                    <p class="text-xs text-muted-ink">Qty {{ i.quantity }}</p>
                   </div>
-                  <p class="font-semibold">{{ i.price > 0 ? catalog.formatPrice(i.price * i.qty * 100) : 'Price from Commerce' }}</p>
+                  <p class="font-semibold">{{ i.unitPriceMinorUnits > 0 ? catalog.formatPrice(i.unitPriceMinorUnits * i.quantity) : 'Price from Commerce' }}</p>
                 </li>
               </ul>
               
               <dl class="mt-6 space-y-3 text-sm border-t border-hairline pt-6">
                 <div class="flex items-center justify-between">
-                  <dt class="text-muted-ink">Subtotal</dt>
+                  <dt class="text-muted-ink">Subtotal ({{ checkoutItems().length }} items)</dt>
                   <dd class="font-semibold">{{ catalog.formatPrice(subtotalMinor()) }}</dd>
                 </div>
                 <div class="flex items-center justify-between">
@@ -381,8 +381,13 @@ export class CheckoutComponent implements OnInit {
     if (sessionEmail && !this.customer.email) this.customer.email = sessionEmail;
   }
 
+  checkoutItems = computed(() => {
+    const sel = this.cart.selectedItems();
+    return sel.length > 0 ? sel : this.cart.items();
+  });
+
   subtotalMinor = computed((): number => {
-    const items = this.cart.items();
+    const items = this.checkoutItems();
     return items.reduce((sum, i) => sum + i.unitPriceMinorUnits * i.quantity, 0);
   });
   // Final prices, delivery and tax are calculated only by the Commerce quote APIs.

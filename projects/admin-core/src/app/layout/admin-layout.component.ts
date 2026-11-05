@@ -95,7 +95,7 @@ type Item = { to: string; label: string; icon: any; key: SectionKey; exact?: boo
               <p class="truncate text-[11px] text-muted-ink">{{ currentRole()?.name ?? "Admin" }}</p>
             </div>
           </div>
-          <button (click)="handleLogout()" class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-muted-ink transition-colors hover:bg-rose-50 hover:text-rose-600">
+          <button (click)="handleLogout()" title="Log out" aria-label="Log out" class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-muted-ink transition-colors hover:bg-rose-50 hover:text-rose-600">
             <svg lucideLogOut class="h-4 w-4 shrink-0"></svg> Log out
           </button>
         </div>
@@ -107,7 +107,7 @@ type Item = { to: string; label: string; icon: any; key: SectionKey; exact?: boo
           <div class="flex items-center gap-2">
             <span class="text-lg font-extrabold tracking-tight text-ink">NIG<span class="text-brand">SON</span></span>
           </div>
-          <button (click)="sidebarOpen.set(true)" class="grid h-10 w-10 place-items-center rounded-full border border-hairline text-ink">
+          <button (click)="sidebarOpen.set(true)" title="Open navigation menu" aria-label="Open navigation menu" class="grid h-10 w-10 place-items-center rounded-full border border-hairline text-ink">
             <svg lucideMenu class="h-5 w-5"></svg>
           </button>
         </header>

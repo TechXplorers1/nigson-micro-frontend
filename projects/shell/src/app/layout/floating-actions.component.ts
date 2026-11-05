@@ -14,22 +14,27 @@ const QUICK = ['Product catalog', 'Wholesale pricing', 'Become distributor', 'Co
   standalone: true,
   imports: [CommonModule, FormsModule, LucideMessageCircle, LucideBot, LucideX, LucideSend, LucideArrowUp],
   template: `
-    <button (click)="scrollToTop()" aria-label="Back to Top"
+    <button (click)="scrollToTop()" aria-label="Back to Top" title="Back to top"
       class="fixed bottom-6 right-6 z-40 grid h-12 w-12 place-items-center rounded-full bg-white border border-hairline text-ink shadow-[0_10px_30px_-5px_rgba(0,0,0,0.2)] hover:bg-brand hover:text-white hover:border-brand transition-all duration-300"
       [ngClass]="showTopBtn() ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-4 pointer-events-none'">
       <svg lucideArrowUp class="h-5 w-5"></svg>
     </button>
 
-    <button (click)="aiOpen.set(!aiOpen())" aria-label="AI Assistant"
+    <button (click)="aiOpen.set(!aiOpen())" aria-label="AI Assistant" [attr.title]="aiOpen() ? 'Close Assistant' : 'Chat with Nigson Assistant'"
       class="fixed bottom-24 right-6 z-40 grid h-14 w-14 place-items-center rounded-full bg-ink text-white shadow-[0_20px_50px_-15px_rgba(0,0,0,0.5)] hover:bg-brand transition-colors">
       <svg *ngIf="!aiOpen()" lucideMessageCircle class="h-6 w-6"></svg>
       <svg *ngIf="aiOpen()" lucideX class="h-6 w-6"></svg>
     </button>
 
     <div *ngIf="aiOpen()" class="fixed bottom-44 right-6 z-40 w-[340px] rounded-2xl bg-white border border-hairline shadow-[0_30px_80px_-20px_rgba(0,0,0,0.35)] animate-fade-up overflow-hidden">
-      <div class="bg-ink text-white px-5 py-4 flex items-center gap-2.5">
-        <span class="grid h-8 w-8 place-items-center rounded-full bg-brand"><svg lucideBot class="h-4 w-4"></svg></span>
-        <div><p class="text-sm font-semibold">Nigson Assistant</p><p class="text-[11px] text-white/60">Answers use the configured Nigson AI service</p></div>
+      <div class="bg-ink text-white px-5 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <span class="grid h-8 w-8 place-items-center rounded-full bg-brand"><svg lucideBot class="h-4 w-4"></svg></span>
+          <div><p class="text-sm font-semibold">Nigson Assistant</p><p class="text-[11px] text-white/60">Answers use the configured Nigson AI service</p></div>
+        </div>
+        <button type="button" (click)="aiOpen.set(false)" class="text-white/60 hover:text-white transition-colors" title="Close Assistant" aria-label="Close Assistant">
+          <svg lucideX class="h-5 w-5"></svg>
+        </button>
       </div>
       <div #scrollRef class="p-4 space-y-3 max-h-[280px] overflow-y-auto">
         <div *ngFor="let m of msgs()" class="rounded-2xl px-4 py-2.5 text-sm max-w-[85%]"
@@ -43,7 +48,7 @@ const QUICK = ['Product catalog', 'Wholesale pricing', 'Become distributor', 'Co
       <form (submit)="onSubmit($event)" class="border-t border-hairline p-3 flex gap-2">
         <input type="text" [(ngModel)]="input" name="chatInput" [disabled]="busy() || uncertain()"
           placeholder="Type your question..." class="flex-1 rounded-full border border-hairline bg-white px-4 py-2 text-sm focus:outline-none focus:border-brand" />
-        <button type="submit" [disabled]="busy() || uncertain()" class="grid h-9 w-9 place-items-center rounded-full bg-brand text-white disabled:opacity-50">
+        <button type="submit" [disabled]="busy() || uncertain()" title="Send message" aria-label="Send message" class="grid h-9 w-9 place-items-center rounded-full bg-brand text-white disabled:opacity-50">
           <svg lucideSend class="h-4 w-4"></svg>
         </button>
       </form>

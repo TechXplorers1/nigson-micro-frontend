@@ -1,8 +1,8 @@
-﻿import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { PageHeaderComponent, QuoteService, ShopService } from 'shared-ui';
+import { PageHeaderComponent, QuoteService, ShopService, AdminService } from 'shared-ui';
 import { LucideCheckCircle2 } from '@lucide/angular';
 
 @Component({
@@ -82,6 +82,7 @@ import { LucideCheckCircle2 } from '@lucide/angular';
 export class QuoteComponent {
   shop = inject(ShopService);
   quoteSvc = inject(QuoteService);
+  adminSvc = inject(AdminService);
   router = inject(Router);
 
   submitted = signal(false);
@@ -112,6 +113,18 @@ export class QuoteComponent {
       notes: this.f.message || undefined,
       contactPhone: this.f.phone || undefined,
     };
+
+    // Register quote in local admin quote queue so it appears immediately under /admin/quotes
+    this.adminSvc.addLocalQuote({
+      customer: `${this.f.name}${this.f.company ? ' (' + this.f.company + ')' : ''}`,
+      email: this.f.email,
+      phone: this.f.phone,
+      product: this.f.products || 'Wholesale Request',
+      sku: 'NG-PWR-001',
+      quantity: Number(this.f.qty) || 1,
+      message: this.f.message || 'Wholesale quotation request',
+      status: 'Pending'
+    });
 
     this.quoteSvc.submitQuote(payload).subscribe({
       next: (q) => {

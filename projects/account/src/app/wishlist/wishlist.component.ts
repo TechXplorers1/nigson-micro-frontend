@@ -58,12 +58,16 @@ import { LucideHeart, LucideTrash2, LucideShoppingCart, LucidePackageOpen } from
           <div class="flex gap-2">
             <button
               (click)="addToCart(item)"
+              title="Add to cart"
+              aria-label="Add to cart"
               class="flex-1 inline-flex items-center justify-center gap-2 rounded-full bg-brand text-white px-4 py-2.5 text-xs font-semibold hover:bg-brand-deep transition-colors"
             >
               <svg lucideShoppingCart class="h-3.5 w-3.5"></svg> Add to Cart
             </button>
             <button
               (click)="remove(item.sku)"
+              title="Remove from wishlist"
+              aria-label="Remove from wishlist"
               class="inline-flex items-center justify-center rounded-full border border-hairline px-3 py-2.5 text-xs font-semibold text-muted-ink hover:border-brand hover:text-brand transition-colors"
             >
               <svg lucideTrash2 class="h-3.5 w-3.5"></svg>

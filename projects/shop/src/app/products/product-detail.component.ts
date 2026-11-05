@@ -22,7 +22,7 @@ import { ProductCardComponent } from './product-card.component';
   template: `
     <div class="min-h-screen bg-background" *ngIf="product()">
       <section class="container-page pt-10">
-        <button (click)="goBack()" class="inline-flex items-center gap-2 text-sm font-semibold text-ink hover:text-brand transition-colors">
+        <button (click)="goBack()" title="Back to products" aria-label="Back to products" class="inline-flex items-center gap-2 text-sm font-semibold text-ink hover:text-brand transition-colors">
           <svg lucideArrowLeft class="h-4 w-4"></svg> Back
         </button>
       </section>
@@ -45,12 +45,16 @@ import { ProductCardComponent } from './product-card.component';
 
               <button
                 (click)="go(index() - 1)"
+                title="Previous image"
+                aria-label="Previous image"
                 class="absolute left-3 top-1/2 -translate-y-1/2 grid h-10 w-10 place-items-center rounded-full bg-white/95 backdrop-blur border border-hairline hover:bg-brand hover:text-white transition-colors"
               >
                 <svg lucideChevronLeft class="h-5 w-5"></svg>
               </button>
               <button
                 (click)="go(index() + 1)"
+                title="Next image"
+                aria-label="Next image"
                 class="absolute right-3 top-1/2 -translate-y-1/2 grid h-10 w-10 place-items-center rounded-full bg-white/95 backdrop-blur border border-hairline hover:bg-brand hover:text-white transition-colors"
               >
                 <svg lucideChevronRight class="h-5 w-5"></svg>
@@ -61,15 +65,15 @@ import { ProductCardComponent } from './product-card.component';
               </span>
 
               <div class="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2 rounded-full bg-white/95 backdrop-blur border border-hairline shadow-lg px-2 py-1.5">
-                <button (click)="setZoom(zoom() - 0.25)" class="grid h-8 w-8 place-items-center rounded-full hover:bg-brand hover:text-white transition-colors">
+                <button (click)="setZoom(zoom() - 0.25)" title="Zoom out" aria-label="Zoom out" class="grid h-8 w-8 place-items-center rounded-full hover:bg-brand hover:text-white transition-colors">
                   <svg lucideZoomOut class="h-4 w-4"></svg>
                 </button>
                 <span class="min-w-[3rem] text-center text-xs font-semibold tabular-nums">{{ math.round(zoom() * 100) }}%</span>
-                <button (click)="setZoom(zoom() + 0.25)" class="grid h-8 w-8 place-items-center rounded-full hover:bg-brand hover:text-white transition-colors">
+                <button (click)="setZoom(zoom() + 0.25)" title="Zoom in" aria-label="Zoom in" class="grid h-8 w-8 place-items-center rounded-full hover:bg-brand hover:text-white transition-colors">
                   <svg lucideZoomIn class="h-4 w-4"></svg>
                 </button>
                 <span class="h-5 w-px bg-hairline mx-1"></span>
-                <button (click)="setZoom(1)" class="grid h-8 w-8 place-items-center rounded-full hover:bg-brand hover:text-white transition-colors">
+                <button (click)="setZoom(1)" title="Reset zoom" aria-label="Reset zoom" class="grid h-8 w-8 place-items-center rounded-full hover:bg-brand hover:text-white transition-colors">
                   <svg lucideRotateCcw class="h-4 w-4"></svg>
                 </button>
               </div>
@@ -123,7 +127,7 @@ import { ProductCardComponent } from './product-card.component';
               <!-- Qty Stepper / Cart Control -->
               <ui-qty-stepper *ngIf="product()" [product]="productWithPrice()" [image]="gallery()[0]"></ui-qty-stepper>
 
-              <a [routerLink]="['/quote']" class="inline-flex items-center gap-2 rounded-full border border-ink text-ink px-6 py-3 text-sm font-semibold hover:bg-ink hover:text-white transition-colors">
+              <a [routerLink]="['/quote']" title="Request a quote" aria-label="Request a quote" class="inline-flex items-center gap-2 rounded-full border border-ink text-ink px-6 py-3 text-sm font-semibold hover:bg-ink hover:text-white transition-colors">
                 <svg lucideFileText class="h-4 w-4"></svg> Request quote
               </a>
             </div>

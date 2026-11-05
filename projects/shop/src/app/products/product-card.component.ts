@@ -1,25 +1,23 @@
-﻿import { Component, Input, inject, signal, OnInit } from '@angular/core';
+import { Component, Input, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { LucideShoppingCart, LucideStar, LucideLoader2 } from '@lucide/angular';
-import { CatalogService, Product, ShopService } from 'shared-ui';
+import { CatalogService, Product, ShopService, QtyStepperComponent } from 'shared-ui';
 
 /**
  * ProductCardComponent (TASK-19, TASK-20, TASK-21)
  *
- * - Route now uses product UUID (/products/:id) not SKU
- * - Price loaded from GET /api/v1/catalogue/skus/{id}/price (kobo -> Naira)
- * - imageFor uses backend images[] or fallback category image
- * - Removed fake ratingFor() hash — real reviews wired in TASK-52
+ * - Route uses product UUID (/products/:id)
+ * - Uses shared ui-qty-stepper component for Add to Cart & live quantity counting
+ * - Count stays synchronized reactively across every page (cards, details, cart, checkout)
  */
 @Component({
   selector: 'app-product-card',
   standalone: true,
-  imports: [CommonModule, RouterLink, LucideShoppingCart, LucideStar, LucideLoader2],
+  imports: [CommonModule, RouterLink, QtyStepperComponent],
   template: `
     <div class="group flex flex-col text-left rounded-2xl border border-border bg-background overflow-hidden hover:shadow-elegant hover:-translate-y-1 transition-all h-full">
-      <!-- TASK-21: Route uses product UUID (id), not SKU -->
-      <a [routerLink]="['/products', p.id]" class="text-left flex-1">
+      <!-- Route uses product UUID (id) -->
+      <a [routerLink]="['/products', p.id]" class="text-left flex-1" [attr.title]="p.name">
         <div class="aspect-[4/3] bg-surface-alt relative overflow-hidden">
           <img
             [src]="primaryImage()"
@@ -35,7 +33,6 @@ import { CatalogService, Product, ShopService } from 'shared-ui';
           <p class="text-[11px] uppercase tracking-widest text-muted-foreground">{{ p.sku }}</p>
           <h3 class="mt-1 text-lg font-semibold group-hover:text-brand transition-colors">{{ p.name }}</h3>
           <p class="mt-3 text-[11px] uppercase tracking-widest text-muted-foreground">Starting from</p>
-          <!-- TASK-19/20: Price from backend (kobo) — formatPrice divides by 100 -->
           <ng-container *ngIf="!priceLoading()">
             <p class="mt-1 text-[22px] font-bold text-[#D62828] leading-tight">
               {{ displayPrice() }}
@@ -46,18 +43,23 @@ import { CatalogService, Product, ShopService } from 'shared-ui';
         </div>
       </a>
 
-      <div class="mt-auto px-5 pb-5 pt-4 flex gap-2">
+      <!-- Action Area: View Details + ui-qty-stepper Add to Cart component -->
+      <div class="mt-auto px-5 pb-5 pt-4 flex items-center gap-2">
         <a
           [routerLink]="['/products', p.id]"
-          class="flex-1 rounded-full border border-hairline px-4 py-2.5 text-xs font-semibold text-ink hover:border-brand hover:text-brand transition-colors text-center"
-        >View Details</a>
-        <button
-          type="button"
-          (click)="addToCart()"
-          class="flex-1 inline-flex items-center justify-center gap-1.5 rounded-full bg-brand text-white px-4 py-2.5 text-xs font-semibold hover:bg-brand-deep transition-colors"
+          title="View product details"
+          aria-label="View details"
+          class="shrink-0 rounded-full border border-hairline px-3.5 py-2 text-xs font-semibold text-ink hover:border-brand hover:text-brand transition-colors text-center"
         >
-          <svg lucideShoppingCart class="h-3.5 w-3.5"></svg> Add to Cart
-        </button>
+          View Details
+        </a>
+        <div class="flex-1 min-w-0">
+          <ui-qty-stepper
+            [product]="productForStepper()"
+            [image]="primaryImage()"
+            [compact]="true"
+          ></ui-qty-stepper>
+        </div>
       </div>
     </div>
   `
@@ -71,7 +73,24 @@ export class ProductCardComponent implements OnInit {
 
   readonly priceLoading = signal(true);
   readonly displayPrice = signal('Contact for price');
+  readonly priceMinorUnits = signal<number | null>(null);
   readonly resolvedSkuId = signal<string | null>(null);
+
+  productForStepper = computed(() => {
+    const skuId = this.resolvedSkuId() || (this.p.skuId && this.p.skuId !== this.p.id ? this.p.skuId : null) || this.p.id;
+    const minor = this.priceMinorUnits() ?? this.p.priceMinorUnits ?? 0;
+    return {
+      ...this.p,
+      skuId: skuId,
+      sku: this.p.sku,
+      id: this.p.id,
+      name: this.p.name,
+      categoryName: this.p.categoryName || 'General',
+      imageUrl: this.primaryImage(),
+      priceMinorUnits: minor,
+      price: minor / 100
+    };
+  });
 
   ngOnInit() {
     const loadPrice = (skuId: string | undefined) => {
@@ -81,15 +100,30 @@ export class ProductCardComponent implements OnInit {
       }
       this.resolvedSkuId.set(skuId);
       this.catalog.getPrice(skuId).subscribe({
-        next: price => { this.displayPrice.set(price.priceMinorUnits > 0 ? this.catalog.formatPrice(price.priceMinorUnits) : 'Contact for price'); this.priceLoading.set(false); },
-        error: () => { this.displayPrice.set('Contact for price'); this.priceLoading.set(false); }
+        next: price => {
+          this.displayPrice.set(price.priceMinorUnits > 0 ? this.catalog.formatPrice(price.priceMinorUnits) : 'Contact for price');
+          this.priceMinorUnits.set(price.priceMinorUnits);
+          this.priceLoading.set(false);
+        },
+        error: () => {
+          this.displayPrice.set('Contact for price');
+          this.priceLoading.set(false);
+        }
       });
     };
+
     if (this.p.skuId && this.p.skuId !== this.p.id) {
       loadPrice(this.p.skuId);
     } else {
       this.catalog.getProduct(this.p.id).subscribe({
-        next: product => loadPrice(product.skuId),
+        next: product => {
+          if (product?.skuId) {
+            this.resolvedSkuId.set(product.skuId);
+            loadPrice(product.skuId);
+          } else {
+            this.priceLoading.set(false);
+          }
+        },
         error: () => this.priceLoading.set(false)
       });
     }
@@ -97,18 +131,5 @@ export class ProductCardComponent implements OnInit {
 
   primaryImage(): string {
     return this.catalog.primaryImage(this.p);
-  }
-
-  addToCart() {
-    const skuId = this.resolvedSkuId() || (this.p.skuId !== this.p.id ? this.p.skuId : null);
-    if (!skuId) { this.displayPrice.set('SKU unavailable'); return; }
-    this.shop.addToCart({
-      sku: this.p.sku,
-      skuId,
-      name: this.p.name,
-      category: this.p.categoryName ?? '',
-      price: (this.p.priceMinorUnits ?? 0) / 100, // store in Naira for now
-      image: this.primaryImage()
-    } as any);
   }
 }

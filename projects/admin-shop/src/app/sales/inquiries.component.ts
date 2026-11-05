@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AdminService, AdminHeadingComponent, BadgeComponent, statusTone } from 'shared-ui';
 
@@ -7,7 +7,7 @@ import { AdminService, AdminHeadingComponent, BadgeComponent, statusTone } from 
   standalone: true,
   imports: [CommonModule, AdminHeadingComponent, BadgeComponent],
   template: `
-    <lib-admin-heading title="Contact Inquiries" subtitle="General questions and support requests"></lib-admin-heading>
+    <lib-admin-heading title="Contact Inquiries" subtitle="General questions, affiliate submissions and support requests"></lib-admin-heading>
     
     <div class="rounded-2xl border border-hairline bg-white shadow-sm overflow-hidden">
       <div class="overflow-x-auto">
@@ -30,7 +30,7 @@ import { AdminService, AdminHeadingComponent, BadgeComponent, statusTone } from 
               </td>
               <td class="px-6 py-4">
                 <p class="font-semibold">{{ i.subject }}</p>
-                <p class="mt-1 line-clamp-2 max-w-md text-xs text-muted-ink">{{ i.message }}</p>
+                <p class="mt-1 line-clamp-2 max-w-md text-xs text-muted-ink whitespace-pre-line">{{ i.message }}</p>
               </td>
               <td class="px-6 py-4"><lib-badge [tone]="getTone(i.status)">{{ i.status }}</lib-badge></td>
               <td class="px-6 py-4 whitespace-nowrap text-xs text-muted-ink">{{ i.date | date:'mediumDate' }}</td>
@@ -41,7 +41,7 @@ import { AdminService, AdminHeadingComponent, BadgeComponent, statusTone } from 
               </td>
             </tr>
             <tr *ngIf="admin.inquiries().length === 0">
-              <td colspan="4" class="p-8 text-center text-muted-ink">No inquiries found.</td>
+              <td colspan="5" class="p-8 text-center text-muted-ink">No inquiries found.</td>
             </tr>
           </tbody>
         </table>
@@ -49,8 +49,13 @@ import { AdminService, AdminHeadingComponent, BadgeComponent, statusTone } from 
     </div>
   `
 })
-export class AdminInquiriesComponent {
+export class AdminInquiriesComponent implements OnInit {
   admin = inject(AdminService);
+
+  ngOnInit() {
+    this.admin.loadStaffInquiries().subscribe();
+  }
+
   getTone(status: string) { return statusTone(status); }
 
   resolve(id: string) {

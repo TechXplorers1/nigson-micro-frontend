@@ -9,7 +9,10 @@ import { LucideMinus, LucidePlus, LucideShoppingCart } from '@lucide/angular';
   imports: [CommonModule, LucideMinus, LucidePlus, LucideShoppingCart],
   template: `
     <ng-container *ngIf="stock <= 0; else inStock">
-      <span class="inline-flex items-center gap-2 rounded-full bg-surface-alt text-muted-ink px-6 py-3 text-sm font-semibold border border-hairline cursor-not-allowed">
+      <span
+        [ngClass]="compact ? 'px-3 py-2 text-xs' : 'px-6 py-3 text-sm'"
+        class="inline-flex items-center justify-center gap-2 rounded-full bg-surface-alt text-muted-ink font-semibold border border-hairline cursor-not-allowed w-full"
+      >
         Out of Stock
       </span>
     </ng-container>
@@ -18,32 +21,46 @@ import { LucideMinus, LucidePlus, LucideShoppingCart } from '@lucide/angular';
       <button
         *ngIf="qty() <= 0"
         type="button"
-        (click)="add()"
-        class="inline-flex w-full shrink-0 whitespace-nowrap items-center justify-center gap-2 rounded-full bg-brand text-white px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold hover:bg-brand-deep transition-colors shadow-sm"
+        (click)="add($event)"
+        title="Add to cart"
+        aria-label="Add to cart"
+        [ngClass]="compact ? 'px-3 py-2 text-xs' : 'px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm'"
+        class="inline-flex w-full shrink-0 whitespace-nowrap items-center justify-center gap-1.5 rounded-full bg-brand text-white font-semibold hover:bg-brand-deep active:scale-95 transition-all shadow-sm"
       >
-        <svg lucideShoppingCart class="h-4 w-4"></svg> Add to Cart
+        <svg lucideShoppingCart [ngClass]="compact ? 'h-3.5 w-3.5' : 'h-4 w-4'"></svg> Add to Cart
       </button>
 
-      <div *ngIf="qty() > 0" class="flex w-full items-center justify-between gap-1 rounded-full bg-brand text-white px-2 py-1.5 shadow-sm">
+      <div
+        *ngIf="qty() > 0"
+        [ngClass]="compact ? 'px-1.5 py-1' : 'px-2 py-1.5'"
+        class="flex w-full items-center justify-between gap-1 rounded-full bg-brand text-white shadow-sm transition-all"
+      >
         <button
           type="button"
           aria-label="Decrease quantity"
-          (click)="update(qty() - 1)"
-          class="grid h-8 w-8 place-items-center rounded-full hover:bg-brand-deep transition-colors"
+          title="Decrease quantity"
+          (click)="update(qty() - 1, $event)"
+          [ngClass]="compact ? 'h-6 w-6' : 'h-8 w-8'"
+          class="grid place-items-center rounded-full hover:bg-brand-deep transition-colors shrink-0"
         >
-          <svg lucideMinus class="h-4 w-4"></svg>
+          <svg lucideMinus [ngClass]="compact ? 'h-3 w-3' : 'h-4 w-4'"></svg>
         </button>
 
-        <span class="min-w-[2.5rem] text-center text-sm font-bold tabular-nums">{{ qty() }}</span>
+        <span
+          [ngClass]="compact ? 'min-w-[1.5rem] text-xs' : 'min-w-[2.5rem] text-sm'"
+          class="text-center font-bold tabular-nums"
+        >{{ qty() }}</span>
 
         <button
           type="button"
           aria-label="Increase quantity"
+          title="Increase quantity"
           [disabled]="atMax()"
-          (click)="update(qty() + 1)"
-          class="grid h-8 w-8 place-items-center rounded-full hover:bg-brand-deep transition-colors disabled:opacity-40 disabled:hover:bg-transparent"
+          (click)="update(qty() + 1, $event)"
+          [ngClass]="compact ? 'h-6 w-6' : 'h-8 w-8'"
+          class="grid place-items-center rounded-full hover:bg-brand-deep transition-colors disabled:opacity-40 disabled:hover:bg-transparent shrink-0"
         >
-          <svg lucidePlus class="h-4 w-4"></svg>
+          <svg lucidePlus [ngClass]="compact ? 'h-3 w-3' : 'h-4 w-4'"></svg>
         </button>
       </div>
     </ng-template>
@@ -54,21 +71,57 @@ export class QtyStepperComponent {
 
   @Input({ required: true }) product!: any;
   @Input() image?: string;
+  @Input() compact = false;
 
   get stock(): number {
     return this.product?.stock ?? 99;
   }
 
-  qty(): number {
-    const p = this.product;
-    if (!p) return 0;
-    const item = this.shop.cart().find(
-      (c: any) =>
-        c.sku === p.sku ||
-        (p.id && (c.skuId === p.id || c.sku === p.id)) ||
-        (p.skuId && (c.skuId === p.skuId || c.sku === p.skuId)) ||
-        (p.lineId && (c.lineId === p.lineId || c.skuId === p.lineId || c.sku === p.lineId))
+  private isGenericToken(val?: string): boolean {
+    if (!val) return true;
+    const clean = val.trim().toUpperCase();
+    return (
+      clean.length < 3 ||
+      clean === 'DEMO' ||
+      clean === 'GENERAL' ||
+      clean === 'NG-SKU' ||
+      clean === 'PRODUCT' ||
+      clean === 'SKU' ||
+      clean === 'UNDEFINED' ||
+      clean === 'NULL'
     );
+  }
+
+  findCartItem(): any {
+    const p = this.product;
+    if (!p) return null;
+    const items = this.shop.cart();
+    if (!items || items.length === 0) return null;
+
+    return items.find((c: any) => {
+      // 1. Line ID match
+      if (p.lineId && (c.lineId === p.lineId || c.skuId === p.lineId)) return true;
+
+      // 2. Exact match on skuId (UUID)
+      if (p.skuId && (c.skuId === p.skuId || (c.sku === p.skuId && !this.isGenericToken(c.sku)))) return true;
+
+      // 3. Exact match on product UUID
+      if (p.id) {
+        if (c.productId && c.productId === p.id) return true;
+        if (c.skuId && c.skuId === p.id) return true;
+      }
+
+      // 4. Exact match on non-generic SKU code (e.g. DEMO-EL-01-03 or NS03)
+      if (!this.isGenericToken(p.sku) && !this.isGenericToken(c.sku)) {
+        if (p.sku.trim().toLowerCase() === c.sku.trim().toLowerCase()) return true;
+      }
+
+      return false;
+    });
+  }
+
+  qty(): number {
+    const item = this.findCartItem();
     return item ? item.qty : 0;
   }
 
@@ -76,13 +129,16 @@ export class QtyStepperComponent {
     return this.qty() >= this.stock;
   }
 
-  add() {
+  add(e?: Event) {
+    e?.stopPropagation();
+    e?.preventDefault();
     const p = this.product;
     if (!p) return;
     const priceMinor = p.priceMinorUnits ?? (p.price != null ? Math.round(p.price * 100) : 0);
     this.shop.addToCart({
       sku: p.sku || p.id,
       skuId: p.skuId || p.id,
+      productId: p.id,
       name: p.name || 'Product',
       category: p.categoryName ?? p.category ?? 'General',
       price: p.price ?? (priceMinor / 100),
@@ -91,10 +147,14 @@ export class QtyStepperComponent {
     } as any);
   }
 
-  update(newQty: number) {
+  update(newQty: number, e?: Event) {
+    e?.stopPropagation();
+    e?.preventDefault();
     const p = this.product;
     if (!p) return;
-    const skuKey = p.sku || p.skuId || p.id || p.lineId;
-    this.shop.updateQty(skuKey, newQty);
+    const item = this.findCartItem();
+    const targetKey = item?.skuId || item?.lineId || p.skuId || (item && !this.isGenericToken(item.sku) ? item.sku : null) || p.id;
+    if (!targetKey) return;
+    this.shop.updateQty(targetKey, newQty);
   }
 }
