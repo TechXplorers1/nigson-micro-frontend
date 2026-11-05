@@ -42,9 +42,9 @@ export class SessionService {
 
   /** Start the Keycloak authorization-code flow through the Java BFF. */
   signIn(returnUrl = '/account'): void {
-    const target = ['/','/account','/shop','/checkout'].includes(returnUrl)
+    const target = ['/','/account','/shop','/checkout','/admin'].includes(returnUrl)
       ? returnUrl
-      : returnUrl.startsWith('/checkout') || returnUrl.startsWith('/cart') ? '/checkout' : '/account';
+      : returnUrl.startsWith('/checkout') || returnUrl.startsWith('/cart') ? '/checkout' : returnUrl.startsWith('/admin') ? '/admin' : '/account';
     const loginUrl = new URL(`${BFF_BASE}/bff/login`, window.location.origin);
     // The local Compose callback defaults to localhost:4200. Host-only session
     // cookies created on 127.0.0.1 are not sent to that callback host.

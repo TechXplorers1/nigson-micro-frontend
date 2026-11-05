@@ -216,6 +216,25 @@ export class CatalogService {
     }
   }
 
+  removeProductOverride(idOrSku: string): void {
+    try {
+      localStorage.removeItem(`nigson_prod_override_${idOrSku}`);
+      const upper = idOrSku.toUpperCase();
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith('nigson_prod_override_')) {
+          const val = localStorage.getItem(k);
+          if (k.includes(idOrSku) || (val && (val.includes(idOrSku) || val.toUpperCase().includes(upper)))) {
+            localStorage.removeItem(k);
+          }
+        }
+      }
+      this.products.update(all => all.filter(p => p.id !== idOrSku && p.sku !== idOrSku));
+    } catch (e) {
+      console.warn('[CatalogService] Error removing override', e);
+    }
+  }
+
   getProductOverride(idOrSku: string): Partial<Product> | null {
     try {
       const raw = localStorage.getItem(`nigson_prod_override_${idOrSku}`);
@@ -258,7 +277,7 @@ export class CatalogService {
             name: override?.name || item.name,
             categoryId: override?.categoryId || cat,
             categoryName: cat,
-            description: override?.description || item.name,
+            description: (override?.description || item.name || '').replace(/\s*<!--\[price:.*?\]-->/g, '').trim(),
             images: override?.images?.length ? override.images : (item.imageUrl ? [this.resolveImageUrl(item.imageUrl)] : [primaryImg]),
             priceMinorUnits: priceMinor,
             price: priceMinor == null ? undefined : priceMinor / 100,
@@ -370,7 +389,7 @@ export class CatalogService {
           name: override?.name || raw.name,
           categoryId: raw.categories?.[0]?.id || catName,
           categoryName: override?.categoryName || catName,
-          description: override?.description || raw.description,
+          description: (override?.description || raw.description || '').replace(/\s*<!--\[price:.*?\]-->/g, '').trim(),
           publicationStatus: 'PUBLISHED',
           brand: override?.brand || raw.brand?.name || 'Nigson',
           ...override,
@@ -438,96 +457,104 @@ export class CatalogService {
    * Load price for a SKU UUID. Returns price in minor units (kobo).
    * Use formatPrice() to convert for display.
    */
+  private priceCache = new Map<string, PriceResponse>();
+
   getPrice(skuId: string, quantity = 1): Observable<PriceResponse> {
+    const key = `${skuId}_${quantity}`;
+    if (this.priceCache.has(key)) {
+      return of(this.priceCache.get(key)!);
+    }
     return this.http.get<any>(`/api/v1/catalogue/skus/${skuId}/price?market=NG&quantity=${quantity}`).pipe(
       map(res => ({
         skuId: res.skuId,
         priceMinorUnits: Math.round(Number(res.unitAmount) * 100),
         currency: res.currency
-      }))
+      })),
+  tap(res => this.priceCache.set(key, res))
     );
   }
 
-  /**
-   * TASK-20: Format price from NGN minor units (kobo) to display string.
-   * Backend always returns kobo — divide by 100 before showing.
-   *
-   * Examples:
-   *   formatPrice(2850000) → '₦28,500.00'
-   *   formatPrice(450000)  → '₦4,500.00'
-   */
-  formatPrice(minorUnits: number): string {
-    const naira = minorUnits / 100;
-    return '₦' + naira.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  }
 
-  /** Format price from whole Naira (legacy local data) — for transition period only */
-  formatPriceNaira(naira: number): string {
-    return '₦' + naira.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  }
+/**
+ * TASK-20: Format price from NGN minor units (kobo) to display string.
+ * Backend always returns kobo — divide by 100 before showing.
+ *
+ * Examples:
+ *   formatPrice(2850000) → '₦28,500.00'
+ *   formatPrice(450000)  → '₦4,500.00'
+ */
+formatPrice(minorUnits: number): string {
+  const naira = minorUnits / 100;
+  return '₦' + naira.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
 
-  // ─── Image helpers ────────────────────────────────────────────────────────
+/** Format price from whole Naira (legacy local data) — for transition period only */
+formatPriceNaira(naira: number): string {
+  return '₦' + naira.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
 
-  imageFor(categoryName: string | undefined | null): string {
-    if (!categoryName) return this.FALLBACK_IMG;
-    return this.CAT_IMG[categoryName] ?? this.FALLBACK_IMG;
-  }
+// ─── Image helpers ────────────────────────────────────────────────────────
 
-  primaryImage(product: Product): string {
-    return product.images?.[0] ?? this.imageFor(product.categoryName ?? '');
-  }
+imageFor(categoryName: string | undefined | null): string {
+  if (!categoryName) return this.FALLBACK_IMG;
+  return this.CAT_IMG[categoryName] ?? this.FALLBACK_IMG;
+}
+
+primaryImage(product: Product): string {
+  return product.images?.[0] ?? this.imageFor(product.categoryName ?? '');
+}
 
   // ─── Helpers ─────────────────────────────────────────────────────────────
 
   /** Enrich products with resolved category name from loaded categories signal */
   private enrichWithCategories(products: Product[]): Product[] {
-    const cats = this.categories();
-    if (!cats.length) return products;
-    const catMap = new Map(cats.map(c => [c.id, c.name]));
-    return products.map(p => ({
-      ...p,
-      categoryName: catMap.get(p.categoryId) ?? p.categoryName
-    }));
-  }
+  const cats = this.categories();
+  if (!cats.length) return products;
+  const catMap = new Map(cats.map(c => [c.id, c.name]));
+  return products.map(p => ({
+    ...p,
+    categoryName: catMap.get(p.categoryId) ?? p.categoryName
+  }));
+}
 
-  /** TASK-27: Is product a "deal"? Driven by backend campaigns, not hardcoded SKUs */
-  isDeal(p: Product): boolean {
-    return p.tags?.includes('deal') ?? false;
-  }
+/** TASK-27: Is product a "deal"? Driven by backend campaigns, not hardcoded SKUs */
+isDeal(p: Product): boolean {
+  return p.tags?.includes('deal') ?? false;
+}
 
-  /** TASK-27: Is product a new arrival? Based on createdAt date (last 30 days) */
-  isNewArrival(p: Product): boolean {
-    if (!p.createdAt) return false;
-    const days = (Date.now() - new Date(p.createdAt).getTime()) / 86400000;
-    return days <= 30;
-  }
+/** TASK-27: Is product a new arrival? Based on createdAt date (last 30 days) */
+isNewArrival(p: Product): boolean {
+  if (!p.createdAt) return false;
+  const days = (Date.now() - new Date(p.createdAt).getTime()) / 86400000;
+  return days <= 30;
+}
 
-  // ─── Legacy hash (kept for non-rating use cases during transition) ─────────
-  hash(s: string): number {
-    let h = 0;
-    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-    return h;
-  }
+// ─── Legacy hash (kept for non-rating use cases during transition) ─────────
+hash(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return h;
+}
 
   // ─── TASK-84: Market Validation (API-029) ──────────────────────────────────
   readonly marketActive = signal<boolean>(true);
   readonly marketCurrency = signal<string>('NGN');
 
-  /** Validate that the NG (Nigeria) market policy is active from GET /api/v1/markets */
-  validateMarket(): Observable<boolean> {
-    return this.http.get<any[]>('/api/v1/markets').pipe(
-      map(markets => {
-        const ng = (markets || []).find(m => m.code === 'NG' || m.currency === 'NGN');
-        const active = !!ng;
-        this.marketActive.set(active);
-        if (ng?.currency) this.marketCurrency.set(ng.currency);
-        return active;
-      }),
-      catchError(() => {
-        // Fallback gracefully in development / test environments
-        this.marketActive.set(true);
-        return of(true);
-      })
-    );
-  }
+/** Validate that the NG (Nigeria) market policy is active from GET /api/v1/markets */
+validateMarket(): Observable < boolean > {
+  return this.http.get<any[]>('/api/v1/markets').pipe(
+    map(markets => {
+      const ng = (markets || []).find(m => m.code === 'NG' || m.currency === 'NGN');
+      const active = !!ng;
+      this.marketActive.set(active);
+      if (ng?.currency) this.marketCurrency.set(ng.currency);
+      return active;
+    }),
+    catchError(() => {
+      // Fallback gracefully in development / test environments
+      this.marketActive.set(true);
+      return of(true);
+    })
+  );
+}
 }

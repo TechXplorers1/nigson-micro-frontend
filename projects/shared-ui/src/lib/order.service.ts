@@ -88,8 +88,6 @@ export class OrderService {
     const userId = this.session.userId() || '';
 
     let params = new HttpParams().set("page", String(page)).set("size", String(size));
-    if (email) params = params.set("customerEmail", email);
-    if (userId) params = params.set("userId", userId);
 
     let headers = new HttpHeaders();
     if (email) headers = headers.set("x-user-email", email);

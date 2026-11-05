@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
@@ -11,6 +11,14 @@ import { AdminService, AdminHeadingComponent, BadgeComponent } from 'shared-ui';
   template: `
     <ng-container *ngIf="isStockIn">
       <lib-admin-heading title="Stock In / Receive Stock" subtitle="Record new stock arriving into the warehouse"></lib-admin-heading>
+
+      <!-- Feedback alerts -->
+      <div *ngIf="successMessage()" class="mb-6 rounded-[16px] border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm font-semibold text-emerald-800">
+        {{ successMessage() }}
+      </div>
+      <div *ngIf="errorMessage()" class="mb-6 rounded-[16px] border border-rose-200 bg-rose-50 px-5 py-4 text-sm font-semibold text-rose-800">
+        {{ errorMessage() }}
+      </div>
       
       <div class="rounded-[20px] border border-gray-100 bg-white p-8 shadow-sm mb-8">
         <form (ngSubmit)="saveStockIn()" class="grid gap-6 sm:grid-cols-2">
@@ -45,6 +53,9 @@ import { AdminService, AdminHeadingComponent, BadgeComponent } from 'shared-ui';
           </div>
           <div class="sm:col-span-2 flex justify-end mt-2">
             <button type="submit" [disabled]="!sku || !qty" class="rounded-full bg-brand px-6 py-3 text-sm font-bold text-white hover:bg-brand-600 disabled:opacity-50 shadow-sm transition-colors">Receive stock</button>
+            <button type="submit" [disabled]="!sku || !qty || isSubmitting()" class="rounded-full bg-brand px-6 py-3 text-sm font-bold text-white hover:bg-brand-600 disabled:opacity-50 shadow-sm transition-colors">
+              {{ isSubmitting() ? 'Receiving stock...' : 'Receive stock' }}
+            </button>
           </div>
         </form>
       </div>
@@ -83,6 +94,14 @@ import { AdminService, AdminHeadingComponent, BadgeComponent } from 'shared-ui';
 
     <ng-container *ngIf="!isStockIn">
       <lib-admin-heading title="Stock Adjustment" subtitle="Correct stock after physical counts, damages or losses"></lib-admin-heading>
+
+      <!-- Feedback alerts -->
+      <div *ngIf="successMessage()" class="mb-6 rounded-[16px] border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm font-semibold text-emerald-800">
+        {{ successMessage() }}
+      </div>
+      <div *ngIf="errorMessage()" class="mb-6 rounded-[16px] border border-rose-200 bg-rose-50 px-5 py-4 text-sm font-semibold text-rose-800">
+        {{ errorMessage() }}
+      </div>
       
       <div class="rounded-[20px] border border-gray-100 bg-white p-8 shadow-sm mb-8">
         <form (ngSubmit)="saveAdjustment()" class="grid gap-6 sm:grid-cols-2">
@@ -124,6 +143,9 @@ import { AdminService, AdminHeadingComponent, BadgeComponent } from 'shared-ui';
             </p>
             <div class="flex justify-end mt-2">
               <button type="submit" [disabled]="!sku || !qty" class="rounded-full bg-brand px-6 py-3 text-sm font-bold text-white hover:bg-brand-600 disabled:opacity-50 shadow-sm transition-colors">Apply adjustment</button>
+              <button type="submit" [disabled]="!sku || !qty || isSubmitting()" class="rounded-full bg-brand px-6 py-3 text-sm font-bold text-white hover:bg-brand-600 disabled:opacity-50 shadow-sm transition-colors">
+                {{ isSubmitting() ? 'Applying adjustment...' : 'Apply adjustment' }}
+              </button>
             </div>
           </div>
         </form>
@@ -166,23 +188,26 @@ import { AdminService, AdminHeadingComponent, BadgeComponent } from 'shared-ui';
     </ng-container>
   `
 })
-export class StockAdjustmentComponent {
+export class StockAdjustmentComponent implements OnInit {
   admin = inject(AdminService);
   route = inject(ActivatedRoute);
 
   isStockIn = false;
-  
+  isSubmitting = signal(false);
+  successMessage = signal('');
+  errorMessage = signal('');
+
   // Form Fields
   sku = '';
   qty = 1;
   notes = '';
-  
+
   // Stock In specific
   suppliers = ['Nigson HQ', 'Shenzhen Factory', 'Local Distributor', 'Other'];
   supplier = this.suppliers[0];
   ref = '';
   date = new Date().toISOString().slice(0, 10);
-  
+
   // Adjustment specific
   reasons = ['Physical Count', 'Damaged Goods', 'Lost/Stolen', 'Promotional Giveaway', 'Other'];
   reason = this.reasons[0];
@@ -193,6 +218,11 @@ export class StockAdjustmentComponent {
     this.route.data.subscribe(data => {
       this.isStockIn = data['type'] === 'stock-in';
     });
+  }
+
+  ngOnInit() {
+    this.admin.loadStaffProducts().subscribe();
+    this.admin.loadStaffInventory().subscribe();
   }
 
   onSkuSelect() {
@@ -218,21 +248,74 @@ export class StockAdjustmentComponent {
     this.qty = 1;
     this.ref = '';
     this.notes = '';
+    if (!this.sku || !this.qty || this.isSubmitting()) return;
+    this.isSubmitting.set(true);
+    this.successMessage.set('');
+    this.errorMessage.set('');
+
+    const targetSku = this.sku;
+    const targetQty = Number(this.qty);
+
+    this.admin.postStockAdjustment(targetSku, targetQty, 'Stock Received', {
+      supplier: this.supplier,
+      ref: this.ref,
+      notes: this.notes
+    }).subscribe({
+      next: () => {
+        this.isSubmitting.set(false);
+        this.successMessage.set(`Successfully received ${targetQty} units for ${targetSku}.`);
+        this.sku = '';
+        this.qty = 1;
+        this.ref = '';
+        this.notes = '';
+        setTimeout(() => this.successMessage.set(''), 4500);
+      },
+      error: (err) => {
+        this.isSubmitting.set(false);
+        this.errorMessage.set(err?.error?.detail || 'Failed to record stock in.');
+        setTimeout(() => this.errorMessage.set(''), 5000);
+      }
+    });
   }
 
   saveAdjustment() {
     if (!this.sku || !this.qty) return;
-    const finalChange = this.increase ? this.qty : -this.qty;
-    this.admin.adjustStock(this.sku, finalChange, this.reason);
     this.sku = '';
     this.qty = 1;
     this.notes = '';
     this.currentStock = null;
+    if (!this.sku || !this.qty || this.isSubmitting()) return;
+    this.isSubmitting.set(true);
+    this.successMessage.set('');
+    this.errorMessage.set('');
+
+    const targetSku = this.sku;
+    const finalChange = this.increase ? Number(this.qty) : -Number(this.qty);
+
+    this.admin.postStockAdjustment(targetSku, finalChange, this.reason, {
+      notes: this.notes
+    }).subscribe({
+      next: () => {
+        this.isSubmitting.set(false);
+        this.successMessage.set(`Successfully adjusted stock by ${finalChange > 0 ? '+' : ''}${finalChange} units.`);
+        this.sku = '';
+        this.qty = 1;
+        this.notes = '';
+        this.currentStock = null;
+        setTimeout(() => this.successMessage.set(''), 4500);
+      },
+      error: (err) => {
+        this.isSubmitting.set(false);
+        this.errorMessage.set(err?.error?.detail || 'Failed to apply stock adjustment.');
+        setTimeout(() => this.errorMessage.set(''), 5000);
+      }
+    });
   }
 
   receivedLogs() {
     // Basic filter for received stock
     return this.admin.stockLog().filter(l => l.reason === 'Stock Received' || l.change > 0 && l.reason !== 'Physical Count');
+    return this.admin.stockLog().filter(l => l.reason === 'Stock Received' || (l.change > 0 && l.reason !== 'Physical Count'));
   }
 
   adjustmentLogs() {

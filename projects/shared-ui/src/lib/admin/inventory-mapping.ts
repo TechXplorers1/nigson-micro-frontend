@@ -16,15 +16,25 @@ export function mapStaffProducts(products: any[], balances: any[]): AdminProduct
   return applyInventory(products.map(product => {
     const sku = product.skus?.[0];
     const images = (product.assets ?? []).map((asset: any) => asset.url).filter(Boolean);
+    const skuCode = sku?.code ?? '';
+    let initialPrice = 0;
+    try {
+      const ovRaw = localStorage.getItem('nigson_prod_override_' + product.id) ||
+        (skuCode ? localStorage.getItem('nigson_prod_override_' + skuCode) : null);
+      if (ovRaw) {
+        const ov = JSON.parse(ovRaw);
+        initialPrice = ov.retail || ov.price || 0;
+      }
+    } catch { }
     return {
       id: product.id,
       skuId: sku?.id,
-      sku: sku?.code ?? '',
+      sku: skuCode,
       name: product.name,
       category: product.categories?.map((category: any) => category.name).join(', ') || 'Uncategorised',
       brand: product.brand?.name ?? '',
-      price: 0,
-      retail: 0,
+      price: initialPrice,
+      retail: initialPrice,
       desc: product.description ?? '',
       image: images[0] ?? '',
       images,

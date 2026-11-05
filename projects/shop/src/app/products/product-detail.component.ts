@@ -411,7 +411,13 @@ export class ProductDetailComponent implements OnInit {
   });
 
   readonly commercePriceMinor = signal<number | null>(null);
-  displayPrice = computed(() => this.commercePriceMinor() ?? this.product()?.priceMinorUnits ?? 0);
+  displayPrice = computed(() => {
+    const overridePrice = this.product()?.priceMinorUnits;
+    if (overridePrice != null && overridePrice > 0) {
+      return overridePrice;
+    }
+    return this.commercePriceMinor() ?? 0;
+  });
 
   featuresList = computed((): string[] => {
     const p = this.product();
