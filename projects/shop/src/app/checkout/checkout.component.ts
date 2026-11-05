@@ -498,7 +498,11 @@ export class CheckoutComponent implements OnInit {
     } catch (error: any) {
       this.processing.set(false);
       console.error('[Checkout] payNow error:', error);
-      const msg = error?.error?.detail || error?.error?.title || error?.message || "Order checkout failed. Please try again.";
+      const deliveryUnavailable = error?.url?.includes('/delivery-quotes') &&
+        (error?.status === 404 || error?.error?.code === 'FEATURE_DISABLED');
+      const msg = deliveryUnavailable
+        ? 'Delivery is currently unavailable. Please try again later.'
+        : error?.error?.detail || error?.error?.title || error?.message || "Order checkout failed. Please try again.";
       this.modalError.set(msg);
     }
   }

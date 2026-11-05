@@ -550,7 +550,7 @@ export class DistributorComponent {
     if (['localhost', '127.0.0.1'].includes(window.location.hostname)) {
       this.http.get<{ localOnly: boolean; phase: number; documents: Record<string, { id: string; url: string }> }>('/local-distributor-fixtures.json').subscribe({
         next: data => { if (data.localOnly && data.phase === 3) this.localDocuments.set(data.documents); },
-        error: () => {}
+        error: () => { }
       });
     }
   }
@@ -607,7 +607,7 @@ export class DistributorComponent {
     const input = event.target as HTMLInputElement;
     const value = input?.value || '';
     const char = event.key;
-    
+
     // Allow control keys
     if (['Backspace', 'ArrowLeft', 'ArrowRight', 'Tab', 'Delete', 'Enter'].includes(char)) {
       return true;
