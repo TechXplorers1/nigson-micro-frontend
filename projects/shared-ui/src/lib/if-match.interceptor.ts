@@ -34,12 +34,26 @@ export const ifMatchInterceptor: HttpInterceptorFn = (req, next) => {
       if (event instanceof HttpResponse) {
         const etag = event.headers.get('ETag');
         if (etag) {
-          etagCache.set(urlPath(event.url ?? req.url), etag);
+          const quoted = etag.startsWith('"') ? etag : `"${etag}"`;
+          etagCache.set(urlPath(event.url ?? req.url), quoted);
         }
-        if (event.body && typeof event.body === 'object') {
+        if (Array.isArray(event.body)) {
+          const basePath = urlPath(event.url ?? req.url);
+          for (const item of event.body) {
+            if (item && typeof item === 'object' && item.id && (typeof item.version === 'number' || typeof item.version === 'string')) {
+              const v = String(item.version);
+              etagCache.set(`${basePath}/${item.id}`, v.startsWith('"') ? v : `"${v}"`);
+            }
+          }
+        } else if (event.body && typeof event.body === 'object') {
           const body = event.body as Record<string, unknown>;
           if (typeof body['version'] === 'number' || typeof body['version'] === 'string') {
-            etagCache.set(urlPath(event.url ?? req.url), String(body['version']));
+            const v = String(body['version']);
+            const quoted = v.startsWith('"') ? v : `"${v}"`;
+            etagCache.set(urlPath(event.url ?? req.url), quoted);
+            if (body['id']) {
+              etagCache.set(`${urlPath(event.url ?? req.url)}/${body['id']}`, quoted);
+            }
           }
         }
       }

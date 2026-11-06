@@ -1,4 +1,4 @@
-﻿import { Component, Input, inject, signal, OnInit } from '@angular/core';
+import { Component, Input, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { LucideShoppingCart, LucideStar, LucideLoader2 } from '@lucide/angular';
@@ -74,15 +74,35 @@ export class ProductCardComponent implements OnInit {
   readonly resolvedSkuId = signal<string | null>(null);
 
   ngOnInit() {
+    if (this.p.priceMinorUnits && this.p.priceMinorUnits > 0) {
+      this.displayPrice.set(this.catalog.formatPrice(this.p.priceMinorUnits));
+      this.priceLoading.set(false);
+    } else if (this.p.price && this.p.price > 0) {
+      this.displayPrice.set(this.catalog.formatPriceNaira(this.p.price));
+      this.priceLoading.set(false);
+    }
+
     const loadPrice = (skuId: string | undefined) => {
       if (!skuId || skuId === this.p.id) {
-        this.priceLoading.set(false);
+        if (!this.p.priceMinorUnits && !this.p.price) {
+          this.priceLoading.set(false);
+        }
         return;
       }
       this.resolvedSkuId.set(skuId);
       this.catalog.getPrice(skuId).subscribe({
-        next: price => { this.displayPrice.set(price.priceMinorUnits > 0 ? this.catalog.formatPrice(price.priceMinorUnits) : 'Contact for price'); this.priceLoading.set(false); },
-        error: () => { this.displayPrice.set('Contact for price'); this.priceLoading.set(false); }
+        next: price => {
+          if (price.priceMinorUnits > 0) {
+            this.displayPrice.set(this.catalog.formatPrice(price.priceMinorUnits));
+          }
+          this.priceLoading.set(false);
+        },
+        error: () => {
+          if (!this.p.priceMinorUnits && !this.p.price) {
+            this.displayPrice.set('Contact for price');
+          }
+          this.priceLoading.set(false);
+        }
       });
     };
     if (this.p.skuId && this.p.skuId !== this.p.id) {
@@ -90,7 +110,11 @@ export class ProductCardComponent implements OnInit {
     } else {
       this.catalog.getProduct(this.p.id).subscribe({
         next: product => loadPrice(product.skuId),
-        error: () => this.priceLoading.set(false)
+        error: () => {
+          if (!this.p.priceMinorUnits && !this.p.price) {
+            this.priceLoading.set(false);
+          }
+        }
       });
     }
   }

@@ -157,9 +157,11 @@ export class AdminPagesComponent {
         }))
       },
       metadata: {
-        metaTitle: (pDef?.name || id) + ' | Nigson Wholesale',
-        metaDescription: 'Official page for ' + (pDef?.name || id),
-        keywords: ['wholesale', 'nigeria', id]
+        title: pDef?.name || id,
+        description: 'Official page for ' + (pDef?.name || id),
+        robots: 'INDEX',
+        alternates: [],
+        structuredData: {}
       }
     };
 

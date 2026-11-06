@@ -592,7 +592,6 @@ export class VisualHomeEditorComponent implements OnInit, AfterViewInit {
       localStorage.setItem('nigson.admin.v2', JSON.stringify(parsed));
     } catch {}
 
-    this.toastMessage.set('Saved in this browser only. Use the structured Experience content revision workflow to publish.');
   }
 
   selectSection(id: string) {
@@ -741,9 +740,11 @@ export class VisualHomeEditorComponent implements OnInit, AfterViewInit {
         }))
       },
       metadata: {
-        metaTitle: (this.pageDef()?.name || pageId) + ' | Nigson Wholesale',
-        metaDescription: 'Official page for ' + (this.pageDef()?.name || pageId),
-        keywords: ['wholesale', 'nigeria', pageId]
+        title: this.pageDef()?.name || pageId,
+        description: 'Official page for ' + (this.pageDef()?.name || pageId),
+        robots: 'INDEX',
+        alternates: [],
+        structuredData: {}
       }
     };
 

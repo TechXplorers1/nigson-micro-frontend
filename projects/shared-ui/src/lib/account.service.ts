@@ -1,5 +1,5 @@
 import { Injectable, inject, signal } from "@angular/core";
-import { HttpClient } from "@angular/common/http";
+import { HttpClient, HttpHeaders } from "@angular/common/http";
 import { Observable, of, tap, catchError, map } from "rxjs";
 import { SessionService } from "./session.service";
 import { ShopService } from "./shop.service";
@@ -67,6 +67,46 @@ export interface AddressPatch {
   countryCode?: string;
   isDefault?: boolean;
 }
+
+function sanitizeAddressInput(input: AddressInput): Record<string, unknown> {
+  const result: Record<string, unknown> = {
+    recipient: input.recipient?.trim() ?? '',
+    phone: input.phone?.trim() ?? '',
+    line1: input.line1?.trim() ?? '',
+    city: input.city?.trim() ?? '',
+    countryCode: (input.countryCode?.trim() || 'NG').toUpperCase(),
+    isDefault: Boolean(input.isDefault)
+  };
+  if (input.label && input.label.trim()) {
+    result['label'] = input.label.trim();
+  }
+  if (input.line2 && input.line2.trim()) {
+    result['line2'] = input.line2.trim();
+  }
+  if (input.region && input.region.trim()) {
+    result['region'] = input.region.trim();
+  }
+  if (input.postalCode && input.postalCode.trim()) {
+    result['postalCode'] = input.postalCode.trim();
+  }
+  return result;
+}
+
+function sanitizeAddressPatch(patch: AddressPatch): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  if (patch.recipient !== undefined) result['recipient'] = patch.recipient.trim();
+  if (patch.phone !== undefined) result['phone'] = patch.phone.trim();
+  if (patch.line1 !== undefined) result['line1'] = patch.line1.trim();
+  if (patch.city !== undefined) result['city'] = patch.city.trim();
+  if (patch.countryCode !== undefined) result['countryCode'] = patch.countryCode.trim().toUpperCase();
+  if (patch.isDefault !== undefined) result['isDefault'] = Boolean(patch.isDefault);
+  if (patch.label !== undefined) result['label'] = patch.label?.trim() ? patch.label.trim() : null;
+  if (patch.line2 !== undefined) result['line2'] = patch.line2?.trim() ? patch.line2.trim() : null;
+  if (patch.region !== undefined) result['region'] = patch.region?.trim() ? patch.region.trim() : null;
+  if (patch.postalCode !== undefined) result['postalCode'] = patch.postalCode?.trim() ? patch.postalCode.trim() : null;
+  return result;
+}
+
 
 /**
  * Backend Reward DTO (API-062 - TASK-50)
@@ -184,7 +224,11 @@ export class AccountService {
 
   /** TASK-49: Add a new address (POST /api/v1/me/addresses) */
   addAddress(address: AddressInput): Observable<AddressDTO | null> {
-    return this.http.post<AddressDTO>("/api/v1/me/addresses", address).pipe(
+    const payload = sanitizeAddressInput(address);
+    const headers = new HttpHeaders({
+      'Idempotency-Key': crypto.randomUUID()
+    });
+    return this.http.post<AddressDTO>("/api/v1/me/addresses", payload, { headers }).pipe(
       tap(created => {
         this.addresses.update(list => [...list, created]);
       }),
@@ -196,8 +240,15 @@ export class AccountService {
   }
 
   /** TASK-49: Update existing address (PATCH /api/v1/me/addresses/:id) */
-  updateAddress(id: string, patch: AddressPatch): Observable<AddressDTO | null> {
-    return this.http.patch<AddressDTO>("/api/v1/me/addresses/" + id, patch).pipe(
+  updateAddress(id: string, patch: AddressPatch, version?: number): Observable<AddressDTO | null> {
+    const existing = this.addresses().find(a => a.id === id);
+    const ver = version ?? existing?.version ?? 0;
+    const payload = sanitizeAddressPatch(patch);
+    const headers = new HttpHeaders({
+      'Idempotency-Key': crypto.randomUUID(),
+      'If-Match': `"${ver}"`
+    });
+    return this.http.patch<AddressDTO>("/api/v1/me/addresses/" + id, payload, { headers }).pipe(
       tap(updated => {
         this.addresses.update(list => list.map(a => a.id === id ? updated : a));
       }),
@@ -209,8 +260,14 @@ export class AccountService {
   }
 
   /** TASK-49: Delete address (DELETE /api/v1/me/addresses/:id) */
-  deleteAddress(id: string): Observable<boolean> {
-    return this.http.delete("/api/v1/me/addresses/" + id).pipe(
+  deleteAddress(id: string, version?: number): Observable<boolean> {
+    const existing = this.addresses().find(a => a.id === id);
+    const ver = version ?? existing?.version ?? 0;
+    const headers = new HttpHeaders({
+      'Idempotency-Key': crypto.randomUUID(),
+      'If-Match': `"${ver}"`
+    });
+    return this.http.delete("/api/v1/me/addresses/" + id, { headers }).pipe(
       tap(() => {
         this.addresses.update(list => list.filter(a => a.id !== id));
       }),

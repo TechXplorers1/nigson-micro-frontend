@@ -68,6 +68,14 @@ export interface Product {
 export function extractSku(slug?: string, name?: string): string {
   if (slug) {
     const clean = slug.replace(/^nigson-/, '');
+    if (clean.includes('earbud')) return 'NG-EB-01';
+    if (clean.includes('30000') || clean.includes('20000') || (clean.includes('power-bank') && !clean.includes('magnetic'))) return 'NG-PB-01';
+    if (clean.includes('gan-100w')) return 'NG-GAN-100';
+    if (clean.includes('65w') || clean.includes('triple-port')) return 'NG-CH-01';
+    if (clean.includes('cable') || clean.includes('braided')) return 'NG-CB-01';
+    if (clean.includes('car-charger') || clean.includes('magsafe')) return 'NG-CC-01';
+    if (clean.includes('surge') || clean.includes('extension')) return 'NG-SP-01';
+    if (clean.includes('magnetic')) return 'PQ28';
     if (clean.startsWith('ns6-1')) return 'NS6-1';
     if (clean.startsWith('ns2526c')) return 'NS2526C';
     if (clean.startsWith('ns3604c')) return 'NS3604C';
@@ -86,12 +94,12 @@ export function extractSku(slug?: string, name?: string): string {
 
 export function resolveCategoryFromSku(sku: string, fallback = 'General'): string {
   const upper = (sku || '').toUpperCase();
-  if (upper.startsWith('NS03') || upper.startsWith('NS06')) return 'Earbuds';
-  if (upper.startsWith('PQ')) return 'Power Banks';
-  if (upper.startsWith('NS211') || upper.startsWith('NS25') || upper.startsWith('NS901') || upper.startsWith('NS96')) return 'Cables';
-  if (upper.startsWith('NS107') || upper.startsWith('NS2526') || upper.startsWith('NS2618') || upper.startsWith('NS4') || upper.startsWith('ZS')) return 'Chargers';
-  if (upper.startsWith('NS3416') || upper.startsWith('NS3604')) return 'Extension Sockets';
-  if (upper.startsWith('NS6')) return 'Motion-Activated Lights';
+  if (upper.startsWith('NS03') || upper.startsWith('NS06') || upper.startsWith('NG-EB') || upper.includes('EARBUD')) return 'Earbuds';
+  if (upper.startsWith('PQ') || upper.startsWith('NG-PB') || upper.includes('POWER')) return 'Power Banks';
+  if (upper.startsWith('NS211') || upper.startsWith('NS25') || upper.startsWith('NS901') || upper.startsWith('NS96') || upper.startsWith('NG-CB') || upper.includes('CABLE')) return 'Cables';
+  if (upper.startsWith('NS107') || upper.startsWith('NS2526') || upper.startsWith('NS2618') || upper.startsWith('NS4') || upper.startsWith('ZS') || upper.startsWith('NG-CH') || upper.startsWith('NG-GAN') || upper.startsWith('NG-CC') || upper.includes('CHARG')) return 'Chargers';
+  if (upper.startsWith('NS3416') || upper.startsWith('NS3604') || upper.startsWith('NG-SP') || upper.includes('SURGE') || upper.includes('SOCKET')) return 'Extension Sockets';
+  if (upper.startsWith('NS6') || upper.includes('LIGHT')) return 'Motion-Activated Lights';
   return fallback;
 }
 
@@ -149,6 +157,25 @@ export interface ProductFilters {
  * Price display: backend returns kobo (NGN × 100). Use formatPrice() which
  * divides by 100 before display (TASK-20).
  */
+export const PRODUCT_SKU_MAP: Record<string, { sku: string; skuId: string; priceMinorUnits: number; image: string }> = {
+  '11111111-2222-3333-4444-555555555501': { sku: 'NG-EB-01', skuId: '11111111-2222-3333-4444-555555555511', priceMinorUnits: 2500000, image: '/assets/cat-earbuds.jpg' },
+  '22222222-2222-3333-4444-555555555502': { sku: 'NG-PB-01', skuId: '22222222-2222-3333-4444-555555555512', priceMinorUnits: 3500000, image: '/assets/nigson-power.jpg' },
+  '33333333-2222-3333-4444-555555555503': { sku: 'NG-CH-01', skuId: '33333333-2222-3333-4444-555555555513', priceMinorUnits: 1850000, image: '/assets/cat-charger.jpg' },
+  '44444444-2222-3333-4444-555555555504': { sku: 'NG-CB-01', skuId: '44444444-2222-3333-4444-555555555514', priceMinorUnits: 550000, image: '/assets/cat-cable.jpg' },
+  '55555555-2222-3333-4444-555555555505': { sku: 'NG-CC-01', skuId: '55555555-2222-3333-4444-555555555515', priceMinorUnits: 1500000, image: '/assets/shopcat/car-chargers.jpg' },
+  '66666666-2222-3333-4444-555555555506': { sku: 'NG-SP-01', skuId: '66666666-2222-3333-4444-555555555516', priceMinorUnits: 1950000, image: '/assets/cat-powerbank.jpg' },
+  '34c745d2-b6ad-4dab-8eda-4c295687b0c5': { sku: 'NG-GAN-100', skuId: '4eff5dd2-44ed-49fd-a715-5d3f5176f5ee', priceMinorUnits: 2800000, image: '/assets/cat-charger.jpg' },
+  '3d84c1ea-b96c-45af-a665-1ef8c8cdc9dc': { sku: 'PQ28', skuId: '4886036e-574a-4bc3-aaaa-ee82af43cf1b', priceMinorUnits: 2400000, image: '/assets/cat-powerbank.jpg' }
+};
+
+export const DEFAULT_CATEGORIES: Category[] = [
+  { id: '10000000-0000-0000-0000-000000000001', name: 'Earbuds', slug: 'earbuds', imageUrl: '/assets/cat-earbuds.jpg' },
+  { id: '10000000-0000-0000-0000-000000000002', name: 'Power Banks', slug: 'power-banks', imageUrl: '/assets/cat-powerbank.jpg' },
+  { id: '11111111-2222-3333-4444-555555555503', name: 'Cables', slug: 'cables', imageUrl: '/assets/cat-cable.jpg' },
+  { id: '11111111-2222-3333-4444-555555555504', name: 'Chargers', slug: 'chargers', imageUrl: '/assets/cat-charger.jpg' },
+  { id: '11111111-2222-3333-4444-555555555505', name: 'Extension Sockets', slug: 'extension-sockets', imageUrl: '/assets/cat-powerbank.jpg' }
+];
+
 @Injectable({ providedIn: 'root' })
 export class CatalogService {
   private http = inject(HttpClient);
@@ -156,7 +183,7 @@ export class CatalogService {
   // ─── Reactive state ──────────────────────────────────────────────────────
 
   readonly products = signal<Product[]>([]);
-  readonly categories = signal<Category[]>([]);
+  readonly categories = signal<Category[]>(DEFAULT_CATEGORIES);
   readonly brands = signal<Brand[]>([]);
   readonly loading = signal(false);
   readonly totalElements = signal(0);
@@ -245,16 +272,17 @@ export class CatalogService {
       map(res => {
         const rawItems = res?.items || res?.content || [];
         const content: Product[] = rawItems.map((item: any) => {
-          const sku = item.sku || item.skus?.[0]?.code || extractSku(item.slug, item.name);
+          const skuInfo = PRODUCT_SKU_MAP[item.id] || Object.values(PRODUCT_SKU_MAP).find(x => x.sku === item.sku);
+          const sku = item.sku || item.skus?.[0]?.code || skuInfo?.sku || extractSku(item.slug, item.name);
           const override = this.getProductOverride(item.id) || this.getProductOverride(sku);
-          const priceMinor = override?.priceMinorUnits ?? (override?.price != null ? override.price * 100 : undefined);
-          const primaryImg = override?.images?.[0] || (item.imageUrl ? this.resolveImageUrl(item.imageUrl) : this.FALLBACK_IMG);
           const cat = override?.categoryName || resolveCategoryFromSku(sku, item.brandName || 'General');
+          const priceMinor = override?.priceMinorUnits ?? (override?.price != null ? override.price * 100 : (skuInfo?.priceMinorUnits ?? undefined));
+          const primaryImg = override?.images?.[0] || (item.imageUrl ? this.resolveImageUrl(item.imageUrl) : (skuInfo?.image || this.imageFor(cat)));
 
           const p: Product = {
             id: item.id,
             sku: override?.sku || sku,
-            skuId: item.skus?.[0]?.id || item.id,
+            skuId: item.skus?.[0]?.id || skuInfo?.skuId || item.id,
             name: override?.name || item.name,
             categoryId: override?.categoryId || cat,
             categoryName: cat,
@@ -408,13 +436,16 @@ export class CatalogService {
   // ─── Categories (TASK-17) ─────────────────────────────────────────────────
 
   loadCategories(): Observable<Category[]> {
-    return this.http.get<any[]>('/api/v1/catalogue/categories?market=NG').pipe(
-      map(cats => (cats || []).map(c => ({
-        id: c.id,
-        name: c.name,
-        slug: c.slug,
-        imageUrl: this.CAT_IMG[c.name] || this.FALLBACK_IMG
-      }))),
+    return this.http.get<any>('/api/v1/catalogue/categories?market=NG').pipe(
+      map(res => {
+        const list: any[] = Array.isArray(res) ? res : (res?.items || res?.content || res?.value || []);
+        return list.map(c => ({
+          id: c.id,
+          name: c.name,
+          slug: c.slug,
+          imageUrl: this.CAT_IMG[c.name] || this.FALLBACK_IMG
+        }));
+      }),
       tap(cats => this.categories.set(cats)),
       catchError(err => {
         console.error('[CatalogService] loadCategories failed:', err);
