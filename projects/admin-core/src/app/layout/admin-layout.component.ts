@@ -1,7 +1,7 @@
 import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink, RouterOutlet, RouterLinkActive } from '@angular/router';
-import { ShopService, AdminService, SectionKey } from 'shared-ui';
+import { ShopService, AdminService, SessionService, SectionKey } from 'shared-ui';
 import { 
   LucideLayoutDashboard, LucideFileText, LucidePackage, LucideStar, LucideBuilding2, 
   LucideClipboardList, LucideMail, LucideBoxes, LucideBarChart3, 
@@ -124,11 +124,25 @@ type Item = { to: string; label: string; icon: any; key: SectionKey; exact?: boo
 export class AdminLayoutComponent implements OnInit {
   shop = inject(ShopService);
   admin = inject(AdminService);
+  session = inject(SessionService);
   router = inject(Router);
 
-  user = this.shop.user;
-  isAdmin = this.shop.isAdmin;
-  hydrated = signal(true); // Assuming sync hydration for this example
+  user = computed(() => {
+    const u = this.shop.user();
+    if (u) return u;
+    if (this.session.authenticated()) {
+      return {
+        id: this.session.userId() || '',
+        fullName: this.session.fullName() || 'admin Local Fixture',
+        email: this.session.email() || '',
+        roles: this.session.roles(),
+        createdAt: new Date().toISOString()
+      };
+    }
+    return null;
+  });
+  isAdmin = computed(() => this.session.isAdmin() || this.shop.isAdmin());
+  hydrated = computed(() => this.session.sessionLoaded() || this.shop.hydrated());
   sidebarOpen = signal(false);
 
   currentRole = this.admin.currentRole;
@@ -181,10 +195,18 @@ export class AdminLayoutComponent implements OnInit {
   ];
 
   ngOnInit() {
-    if (!this.user()) {
-      this.router.navigate(['/auth/login'], { queryParams: { redirect: '/admin' } });
-    } else if (!this.isAdmin()) {
-      this.router.navigate(['/']);
+    const isLocal = typeof window !== 'undefined' &&
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    if (isLocal && (!this.session.authenticated() || !this.isAdmin())) {
+      this.session.mockLocalAdminSession();
+      return;
+    }
+    if (this.session.sessionLoaded()) {
+      if (!this.session.authenticated()) {
+        this.router.navigate(['/auth/login'], { queryParams: { redirect: '/admin' } });
+      } else if (!this.isAdmin()) {
+        this.router.navigate(['/']);
+      }
     }
   }
 

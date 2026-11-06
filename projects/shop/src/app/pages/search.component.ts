@@ -1,6 +1,6 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 import { CatalogService, PageHeaderComponent, Product } from 'shared-ui';
 import { ProductCardComponent } from '../products/product-card.component';
 import { LucideLoader2 } from '@lucide/angular';
@@ -12,7 +12,7 @@ import { LucideLoader2 } from '@lucide/angular';
 @Component({
   selector: 'app-search',
   standalone: true,
-  imports: [CommonModule, RouterLink, ProductCardComponent, PageHeaderComponent, LucideLoader2],
+  imports: [CommonModule, ProductCardComponent, PageHeaderComponent, LucideLoader2],
   template: `
     <div class="bg-surface min-h-screen">
       <lib-page-header [title]="headerTitle()" [subtitle]="headerSubtitle()"></lib-page-header>

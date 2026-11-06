@@ -99,6 +99,14 @@ import {
               >
                 <svg lucideSettings class="h-4 w-4"></svg> Settings
               </a>
+              <!-- Admin Portal Shortcut -->
+              <a 
+                *ngIf="session.isAdmin() || shop.isAdmin()"
+                routerLink="/admin" 
+                class="inline-flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-colors text-brand hover:bg-brand/10 border border-brand/30 my-1 shadow-sm"
+              >
+                <svg lucideSettings class="h-4 w-4"></svg> Admin Dashboard →
+              </a>
               <!-- Divider + Logout -->
               <button
                 (click)="logout()"

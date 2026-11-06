@@ -53,6 +53,7 @@ export class AdminInquiriesComponent implements OnInit {
   admin = inject(AdminService);
 
   ngOnInit() {
+    this.admin.hydrateFromStorage();
     this.admin.loadStaffInquiries().subscribe();
   }
 

@@ -1,6 +1,6 @@
 import { Injectable, inject, signal } from "@angular/core";
 import { HttpClient, HttpHeaders, HttpErrorResponse } from "@angular/common/http";
-import { Observable, of, from, tap, catchError, map, switchMap } from "rxjs";
+import { Observable, of, from, tap, catchError, map, switchMap, finalize } from "rxjs";
 import { SessionService } from "./session.service";
 
 /** Local dev anti-spam HMAC-SHA256 signature generator matching backend LocalLeadMocks.AntiSpam */
@@ -205,7 +205,7 @@ export class MarketingService {
   }
 
   /** TASK-60: Submit distributor application (POST /api/v1/distributor-applications) */
-  submitDistributorApplication(payload: DistributorApplicationPayload): Observable<DistributorApplicationResult> {
+  submitDistributorApplication(payload: DistributorApplicationPayload, operationKey?: string): Observable<any> {
     this.submittingDistributor.set(true);
     const body = {
       organizationName: (payload.organizationName || '').trim().slice(0, 200),
@@ -214,27 +214,12 @@ export class MarketingService {
       businessReference: payload.businessReference ? payload.businessReference.trim().slice(0, 100) : undefined
     };
 
-    const headers = new HttpHeaders({
-      'Content-Type': 'application/json',
-      'Idempotency-Key': crypto.randomUUID()
-    });
+    const headers: Record<string, string> = {
+      'Idempotency-Key': operationKey || crypto.randomUUID()
+    };
 
     return this.http.post<BackendDistributorApplication>("/api/v1/distributor-applications", body, { headers }).pipe(
-      map(res => {
-        this.submittingDistributor.set(false);
-        return { success: true, status: 201, data: res };
-      }),
-      catchError((err: HttpErrorResponse) => {
-        console.error("[MarketingService] submitDistributorApplication failed:", err);
-        this.submittingDistributor.set(false);
-        const detail = err?.error?.detail || err?.error?.title || (err.status === 422 ? 'Corporate distributor intake feature is currently inactive in this phase.' : (err.message || 'Submission error'));
-        return of({
-          success: false,
-          status: err.status || 500,
-          data: null,
-          error: detail
-        });
-      })
+      finalize(() => this.submittingDistributor.set(false))
     );
   }
 

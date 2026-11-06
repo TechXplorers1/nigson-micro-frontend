@@ -5,12 +5,9 @@ import { HttpClient } from '@angular/common/http';
 import { catchError, of } from 'rxjs';
 import { CmsService, SessionService, ContentRevisionEdit, PageContent, SectionContent, SectionDef } from 'shared-ui';
 import { 
-  LucidePlus, LucidePencil, LucideTrash2, LucideGlobe, LucideFileText, LucideSave, 
+  LucidePlus, LucidePencil, LucideGlobe, LucideSave, 
   LucideEye, LucideEyeOff, LucideGripVertical, LucideCheckCircle2, LucideChevronRight, 
-  LucidePanelTop, LucideSparkles, LucideGrid3x3, LucideFlame, LucideBuilding2, 
-  LucideTag, LucideTrendingUp, LucideShieldCheck, LucideMessageSquareQuote, 
-  LucideBriefcase, LucidePanelBottom, LucideExternalLink, LucideRefreshCw,
-  LucideHeading, LucideList, LucideArrowLeft, LucideX
+  LucideExternalLink, LucideRefreshCw, LucideHeading, LucideList, LucideArrowLeft
 } from '@lucide/angular';
 import { FormsModule } from '@angular/forms';
 import { AdminBlogPost, DEFAULT_POSTS, parseMarkdownToSections } from './blog.component';
@@ -20,12 +17,9 @@ import { AdminBlogPost, DEFAULT_POSTS, parseMarkdownToSections } from './blog.co
   standalone: true,
   imports: [
     CommonModule, FormsModule, RouterModule,
-    LucidePlus, LucidePencil, LucideTrash2, LucideGlobe, LucideFileText, LucideSave, 
+    LucidePlus, LucidePencil, LucideGlobe, LucideSave, 
     LucideEye, LucideEyeOff, LucideGripVertical, LucideCheckCircle2, LucideChevronRight, 
-    LucidePanelTop, LucideSparkles, LucideGrid3x3, LucideFlame, LucideBuilding2, 
-    LucideTag, LucideTrendingUp, LucideShieldCheck, LucideMessageSquareQuote, 
-    LucideBriefcase, LucidePanelBottom, LucideExternalLink, LucideRefreshCw,
-    LucideHeading, LucideList, LucideArrowLeft, LucideX
+    LucideExternalLink, LucideRefreshCw, LucideHeading, LucideList, LucideArrowLeft
   ],
   template: `
     <div class="fixed inset-0 z-50 flex flex-col bg-[#f0f2f5] font-sans antialiased select-none">
@@ -592,7 +586,8 @@ export class VisualHomeEditorComponent implements OnInit, AfterViewInit {
       localStorage.setItem('nigson.admin.v2', JSON.stringify(parsed));
     } catch {}
 
-    this.toastMessage.set('Saved in this browser only. Use the structured Experience content revision workflow to publish.');
+    this.saveSuccess.set(true);
+    setTimeout(() => this.saveSuccess.set(false), 3000);
   }
 
   selectSection(id: string) {

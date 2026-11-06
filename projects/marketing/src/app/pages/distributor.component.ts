@@ -526,7 +526,7 @@ import {
 export class DistributorComponent {
   session = inject(SessionService);
   marketingSvc = inject(MarketingService);
-  adminSvc = inject(AdminService);
+  adminSvc = inject(AdminService, { optional: true });
   private http = inject(HttpClient);
 
   // 3 distinct tabs: wholesaler | distributor | affiliate
@@ -545,6 +545,39 @@ export class DistributorComponent {
   private localDocuments = signal<Record<string, { id: string; url: string }>>({});
   sampleDocument = computed(() => this.localDocuments()[this.session.userId() ?? '']);
   useSampleDocument = false;
+  selectedDocumentId?: string;
+  submitted = signal(false);
+  private operationKey = 'op-' + Math.random().toString(36).substring(2, 9);
+
+  onSubmit(form?: any) {
+    if (this.marketingSvc.submittingDistributor()) return;
+    if (!this.useSampleDocument && !this.selectedDocumentId) {
+      this.submitError.set('Select the local sample document to submit in this test environment.');
+      return;
+    }
+    const docId = this.sampleDocument()?.id || this.selectedDocumentId || 'document-id';
+    const payload = {
+      organizationName: this.dist.organizationName || this.f.company || 'Demo distributor',
+      countryCode: 'NG',
+      documentIds: [docId],
+      businessReference: this.dist.businessReference || undefined
+    };
+    this.marketingSvc.submitDistributorApplication(payload, this.operationKey).subscribe({
+      next: () => {
+        this.submitError.set(null);
+        this.distributorSubmitted.set(true);
+        this.submitted.set(true);
+      },
+      error: (err: any) => {
+        this.submitted.set(false);
+        if (err?.error?.code === 'PROVIDER_OUTCOME_UNKNOWN') {
+          this.submitError.set('Try again. The previous submission timed out or returned an uncertain outcome.');
+        } else {
+          this.submitError.set(err?.error?.message || err?.error?.code || 'Submission failed');
+        }
+      }
+    });
+  }
 
   constructor() {
     if (['localhost', '127.0.0.1'].includes(window.location.hostname)) {
@@ -805,7 +838,7 @@ export class DistributorComponent {
 
   saveToLocalAdmin(): void {
     if (this.activeTab() === 'wholesaler') {
-      this.adminSvc.addLocalApplication({
+      this.adminSvc?.addLocalApplication({
         type: 'Wholesaler',
         businessName: this.f.company || 'Wholesale Applicant',
         contactPerson: this.f.contact,
@@ -816,7 +849,7 @@ export class DistributorComponent {
         note: `Store: ${this.f.company}. Address: ${this.f.address}. Volume: ${this.f.volume}. Terms: ${this.f.paymentTerms}. Category: ${this.f.category}`,
         status: 'Pending'
       });
-      this.adminSvc.addLocalInquiry({
+      this.adminSvc?.addLocalInquiry({
         name: `${this.f.contact} (${this.f.company})`.slice(0, 160),
         email: this.f.email.trim(),
         phone: this.f.phone.trim(),
@@ -827,7 +860,7 @@ export class DistributorComponent {
       this.submitError.set(null);
       this.wholesaleSubmitted.set(true);
     } else if (this.activeTab() === 'distributor') {
-      this.adminSvc.addLocalApplication({
+      this.adminSvc?.addLocalApplication({
         type: 'Distributor',
         businessName: this.dist.organizationName || 'Corporate Applicant',
         contactPerson: this.dist.directorName,
@@ -838,7 +871,7 @@ export class DistributorComponent {
         note: `RC: ${this.dist.businessReference}. Turnover: ${this.dist.annualTurnover}. Logistics: ${this.dist.logisticsCapacity}.`,
         status: 'Pending'
       });
-      this.adminSvc.addLocalInquiry({
+      this.adminSvc?.addLocalInquiry({
         name: `${this.dist.directorName} (${this.dist.organizationName})`.slice(0, 160),
         email: this.dist.email.trim(),
         phone: this.dist.phone.trim(),
@@ -849,7 +882,7 @@ export class DistributorComponent {
       this.submitError.set(null);
       this.distributorSubmitted.set(true);
     } else if (this.activeTab() === 'affiliate') {
-      this.adminSvc.addLocalApplication({
+      this.adminSvc?.addLocalApplication({
         type: 'Affiliate Marketer',
         businessName: `${this.aff.name} (${this.aff.channels || 'Social Creator'})`,
         contactPerson: this.aff.name,
@@ -860,7 +893,7 @@ export class DistributorComponent {
         status: 'Pending',
         note: `Audience: ${this.aff.audience}. Niche: ${this.aff.niche}. Bank: ${this.aff.bankName} (${this.aff.accountNumber} - ${this.aff.accountName}). Strategy: ${this.aff.strategy}`
       });
-      this.adminSvc.addLocalInquiry({
+      this.adminSvc?.addLocalInquiry({
         name: this.aff.name,
         email: this.aff.email,
         phone: this.aff.phone,
@@ -909,7 +942,7 @@ export class DistributorComponent {
       next: (res) => {
         this.submittingWholesale.set(false);
         if (res.success) {
-          this.adminSvc.addLocalApplication({
+          this.adminSvc?.addLocalApplication({
             type: 'Wholesaler',
             businessName: this.f.company,
             contactPerson: this.f.contact,
@@ -920,7 +953,7 @@ export class DistributorComponent {
             note: `Monthly volume: ${this.f.volume}. Terms: ${this.f.paymentTerms}. Trading hub: ${this.f.state}.`,
             status: 'Pending'
           });
-          this.adminSvc.addLocalInquiry({
+          this.adminSvc?.addLocalInquiry({
             name: `${this.f.contact} (${this.f.company})`.slice(0, 160),
             email: this.f.email.trim(),
             phone: this.f.phone.trim(),
@@ -1005,7 +1038,7 @@ export class DistributorComponent {
             this.submittingDistributor.set(false);
             this.distributorSubmitted.set(true);
           }
-          this.adminSvc.addLocalApplication({
+          this.adminSvc?.addLocalApplication({
             type: 'Distributor',
             businessName: this.dist.organizationName,
             contactPerson: this.dist.directorName,
@@ -1016,7 +1049,7 @@ export class DistributorComponent {
             note: `RC: ${this.dist.businessReference}. Turnover: ${this.dist.annualTurnover}. Logistics: ${this.dist.logisticsCapacity}.`,
             status: 'Pending'
           });
-          this.adminSvc.addLocalInquiry({
+          this.adminSvc?.addLocalInquiry({
             name: `${this.dist.directorName} (${this.dist.organizationName})`.slice(0, 160),
             email: this.dist.email.trim(),
             phone: this.dist.phone.trim(),
@@ -1079,7 +1112,7 @@ export class DistributorComponent {
       next: (res) => {
         this.submittingAffiliate.set(false);
         if (res.success) {
-          this.adminSvc.addLocalApplication({
+          this.adminSvc?.addLocalApplication({
             type: 'Affiliate Marketer',
             businessName: `${this.aff.name} (${this.aff.channels || 'Social Creator'})`,
             contactPerson: this.aff.name,
@@ -1090,7 +1123,7 @@ export class DistributorComponent {
             status: 'Pending',
             note: `Audience: ${this.aff.audience}. Niche: ${this.aff.niche}. Bank: ${this.aff.bankName} (${this.aff.accountNumber} - ${this.aff.accountName}). Strategy: ${this.aff.strategy}`
           });
-          this.adminSvc.addLocalInquiry({
+          this.adminSvc?.addLocalInquiry({
             name: this.aff.name,
             email: this.aff.email,
             phone: this.aff.phone,

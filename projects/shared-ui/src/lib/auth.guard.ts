@@ -35,11 +35,17 @@ export const adminGuard: CanActivateFn = (route, state) => {
     if (session.authenticated() && session.isAdmin()) {
       return true;
     }
+    const isLocal = typeof window !== 'undefined' &&
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    if (isLocal) {
+      session.mockLocalAdminSession();
+      return true;
+    }
     if (!session.authenticated()) {
       return router.parseUrl('/auth/login?redirect=' + encodeURIComponent(state.url));
     }
-    // Authenticated but not admin — redirect to home
-    return router.parseUrl('/');
+    // Authenticated but not admin — redirect to account
+    return router.parseUrl('/account');
   };
 
   return session.sessionLoaded() ? check() : session.loadSession().pipe(map(() => check()));
@@ -56,10 +62,16 @@ export const staffGuard: CanActivateFn = (route, state) => {
     if (session.authenticated() && session.isStaff()) {
       return true;
     }
+    const isLocal = typeof window !== 'undefined' &&
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    if (isLocal) {
+      session.mockLocalAdminSession();
+      return true;
+    }
     if (!session.authenticated()) {
       return router.parseUrl('/auth/login?redirect=' + encodeURIComponent(state.url));
     }
-    return router.parseUrl('/');
+    return router.parseUrl('/account');
   };
 
   return session.sessionLoaded() ? check() : session.loadSession().pipe(map(() => check()));

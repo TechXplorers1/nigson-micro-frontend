@@ -14,7 +14,6 @@ import {
   LucideX,
   LucideCheckCircle2,
   LucideSearch,
-  LucideEye,
   LucideList,
   LucideHeading
 } from '@lucide/angular';
@@ -357,7 +356,6 @@ Buy from an authorised Nigson distributor. Our supply chain guarantees genuine c
     LucideX,
     LucideCheckCircle2,
     LucideSearch,
-    LucideEye,
     LucideList,
     LucideHeading
   ],

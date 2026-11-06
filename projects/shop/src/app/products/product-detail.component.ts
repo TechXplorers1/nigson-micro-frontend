@@ -4,7 +4,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import {
   LucideArrowLeft, LucideChevronLeft, LucideChevronRight,
   LucideZoomIn, LucideZoomOut, LucideRotateCcw, LucideStar,
-  LucideFileText, LucideShieldCheck, LucideCheckCircle2
+  LucideFileText, LucideShieldCheck
 } from '@lucide/angular';
 import { CatalogService, ShopService, ReviewService, QtyStepperComponent, relativeDate } from 'shared-ui';
 import { WriteReviewComponent } from './write-review.component';
@@ -17,7 +17,7 @@ import { ProductCardComponent } from './product-card.component';
     CommonModule, RouterLink, LucideArrowLeft, LucideChevronLeft,
     LucideChevronRight, LucideZoomIn, LucideZoomOut, LucideRotateCcw,
     LucideStar, LucideFileText,
-    QtyStepperComponent, ProductCardComponent, LucideShieldCheck, LucideCheckCircle2
+    QtyStepperComponent, ProductCardComponent, LucideShieldCheck
   ],
   template: `
     <div class="min-h-screen bg-background" *ngIf="product()">

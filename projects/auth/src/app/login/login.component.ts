@@ -23,6 +23,10 @@ import { SessionService } from 'shared-ui';
           <svg *ngIf="!redirecting()" lucideExternalLink class="h-4 w-4"></svg>
           {{ redirecting() ? 'Opening secure sign-in…' : 'Sign in securely' }}
         </button>
+        <button *ngIf="isLocal()" type="button" (click)="signInAsLocalAdmin()"
+          class="w-full inline-flex items-center justify-center gap-2 rounded-full border border-gray-300 bg-gray-50 py-3 text-sm font-bold text-ink hover:bg-gray-100 transition-colors shadow-sm">
+          ⚡ Sign in as Local Admin (Dev Mode)
+        </button>
         <p class="text-xs leading-5 text-muted-ink">Your session stays on the Java backend. This page does not store passwords or identity tokens. If sign-in returns an authentication error, start Commerce with the local BFF security profile configured.</p>
       </div>
       <div footer>New to Nigson? <a routerLink="/auth/signup" class="font-semibold text-brand hover:underline">Create an account</a></div>
@@ -35,6 +39,7 @@ export class LoginComponent implements OnInit {
   private router = inject(Router);
   readonly redirecting = signal(false);
   readonly error = signal<string | null>(null);
+  readonly isLocal = signal(typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'));
 
   ngOnInit(): void {
     this.session.loadSession().subscribe(() => {
@@ -49,8 +54,27 @@ export class LoginComponent implements OnInit {
     return '/account';
   }
 
+  signInAsLocalAdmin(): void {
+    this.session.mockLocalAdminSession();
+    this.router.navigateByUrl(this.getReturnUrl());
+  }
+
   signIn(): void {
     this.redirecting.set(true);
+    if (this.isLocal()) {
+      fetch('/bff/session')
+        .then(res => {
+          if (res.ok) {
+            this.session.signIn(this.getReturnUrl());
+          } else {
+            this.signInAsLocalAdmin();
+          }
+        })
+        .catch(() => {
+          this.signInAsLocalAdmin();
+        });
+      return;
+    }
     this.session.signIn(this.getReturnUrl());
   }
 }

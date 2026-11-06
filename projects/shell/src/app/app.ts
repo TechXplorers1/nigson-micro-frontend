@@ -71,7 +71,7 @@ import { LucideCheck, LucideX } from '@lucide/angular';
 })
 export class AppComponent {
   title = 'shell';
-  isAdminRoute = signal(false);
+  isAdminRoute = signal(typeof window !== 'undefined' && window.location.pathname.startsWith('/admin'));
   shop = inject(ShopService);
 
   constructor() {

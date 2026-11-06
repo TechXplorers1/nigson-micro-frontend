@@ -351,6 +351,13 @@ export class AdminService {
     this.products.set([]);
     this.customers.set([]);
     this.hydrateFromStorage();
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', (e) => {
+        if (e.key === 'nigson_admin_applications' || e.key === 'nigson_admin_inquiries') {
+          this.hydrateFromStorage();
+        }
+      });
+    }
     this.http.get<Array<{id: string; code: string; currency: string}>>('/api/v1/markets').subscribe({
       next: markets => this.distributorMarket.set(markets.find(market => market.code === 'NG') ?? null), error: () => {}
     });
@@ -361,7 +368,7 @@ export class AdminService {
     }
   }
 
-  private hydrateFromStorage() {
+  public hydrateFromStorage() {
     try {
       const storedApps = localStorage.getItem('nigson_admin_applications');
       if (storedApps) {
@@ -374,22 +381,39 @@ export class AdminService {
         }
       }
     } catch {}
+    if (this.applications().length === 0) {
+      this.applications.set(SEED_APPLICATIONS);
+    }
 
     try {
       const storedQuotes = localStorage.getItem('nigson_admin_quotes');
       if (storedQuotes) {
         const parsed = JSON.parse(storedQuotes);
-        if (Array.isArray(parsed) && parsed.length > 0) this.quotes.set(parsed);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const existingIds = new Set(parsed.map((p: any) => p.id));
+          const missingSeeds = SEED_QUOTES.filter(s => !existingIds.has(s.id));
+          this.quotes.set([...parsed, ...missingSeeds]);
+        }
       }
     } catch {}
+    if (this.quotes().length === 0) {
+      this.quotes.set(SEED_QUOTES);
+    }
 
     try {
       const storedInqs = localStorage.getItem('nigson_admin_inquiries');
       if (storedInqs) {
         const parsed = JSON.parse(storedInqs);
-        if (Array.isArray(parsed) && parsed.length > 0) this.inquiries.set(parsed);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const existingIds = new Set(parsed.map((p: any) => p.id));
+          const missingSeeds = SEED_INQUIRIES.filter(s => !existingIds.has(s.id));
+          this.inquiries.set([...parsed, ...missingSeeds]);
+        }
       }
     } catch {}
+    if (this.inquiries().length === 0) {
+      this.inquiries.set(SEED_INQUIRIES);
+    }
 
     this.loadStaffProducts().subscribe();
     if (this.session.authenticated()) {
@@ -600,7 +624,30 @@ export class AdminService {
   }
 
   loadStaffInquiries(): Observable<AdminInquiry[]> {
-    return of(this.inquiries());
+    this.hydrateFromStorage();
+    return this.http.get<any[]>('/api/v1/staff/leads').pipe(
+      map(leads => {
+        if (!Array.isArray(leads)) return this.inquiries();
+        const dbInqs: AdminInquiry[] = leads.map(l => ({
+          id: l.id,
+          name: l.name,
+          email: l.email || '',
+          phone: l.phone || '',
+          subject: l.subject,
+          message: l.message,
+          date: l.created_at || new Date().toISOString(),
+          status: (l.status === 'RESOLVED' || l.status === 'CLOSED') ? 'Resolved' as const : 'New' as const
+        }));
+        this.inquiries.update(existing => {
+          const map = new Map(existing.map(e => [e.id, e]));
+          for (const d of dbInqs) map.set(d.id, d);
+          return Array.from(map.values());
+        });
+        this.persistInquiries();
+        return this.inquiries();
+      }),
+      catchError(() => of(this.inquiries()))
+    );
   }
 
   /** Load the Commerce-owned staff directory; browser code never calls Keycloak Admin APIs. */
@@ -735,39 +782,123 @@ export class AdminService {
     );
   }
 
-  /** Load queue summaries and their authorized details without inventing applicant data. */
+  parseLeadApplication(lead: any): AdminApplication {
+    const msg = lead.message || '';
+    const subj = lead.subject || '';
+
+    let type: 'Distributor' | 'Wholesaler' | 'Affiliate Marketer' = 'Distributor';
+    if (subj.includes('Wholesale') || msg.includes('Wholesale Trade')) {
+      type = 'Wholesaler';
+    } else if (subj.includes('Affiliate') || msg.includes('Affiliate Partner')) {
+      type = 'Affiliate Marketer';
+    }
+
+    const getField = (prefix: string): string => {
+      const line = msg.split('\n').find((l: string) => l.toLowerCase().startsWith(prefix.toLowerCase()));
+      return line ? line.split(':').slice(1).join(':').trim() : '';
+    };
+
+    const businessName = getField('Store / Company:') 
+                      || getField('Legal Entity:') 
+                      || getField('Company / Brand:')
+                      || (subj.includes(':') ? subj.split(':')[1].split('(')[0].trim() : lead.name);
+
+    const contactPerson = getField('Contact Person:')
+                       || getField('Managing Director:')
+                       || getField('Full Name / Creator:')
+                       || lead.name;
+
+    const location = getField('Trading Hub / State:')
+                  || getField('Assigned Territory:')
+                  || getField('Operating Territory:')
+                  || getField('Head Office:')
+                  || 'Nigeria';
+
+    const category = getField('Product Category:')
+                  || getField('Primary Niche:')
+                  || 'Accessories';
+
+    const prefix = type === 'Wholesaler' ? 'APP-W' : type === 'Affiliate Marketer' ? 'APP-A' : 'APP-D';
+    const number = prefix + (lead.id ? lead.id.replace(/-/g, '').slice(0, 4).toUpperCase() : Math.floor(1000 + Math.random() * 9000));
+
+    const statusMap: Record<string, LeadStatus> = {
+      'NEW': 'Pending',
+      'ASSIGNED': 'Under Review',
+      'IN_PROGRESS': 'Under Review',
+      'RESOLVED': 'Approved',
+      'CLOSED': 'Approved'
+    };
+
+    return {
+      id: lead.id,
+      number,
+      type,
+      businessName: businessName || lead.name,
+      contactPerson: contactPerson || lead.name,
+      email: lead.email || '',
+      phone: lead.phone || '',
+      location,
+      category,
+      date: lead.created_at || new Date().toISOString(),
+      status: statusMap[lead.status] || 'Pending',
+      note: lead.message,
+      version: 1
+    };
+  }
+
+  /** Load queue summaries from database leads & authorized details without inventing applicant data. */
   loadStaffApplications(): Observable<AdminApplication[]> {
-    return this.http.get<{ content: any[] }>('/api/v1/staff/distributor-applications').pipe(
-      switchMap(res => !res.content?.length ? of([]) : forkJoin(res.content.map(application =>
-        this.http.get<any>(`/api/v1/staff/distributor-applications/${application.id}`).pipe(map(detail => ({ ...application, ...detail })))
-      ))),
-      map(applications => applications.map(application => ({
-        id: application.id,
-        number: 'APP-' + application.id.slice(0, 6).toUpperCase(),
-        type: 'Distributor' as const,
-        businessName: application.organizationName,
-        contactPerson: '', email: '', phone: '',
-        location: application.countryCode,
-        category: 'Wholesale',
-        date: application.submittedAt,
-        status: distributorDisplayState(application.state),
-        note: application.reviewReason || application.businessReference,
-        version: application.version
-      }))),
-      tap(backendApps => {
-        if (backendApps.length > 0) {
+    this.hydrateFromStorage();
+    return this.http.get<any[]>('/api/v1/staff/leads').pipe(
+      map(leads => {
+        if (!Array.isArray(leads)) return this.applications();
+        const dbApps = leads.map(l => this.parseLeadApplication(l));
+        if (dbApps.length > 0) {
           this.applications.update(existing => {
             const map = new Map(existing.map(e => [e.id, e]));
-            for (const b of backendApps) map.set(b.id, b);
+            for (const d of dbApps) map.set(d.id, d);
             return Array.from(map.values());
           });
           this.persistApplications();
         }
+        return this.applications();
       }),
-      catchError(err => {
-        // Backend phase < 3 returns 422 FEATURE_DISABLED. Suppress red banner since local applications are active.
-        this.applicationError.set(null);
-        return of(this.applications());
+      catchError(() => {
+        return this.http.get<{ content: any[] }>('/api/v1/staff/distributor-applications').pipe(
+          switchMap(res => !res.content?.length ? of([]) : forkJoin(res.content.map(application =>
+            this.http.get<any>(`/api/v1/staff/distributor-applications/${application.id}`).pipe(map(detail => ({ ...application, ...detail })))
+          ))),
+          map(applications => applications.map(application => ({
+            id: application.id,
+            number: 'APP-' + application.id.slice(0, 6).toUpperCase(),
+            type: 'Distributor' as const,
+            businessName: application.organizationName,
+            contactPerson: '', email: '', phone: '',
+            location: application.countryCode,
+            category: 'Wholesale',
+            date: application.submittedAt,
+            status: distributorDisplayState(application.state),
+            note: application.reviewReason || application.businessReference,
+            version: application.version
+          }))),
+          tap(backendApps => {
+            if (backendApps.length > 0) {
+              this.applications.update(existing => {
+                const map = new Map(existing.map(e => [e.id, e]));
+                for (const b of backendApps) map.set(b.id, b);
+                return Array.from(map.values());
+              });
+              this.persistApplications();
+            }
+          }),
+          catchError(() => {
+            this.applicationError.set(null);
+            if (this.applications().length === 0) {
+              this.applications.set(SEED_APPLICATIONS);
+            }
+            return of(this.applications());
+          })
+        );
       })
     );
   }
@@ -896,6 +1027,9 @@ export class AdminService {
       }),
       catchError(err => {
         console.warn('[AdminService] loadStaffQuotes backend 404/unrouted, using local quotes:', err?.status ?? err);
+        if (this.quotes().length === 0) {
+          this.quotes.set(SEED_QUOTES);
+        }
         return of(this.quotes());
       })
     );

@@ -146,10 +146,12 @@ import { LucideSearch, LucideEye, LucideCheck, LucideX } from '@lucide/angular';
   `
 })
 export class AdminApplicationsComponent implements OnInit {
+  admin = inject(AdminService);
+
   ngOnInit() {
+    this.admin.hydrateFromStorage();
     this.admin.loadStaffApplications().subscribe();
   }
-  admin = inject(AdminService);
   
   tab = signal('Distributors');
   searchQuery = signal('');
