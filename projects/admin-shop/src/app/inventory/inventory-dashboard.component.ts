@@ -30,19 +30,19 @@ import { RouterLink } from '@angular/router';
       <div class="rounded-2xl border border-hairline bg-white p-6 shadow-sm">
         <h2 class="mb-5 text-lg font-extrabold text-ink">Stock Overview</h2>
         <div class="overflow-x-auto rounded-md border border-hairline">
-          <table class="w-full min-w-[720px] text-left text-sm text-ink">
+          <table class="w-full text-left text-sm text-ink">
             <thead class="border-b border-hairline bg-surface-alt/50 text-[10px] font-bold uppercase tracking-widest text-muted-ink">
               <tr>
                 <th class="px-4 py-3">Category</th>
                 <th class="px-4 py-3">Products</th>
-                <th class="px-4 py-3">Total stock</th>
+                <th class="px-4 py-3 text-right">Total stock</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-hairline">
               <tr *ngFor="let c of categories()" class="transition-colors hover:bg-surface-alt/60">
                 <td class="px-4 py-3 font-semibold">{{ c.category }}</td>
                 <td class="px-4 py-3">{{ c.count }}</td>
-                <td class="px-4 py-3 font-semibold">{{ c.stock | number }}</td>
+                <td class="px-4 py-3 font-semibold text-right">{{ c.stock | number }}</td>
               </tr>
               <tr *ngIf="categories().length === 0">
                 <td colspan="3" class="p-8 text-center text-muted-ink">No products in the catalogue yet.</td>
@@ -53,9 +53,14 @@ import { RouterLink } from '@angular/router';
       </div>
 
       <div class="rounded-2xl border border-hairline bg-white p-6 shadow-sm">
-        <h2 class="mb-5 text-lg font-extrabold text-ink">Recent Inventory Activity</h2>
+        <div class="mb-5 flex items-center justify-between">
+          <h2 class="text-lg font-extrabold text-ink">Recent Inventory Activity</h2>
+          <a routerLink="/admin/inventory/movements" class="text-xs font-bold text-brand hover:underline">
+            View all movements &rarr;
+          </a>
+        </div>
         <div class="overflow-x-auto rounded-md border border-hairline">
-          <table class="w-full min-w-[720px] text-left text-sm text-ink">
+          <table class="w-full text-left text-sm text-ink">
             <thead class="border-b border-hairline bg-surface-alt/50 text-[10px] font-bold uppercase tracking-widest text-muted-ink">
               <tr>
                 <th class="px-4 py-3">Date</th>
@@ -66,15 +71,18 @@ import { RouterLink } from '@angular/router';
             </thead>
             <tbody class="divide-y divide-hairline">
               <tr *ngFor="let m of movements()" class="transition-colors hover:bg-surface-alt/60">
-                <td class="px-4 py-3 whitespace-nowrap text-muted-ink">{{ m.date | date:'mediumDate' }}</td>
-                <td class="px-4 py-3 font-semibold">{{ m.product }}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-xs text-muted-ink">{{ m.date | date:'mediumDate' }}</td>
+                <td class="px-4 py-3 font-semibold">
+                  {{ m.product }}
+                  <span *ngIf="m.sku" class="block text-xs font-normal text-muted-ink">{{ m.sku }}</span>
+                </td>
                 <td class="px-4 py-3">
                   <span 
                     class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold"
                     [ngClass]="{
+                      'bg-emerald-50 text-emerald-700': m.type === 'Stock Received' || m.type === 'Opening Stock',
                       'bg-sky-50 text-sky-700': m.type === 'Order',
-                      'bg-amber-50 text-amber-700': m.type === 'Adjustment',
-                      'bg-slate-100 text-slate-700': m.type !== 'Order' && m.type !== 'Adjustment'
+                      'bg-amber-50 text-amber-700': m.type !== 'Stock Received' && m.type !== 'Opening Stock' && m.type !== 'Order'
                     }"
                   >
                     {{ m.type }}
@@ -85,7 +93,7 @@ import { RouterLink } from '@angular/router';
                     class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold"
                     [ngClass]="m.qty >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'"
                   >
-                    {{ m.qty >= 0 ? '+' : '' }}{{ m.qty }}
+                    {{ m.qty > 0 ? '+' : '' }}{{ m.qty }}
                   </span>
                 </td>
               </tr>
@@ -151,14 +159,17 @@ export class InventoryDashboardComponent implements OnInit {
   lowStock = computed(() => this.admin.products().filter((p) => p.stock > 0 && p.stock <= 10));
   outOfStock = computed(() => this.admin.products().filter((p) => p.stock === 0).length);
 
-  // Dummy movements since AdminService might not provide a movements() list right now
-  movements = computed(() => [
-    { id: 1, date: new Date('2026-08-12'), product: 'Household Essentials Bundle', type: 'Opening Stock', qty: 50 },
-    { id: 2, date: new Date('2026-08-11'), product: 'Zarina Personal Care Range', type: 'Opening Stock', qty: 20 },
-    { id: 3, date: new Date('2026-08-10'), product: 'Rechargeable LED Night Lamp', type: 'Adjustment', qty: -5 },
-    { id: 4, date: new Date('2026-08-09'), product: '6-Outlet Power Strip', type: 'Order', qty: -2 },
-    { id: 5, date: new Date('2026-08-08'), product: 'GaN Adapter 100W', type: 'Opening Stock', qty: 100 },
-  ]);
+  // Live inventory activity sourced from AdminService stockLog
+  movements = computed(() => {
+    return this.admin.stockLog().slice(0, 8).map(l => ({
+      id: l.id,
+      date: new Date(l.date),
+      product: l.product,
+      sku: l.sku,
+      type: l.reason,
+      qty: l.change
+    }));
+  });
 
   categories = computed(() => {
     const prods = this.admin.products();
@@ -169,5 +180,3 @@ export class InventoryDashboardComponent implements OnInit {
     });
   });
 }
-
-

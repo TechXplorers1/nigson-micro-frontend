@@ -78,9 +78,11 @@ export class QuoteService {
         this.loading.set(false);
       }),
       catchError(err => {
-        const localItems = this.readUserLocalQuotes();
-        this.quotes.set(localItems);
-        this.totalElements.set(localItems.length);
+        if (err?.status !== 404) {
+          console.warn("[QuoteService] Backend /api/v1/quotes unavailable or returned error:", err);
+        }
+        this.quotes.set([]);
+        this.totalElements.set(0);
         this.loading.set(false);
         return of({
           content: localItems,
@@ -106,7 +108,7 @@ export class QuoteService {
     try {
       const existing = this.readUserLocalQuotes();
       localStorage.setItem('nigson_quotes_user', JSON.stringify([q, ...existing]));
-    } catch {}
+    } catch { }
   }
 
   /** TASK-46: Submit a new quote request */
