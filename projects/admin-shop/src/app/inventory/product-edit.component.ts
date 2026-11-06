@@ -184,12 +184,12 @@ export interface CustomSpec {
             <div class="grid gap-4 sm:grid-cols-2">
               <div class="sm:col-span-2">
                 <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-muted-ink">Product Name *</label>
-                <input type="text" [(ngModel)]="product.name" name="name" required class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20 font-bold">
+                <input type="text" [(ngModel)]="product.name" name="name" required placeholder="e.g. NS03 Wireless Earbuds (TWS)" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20 font-bold">
               </div>
 
               <div>
                 <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-muted-ink">SKU Model Code *</label>
-                <input type="text" [(ngModel)]="product.sku" name="sku" required class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-mono font-bold text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
+                <input type="text" [(ngModel)]="product.sku" name="sku" required placeholder="e.g. NS03" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-mono font-bold text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
               </div>
 
               <div>
@@ -201,7 +201,7 @@ export interface CustomSpec {
 
               <div>
                 <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-muted-ink">Brand</label>
-                <input type="text" [(ngModel)]="product.brand" name="brand" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
+                <input type="text" [(ngModel)]="product.brand" name="brand" placeholder="e.g. Nigson" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
               </div>
 
               <div>
@@ -228,25 +228,25 @@ export interface CustomSpec {
             <div class="grid gap-4 sm:grid-cols-3">
               <div>
                 <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-brand">Starting Price (₦) *</label>
-                <input type="number" [(ngModel)]="product.retail" name="retail" required class="w-full rounded-2xl border-2 border-brand/50 bg-brand/5 px-4 py-2.5 text-base font-black text-brand shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
+                <input type="number" [(ngModel)]="product.retail" name="retail" required placeholder="e.g. 18500" class="w-full rounded-2xl border-2 border-brand/50 bg-brand/5 px-4 py-2.5 text-base font-black text-brand shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
                 <p class="mt-1 text-[10px] text-muted-ink font-semibold">Displays on storefront card.</p>
               </div>
 
               <div>
                 <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-muted-ink">Wholesale Rate (₦)</label>
-                <input type="number" [(ngModel)]="product.wholesale" name="wholesale" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
+                <input type="number" [(ngModel)]="product.wholesale" name="wholesale" placeholder="e.g. 14500" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
                 <p class="mt-1 text-[10px] text-muted-ink">For bulk orders.</p>
               </div>
 
               <div>
                 <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-muted-ink">Distributor Rate (₦)</label>
-                <input type="number" [(ngModel)]="product.distributor" name="distributor" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
+                <input type="number" [(ngModel)]="product.distributor" name="distributor" placeholder="e.g. 12000" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
                 <p class="mt-1 text-[10px] text-muted-ink">For verified partners.</p>
               </div>
 
               <div class="sm:col-span-3">
                 <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-muted-ink">Price Subtitle Text</label>
-                <input type="text" [(ngModel)]="product.priceSubtitle" name="priceSubtitle" placeholder="Wholesale pricing available for distributors." class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-xs text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
+                <input type="text" [(ngModel)]="product.priceSubtitle" name="priceSubtitle" placeholder="e.g. Wholesale pricing available for verified distributors." class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-xs text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
               </div>
             </div>
           </div>
@@ -257,13 +257,13 @@ export interface CustomSpec {
 
             <div>
               <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-muted-ink">Short Summary Description *</label>
-              <textarea [(ngModel)]="product.desc" name="desc" rows="2" required placeholder="Nigson NS901C Type-C to Type-C Cable supporting up to 65W fast charging..." class="w-full rounded-2xl border border-gray-200 bg-white p-3.5 text-xs text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20 leading-relaxed"></textarea>
+              <textarea [(ngModel)]="product.desc" name="desc" rows="2" required placeholder="e.g. Nigson NS901C Type-C to Type-C Cable supporting up to 65W fast charging..." class="w-full rounded-2xl border border-gray-200 bg-white p-3.5 text-xs text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20 leading-relaxed"></textarea>
               <p class="mt-1 text-[10px] text-muted-ink">Renders immediately under the price and rating.</p>
             </div>
 
             <div>
               <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-muted-ink">Key Feature Bullets (Red Checkmarks) — one per line</label>
-              <textarea [(ngModel)]="product.features" name="features" rows="4" placeholder="Wholesale & retail pricing&#10;Nationwide delivery from Lagos hub&#10;12-month standard warranty&#10;Bulk discounts for distributors" class="w-full rounded-2xl border border-gray-200 bg-white p-3.5 text-xs font-mono text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20 leading-relaxed"></textarea>
+              <textarea [(ngModel)]="product.features" name="features" rows="4" placeholder="e.g. Wholesale & retail pricing&#10;Nationwide delivery from Lagos hub&#10;12-month standard warranty&#10;Bulk discounts for distributors" class="w-full rounded-2xl border border-gray-200 bg-white p-3.5 text-xs font-mono text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20 leading-relaxed"></textarea>
               <p class="mt-1 text-[10px] text-muted-ink">Appears with red checkmarks beside the main image.</p>
             </div>
           </div>
@@ -291,20 +291,20 @@ export interface CustomSpec {
             <div>
               <div class="flex items-center justify-between mb-2">
                 <span class="text-xs font-bold uppercase tracking-widest text-muted-ink">Section Heading</span>
-                <span class="text-[11px] text-muted-ink font-mono">Auto-generated: {{ product.name }} Overview</span>
+                <span class="text-[11px] text-muted-ink font-mono">Auto-generated: {{ product.name || 'Product' }} Overview</span>
               </div>
               <p class="text-xs text-muted-ink">The customer page renders a prominent overview header using the product name.</p>
             </div>
 
             <div>
               <label class="mb-2 block text-xs font-bold uppercase tracking-widest text-muted-ink">Extended Overview Paragraph</label>
-              <textarea [(ngModel)]="product.overview" name="overview" rows="3" placeholder="Engineered to meet the highest standards of durability and performance across Nigerian markets. Suitable for both wholesale commercial resale and direct consumer use." class="w-full rounded-2xl border border-gray-200 bg-white p-4 text-xs text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20 leading-relaxed"></textarea>
+              <textarea [(ngModel)]="product.overview" name="overview" rows="3" placeholder="e.g. Engineered to meet the highest standards of durability and performance across Nigerian markets. Suitable for both wholesale commercial resale and direct consumer use." class="w-full rounded-2xl border border-gray-200 bg-white p-4 text-xs text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20 leading-relaxed"></textarea>
               <p class="mt-1 text-[11px] text-muted-ink">Displayed under the product overview heading.</p>
             </div>
 
             <div class="border-t border-gray-100 pt-5">
               <label class="mb-2 block text-xs font-bold uppercase tracking-widest text-muted-ink">Key Highlights Box Bullets — one per line</label>
-              <textarea [(ngModel)]="product.highlights" name="highlights" rows="4" placeholder="Wholesale & retail pricing tier&#10;Fast dispatch from central Lagos hub&#10;12-month standard Nigson warranty&#10;Bulk order distributor volume discounts" class="w-full rounded-2xl border border-gray-200 bg-white p-4 text-xs font-mono text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20 leading-relaxed"></textarea>
+              <textarea [(ngModel)]="product.highlights" name="highlights" rows="4" placeholder="e.g. Wholesale & retail pricing tier&#10;Fast dispatch from central Lagos hub&#10;12-month standard Nigson warranty&#10;Bulk order distributor volume discounts" class="w-full rounded-2xl border border-gray-200 bg-white p-4 text-xs font-mono text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20 leading-relaxed"></textarea>
               <p class="mt-1 text-[11px] text-muted-ink">Renders inside the shaded 'Key Highlights' container with green checkmarks.</p>
             </div>
           </div>
@@ -319,37 +319,37 @@ export interface CustomSpec {
             <div class="grid gap-4 sm:grid-cols-2">
               <div>
                 <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-muted-ink">Warranty</label>
-                <input type="text" [(ngModel)]="product.warranty" name="warranty" placeholder="12 Months Standard Manufacturer Warranty" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-xs text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
+                <input type="text" [(ngModel)]="product.warranty" name="warranty" placeholder="e.g. 12 Months Standard Manufacturer Warranty" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-xs text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
               </div>
 
               <div>
                 <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-muted-ink">Connectors / Interface</label>
-                <input type="text" [(ngModel)]="product.connectors" name="connectors" placeholder="Type-C to Type-C" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-xs text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
+                <input type="text" [(ngModel)]="product.connectors" name="connectors" placeholder="e.g. Type-C to Type-C" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-xs text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
               </div>
 
               <div>
                 <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-muted-ink">Power Rating / Output</label>
-                <input type="text" [(ngModel)]="product.powerRating" name="powerRating" placeholder="65W PD" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-xs text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
+                <input type="text" [(ngModel)]="product.powerRating" name="powerRating" placeholder="e.g. 65W PD (20V/3.25A)" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-xs text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
               </div>
 
               <div>
                 <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-muted-ink">Device Compatibility</label>
-                <input type="text" [(ngModel)]="product.compatibility" name="compatibility" placeholder="Universal iOS / Android / USB-C Standards Compliant" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-xs text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
+                <input type="text" [(ngModel)]="product.compatibility" name="compatibility" placeholder="e.g. Universal iOS / Android / USB-C Standards Compliant" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-xs text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
               </div>
 
               <div>
                 <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-muted-ink">Build Material</label>
-                <input type="text" [(ngModel)]="product.buildMaterial" name="buildMaterial" placeholder="Premium Grade Fire-Retardant Polymer & Alloy" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-xs text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
+                <input type="text" [(ngModel)]="product.buildMaterial" name="buildMaterial" placeholder="e.g. Premium Grade Fire-Retardant Polymer & Alloy" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-xs text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
               </div>
 
               <div>
                 <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-muted-ink">Quality Certification</label>
-                <input type="text" [(ngModel)]="product.certification" name="certification" placeholder="CE / RoHS / FCC Quality Verified" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-xs text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
+                <input type="text" [(ngModel)]="product.certification" name="certification" placeholder="e.g. CE / RoHS / FCC Quality Verified" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-xs text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
               </div>
 
               <div class="sm:col-span-2">
                 <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-muted-ink">Importer & Distributor</label>
-                <input type="text" [(ngModel)]="product.importer" name="importer" placeholder="Nigson Group Ltd, Lagos Nigeria" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-xs text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
+                <input type="text" [(ngModel)]="product.importer" name="importer" placeholder="e.g. Nigson Group Ltd, Lagos Nigeria" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-xs text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
               </div>
             </div>
 
@@ -391,13 +391,13 @@ export interface CustomSpec {
             <div class="grid gap-6 sm:grid-cols-2">
               <div>
                 <label class="mb-2 block text-xs font-bold uppercase tracking-widest text-muted-ink">Retail Box Contents — one per line</label>
-                <textarea [(ngModel)]="product.packaging" name="packaging" rows="4" placeholder="1x Unit&#10;1x User Manual & Setup Guide&#10;1x Nigson Warranty Card" class="w-full rounded-2xl border border-gray-200 bg-white p-4 text-xs font-mono text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20 leading-relaxed"></textarea>
+                <textarea [(ngModel)]="product.packaging" name="packaging" rows="4" placeholder="e.g. 1x Unit&#10;1x User Manual & Setup Guide&#10;1x Nigson Warranty Card" class="w-full rounded-2xl border border-gray-200 bg-white p-4 text-xs font-mono text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20 leading-relaxed"></textarea>
                 <p class="mt-1 text-[11px] text-muted-ink">Displayed as bullet points inside the Retail Box Contents card.</p>
               </div>
 
               <div>
                 <label class="mb-2 block text-xs font-bold uppercase tracking-widest text-muted-ink">Master Carton Specs — one per line</label>
-                <textarea [(ngModel)]="product.cartonSpecs" name="cartonSpecs" rows="4" placeholder="Carton Quantity: 40 Units / Box&#10;Gross Weight: ~ 0.45 kg per unit box&#10;Barcode: Individually Labelled for Resale" class="w-full rounded-2xl border border-gray-200 bg-white p-4 text-xs font-mono text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20 leading-relaxed"></textarea>
+                <textarea [(ngModel)]="product.cartonSpecs" name="cartonSpecs" rows="4" placeholder="e.g. Carton Quantity: 40 Units / Box&#10;Gross Weight: ~ 0.45 kg per unit box&#10;Barcode: Individually Labelled for Resale" class="w-full rounded-2xl border border-gray-200 bg-white p-4 text-xs font-mono text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20 leading-relaxed"></textarea>
                 <p class="mt-1 text-[11px] text-muted-ink">Displayed as bullet points inside the Master Carton Specs card.</p>
               </div>
             </div>
@@ -413,34 +413,34 @@ export interface CustomSpec {
             <div class="grid gap-5 sm:grid-cols-2">
               <div>
                 <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-muted-ink">Central Lagos Warehouse Status</label>
-                <input type="text" [(ngModel)]="product.warehouseStatus" name="warehouseStatus" placeholder="In Stock & Ready to Ship" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-xs text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20 font-semibold">
+                <input type="text" [(ngModel)]="product.warehouseStatus" name="warehouseStatus" placeholder="e.g. In Stock & Ready to Ship" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-xs text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20 font-semibold">
               </div>
 
               <div>
                 <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-muted-ink">Dispatch Turnaround</label>
-                <input type="text" [(ngModel)]="product.dispatchTurnaround" name="dispatchTurnaround" placeholder="Dispatched within 24 Hours" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-xs text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
+                <input type="text" [(ngModel)]="product.dispatchTurnaround" name="dispatchTurnaround" placeholder="e.g. Dispatched within 24 Hours" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-xs text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
               </div>
 
               <div>
                 <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-muted-ink">Nationwide Shipping</label>
-                <input type="text" [(ngModel)]="product.nationwideShipping" name="nationwideShipping" placeholder="2 - 4 Business Days across Nigeria" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-xs text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
+                <input type="text" [(ngModel)]="product.nationwideShipping" name="nationwideShipping" placeholder="e.g. 2 - 4 Business Days across Nigeria" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-xs text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
               </div>
 
               <div>
                 <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-muted-ink">Minimum Wholesale Order</label>
-                <input type="text" [(ngModel)]="product.minWholesaleOrder" name="minWholesaleOrder" placeholder="10 Units" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-xs text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20 font-bold text-brand">
+                <input type="text" [(ngModel)]="product.minWholesaleOrder" name="minWholesaleOrder" placeholder="e.g. 10 Units" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-xs text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20 font-bold text-brand">
               </div>
 
               <div class="border-t border-gray-100 pt-4 sm:col-span-2 grid gap-5 sm:grid-cols-2">
                 <div>
                   <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-muted-ink">Current Inventory Stock (Units) *</label>
-                  <input type="number" [(ngModel)]="product.stock" name="stock" required class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
+                  <input type="number" [(ngModel)]="product.stock" name="stock" required placeholder="e.g. 100" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
                   <p class="mt-1 text-[10px] text-muted-ink">Tracked across warehouse balances.</p>
                 </div>
 
                 <div>
                   <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-muted-ink">Low Stock Alert Threshold (Units)</label>
-                  <input type="number" [(ngModel)]="product.lowLevel" name="lowLevel" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
+                  <input type="number" [(ngModel)]="product.lowLevel" name="lowLevel" placeholder="e.g. 10" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
                   <p class="mt-1 text-[10px] text-muted-ink">Triggers warning in admin dashboard.</p>
                 </div>
               </div>
@@ -512,34 +512,34 @@ export class ProductEditComponent implements OnInit {
     name: '',
     sku: '',
     category: 'Cables',
-    brand: 'Nigson',
+    brand: '',
     status: 'Active',
-    price: 0,
-    retail: 0,
-    wholesale: 0,
-    distributor: 0,
-    priceSubtitle: 'Wholesale pricing available for distributors.',
+    price: null,
+    retail: null,
+    wholesale: null,
+    distributor: null,
+    priceSubtitle: '',
     images: ['', '', '', '', ''],
     image: '',
     desc: '',
-    features: 'Wholesale & retail pricing\nNationwide delivery from Lagos hub\n12-month standard warranty\nBulk discounts for distributors',
-    overview: 'Engineered to meet the highest standards of durability and performance across Nigerian markets. Suitable for both wholesale commercial resale and direct consumer use.',
-    highlights: 'Wholesale & retail pricing tier\nFast dispatch from central Lagos hub\n12-month standard Nigson warranty\nBulk order distributor volume discounts',
-    warranty: '12 Months Standard Manufacturer Warranty',
-    connectors: 'Type-C to Type-C',
-    powerRating: '65W PD',
-    compatibility: 'Universal iOS / Android / USB-C Standards Compliant',
-    buildMaterial: 'Premium Grade Fire-Retardant Polymer & Alloy',
-    certification: 'CE / RoHS / FCC Quality Verified',
-    importer: 'Nigson Group Ltd, Lagos Nigeria',
-    packaging: '1x Unit\n1x User Manual & Setup Guide\n1x Nigson Warranty Card',
-    cartonSpecs: 'Carton Quantity: 40 Units / Box\nGross Weight: ~ 0.45 kg per unit box\nBarcode: Individually Labelled for Resale',
-    stock: 150,
-    lowLevel: 10,
-    warehouseStatus: 'In Stock & Ready to Ship',
-    dispatchTurnaround: 'Dispatched within 24 Hours',
-    nationwideShipping: '2 - 4 Business Days across Nigeria',
-    minWholesaleOrder: '10 Units'
+    features: '',
+    overview: '',
+    highlights: '',
+    warranty: '',
+    connectors: '',
+    powerRating: '',
+    compatibility: '',
+    buildMaterial: '',
+    certification: '',
+    importer: '',
+    packaging: '',
+    cartonSpecs: '',
+    stock: null,
+    lowLevel: null,
+    warehouseStatus: '',
+    dispatchTurnaround: '',
+    nationwideShipping: '',
+    minWholesaleOrder: ''
   };
 
   resetProduct() {
@@ -548,34 +548,34 @@ export class ProductEditComponent implements OnInit {
       name: '',
       sku: '',
       category: 'Cables',
-      brand: 'Nigson',
+      brand: '',
       status: 'Active',
       price: null,
       retail: null,
       wholesale: null,
       distributor: null,
-      priceSubtitle: 'Wholesale pricing available for distributors.',
+      priceSubtitle: '',
       images: ['', '', '', '', ''],
       image: '',
       desc: '',
-      features: 'Wholesale & retail pricing\nNationwide delivery from Lagos hub\n12-month standard warranty\nBulk discounts for distributors',
-      overview: 'Engineered to meet the highest standards of durability and performance across Nigerian markets. Suitable for both wholesale commercial resale and direct consumer use.',
-      highlights: 'Wholesale & retail pricing tier\nFast dispatch from central Lagos hub\n12-month standard Nigson warranty\nBulk order distributor volume discounts',
-      warranty: '12 Months Standard Manufacturer Warranty',
-      connectors: 'Type-C to Type-C',
-      powerRating: '65W PD',
-      compatibility: 'Universal iOS / Android / USB-C Standards Compliant',
-      buildMaterial: 'Premium Grade Fire-Retardant Polymer & Alloy',
-      certification: 'CE / RoHS / FCC Quality Verified',
-      importer: 'Nigson Group Ltd, Lagos Nigeria',
-      packaging: '1x Unit\n1x User Manual & Setup Guide\n1x Nigson Warranty Card',
-      cartonSpecs: 'Carton Quantity: 40 Units / Box\nGross Weight: ~ 0.45 kg per unit box\nBarcode: Individually Labelled for Resale',
-      stock: 100,
-      lowLevel: 10,
-      warehouseStatus: 'In Stock & Ready to Ship',
-      dispatchTurnaround: 'Dispatched within 24 Hours',
-      nationwideShipping: '2 - 4 Business Days across Nigeria',
-      minWholesaleOrder: '10 Units'
+      features: '',
+      overview: '',
+      highlights: '',
+      warranty: '',
+      connectors: '',
+      powerRating: '',
+      compatibility: '',
+      buildMaterial: '',
+      certification: '',
+      importer: '',
+      packaging: '',
+      cartonSpecs: '',
+      stock: null,
+      lowLevel: null,
+      warehouseStatus: '',
+      dispatchTurnaround: '',
+      nationwideShipping: '',
+      minWholesaleOrder: ''
     };
     this.customSpecs = [];
   }
@@ -683,42 +683,42 @@ export class ProductEditComponent implements OnInit {
     }
 
     const connRaw = specs['connectors'] || full.connectors;
-    const connFormatted = Array.isArray(connRaw) ? connRaw.join(', ') : (connRaw || this.product.connectors);
+    const connFormatted = Array.isArray(connRaw) ? connRaw.join(', ') : (connRaw || '');
 
     this.product = {
       ...this.product,
       id: full.id,
-      name: full.name,
-      sku: sku,
-      category: resolvedCategory,
+      name: full.name || '',
+      sku: sku || '',
+      category: resolvedCategory || 'Cables',
       brand: full.brand || full.brandName || 'Nigson',
       status: full.status === 'ARCHIVED' ? 'Archived' : (full.status || 'Active'),
       retail: retailPrice,
       price: retailPrice,
-      wholesale: full.wholesale ?? full.wholesalePrice ?? Math.round(retailPrice * 0.8),
-      distributor: full.distributor ?? full.distributorPrice ?? Math.round(retailPrice * 0.7),
-      priceSubtitle: full.priceSubtitle || 'Wholesale pricing available for distributors.',
+      wholesale: full.wholesale ?? full.wholesalePrice ?? (retailPrice ? Math.round(retailPrice * 0.8) : null),
+      distributor: full.distributor ?? full.distributorPrice ?? (retailPrice ? Math.round(retailPrice * 0.7) : null),
+      priceSubtitle: full.priceSubtitle || '',
       images: loadedImages.slice(0, 5),
       image: loadedImages[0] || '',
-      desc: full.desc || full.description || this.product.desc,
-      features: full.features ? (Array.isArray(full.features) ? full.features.join('\n') : full.features) : this.product.features,
-      overview: full.overview || this.product.overview,
-      highlights: full.highlights ? (Array.isArray(full.highlights) ? full.highlights.join('\n') : full.highlights) : this.product.highlights,
-      warranty: specs['warranty'] || full.warranty || this.product.warranty,
+      desc: full.desc || full.description || '',
+      features: full.features ? (Array.isArray(full.features) ? full.features.join('\n') : full.features) : '',
+      overview: full.overview || '',
+      highlights: full.highlights ? (Array.isArray(full.highlights) ? full.highlights.join('\n') : full.highlights) : '',
+      warranty: specs['warranty'] || full.warranty || '',
       connectors: connFormatted,
-      powerRating: specs['power_rating'] || specs['powerRating'] || full.powerRating || this.product.powerRating,
-      compatibility: specs['compatibility'] || full.compatibility || this.product.compatibility,
-      buildMaterial: specs['buildMaterial'] || full.buildMaterial || this.product.buildMaterial,
-      certification: specs['certification'] || full.certification || this.product.certification,
-      importer: specs['importer'] || full.importer || this.product.importer,
-      packaging: full.packaging ? (Array.isArray(full.packaging) ? full.packaging.join('\n') : full.packaging) : (`1x ${full.name} unit\n1x User Manual & Setup Guide\n1x Nigson Warranty Card`),
-      cartonSpecs: full.cartonSpecs ? (Array.isArray(full.cartonSpecs) ? full.cartonSpecs.join('\n') : full.cartonSpecs) : this.product.cartonSpecs,
-      stock: full.stock ?? 120,
-      lowLevel: full.lowLevel ?? 10,
-      warehouseStatus: full.warehouseStatus || 'In Stock & Ready to Ship',
-      dispatchTurnaround: full.dispatchTurnaround || 'Dispatched within 24 Hours',
-      nationwideShipping: full.nationwideShipping || '2 - 4 Business Days across Nigeria',
-      minWholesaleOrder: full.minWholesaleOrder || '10 Units'
+      powerRating: specs['power_rating'] || specs['powerRating'] || full.powerRating || '',
+      compatibility: specs['compatibility'] || full.compatibility || '',
+      buildMaterial: specs['buildMaterial'] || full.buildMaterial || '',
+      certification: specs['certification'] || full.certification || '',
+      importer: specs['importer'] || full.importer || '',
+      packaging: full.packaging ? (Array.isArray(full.packaging) ? full.packaging.join('\n') : full.packaging) : '',
+      cartonSpecs: full.cartonSpecs ? (Array.isArray(full.cartonSpecs) ? full.cartonSpecs.join('\n') : full.cartonSpecs) : '',
+      stock: full.stock ?? null,
+      lowLevel: full.lowLevel ?? null,
+      warehouseStatus: full.warehouseStatus || '',
+      dispatchTurnaround: full.dispatchTurnaround || '',
+      nationwideShipping: full.nationwideShipping || '',
+      minWholesaleOrder: full.minWholesaleOrder || ''
     };
 
     const skuId = full.skuId || full.skus?.[0]?.id;
