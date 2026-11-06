@@ -486,6 +486,101 @@ function getInitialAdmins(): AdminUser[] {
   ];
 }
 
+export const SEED_PRODUCTS: AdminProduct[] = [
+  { id: '5570995e-1b59-5592-ba5c-fa95a0c02c20', skuId: 'ecac9622-ee78-5c52-8eb5-7c244e055d03', sku: 'NS03', name: 'NS03 Wireless Earbuds (TWS)', category: 'Earbuds', brand: 'Nigson', price: 18500, retail: 18500, cost: 12000, stock: 45, reserved: 2, status: 'Active', desc: 'High-fidelity Bluetooth wireless earbuds with clear bass and ergonomic fit.', image: '/assets/cat-earbuds.jpg', images: ['/assets/cat-earbuds.jpg'], rating: 4.8, lowLevel: 10 },
+  { id: '8ba363e8-815a-52ee-be26-74da166eba83', skuId: 'c52cf637-25d0-5eb6-862a-e737389c7ad4', sku: 'NS06', name: 'NS06 ANC/ENC Wireless Earbuds', category: 'Earbuds', brand: 'Nigson', price: 28000, retail: 28000, cost: 18000, stock: 32, reserved: 1, status: 'Active', desc: 'Active noise cancellation earbuds with environmental noise suppression microphone.', image: '/assets/cat-earbuds.jpg', images: ['/assets/cat-earbuds.jpg'], rating: 4.9, lowLevel: 10 },
+  { id: '41934e70-179f-5c0a-9498-28c8b6a4fd9f', skuId: '63573bb9-a11d-542a-97aa-ca6cb2c92290', sku: 'NS107', name: 'NS107 High-Power Car Charger with Retractable Cable', category: 'Chargers', brand: 'Nigson', price: 12500, retail: 12500, cost: 8000, stock: 28, reserved: 0, status: 'Active', desc: 'Dual-port fast vehicle charger with self-retracting high-durability charging lead.', image: '/assets/cat-charger.jpg', images: ['/assets/cat-charger.jpg'], rating: 4.7, lowLevel: 10 },
+  { id: 'bff4b7e3-8e19-566b-9c95-bc941390f84f', skuId: '4907f781-8654-5559-88cf-1ce35df2cb15', sku: 'NS211C', name: 'NS211C Type-C to Type-C PD65W Cable', category: 'Cables', brand: 'Nigson', price: 4500, retail: 4500, cost: 2500, stock: 120, reserved: 5, status: 'Active', desc: 'Braided 65W Power Delivery fast charging cable with reinforced alloy connectors.', image: '/assets/cat-cable.jpg', images: ['/assets/cat-cable.jpg'], rating: 4.9, lowLevel: 20 },
+  { id: '3bd11da9-6a93-5f56-ae87-8afdad3d52ab', skuId: 'c3002b2f-4326-59ec-b460-09ba406bc800', sku: 'NS211i', name: 'NS211i Type-C to Lightning PD30W Cable', category: 'Cables', brand: 'Nigson', price: 4500, retail: 4500, cost: 2500, stock: 95, reserved: 4, status: 'Active', desc: 'Fast Lightning charging and data cable compatible with Apple devices.', image: '/assets/cat-cable.jpg', images: ['/assets/cat-cable.jpg'], rating: 4.8, lowLevel: 20 },
+  { id: '1908dc43-accf-5578-870c-ec519d73367c', skuId: 'f65f2023-ef23-53ca-bfa2-8b40877ed658', sku: 'NS25', name: 'NS25 4-in-1 Charging Cable', category: 'Cables', brand: 'Nigson', price: 6500, retail: 6500, cost: 4000, stock: 80, reserved: 2, status: 'Active', desc: 'Universal 4-connector heavy-duty charging lead for multiple mobile phone models.', image: '/assets/cat-cable.jpg', images: ['/assets/cat-cable.jpg'], rating: 4.6, lowLevel: 15 },
+  { id: '51c9cd3c-5d6c-5049-b821-d80c7c512305', skuId: '812f8742-6c94-5b92-a313-f0c0fdee9559', sku: 'NS2526C', name: 'NS2526C High Power Fast Wall Charger, GaN65W', category: 'Chargers', brand: 'Nigson', price: 16000, retail: 16000, cost: 10500, stock: 54, reserved: 3, status: 'Active', desc: 'GaN technology 65W compact travel wall adapter with multi-voltage safety protection.', image: '/assets/cat-charger.jpg', images: ['/assets/cat-charger.jpg'], rating: 4.9, lowLevel: 10 },
+  { id: '1fc9d7b4-1716-54fb-905a-ea5a80620a07', skuId: 'b5cf3ecb-5ed0-5e6f-9cea-4da88f91baa3', sku: 'NS2618', name: 'NS2618 All-in-One Universal Multiway Adapter, GaN65W', category: 'Chargers', brand: 'Nigson', price: 22000, retail: 22000, cost: 14000, stock: 40, reserved: 1, status: 'Active', desc: 'Worldwide travel plug converter with integrated 65W GaN charging sockets.', image: '/assets/cat-charger.jpg', images: ['/assets/cat-charger.jpg'], rating: 4.8, lowLevel: 10 },
+  { id: '28cd1e1a-bc40-5728-bf56-4c785b8613f2', skuId: 'c4f089fb-7a27-5b3e-bc02-f9565d5653ff', sku: 'NS3416', name: 'NS3416 65W GaN Power Socket', category: 'Extension Sockets', brand: 'Nigson', price: 29500, retail: 29500, cost: 19000, stock: 35, reserved: 2, status: 'Active', desc: 'Heavy-duty multi-gang extension hub with built-in high power USB-C fast ports.', image: '/assets/cat-powerbank.jpg', images: ['/assets/cat-powerbank.jpg'], rating: 4.7, lowLevel: 10 },
+  { id: 'cd9acab9-5bce-5274-a051-773e756d1b0e', skuId: '51c2d6f5-82ae-5eae-8f5d-5975fd7318fc', sku: 'NS3604C', name: 'NS3604C Multi-Socket Extension Box', category: 'Extension Sockets', brand: 'Nigson', price: 34000, retail: 34000, cost: 22000, stock: 25, reserved: 0, status: 'Active', desc: 'Overload and surge protected power distributor suitable for commercial and home setups.', image: '/assets/cat-powerbank.jpg', images: ['/assets/cat-powerbank.jpg'], rating: 4.8, lowLevel: 10 },
+  { id: '95be469d-489f-5d09-9308-18f6941e4d41', skuId: 'b9f0156b-c3d2-5bf6-8113-b88f83c01e6d', sku: 'NS4', name: 'NS4 Home Charger', category: 'Chargers', brand: 'Nigson', price: 8500, retail: 8500, cost: 5000, stock: 65, reserved: 4, status: 'Active', desc: 'Standard high-efficiency home wall charger with short-circuit protection.', image: '/assets/cat-charger.jpg', images: ['/assets/cat-charger.jpg'], rating: 4.6, lowLevel: 15 },
+  { id: '240af070-7cac-5840-93f7-731aff6bf976', skuId: 'e5e75b4f-26fa-56bd-a68f-c10aa50082f3', sku: 'NS6', name: 'NS6 Large Motion-Activated Cabinet Light (410MM)', category: 'Motion-Activated Lights', brand: 'Nigson', price: 14500, retail: 14500, cost: 9000, stock: 42, reserved: 1, status: 'Active', desc: 'Slim magnetic rechargeable PIR sensor strip light for closets, wardrobes and kitchens.', image: '/assets/hero-accessories.jpg', images: ['/assets/hero-accessories.jpg'], rating: 4.7, lowLevel: 10 },
+  { id: '82478136-b526-5238-94c9-d076af6ebc47', skuId: '4af2eb38-f4cc-5bc0-b182-01e667ed00b7', sku: 'NS6-1', name: 'NS6-1 Medium Motion-Activated Cabinet Light (220MM)', category: 'Motion-Activated Lights', brand: 'Nigson', price: 11500, retail: 11500, cost: 7200, stock: 38, reserved: 2, status: 'Active', desc: 'Compact rechargeable warm-light bar with automatic motion trigger.', image: '/assets/hero-accessories.jpg', images: ['/assets/hero-accessories.jpg'], rating: 4.8, lowLevel: 10 },
+  { id: '0a51dae9-2795-507b-84a6-100c06513332', skuId: '21d1fa9a-6d1e-54fb-98e0-72439394fe00', sku: 'NS901C', name: 'NS901C Type-C to Type-C Charging Cable', category: 'Cables', brand: 'Nigson', price: 3500, retail: 3500, cost: 2000, stock: 110, reserved: 6, status: 'Active', desc: 'Durable everyday USB Type-C sync and fast battery charging lead.', image: '/assets/cat-cable.jpg', images: ['/assets/cat-cable.jpg'], rating: 4.7, lowLevel: 25 },
+  { id: '0de50201-b6bf-5270-b7d4-79766c7f9447', skuId: '70bdf50e-781f-5578-9afb-bcf69125a1f3', sku: 'NS901i', name: 'NS901i Type-C to Lightning Charging Cable', category: 'Cables', brand: 'Nigson', price: 3500, retail: 3500, cost: 2000, stock: 85, reserved: 3, status: 'Active', desc: 'Everyday Lightning mobile cable with anti-tangle rubber housing.', image: '/assets/cat-cable.jpg', images: ['/assets/cat-cable.jpg'], rating: 4.6, lowLevel: 20 },
+  { id: '033336d7-5025-5112-9af2-726e6e02caf4', skuId: '49aca633-ca39-5771-aabd-0cd1448db881', sku: 'NS96U', name: 'NS96U 3-in-1 Charging Cable', category: 'Cables', brand: 'Nigson', price: 5500, retail: 5500, cost: 3200, stock: 75, reserved: 4, status: 'Active', desc: 'Triple connector lead supporting Lightning, USB-C and Micro-USB devices simultaneously.', image: '/assets/cat-cable.jpg', images: ['/assets/cat-cable.jpg'], rating: 4.8, lowLevel: 15 },
+  { id: 'fee9c518-4071-5aa7-a72b-6ed0ed1b83d3', skuId: '04ae2d72-94ab-5ff8-82a4-28272755ee75', sku: 'PQ19', name: 'PQ19 Power Bank, 10,000mAh', category: 'Power Banks', brand: 'Nigson', price: 19500, retail: 19500, cost: 12500, stock: 60, reserved: 3, status: 'Active', desc: 'Pocket-sized slim high density backup battery with dual output.', image: '/assets/cat-powerbank.jpg', images: ['/assets/cat-powerbank.jpg'], rating: 4.8, lowLevel: 15 },
+  { id: '1bac82ef-a37c-56b7-a290-afbddbd914a5', skuId: '75e0a2eb-54e6-552e-b99c-a956f8557592', sku: 'PQ20', name: 'PQ20 Power Bank, 20,000mAh', category: 'Power Banks', brand: 'Nigson', price: 28500, retail: 28500, cost: 18500, stock: 45, reserved: 2, status: 'Active', desc: 'Heavy-duty long endurance power bank with digital battery indicator.', image: '/assets/cat-powerbank.jpg', images: ['/assets/cat-powerbank.jpg'], rating: 4.9, lowLevel: 10 },
+  { id: '4ad4e90d-ec4e-5caa-f7ad88e19e29', skuId: '7faca25c-8831-5149-84e4-47e037580cac', sku: 'PQ28', name: 'PQ28 Magnetic Wireless Power Bank, 5,000mAh', category: 'Power Banks', brand: 'Nigson', price: 24000, retail: 24000, cost: 15000, stock: 30, reserved: 1, status: 'Active', desc: 'Snap-on MagSafe compatible wireless power bank for smartphones.', image: '/assets/cat-powerbank.jpg', images: ['/assets/cat-powerbank.jpg'], rating: 4.9, lowLevel: 10 },
+  { id: 'c7db7adb-726b-5173-a385-004b258ea128', skuId: '3e82bda0-2606-580f-98ef-a01e322d325a', sku: 'PQ30', name: 'PQ30 Power Bank, 30,000mAh', category: 'Power Banks', brand: 'Nigson', price: 38000, retail: 38000, cost: 25000, stock: 22, reserved: 1, status: 'Active', desc: 'High capacity multi-device charging station for frequent travelers.', image: '/assets/cat-powerbank.jpg', images: ['/assets/cat-powerbank.jpg'], rating: 4.7, lowLevel: 5 },
+  { id: 'c995e043-e1e8-5979-b4ea-e6d1dedc7322', skuId: '3882394e-69bd-5c71-9b14-fcf7a82481bd', sku: 'PQ50', name: 'PQ50 Power Bank, 50,000mAh', category: 'Power Banks', brand: 'Nigson', price: 55000, retail: 55000, cost: 37000, stock: 18, reserved: 0, status: 'Active', desc: 'Commercial grade ultra power bank with camping flashlight and fast DC/PD output.', image: '/assets/cat-powerbank.jpg', images: ['/assets/cat-powerbank.jpg'], rating: 4.9, lowLevel: 5 },
+  { id: '4351a029-79f9-57e0-94e8-466d7ad4ef19', skuId: 'ecbe959f-d3e9-5f25-8cb5-1718bf14972e', sku: 'ZS6', name: 'ZS6 Multi-Device Desktop Fast Charger', category: 'Chargers', brand: 'Nigson', price: 26000, retail: 26000, cost: 17000, stock: 25, reserved: 1, status: 'Active', desc: '6-port smart power workstation with organized desktop footprint.', image: '/assets/cat-charger.jpg', images: ['/assets/cat-charger.jpg'], rating: 4.8, lowLevel: 10 },
+  { id: 'fa096df5-7313-5a7a-aa01-4475ee45b98f', skuId: '0df9e4fb-2794-55fe-a1f9-d8977114b7e9', sku: 'ZS8', name: 'ZS8 Ultra-Fast GaN Travel Charger 65W', category: 'Chargers', brand: 'Nigson', price: 31000, retail: 31000, cost: 20000, stock: 30, reserved: 2, status: 'Active', desc: 'Compact dual-port 65W laptop and phone fast charging adapter.', image: '/assets/cat-charger.jpg', images: ['/assets/cat-charger.jpg'], rating: 4.9, lowLevel: 10 }
+];
+
+const LS_PRODUCTS = 'nigson_admin_products';
+
+function getInitialProducts(): AdminProduct[] {
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(LS_PRODUCTS) : null;
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const existingIds = new Set(parsed.map((p: any) => p.sku || p.id));
+        const missing = SEED_PRODUCTS.filter(s => !existingIds.has(s.sku) && !existingIds.has(s.id));
+        return [...parsed, ...missing];
+      }
+    }
+  } catch { }
+  return [...SEED_PRODUCTS];
+}
+
+export const SEED_ORDERS: AdminOrder[] = [
+  {
+    id: "ord_101",
+    number: "ORD-NG-10021",
+    date: new Date(Date.now() - 3600000 * 4).toISOString(),
+    customer: { name: "Adewale Adeleke", email: "adewale@gmail.com", phone: "+234 803 123 4567", address: "Victoria Island, Lagos" },
+    items: [{ sku: "NS03", name: "NS03 Wireless Earbuds (TWS)", qty: 2, price: 18500 }],
+    total: 37000,
+    paymentStatus: "Paid",
+    status: "Processing",
+    delivery: "Express Delivery",
+    timeline: [{ label: "Placed", date: new Date(Date.now() - 3600000 * 4).toISOString() }]
+  },
+  {
+    id: "ord_102",
+    number: "ORD-NG-10022",
+    date: new Date(Date.now() - 3600000 * 24).toISOString(),
+    customer: { name: "Folake Bakare", email: "folake@gmail.com", phone: "+234 802 345 6789", address: "Maitama, Abuja" },
+    items: [{ sku: "PQ20", name: "PQ20 Power Bank, 20,000mAh", qty: 1, price: 28500 }],
+    total: 28500,
+    paymentStatus: "Paid",
+    status: "Shipped",
+    delivery: "Standard Delivery",
+    timeline: [{ label: "Placed", date: new Date(Date.now() - 3600000 * 24).toISOString() }]
+  },
+  {
+    id: "ord_103",
+    number: "ORD-NG-10023",
+    date: new Date(Date.now() - 3600000 * 48).toISOString(),
+    customer: { name: "Emeka Okafor", email: "emeka.okafor@gmail.com", phone: "+234 809 987 6543", address: "Alaba Int'l Market, Lagos" },
+    items: [{ sku: "NS2526C", name: "NS2526C High Power Fast Wall Charger, GaN65W", qty: 5, price: 16000 }],
+    total: 80000,
+    paymentStatus: "Paid",
+    status: "Delivered",
+    delivery: "Standard Delivery",
+    timeline: [{ label: "Delivered", date: new Date(Date.now() - 3600000 * 12).toISOString() }]
+  }
+];
+
+const LS_ORDERS = 'nigson_admin_orders';
+
+function getInitialOrders(): AdminOrder[] {
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(LS_ORDERS) : null;
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch { }
+  return [...SEED_ORDERS];
+}
+
 const ALL_SECTIONS: SectionKey[] = ["dashboard", "pages", "products", "reviews", "distributors", "quotes", "inquiries", "inventory", "orders", "customers", "analytics", "blog", "admins", "roles"];
 
 @Injectable({ providedIn: 'root' })
@@ -509,7 +604,7 @@ export class AdminService {
   admins = signal<AdminUser[]>(getInitialAdmins());
 
   // Adding minimal seed data to ensure MFEs render correctly
-  products = signal<AdminProduct[]>([]);
+  products = signal<AdminProduct[]>(getInitialProducts());
   pages = signal<AdminPage[]>([]);
   reviews = signal<AdminReview[]>([]);
   applications = signal<AdminApplication[]>(SEED_APPLICATIONS);
@@ -517,14 +612,17 @@ export class AdminService {
   distributorMarket = signal<{ id: string; code: string; currency: string } | null>(null);
   quotes = signal<AdminQuote[]>(SEED_QUOTES);
   inquiries = signal<AdminInquiry[]>(SEED_INQUIRIES);
-  orders = signal<AdminOrder[]>([]);
+  orders = signal<AdminOrder[]>(getInitialOrders());
   customers = signal<AdminCustomer[]>(getInitialCustomers());
   posts = signal<AdminPost[]>([]);
   stockLog = signal<StockLog[]>(getInitialStockLog());
   activity = signal<Activity[]>([]);
 
+  private initialStaffDataLoaded = false;
+
   constructor() {
-    this.products.set([]);
+    this.products.set(getInitialProducts());
+    this.orders.set(getInitialOrders());
     this.hydrateFromStorage();
     this.http.get<Array<{ id: string; code: string; currency: string }>>('/api/v1/markets').subscribe({
       next: markets => this.distributorMarket.set(markets.find(market => market.code === 'NG') ?? null), error: () => { }
@@ -534,9 +632,45 @@ export class AdminService {
         next: data => { if (data.localOnly && data.phase === 3 && data.market?.code === 'NG') this.distributorMarket.set(data.market); }, error: () => { }
       });
     }
+    this.loadInitialStaffData();
+  }
+
+  loadInitialStaffData(): void {
+    if (this.initialStaffDataLoaded) return;
+    this.initialStaffDataLoaded = true;
+    this.loadStaffProducts().subscribe();
+    this.loadStaffCustomers().subscribe();
+    if (this.session.authenticated()) {
+      this.loadStaffOrders().subscribe();
+      this.loadStaffInventory().subscribe();
+      this.loadStaffUsers().subscribe();
+      this.loadStaffApplications().subscribe();
+      this.loadStaffReviews().subscribe();
+    }
+  }
+
+  persistProducts(): void {
+    try {
+      localStorage.setItem(LS_PRODUCTS, JSON.stringify(this.products()));
+    } catch {}
+  }
+
+  persistOrders(): void {
+    try {
+      localStorage.setItem(LS_ORDERS, JSON.stringify(this.orders()));
+    } catch {}
   }
 
   public hydrateFromStorage() {
+    const initialProds = getInitialProducts();
+    if (this.products().length === 0) {
+      this.products.set(initialProds);
+    }
+    const initialOrds = getInitialOrders();
+    if (this.orders().length === 0) {
+      this.orders.set(initialOrds);
+    }
+
     try {
       const storedApps = localStorage.getItem('nigson_admin_applications');
       if (storedApps) {
@@ -581,16 +715,6 @@ export class AdminService {
     } catch { }
     if (this.inquiries().length === 0) {
       this.inquiries.set(SEED_INQUIRIES);
-    }
-
-    this.loadStaffProducts().subscribe();
-    this.loadStaffCustomers().subscribe();
-    if (this.session.authenticated()) {
-      this.loadStaffOrders().subscribe();
-      this.loadStaffInventory().subscribe();
-      this.loadStaffUsers().subscribe();
-      this.loadStaffApplications().subscribe();
-      this.loadStaffReviews().subscribe();
     }
   }
 
@@ -656,6 +780,78 @@ export class AdminService {
     });
 
     this.log(`Stock for ${productName || productSku} adjusted by ${change > 0 ? "+" : ""}${change}`);
+  }
+
+  persistApplications(): void {
+    try {
+      localStorage.setItem('nigson_admin_applications', JSON.stringify(this.applications()));
+    } catch {}
+  }
+
+  persistQuotes(): void {
+    try {
+      localStorage.setItem('nigson_admin_quotes', JSON.stringify(this.quotes()));
+    } catch {}
+  }
+
+  persistInquiries(): void {
+    try {
+      localStorage.setItem('nigson_admin_inquiries', JSON.stringify(this.inquiries()));
+    } catch {}
+  }
+
+  addLocalApplication(app: Partial<AdminApplication>): void {
+    const prefix = app.type === 'Wholesaler' ? 'APP-W' : app.type === 'Affiliate Marketer' ? 'APP-A' : 'APP-D';
+    const fullApp: AdminApplication = {
+      id: app.id || 'app_' + Math.random().toString(36).slice(2, 9),
+      number: app.number || (prefix + Math.floor(1000 + Math.random() * 9000)),
+      type: (app.type || 'Distributor') as 'Distributor' | 'Wholesaler' | 'Affiliate Marketer',
+      businessName: app.businessName || 'Business Applicant',
+      contactPerson: app.contactPerson || '',
+      email: app.email || '',
+      phone: app.phone || '',
+      location: app.location || 'Nigeria',
+      category: app.category || 'Accessories',
+      date: app.date || new Date().toISOString(),
+      status: app.status || 'Pending',
+      note: app.note || '',
+      version: 1
+    };
+    this.applications.update(all => [fullApp, ...all]);
+    this.persistApplications();
+  }
+
+  addLocalQuote(q: Partial<AdminQuote>): void {
+    const fullQuote: AdminQuote = {
+      id: q.id || 'quo_' + Math.random().toString(36).slice(2, 9),
+      number: q.number || ('QUO-' + Math.floor(10000 + Math.random() * 90000)),
+      customer: q.customer || 'Customer',
+      email: q.email || '',
+      phone: q.phone || '',
+      product: q.product || 'Wholesale Request',
+      sku: q.sku || 'NG-PWR-001',
+      quantity: q.quantity || 1,
+      message: q.message || '',
+      date: q.date || new Date().toISOString(),
+      status: q.status || 'Pending'
+    };
+    this.quotes.update(all => [fullQuote, ...all]);
+    this.persistQuotes();
+  }
+
+  addLocalInquiry(i: Partial<AdminInquiry>): void {
+    const fullInq: AdminInquiry = {
+      id: i.id || 'inq_' + Math.random().toString(36).slice(2, 9),
+      name: i.name || 'Visitor',
+      email: i.email || '',
+      phone: i.phone || '',
+      subject: i.subject || 'General Inquiry',
+      message: i.message || '',
+      date: i.date || new Date().toISOString(),
+      status: i.status || 'New'
+    };
+    this.inquiries.update(all => [fullInq, ...all]);
+    this.persistInquiries();
   }
 
   setOrderStatus(orderId: string, status: string) {
@@ -1067,29 +1263,48 @@ export class AdminService {
   /** Load drafts and archived products from the staff catalogue with real warehouse stock. */
   loadStaffProducts(): Observable<AdminProduct[]> {
     return forkJoin({
-      catalogue: this.http.get<{ items: any[] }>('/api/v1/staff/products?size=100'),
-      inventory: this.http.get<{ items: any[] }>('/api/v1/staff/inventory?size=100')
+      catalogue: this.http.get<{ items: any[] }>('/api/v1/staff/products?size=100').pipe(
+        catchError(() => this.http.get<any>('/api/v1/catalogue/products?size=100').pipe(
+          map(res => ({ items: res?.items || res?.content || [] })),
+          catchError(() => of({ items: [] }))
+        ))
+      ),
+      inventory: this.http.get<{ items: any[] }>('/api/v1/staff/inventory?size=100').pipe(
+        catchError(() => of({ items: [] }))
+      )
     }).pipe(
-      map(({ catalogue, inventory }) => mapStaffProducts(catalogue.items ?? [], inventory.items ?? [])),
+      map(({ catalogue, inventory }) => {
+        const items = catalogue?.items ?? [];
+        if (items.length > 0) {
+          return mapStaffProducts(items, inventory?.items ?? []);
+        }
+        return this.products().length > 0 ? this.products() : getInitialProducts();
+      }),
       tap(products => {
-        this.products.set(products);
-        for (const p of products) {
-          if (p.skuId && (!p.price || p.price === 0)) {
-            this.catalog.getPrice(p.skuId).subscribe({
-              next: res => {
-                if (res && res.priceMinorUnits > 0) {
-                  const naira = res.priceMinorUnits / 100;
-                  this.products.update(all => all.map(item => item.id === p.id ? { ...item, price: naira, retail: naira } : item));
-                }
-              },
-              error: () => { }
-            });
+        if (products.length > 0) {
+          this.products.set(products);
+          this.persistProducts();
+          for (const p of products) {
+            if (p.skuId && (!p.price || p.price === 0)) {
+              this.catalog.getPrice(p.skuId).subscribe({
+                next: res => {
+                  if (res && res.priceMinorUnits > 0) {
+                    const naira = res.priceMinorUnits / 100;
+                    this.products.update(all => all.map(item => item.id === p.id ? { ...item, price: naira, retail: naira } : item));
+                    this.persistProducts();
+                  }
+                },
+                error: () => { }
+              });
+            }
           }
         }
       }),
       catchError(err => {
-        console.warn('[AdminService] loadStaffProducts failed:', err?.status ?? err);
-        return of(this.products());
+        console.warn('[AdminService] loadStaffProducts fallback:', err?.status ?? err);
+        const fallback = this.products().length > 0 ? this.products() : getInitialProducts();
+        this.products.set(fallback);
+        return of(fallback);
       })
     );
   }
@@ -1122,12 +1337,15 @@ export class AdminService {
       tap(orders => {
         if (orders.length > 0) {
           this.orders.set(orders);
+          this.persistOrders();
           this.customers.set(this.syncAndComputeCustomers([], orders));
         }
       }),
       catchError(err => {
         console.warn('[AdminService] loadStaffOrders fallback:', err?.status ?? err);
-        return of(this.orders());
+        const fallback = this.orders().length > 0 ? this.orders() : getInitialOrders();
+        this.orders.set(fallback);
+        return of(fallback);
       })
     );
   }
@@ -1196,9 +1414,34 @@ export class AdminService {
     };
   }
 
+  loadStaffInquiries(): Observable<AdminInquiry[]> {
+    return this.http.get<any[]>('/api/v1/staff/leads').pipe(
+      map(leads => {
+        if (!Array.isArray(leads)) return this.inquiries();
+        const dbInqs: AdminInquiry[] = leads.map(l => ({
+          id: l.id,
+          name: l.name,
+          email: l.email || '',
+          phone: l.phone || '',
+          subject: l.subject,
+          message: l.message,
+          date: l.created_at || new Date().toISOString(),
+          status: (l.status === 'RESOLVED' || l.status === 'CLOSED') ? 'Resolved' as const : 'New' as const
+        }));
+        this.inquiries.update(existing => {
+          const map = new Map(existing.map(e => [e.id, e]));
+          for (const d of dbInqs) map.set(d.id, d);
+          return Array.from(map.values());
+        });
+        this.persistInquiries();
+        return this.inquiries();
+      }),
+      catchError(() => of(this.inquiries()))
+    );
+  }
+
   /** Load queue summaries from database leads & authorized details without inventing applicant data. */
   loadStaffApplications(): Observable<AdminApplication[]> {
-    this.hydrateFromStorage();
     return this.http.get<any[]>('/api/v1/staff/leads').pipe(
       map(leads => {
         if (!Array.isArray(leads)) return this.applications();
@@ -1552,6 +1795,7 @@ export class AdminService {
         this.catalog.saveProductOverride(payload.sku, overrideData);
       }
       this.log('Product ' + payload.name + ' created');
+      this.persistProducts();
       return newProduct;
     };
 
@@ -1579,6 +1823,7 @@ export class AdminService {
       'Idempotency-Key': crypto.randomUUID()
     });
     this.products.update(all => all.map(p => (p.id === id || p.sku === payload.sku) ? { ...p, ...payload } : p));
+    this.persistProducts();
     this.log('Product ' + (payload.name || id) + ' updated');
 
     const editPrice = Number(payload.retail || payload.price || 0);
@@ -1615,6 +1860,7 @@ export class AdminService {
 
     // Immediately remove from local reactive signal
     this.products.update(all => all.filter(p => p.id !== idOrSku && p.sku !== idOrSku && (existing ? (p.id !== existing.id && p.sku !== existing.sku) : true)));
+    this.persistProducts();
     this.catalog.removeProductOverride(idOrSku);
     if (targetUuid) this.catalog.removeProductOverride(targetUuid);
     if (targetSku) this.catalog.removeProductOverride(targetSku);

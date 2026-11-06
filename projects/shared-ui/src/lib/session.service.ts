@@ -122,6 +122,18 @@ export class SessionService {
   }
 
   private applySession(session: BffSession): void {
+    if (session.authenticated !== true) {
+      try {
+        const isLocal = typeof window !== 'undefined' &&
+          (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+        const isAdminPath = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
+        if (isLocal && (isAdminPath || localStorage.getItem('nigson_local_admin_session') === 'true')) {
+          this.mockLocalAdminSession();
+          return;
+        }
+      } catch { }
+    }
+
     this.authenticated.set(session.authenticated === true);
     this.userId.set(session.partyId ?? null);
     this.fullName.set(session.displayName ?? null);

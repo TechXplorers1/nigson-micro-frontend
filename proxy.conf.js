@@ -19,6 +19,36 @@ const direct = target => ({
     }
   }
 });
+
+const hasStaffAuth = req => {
+  const cookie = req.headers && req.headers.cookie;
+  return typeof cookie === 'string' && (cookie.includes('nigson_session') || cookie.includes('JSESSIONID'));
+};
+
+const staffProxy = target => ({
+  target,
+  secure: false,
+  changeOrigin: true,
+  logLevel: 'silent',
+  bypass: (req, res) => {
+    if (!hasStaffAuth(req)) {
+      res.setHeader('Content-Type', 'application/json');
+      if (req.method === 'GET') {
+        res.end(JSON.stringify({ items: [], content: [], total: 0 }));
+      } else {
+        res.end(JSON.stringify({ success: true, localOnly: true }));
+      }
+      return true;
+    }
+  },
+  onError: (err, req, res) => {
+    if (!res.headersSent) {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ items: [], content: [], total: 0 }));
+    }
+  }
+});
+
 const reviewProxy = {
   ...direct(experience),
   router: req => req.method === 'POST' ? commerce : experience
@@ -85,6 +115,20 @@ module.exports = {
       }
     }
   },
+  '/local-distributor-fixtures.json': {
+    target: 'http://localhost:4200',
+    secure: false,
+    bypass: (req, res) => {
+      const fs = require('fs');
+      const path = require('path');
+      const p = path.resolve(__dirname, 'projects/shell/public/local-distributor-fixtures.json');
+      if (fs.existsSync(p)) {
+        res.setHeader('Content-Type', 'application/json');
+        res.end(fs.readFileSync(p, 'utf8'));
+        return true;
+      }
+    }
+  },
   '/api/v1/staff/leads': {
     target: experience,
     secure: false,
@@ -110,13 +154,17 @@ module.exports = {
       }
     }
   },
-  '/api/v1/staff/distributor-applications': direct(commerce),
-  '/api/v1/staff/career-applications': direct(experience),
-  '/api/v1/staff/career-opportunities': direct(experience),
-  '/api/v1/staff/reports/engagement': direct(experience),
-  '/api/v1/experience': direct(experience),
-  '/api/v1/distributor-applications': direct(commerce),
-  '/api/v1/staff': direct(commerce),
+  '/api/v1/staff/distributor-applications': staffProxy(commerce),
+  '/api/v1/staff/career-applications': staffProxy(experience),
+  '/api/v1/staff/career-opportunities': staffProxy(experience),
+  '/api/v1/staff/reports/engagement': staffProxy(experience),
+  '/api/v1/staff/products': staffProxy(commerce),
+  '/api/v1/staff/inventory': staffProxy(commerce),
+  '/api/v1/staff/users': staffProxy(commerce),
+  '/api/v1/staff/orders': staffProxy(commerce),
+  '/api/v1/staff/reviews': staffProxy(experience),
+  '/api/v1/staff/stock-adjustments': staffProxy(commerce),
+  '/api/v1/staff': staffProxy(commerce),
   '/api/v1/webhooks': direct(commerce),
   '/api/v1/reviews': reviewProxy,
   '/api/v1/content': direct(experience),

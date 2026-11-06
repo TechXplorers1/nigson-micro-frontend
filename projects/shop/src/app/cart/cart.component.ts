@@ -64,8 +64,7 @@ import { CartService, CatalogService, ShopService, SessionService, QtyStepperCom
 
                 <article
                   *ngFor="let item of cart.items()"
-                  [ngClass]="cart.isSelected(item.lineId || item.skuId) ? 'bg-white border-hairline' : 'bg-surface-alt/60 border-hairline/60 opacity-65'"
-                  class="flex items-start gap-3 md:gap-4 rounded-2xl border p-4 md:p-5 transition-all shadow-sm"
+                  class="flex items-start gap-3 md:gap-4 rounded-2xl border border-hairline bg-white p-4 md:p-5 transition-all shadow-sm"
                 >
                   <!-- Selection Checkbox -->
                   <div class="pt-2">
@@ -78,17 +77,33 @@ import { CartService, CatalogService, ShopService, SessionService, QtyStepperCom
                     />
                   </div>
 
-                  <div class="h-24 w-24 md:h-28 md:w-28 shrink-0 rounded-xl overflow-hidden bg-surface-alt border border-hairline">
-                    <img *ngIf="item.imageUrl" [src]="item.imageUrl" [alt]="item.name" class="h-full w-full object-cover" />
+                  <!-- Product Thumbnail (Click to view details) -->
+                  <a
+                    [routerLink]="['/products', item.productId || item.sku || item.skuId]"
+                    [attr.title]="'View ' + item.name + ' details'"
+                    class="group/thumb h-24 w-24 md:h-28 md:w-28 shrink-0 rounded-xl overflow-hidden bg-surface-alt border border-hairline block cursor-pointer transition-opacity hover:opacity-90"
+                  >
+                    <img *ngIf="item.imageUrl" [src]="item.imageUrl" [alt]="item.name" class="h-full w-full object-cover transition-transform duration-300 group-hover/thumb:scale-105" />
                     <div *ngIf="!item.imageUrl" class="h-full w-full grid place-items-center text-muted-ink">
                       <svg lucideShoppingBag class="h-8 w-8"></svg>
                     </div>
-                  </div>
+                  </a>
                   <div class="flex-1 min-w-0 flex flex-col self-stretch">
                     <div class="flex flex-wrap items-start justify-between gap-2">
                       <div class="min-w-0">
-                        <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-ink">{{ item.sku }} • {{ item.categoryName }}</p>
-                        <h3 class="mt-1 text-base md:text-lg font-semibold truncate">{{ item.name }}</h3>
+                        <a
+                          [routerLink]="['/products', item.productId || item.sku || item.skuId]"
+                          class="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-ink hover:text-brand transition-colors block"
+                        >
+                          {{ item.sku }} • {{ item.categoryName }}
+                        </a>
+                        <a
+                          [routerLink]="['/products', item.productId || item.sku || item.skuId]"
+                          [attr.title]="'View ' + item.name + ' details'"
+                          class="mt-1 block text-base md:text-lg font-semibold truncate text-ink hover:text-brand transition-colors cursor-pointer"
+                        >
+                          {{ item.name }}
+                        </a>
                         <p class="mt-1 text-sm text-muted-ink">Unit price {{ item.unitPriceMinorUnits > 0 ? catalog.formatPrice(item.unitPriceMinorUnits) : 'Price from Commerce' }}</p>
                       </div>
                       <p class="text-lg font-bold text-[#D62828] whitespace-nowrap">

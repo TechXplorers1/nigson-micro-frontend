@@ -81,8 +81,9 @@ export class QuoteService {
         if (err?.status !== 404) {
           console.warn("[QuoteService] Backend /api/v1/quotes unavailable or returned error:", err);
         }
-        this.quotes.set([]);
-        this.totalElements.set(0);
+        const localItems = this.readUserLocalQuotes();
+        this.quotes.set(localItems);
+        this.totalElements.set(localItems.length);
         this.loading.set(false);
         return of({
           content: localItems,

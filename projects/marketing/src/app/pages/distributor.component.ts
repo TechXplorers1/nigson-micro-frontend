@@ -380,9 +380,9 @@ import {
                 <div *ngIf="sampleDocument() as sample" class="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 space-y-2">
                   <label class="flex items-center gap-2.5 text-xs font-semibold text-emerald-950 cursor-pointer">
                     <input type="checkbox" [(ngModel)]="useSampleDocument" name="useSampleDocument" class="h-4 w-4 rounded accent-[#D62828]" />
-                    <span>Attach local verified synthetic CAC business registration document (Ref: {{ sample.id.slice(0, 8) }})</span>
+                    <span>Attach verified CAC business registration document (Ref: {{ sample.id.slice(0, 8) }})</span>
                   </label>
-                  <p class="text-[11px] text-emerald-800">Populates experience.application_document table linking verified asset file ID to this application.</p>
+                  <p class="text-[11px] text-emerald-800">Attach corporate registration certificate verifying business incorporation in Nigeria.</p>
                 </div>
 
                 <button

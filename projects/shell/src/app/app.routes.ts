@@ -37,16 +37,24 @@ export const routes: Routes = [
   {
     path: 'admin',
     canActivate: [adminGuard],
-    loadComponent: () => loadRemoteModule('admin-core', './AdminLayout')
-      .then(m => m.AdminLayoutComponent)
+    loadComponent: () => loadRemoteModule({
+      remoteName: 'admin-core',
+      remoteEntry: 'http://localhost:4205/remoteEntry.json',
+      exposedModule: './AdminLayout'
+    }).then(m => m.AdminLayoutComponent)
+      .catch(() => loadRemoteModule('admin-core', './AdminLayout').then(m => m.AdminLayoutComponent))
       .catch(() => import('../../../admin-core/src/app/layout/admin-layout.component').then(m => m.AdminLayoutComponent)),
     children: [
       // admin-core owned routes
       {
         path: '',
         pathMatch: 'full',
-        loadComponent: () => loadRemoteModule('admin-core', './AdminDashboard')
-          .then(m => m.AdminDashboardComponent)
+        loadComponent: () => loadRemoteModule({
+          remoteName: 'admin-core',
+          remoteEntry: 'http://localhost:4205/remoteEntry.json',
+          exposedModule: './AdminDashboard'
+        }).then(m => m.AdminDashboardComponent)
+          .catch(() => loadRemoteModule('admin-core', './AdminDashboard').then(m => m.AdminDashboardComponent))
           .catch(() => import('../../../admin-core/src/app/dashboard/admin-dashboard.component').then(m => m.AdminDashboardComponent))
       },
       {
