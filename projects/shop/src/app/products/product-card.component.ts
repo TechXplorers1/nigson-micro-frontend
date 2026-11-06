@@ -92,13 +92,16 @@ export class ProductCardComponent implements OnInit {
       this.resolvedSkuId.set(skuId);
       this.catalog.getPrice(skuId).subscribe({
         next: price => {
-          if (price.priceMinorUnits > 0) {
+          const hasOverride = (this.p.priceMinorUnits && this.p.priceMinorUnits > 0) || (this.p.price && this.p.price > 0);
+          if (!hasOverride && price.priceMinorUnits > 0) {
+            this.displayPrice.set(this.catalog.formatPrice(price.priceMinorUnits));
+          } else if (!this.displayPrice().startsWith('\u20A6') && price.priceMinorUnits > 0) {
             this.displayPrice.set(this.catalog.formatPrice(price.priceMinorUnits));
           }
           this.priceLoading.set(false);
         },
         error: () => {
-          if (!this.p.priceMinorUnits && !this.p.price) {
+          if (!this.displayPrice().startsWith('\u20A6')) {
             this.displayPrice.set('Contact for price');
           }
           this.priceLoading.set(false);

@@ -76,7 +76,9 @@ export class QuoteService {
         this.loading.set(false);
       }),
       catchError(err => {
-        console.warn("[QuoteService] Backend /api/v1/quotes unavailable or returned error:", err);
+        if (err?.status !== 404) {
+          console.warn("[QuoteService] Backend /api/v1/quotes unavailable or returned error:", err);
+        }
         this.quotes.set([]);
         this.totalElements.set(0);
         this.loading.set(false);

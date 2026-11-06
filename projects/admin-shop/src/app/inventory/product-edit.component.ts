@@ -658,7 +658,8 @@ export class ProductEditComponent implements OnInit {
 
     const sku = full.sku || (full.skus?.[0]?.code) || extractSku(full.slug, full.name);
     const resolvedCategory = full.category || full.categoryName || resolveCategoryFromSku(sku, 'Cables');
-    const retailPrice = full.retail ?? full.retailPrice ?? full.price ?? 0;
+    const override = this.catalog.getProductOverride(full.id) || (sku ? this.catalog.getProductOverride(sku) : null);
+    const retailPrice = full.retail ?? full.retailPrice ?? full.price ?? override?.retail ?? override?.price ?? 0;
 
     // Populate images (all available from S3 and backend)
     const rawImages: string[] = full.images?.length 
@@ -719,6 +720,22 @@ export class ProductEditComponent implements OnInit {
       nationwideShipping: full.nationwideShipping || '2 - 4 Business Days across Nigeria',
       minWholesaleOrder: full.minWholesaleOrder || '10 Units'
     };
+
+    const skuId = full.skuId || full.skus?.[0]?.id;
+    if (skuId && (!this.product.retail || this.product.retail === 0)) {
+      this.catalog.getPrice(skuId).subscribe({
+        next: (pr) => {
+          if (pr && pr.priceMinorUnits > 0) {
+            const naira = pr.priceMinorUnits / 100;
+            this.product.retail = naira;
+            this.product.price = naira;
+            this.product.wholesale = Math.round(naira * 0.8);
+            this.product.distributor = Math.round(naira * 0.7);
+          }
+        },
+        error: () => {}
+      });
+    }
   }
 
   onFileChange(event: any, index: number) {
@@ -813,17 +830,23 @@ export class ProductEditComponent implements OnInit {
 
     if (this.isNew()) {
       this.admin.createProduct(payload).subscribe({
-        next: () => {
-          this.catalog.saveProductOverride(payload.id, payload);
-          if (payload.sku) this.catalog.saveProductOverride(payload.sku, payload);
+        next: (created) => {
+          const finalId = created?.id || payload.id;
+          const fullPayload = { ...payload, id: finalId };
+          this.catalog.saveProductOverride(finalId, fullPayload);
+          if (payload.sku) this.catalog.saveProductOverride(payload.sku, fullPayload);
           this.admin.loadStaffProducts().subscribe();
+          this.catalog.loadProducts().subscribe();
           this.isSaving.set(false);
           this.saveSuccess.set(true);
           setTimeout(() => this.router.navigate(['/admin/inventory/products']), 1200);
         },
         error: () => {
+          this.catalog.saveProductOverride(payload.id, payload);
+          if (payload.sku) this.catalog.saveProductOverride(payload.sku, payload);
           this.isSaving.set(false);
-          this.router.navigate(['/admin/inventory/products']);
+          this.saveSuccess.set(true);
+          setTimeout(() => this.router.navigate(['/admin/inventory/products']), 1200);
         }
       });
     } else {

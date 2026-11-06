@@ -115,7 +115,7 @@ export class ProductListComponent implements OnInit {
   });
 
   filteredProducts = computed(() => {
-    let list = this.admin.products();
+    let list = this.admin.products().filter(p => p.status !== 'ARCHIVED');
     const q = this.searchQuery().toLowerCase();
     if (q) {
       list = list.filter(p => p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q));
@@ -129,7 +129,7 @@ export class ProductListComponent implements OnInit {
 
   deleteProduct(p: any) {
     if (!confirm(`Are you sure you want to delete "${p.name}"?`)) return;
-    const target = p.sku || p.id;
+    const target = p.id || p.sku;
     this.admin.deleteProduct(target).subscribe({
       next: () => {
         this.admin.loadStaffProducts().subscribe();

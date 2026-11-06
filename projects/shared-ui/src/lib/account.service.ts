@@ -307,8 +307,29 @@ export class AccountService {
         this.loadingReferral.set(false);
       }),
       catchError(err => {
-        console.error("[AccountService] Backend /api/v1/me/referral-code unavailable:", err?.status ?? err);
+        // 404 indicates user has not created a referral code yet (expected domain behavior)
+        if (err?.status !== 404) {
+          console.error("[AccountService] Backend /api/v1/me/referral-code unavailable:", err?.status ?? err);
+        }
         this.referral.set(null);
+        this.loadingReferral.set(false);
+        return of(null);
+      })
+    );
+  }
+
+  /** Generate or create referral code (POST /api/v1/me/referral-code) */
+  createReferral(): Observable<ReferralDTO | null> {
+    if (!this.session.authenticated()) return of(null);
+    this.loadingReferral.set(true);
+    const headers = { 'Idempotency-Key': crypto.randomUUID() };
+    return this.http.post<ReferralDTO>("/api/v1/me/referral-code", {}, { headers }).pipe(
+      tap(ref => {
+        this.referral.set(ref);
+        this.loadingReferral.set(false);
+      }),
+      catchError(err => {
+        console.error("[AccountService] createReferral failed:", err);
         this.loadingReferral.set(false);
         return of(null);
       })

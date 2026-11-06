@@ -491,6 +491,7 @@ export class VisualHomeEditorComponent implements OnInit, AfterViewInit {
   isPublishing = this.cms.isPublishing;
   publishSuccess = signal(false);
   saveSuccess = signal(false);
+  toastMessage = signal<string | null>(null);
   
   previewFrame = viewChild<ElementRef<HTMLIFrameElement>>('previewFrame');
 

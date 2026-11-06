@@ -34,8 +34,15 @@ export function mapStaffProducts(products: any[], balances: any[]): AdminProduct
     const images = (product.assets ?? []).map((asset: any) => asset.url).filter(Boolean);
     const catName = product.categories?.map((category: any) => category.name).filter(Boolean).join(', ');
     const category = catName || resolveCategoryFromSku(skuCode || product.name, 'Accessories');
-    const price = SKU_PRICES[skuCode] || 0;
-
+    let price = SKU_PRICES[skuCode] || 0;
+    try {
+      const ovRaw = localStorage.getItem('nigson_prod_override_' + product.id) ||
+        (skuCode ? localStorage.getItem('nigson_prod_override_' + skuCode) : null);
+      if (ovRaw) {
+        const ov = JSON.parse(ovRaw);
+        price = ov.retail || ov.price || price;
+      }
+    } catch { }
     return {
       id: product.id,
       skuId: sku?.id,

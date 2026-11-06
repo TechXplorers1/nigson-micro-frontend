@@ -1,4 +1,5 @@
-import { Component, inject, signal, computed } from '@angular/core';
+
+import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AdminService, AdminHeadingComponent, BadgeComponent } from 'shared-ui';
@@ -99,6 +100,18 @@ import { LucideSearch, LucideEye, LucideX } from '@lucide/angular';
               {{ detail().change >= 0 ? '+' : '' }}{{ detail().change }}
             </span>
           </div>
+          <div *ngIf="detail().supplier" class="flex justify-between gap-6 border-b border-gray-100 pb-3">
+            <span class="text-muted-ink">Supplier</span>
+            <span class="text-right font-semibold text-ink">{{ detail().supplier }}</span>
+          </div>
+          <div *ngIf="detail().ref" class="flex justify-between gap-6 border-b border-gray-100 pb-3">
+            <span class="text-muted-ink">Invoice / Reference</span>
+            <span class="text-right font-semibold text-ink">{{ detail().ref }}</span>
+          </div>
+          <div *ngIf="detail().notes" class="flex justify-between gap-6 border-b border-gray-100 pb-3">
+            <span class="text-muted-ink">Notes</span>
+            <span class="text-right font-semibold text-ink">{{ detail().notes }}</span>
+          </div>
           <div class="flex justify-between gap-6 border-b border-gray-100 pb-3">
             <span class="text-muted-ink">Recorded by</span>
             <span class="text-right font-semibold text-ink">{{ detail().by || 'Administrator' }}</span>
@@ -112,14 +125,21 @@ import { LucideSearch, LucideEye, LucideX } from '@lucide/angular';
     </div>
   `
 })
-export class StockMovementsComponent {
+
+export class StockMovementsComponent implements OnInit {
   admin = inject(AdminService);
-  
-  TYPES = ["All types", "Opening Stock", "Stock Received", "Order", "Return", "Physical Count", "Damaged Goods", "Lost/Stolen"];
-  
+
+
+  TYPES = ["All types", "Opening Stock", "Stock Received", "Order", "Return", "Physical Count", "Damaged Goods", "Lost/Stolen", "Promotional Giveaway", "Other"];
+
   searchQuery = signal('');
   typeFilter = signal('All types');
   detail = signal<any>(null);
+
+  ngOnInit() {
+    this.admin.loadStaffProducts().subscribe();
+    this.admin.loadStaffInventory().subscribe();
+  }
 
   filteredLogs = computed(() => {
     let logs = this.admin.stockLog();
@@ -127,17 +147,20 @@ export class StockMovementsComponent {
     const t = this.typeFilter();
 
     if (q) {
-      logs = logs.filter(l => 
-        (l.product && l.product.toLowerCase().includes(q)) || 
+      logs = logs.filter(l =>
+        (l.product && l.product.toLowerCase().includes(q)) ||
         (l.sku && l.sku.toLowerCase().includes(q)) ||
         (l.by && l.by.toLowerCase().includes(q)) ||
-        (l.reason && l.reason.toLowerCase().includes(q))
+        (l.reason && l.reason.toLowerCase().includes(q)) ||
+        (l.supplier && l.supplier.toLowerCase().includes(q)) ||
+        (l.ref && l.ref.toLowerCase().includes(q)) ||
+        (l.notes && l.notes.toLowerCase().includes(q))
       );
     }
     if (t !== 'All types') {
       logs = logs.filter(l => l.reason === t);
     }
-    
+
     return logs;
   });
 
