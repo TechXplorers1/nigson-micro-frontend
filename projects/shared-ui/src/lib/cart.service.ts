@@ -6,6 +6,7 @@ import { SessionService } from "./session.service";
 export interface CartLineItem {
   lineId: string;
   skuId: string;
+  productId?: string;
   sku: string;
   name: string;
   unitPriceMinorUnits: number;
@@ -83,6 +84,38 @@ const OFFICIAL_SKUS: SkuMetadata[] = [
   { skuId: '0df9e4fb-2794-55fe-a1f9-d8977114b7e9', productId: 'fa096df5-7313-5a7a-aa01-4475ee45b98f', code: 'ZS8', name: 'ZS8 Ultra-Fast GaN Travel Charger 65W', priceMinor: 0, img: `${S3_PRODUCTS_BASE}/zs8/img-1.png`, category: 'Chargers' }
 ];
 
+export const DEMO_PRODUCTS_METADATA: SkuMetadata[] = [
+  { skuId: '8dd03db8-c840-5da9-a005-67174d5272fc', productId: 'afb3c9bf-4885-5f5b-b929-a0ea7cb76df2', code: 'DEMO-EL-01-01', name: 'Demo 14-inch Ultrabook', priceMinor: 52000000, img: '/assets/cat-powerbank.jpg', category: 'Laptops' },
+  { skuId: 'dd3573ba-5a3a-5c20-be9c-c3265f48e7dc', productId: '7fad7d19-05f3-5517-8cfb-9b609eaa64f3', code: 'DEMO-EL-01-02', name: 'Demo 15-inch Performance Laptop', priceMinor: 78000000, img: '/assets/cat-powerbank.jpg', category: 'Laptops' },
+  { skuId: '024bcad4-81c6-5379-97d2-947e77a9a8c4', productId: '16378b8b-e963-54ad-bfd0-27039459ca47', code: 'DEMO-EL-01-03', name: 'Demo 13-inch Student Laptop', priceMinor: 45200000, img: '/assets/cat-powerbank.jpg', category: 'Laptops' },
+  { skuId: 'c9122607-2f48-5329-b497-70725334813b', productId: 'ab80d37e-4dca-5e9f-8aa6-461bba6d991b', code: 'DEMO-EL-02-01', name: 'Demo 5G Smartphone 128 GB', priceMinor: 18500000, img: '/assets/hero-accessories.jpg', category: 'Smartphones' },
+  { skuId: 'c59b5e73-0da1-5ba9-98cd-7f183ffb59ef', productId: '6babee4f-7b82-562f-89a6-3a64334f6c22', code: 'DEMO-EL-02-02', name: 'Demo Pro Smartphone 256 GB', priceMinor: 31000000, img: '/assets/hero-accessories.jpg', category: 'Smartphones' },
+  { skuId: 'b546d4f3-4605-5016-90dd-36a0168a3452', productId: '7b76a39b-85bf-5490-92bd-d0f54b96f1c6', code: 'DEMO-EL-02-03', name: 'Demo Compact Smartphone 64 GB', priceMinor: 9500000, img: '/assets/hero-accessories.jpg', category: 'Smartphones' },
+  { skuId: '13b3215c-6a3f-538e-afb7-530d96a5ac4a', productId: '8a3a8400-13c3-5111-9795-755942a20863', code: 'DEMO-EL-03-01', name: 'Demo 10-inch Android Tablet', priceMinor: 11000000, img: '/assets/cat-powerbank.jpg', category: 'Tablets' },
+  { skuId: 'ac5217b8-d5af-58ab-bff5-0b6462adb152', productId: 'da31161c-eef2-518d-a4e8-1dfb6d277628', code: 'DEMO-EL-03-02', name: 'Demo 11-inch Drawing Tablet', priceMinor: 24000000, img: '/assets/cat-powerbank.jpg', category: 'Tablets' },
+  { skuId: '613216bb-4795-5039-b0f2-0df2a01528f8', productId: '7448afea-6817-50af-b242-b49c2c0ebb6d', code: 'DEMO-EL-03-03', name: 'Demo 8-inch Kids Tablet', priceMinor: 6500000, img: '/assets/cat-powerbank.jpg', category: 'Tablets' },
+  { skuId: 'b38607c1-f008-5923-8e29-0de559560329', productId: 'cfae03e5-b480-52e6-9fed-df8b23a3a12b', code: 'DEMO-EL-04-01', name: 'Demo Wireless Noise-Cancelling Headphones', priceMinor: 4800000, img: '/assets/cat-earbuds.jpg', category: 'Audio' },
+  { skuId: '03538c8a-5dcb-5d1a-a5e1-9d1670ba9620', productId: '1137ba42-7718-5f64-9461-9900d52e68b7', code: 'DEMO-EL-04-02', name: 'Demo True Wireless Earbuds', priceMinor: 2600000, img: '/assets/cat-earbuds.jpg', category: 'Audio' },
+  { skuId: '877d2857-7d5a-5472-bced-8c938c564905', productId: '5444f3bc-4e84-50ed-9903-042087710f0e', code: 'DEMO-EL-04-03', name: 'Demo Portable Bluetooth Speaker', priceMinor: 2700000, img: '/assets/cat-earbuds.jpg', category: 'Audio' },
+  { skuId: 'a4240469-5751-5ee3-b11e-423b5bcd1df1', productId: '729cc696-6588-59b7-aad3-75a268413ca3', code: 'DEMO-EL-05-01', name: 'Demo Mechanical Gaming Keyboard', priceMinor: 3500000, img: '/assets/hero-accessories.jpg', category: 'Gaming' },
+  { skuId: '0677c163-e73d-5c80-bfa4-93c0a255e882', productId: 'b720ab55-fe00-55ec-b112-fce043589208', code: 'DEMO-EL-05-02', name: 'Demo Wireless Gaming Mouse', priceMinor: 1800000, img: '/assets/hero-accessories.jpg', category: 'Gaming' },
+  { skuId: 'b4a11381-8921-50b8-b979-aa303945a1eb', productId: 'd45b7897-222c-54ba-9ef8-9c3640dfa4ed', code: 'DEMO-EL-05-03', name: 'Demo 27-inch Gaming Monitor', priceMinor: 21500000, img: '/assets/hero-accessories.jpg', category: 'Gaming' },
+  { skuId: '29f666d2-5b32-5564-a5cf-f095215c81b3', productId: '8fced558-b0fa-58f1-8dd5-dbe2f012ef8e', code: 'DEMO-EL-06-01', name: 'Demo Wi-Fi 6 Dual-Band Router', priceMinor: 4200000, img: '/assets/hero-accessories.jpg', category: 'Networking' },
+  { skuId: 'd7d48669-6d1d-5b96-bc0b-d146de217738', productId: '8dec8340-6b04-54d9-80fa-01ad2943d7dd', code: 'DEMO-EL-06-02', name: 'Demo 8-Port Gigabit Switch', priceMinor: 2200000, img: '/assets/hero-accessories.jpg', category: 'Networking' },
+  { skuId: 'b0c7bd40-d1b8-546f-8bdc-c2194894d605', productId: '7d9c70a9-2a25-5c51-9b8a-67685dcbd7a7', code: 'DEMO-EL-06-03', name: 'Demo USB Wi-Fi Adapter', priceMinor: 850000, img: '/assets/hero-accessories.jpg', category: 'Networking' },
+  { skuId: '3ac8e4e4-49c7-549c-958f-9051347f33d2', productId: '65604e71-466b-5ffa-8293-3cbacd038b62', code: 'DEMO-EL-07-01', name: 'Demo 1 TB Portable SSD', priceMinor: 8500000, img: '/assets/cat-powerbank.jpg', category: 'Storage' },
+  { skuId: 'e96bcd85-3620-5858-8dda-acfda62ff3b6', productId: '2f85101c-1c36-5f86-a3b1-e382aec189f4', code: 'DEMO-EL-07-02', name: 'Demo 2 TB External Hard Drive', priceMinor: 2100000, img: '/assets/cat-powerbank.jpg', category: 'Storage' },
+  { skuId: '4fc83b37-fd00-547d-8c67-129976973011', productId: '961350eb-4b06-5081-9840-7fa09679d95e', code: 'DEMO-EL-07-03', name: 'Demo 128 GB USB Flash Drive', priceMinor: 850000, img: '/assets/cat-powerbank.jpg', category: 'Storage' },
+  { skuId: '7ddfd7c5-0e32-5482-80d6-05f656854a11', productId: '29c5d453-66c5-527a-818a-2f4da2b022a6', code: 'DEMO-EL-08-01', name: 'Demo 65 W USB-C GaN Charger', priceMinor: 1500000, img: '/assets/cat-charger.jpg', category: 'Power and Accessories' },
+  { skuId: 'd9a0ad9d-c004-572b-af94-86cb6618222d', productId: '716b41e5-0bcf-5d17-85b6-b601d6c5c0a5', code: 'DEMO-EL-08-02', name: 'Demo 20000 mAh Power Bank', priceMinor: 2500000, img: '/assets/cat-powerbank.jpg', category: 'Power and Accessories' },
+  { skuId: 'e286c2ac-8c4a-5838-bc0a-dbbdccd1a68a', productId: '5aa7e4a1-d035-56cd-aeab-465f2cd64dee', code: 'DEMO-EL-08-03', name: 'Demo 6-Outlet Surge Protector', priceMinor: 1700000, img: '/assets/cat-powerbank.jpg', category: 'Power and Accessories' }
+];
+
+export const ALL_KNOWN_SKUS: SkuMetadata[] = [
+  ...OFFICIAL_SKUS,
+  ...DEMO_PRODUCTS_METADATA
+];
+
 @Injectable({ providedIn: 'root' })
 export class CartService {
   private http = inject(HttpClient);
@@ -95,6 +128,9 @@ export class CartService {
   readonly loading = signal(false);
   readonly syncing = signal(false);
 
+  // Selective Checkout Signals
+  readonly selectedLineIds = signal<Set<string>>(new Set());
+
   readonly itemCount = computed(() => this.items().reduce((n, i) => n + i.quantity, 0));
   readonly subtotalNaira = computed(() =>
     this.items().reduce((n, i) => n + (i.unitPriceMinorUnits * i.quantity) / 100, 0)
@@ -102,6 +138,53 @@ export class CartService {
   readonly subtotalDisplay = computed(() =>
     String.fromCharCode(8358) + this.subtotalNaira().toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   );
+
+  readonly selectedItems = computed(() => {
+    const selected = this.selectedLineIds();
+    return this.items().filter(i => selected.has(i.lineId || i.skuId));
+  });
+
+  readonly selectedItemCount = computed(() =>
+    this.selectedItems().reduce((n, i) => n + i.quantity, 0)
+  );
+
+  readonly selectedSubtotalNaira = computed(() =>
+    this.selectedItems().reduce((n, i) => n + (i.unitPriceMinorUnits * i.quantity) / 100, 0)
+  );
+
+  readonly selectedSubtotalDisplay = computed(() =>
+    String.fromCharCode(8358) + this.selectedSubtotalNaira().toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  );
+
+  readonly isAllSelected = computed(() => {
+    const list = this.items();
+    if (!list.length) return false;
+    const selected = this.selectedLineIds();
+    return list.every(i => selected.has(i.lineId || i.skuId));
+  });
+
+  isSelected(lineOrSkuId: string): boolean {
+    return this.selectedLineIds().has(lineOrSkuId);
+  }
+
+  toggleSelected(lineOrSkuId: string) {
+    const current = new Set(this.selectedLineIds());
+    if (current.has(lineOrSkuId)) {
+      current.delete(lineOrSkuId);
+    } else {
+      current.add(lineOrSkuId);
+    }
+    this.selectedLineIds.set(current);
+  }
+
+  selectAll(selected: boolean) {
+    if (selected) {
+      const all = new Set(this.items().map(i => i.lineId || i.skuId));
+      this.selectedLineIds.set(all);
+    } else {
+      this.selectedLineIds.set(new Set());
+    }
+  }
 
   constructor() {
     effect(() => {
@@ -128,10 +211,13 @@ export class CartService {
     this.cartVersion.set(0);
     sessionStorage.removeItem('nigson_active_cart_id');
     this.items.set([]);
+    this.selectedLineIds.set(new Set());
   }
 
+  private skuCache = new Map<string, SkuMetadata>();
+
   private resolveSkuMetadata(input: string, fallback?: Partial<SkuMetadata>): SkuMetadata {
-    const found = OFFICIAL_SKUS.find(s => 
+    const found = ALL_KNOWN_SKUS.find(s => 
       s.skuId === input || 
       s.code === input || 
       (s.productId && s.productId === input) ||
@@ -141,11 +227,30 @@ export class CartService {
       return {
         ...found,
         name: fallback?.name || found.name,
-        priceMinor: fallback?.priceMinor ?? 0,
+        priceMinor: fallback?.priceMinor ?? found.priceMinor,
         img: fallback?.img || found.img,
         category: fallback?.category || found.category
       };
     }
+
+    // Check in-memory or persisted skuCache
+    let cached = this.skuCache.get(input);
+    if (!cached) {
+      try {
+        const stored = localStorage.getItem('nigson_sku_meta_' + input);
+        if (stored) cached = JSON.parse(stored);
+      } catch {}
+    }
+    if (cached) {
+      return {
+        ...cached,
+        name: fallback?.name || cached.name,
+        priceMinor: fallback?.priceMinor ?? cached.priceMinor,
+        img: fallback?.img || cached.img,
+        category: fallback?.category || cached.category
+      };
+    }
+
     return {
       skuId: input,
       code: fallback?.code || input,
@@ -154,6 +259,19 @@ export class CartService {
       img: fallback?.img || '/assets/hero-accessories.jpg',
       category: fallback?.category || 'General'
     };
+  }
+
+  registerSkuMetadata(meta: SkuMetadata) {
+    if (!meta || !meta.skuId) return;
+    this.skuCache.set(meta.skuId, meta);
+    if (meta.code) this.skuCache.set(meta.code, meta);
+    if (meta.code) this.skuCache.set(meta.code.toLowerCase(), meta);
+    if (meta.productId) this.skuCache.set(meta.productId, meta);
+    try {
+      localStorage.setItem('nigson_sku_meta_' + meta.skuId, JSON.stringify(meta));
+      if (meta.productId) localStorage.setItem('nigson_sku_meta_' + meta.productId, JSON.stringify(meta));
+      if (meta.code) localStorage.setItem('nigson_sku_meta_' + meta.code, JSON.stringify(meta));
+    } catch {}
   }
 
   ensureCart(): Observable<string | null> {
@@ -239,10 +357,31 @@ export class CartService {
     );
   }
 
-  addItem(skuId: string, quantity = 1, details?: { sku?: string; name?: string; category?: string; priceMinor?: number; image?: string }): Observable<CartSummary | null> {
+  addItem(skuId: string, quantity = 1, details?: { sku?: string; productId?: string; name?: string; category?: string; priceMinor?: number; image?: string }): Observable<CartSummary | null> {
     if (!this.session.authenticated()) {
       this.session.signIn(window.location.pathname);
       return of(null);
+    }
+
+    // Persist rich metadata for this SKU
+    if (details) {
+      const meta: SkuMetadata = {
+        skuId,
+        productId: details.productId,
+        code: details.sku || skuId,
+        name: details.name || `SKU ${skuId.slice(0, 8)}`,
+        priceMinor: details.priceMinor || 0,
+        img: details.image || '/assets/hero-accessories.jpg',
+        category: details.category || 'General'
+      };
+      this.skuCache.set(skuId, meta);
+      if (details.sku) this.skuCache.set(details.sku, meta);
+      if (details.productId) this.skuCache.set(details.productId, meta);
+      try {
+        localStorage.setItem('nigson_sku_meta_' + skuId, JSON.stringify(meta));
+        if (details.sku) localStorage.setItem('nigson_sku_meta_' + details.sku, JSON.stringify(meta));
+        if (details.productId) localStorage.setItem('nigson_sku_meta_' + details.productId, JSON.stringify(meta));
+      } catch {}
     }
 
     this.syncing.set(true);
@@ -255,11 +394,14 @@ export class CartService {
         const currentLine = this.items().find(i => i.skuId === skuId || i.sku === skuId);
         const targetQty = (currentLine?.quantity || 0) + quantity;
 
-        const headers = this.getAuthHeaders();
+        const headers = this.getAuthHeaders()
+          .set('If-Match', `"${this.cartVersion()}"`)
+          .set('Idempotency-Key', crypto.randomUUID());
+
         return this.http.put<BackendCart>(
           `/api/v1/carts/${cartId}/lines/${skuId}`,
           { quantity: String(targetQty) },
-          { headers: headers.set('If-Match', `"${this.cartVersion()}"`) }
+          { headers }
         ).pipe(
           switchMap(cart => this.loadLinePrices(this.mapLines(cart.lines)).pipe(map(mapped => {
             this.cartId.set(cart.id);
@@ -292,15 +434,31 @@ export class CartService {
     if (quantity <= 0) {
       return this.removeItem(lineIdOrSku);
     }
-    const it = this.items().find(i => i.lineId === lineIdOrSku || i.skuId === lineIdOrSku || i.sku === lineIdOrSku);
-    if (!it) return of(null);
+    const it = this.items().find(i =>
+      i.lineId === lineIdOrSku ||
+      i.skuId === lineIdOrSku ||
+      i.sku === lineIdOrSku ||
+      (i.sku && lineIdOrSku && i.sku.toLowerCase() === lineIdOrSku.toLowerCase())
+    );
+    if (!it) {
+      console.warn('[CartService] updateQty target item not found in cart for:', lineIdOrSku);
+      return of(null);
+    }
 
+    const prevItems = this.items();
+    // Optimistic UI update so quantity stepper feels instant and responsive
+    this.items.set(prevItems.map(item => item === it ? { ...item, quantity } : item));
+
+    const targetSkuId = it.skuId;
     this.syncing.set(true);
-    const headers = this.getAuthHeaders();
+    const headers = this.getAuthHeaders()
+      .set('If-Match', `"${this.cartVersion()}"`)
+      .set('Idempotency-Key', crypto.randomUUID());
+
     return this.http.put<BackendCart>(
-      `/api/v1/carts/${this.cartId()}/lines/${it.skuId || it.sku}`,
+      `/api/v1/carts/${this.cartId()}/lines/${targetSkuId}`,
       { quantity: String(quantity) },
-      { headers: headers.set('If-Match', `"${this.cartVersion()}"`) }
+      { headers }
     ).pipe(
       switchMap(cart => this.loadLinePrices(this.mapLines(cart.lines)).pipe(map(mapped => {
         this.cartVersion.set(cart.version);
@@ -317,6 +475,7 @@ export class CartService {
       }))),
       catchError(err => {
         console.error('[CartService] updateQty database error:', err);
+        this.items.set(prevItems);
         this.syncing.set(false);
         return of(null);
       })
@@ -328,19 +487,31 @@ export class CartService {
       return of(null);
     }
     const currentItems = this.items();
-    const it = currentItems.find(i => i.lineId === lineOrSkuId || i.skuId === lineOrSkuId || i.sku === lineOrSkuId);
+    const it = currentItems.find(i =>
+      i.lineId === lineOrSkuId ||
+      i.skuId === lineOrSkuId ||
+      i.sku === lineOrSkuId ||
+      (i.sku && lineOrSkuId && i.sku.toLowerCase() === lineOrSkuId.toLowerCase())
+    );
     if (!it) return of(null);
 
+    // Optimistic UI update
+    this.items.set(currentItems.filter(item => item !== it));
+
+    const targetSkuId = it.skuId;
     this.syncing.set(true);
-    const headers = this.getAuthHeaders();
+    const headers = this.getAuthHeaders()
+      .set('If-Match', `"${this.cartVersion()}"`)
+      .set('Idempotency-Key', crypto.randomUUID());
 
     return this.http.delete<void>(
-      `/api/v1/carts/${this.cartId()}/lines/${it.skuId || it.sku}`,
-      { headers: headers.set('If-Match', `"${this.cartVersion()}"`), observe: 'response' }
+      `/api/v1/carts/${this.cartId()}/lines/${targetSkuId}`,
+      { headers, observe: 'response' }
     ).pipe(
       switchMap(() => this.loadCart()),
       catchError(err => {
         console.warn('[CartService] removeItem database error:', err);
+        this.items.set(currentItems);
         this.syncing.set(false);
         return of(null);
       })
@@ -396,11 +567,12 @@ export class CartService {
   }
 
   private mapLines(lines: BackendLine[]): CartLineItem[] {
-    return (lines || []).map(line => {
+    const mapped = (lines || []).map(line => {
       const meta = this.resolveSkuMetadata(line.skuId);
       return {
         lineId: line.id || ('line-' + Math.random().toString(36).substring(2, 9)),
         skuId: line.skuId,
+        productId: meta.productId,
         sku: (line as any).sku || meta.code,
         name: (line as any).name || meta.name,
         unitPriceMinorUnits: Number((line as any).unitPriceMinorUnits) || meta.priceMinor || 0,
@@ -409,5 +581,21 @@ export class CartService {
         categoryName: (line as any).categoryName || meta.category
       };
     });
+
+    // Ensure newly loaded items are selected for checkout by default
+    const currentSelected = new Set(this.selectedLineIds());
+    if (currentSelected.size === 0) {
+      mapped.forEach(l => currentSelected.add(l.lineId || l.skuId));
+    } else {
+      mapped.forEach(l => {
+        // Keep item selected if it was before or if it's newly added
+        const key = l.lineId || l.skuId;
+        if (!currentSelected.has(key)) {
+          currentSelected.add(key);
+        }
+      });
+    }
+    this.selectedLineIds.set(currentSelected);
+    return mapped;
   }
 }

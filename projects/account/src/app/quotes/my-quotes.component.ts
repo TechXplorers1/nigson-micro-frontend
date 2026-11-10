@@ -1,13 +1,11 @@
-﻿import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { BackendQuote, QuoteService, ShopService } from 'shared-ui';
+import { QuoteRequestHistoryItem, QuoteService } from 'shared-ui';
 import {
   LucideClipboardList,
   LucideArrowRight,
   LucidePlus,
-  LucideCheck,
-  LucideX,
   LucideLoader2,
   LucideAlertCircle
 } from '@lucide/angular';
@@ -21,8 +19,6 @@ import {
     LucideClipboardList,
     LucideArrowRight,
     LucidePlus,
-    LucideCheck,
-    LucideX,
     LucideLoader2,
     LucideAlertCircle
   ],
@@ -43,24 +39,13 @@ import {
         </div>
       </div>
 
-      <!-- Action feedback alert -->
-      <div *ngIf="actionMessage()" class="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <svg lucideCheck class="h-5 w-5 text-emerald-600"></svg>
-          <span>{{ actionMessage() }}</span>
-        </div>
-        <button (click)="actionMessage.set(null)" class="text-emerald-600 hover:text-emerald-800">
-          <svg lucideX class="h-4 w-4"></svg>
-        </button>
-      </div>
-
-      <div *ngIf="errorMessage()" class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 flex items-center justify-between">
+      <div *ngIf="quoteSvc.loadError()" class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 flex items-center justify-between">
         <div class="flex items-center gap-2">
           <svg lucideAlertCircle class="h-5 w-5 text-red-600"></svg>
-          <span>{{ errorMessage() }}</span>
+          <span>{{ quoteSvc.loadError() }}</span>
         </div>
-        <button (click)="errorMessage.set(null)" class="text-red-600 hover:text-red-800">
-          <svg lucideX class="h-4 w-4"></svg>
+        <button (click)="quoteSvc.loadQuotes().subscribe()" class="font-semibold text-red-600 hover:text-red-800">
+          Try again
         </button>
       </div>
 
@@ -71,7 +56,7 @@ import {
       </div>
 
       <!-- Empty state -->
-      <div *ngIf="!quoteSvc.loading() && quotes().length === 0" class="rounded-2xl border border-hairline bg-white p-16 text-center">
+      <div *ngIf="!quoteSvc.loading() && !quoteSvc.loadError() && quotes().length === 0" class="rounded-2xl border border-hairline bg-white p-16 text-center">
         <div class="mx-auto grid h-16 w-16 place-items-center rounded-full bg-surface-alt">
           <svg lucideClipboardList class="h-8 w-8 text-muted-ink"></svg>
         </div>
@@ -88,74 +73,28 @@ import {
           <table class="w-full text-left text-sm">
             <thead class="border-b border-hairline bg-surface-alt/50 text-[10px] font-bold uppercase tracking-widest text-muted-ink">
               <tr>
-                <th class="px-6 py-4">Quote Number</th>
-                <th class="px-6 py-4">Product / Specs</th>
-                <th class="px-6 py-4">Qty</th>
-                <th class="px-6 py-4">Quoted Price</th>
+                <th class="px-6 py-4">Request</th>
+                <th class="px-6 py-4">Products</th>
+                <th class="px-6 py-4">Message</th>
                 <th class="px-6 py-4">Status</th>
                 <th class="px-6 py-4">Date</th>
-                <th class="px-6 py-4 text-right">Actions</th>
+                <th class="px-6 py-4">Quote</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-hairline">
               <tr *ngFor="let q of quotes()" class="hover:bg-surface-alt/30 transition-colors">
-                <td class="px-6 py-4 font-bold text-ink">{{ q.quoteNumber }}</td>
-                <td class="px-6 py-4 text-muted-ink max-w-xs truncate" [title]="q.productDescription">
-                  {{ q.productDescription }}
-                  <span *ngIf="q.notes" class="block text-xs text-muted-ink/70 truncate">{{ q.notes }}</span>
+                <td class="px-6 py-4 font-bold text-ink">{{ q.subject }}</td>
+                <td class="px-6 py-4 text-muted-ink max-w-xs">
+                  {{ productsLabel(q) }}
                 </td>
-                <td class="px-6 py-4 font-semibold">{{ q.quantityRequested.toLocaleString() }}</td>
-                <td class="px-6 py-4">
-                  <span *ngIf="q.quotedPriceMinorUnits != null" class="font-bold text-ink">
-                    {{ quoteSvc.formatPrice(q.quotedPriceMinorUnits) }}
-                  </span>
-                  <span *ngIf="q.quotedPriceMinorUnits == null" class="text-xs text-muted-ink italic">
-                    Awaiting quote
-                  </span>
-                </td>
+                <td class="px-6 py-4 text-muted-ink max-w-sm truncate" [title]="q.message">{{ q.message }}</td>
                 <td class="px-6 py-4 whitespace-nowrap">
-                  <span class="rounded-full px-3 py-1 text-[11px] font-bold" [ngClass]="quoteSvc.statusClass(q.status)">
-                    {{ quoteSvc.statusLabel(q.status) }}
+                  <span class="rounded-full px-3 py-1 text-[11px] font-bold" [ngClass]="quoteSvc.statusClass(q.state)">
+                    {{ quoteSvc.statusLabel(q.state) }}
                   </span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-xs text-muted-ink">{{ formatDate(q.createdAt) }}</td>
-                <td class="px-6 py-4 text-right whitespace-nowrap">
-                  <!-- Actions for QUOTED status (TASK-49 / TASK-50) -->
-                  <div *ngIf="q.status === 'QUOTED'" class="flex items-center justify-end gap-2">
-                    <button
-                      (click)="accept(q)"
-                      [disabled]="processingId() === q.quoteId"
-                      class="inline-flex items-center gap-1 rounded-full bg-emerald-600 text-white px-3 py-1 text-xs font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-50"
-                      title="Accept quoted price"
-                    >
-                      <svg *ngIf="processingId() !== q.quoteId" lucideCheck class="h-3.5 w-3.5"></svg>
-                      <svg *ngIf="processingId() === q.quoteId" lucideLoader2 class="h-3.5 w-3.5 animate-spin"></svg>
-                      Accept
-                    </button>
-                    <button
-                      (click)="reject(q)"
-                      [disabled]="processingId() === q.quoteId"
-                      class="inline-flex items-center gap-1 rounded-full border border-red-300 text-red-600 px-3 py-1 text-xs font-semibold hover:bg-red-50 transition-colors disabled:opacity-50"
-                      title="Decline quote"
-                    >
-                      <svg lucideX class="h-3.5 w-3.5"></svg>
-                      Decline
-                    </button>
-                  </div>
-
-                  <span *ngIf="q.status === 'ACCEPTED'" class="text-xs font-semibold text-emerald-600">
-                    Accepted
-                  </span>
-                  <span *ngIf="q.status === 'REJECTED'" class="text-xs font-semibold text-red-500">
-                    Declined
-                  </span>
-                  <span *ngIf="q.status === 'PENDING' || q.status === 'UNDER_REVIEW'" class="text-xs text-muted-ink italic">
-                    Under evaluation
-                  </span>
-                  <span *ngIf="q.status === 'CLOSED' || q.status === 'EXPIRED'" class="text-xs text-muted-ink">
-                    Closed
-                  </span>
-                </td>
+                <td class="px-6 py-4 text-xs text-muted-ink">{{ q.quoteId ? 'Quote linked' : 'Awaiting response' }}</td>
               </tr>
             </tbody>
           </table>
@@ -165,12 +104,7 @@ import {
   `
 })
 export class MyQuotesComponent implements OnInit {
-  shop = inject(ShopService);
   quoteSvc = inject(QuoteService);
-
-  processingId = signal<string | null>(null);
-  actionMessage = signal<string | null>(null);
-  errorMessage = signal<string | null>(null);
 
   get quotes() {
     return this.quoteSvc.quotes;
@@ -180,48 +114,8 @@ export class MyQuotesComponent implements OnInit {
     this.quoteSvc.loadQuotes().subscribe();
   }
 
-  accept(quote: BackendQuote): void {
-    this.processingId.set(quote.quoteId);
-    this.actionMessage.set(null);
-    this.errorMessage.set(null);
-
-    this.quoteSvc.acceptQuote(quote.quoteId).subscribe({
-      next: (res) => {
-        this.processingId.set(null);
-        if (res) {
-          this.actionMessage.set(`Quote ${quote.quoteNumber} has been accepted! Our sales team will proceed with your order.`);
-        } else {
-          this.errorMessage.set(`Could not accept quote ${quote.quoteNumber}. Please try again.`);
-        }
-      },
-      error: () => {
-        this.processingId.set(null);
-        this.errorMessage.set(`An error occurred while accepting quote ${quote.quoteNumber}.`);
-      }
-    });
-  }
-
-  reject(quote: BackendQuote): void {
-    if (!confirm(`Are you sure you want to decline quote ${quote.quoteNumber}?`)) return;
-
-    this.processingId.set(quote.quoteId);
-    this.actionMessage.set(null);
-    this.errorMessage.set(null);
-
-    this.quoteSvc.rejectQuote(quote.quoteId).subscribe({
-      next: (res) => {
-        this.processingId.set(null);
-        if (res) {
-          this.actionMessage.set(`Quote ${quote.quoteNumber} has been declined.`);
-        } else {
-          this.errorMessage.set(`Could not decline quote ${quote.quoteNumber}. Please try again.`);
-        }
-      },
-      error: () => {
-        this.processingId.set(null);
-        this.errorMessage.set(`An error occurred while declining quote ${quote.quoteNumber}.`);
-      }
-    });
+  productsLabel(quote: QuoteRequestHistoryItem): string {
+    return quote.products.map(product => `${product.skuId} × ${product.quantity}`).join(', ');
   }
 
   formatDate(dateStr: string): string {

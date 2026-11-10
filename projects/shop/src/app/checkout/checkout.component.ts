@@ -12,6 +12,34 @@ import { firstValueFrom } from 'rxjs';
 
 type Step = 0 | 1 | 2;
 type PayId = "credit" | "debit" | "netbanking";
+type CheckoutAddress = {
+  id: string;
+  label?: string | null;
+  recipient: string;
+  phone: string;
+  line1: string;
+  line2?: string | null;
+  city: string;
+  region?: string | null;
+  postalCode?: string | null;
+  countryCode: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  isDefault: boolean;
+  version: number;
+};
+type CarrierQuotePreview = {
+  id: string;
+  provider: string;
+  deliveryAmount: string;
+  estimatedDeliveryAmount?: string | null;
+  estimatedPickupTime?: string | null;
+  estimatedDeliveryTime?: string | null;
+  deliveryDuration?: string | null;
+  lowerBound?: string | null;
+  upperBound?: string | null;
+  expiresAt: string;
+};
 
 const PAY_LABEL: Record<PayId, string> = {
   credit: "Credit Card",
@@ -102,29 +130,58 @@ const BANKS = ["Access Bank", "First Bank", "Guaranty Trust Bank", "United Bank 
 
               <div *ngIf="step() === 1" class="space-y-5">
                 <h2 class="text-xl font-bold">Shipping address</h2>
+                <div *ngIf="savedAddresses.length > 0" class="space-y-1">
+                  <label class="text-xs font-semibold uppercase tracking-wider text-muted-ink">Saved address</label>
+                  <select [(ngModel)]="selectedAddressId" (ngModelChange)="selectAddress($event)" class="w-full rounded-md border border-hairline bg-surface-alt px-4 py-2.5 text-sm focus:border-brand focus:outline-none">
+                    <option value="">Use a new address</option>
+                    <option *ngFor="let a of savedAddresses" [value]="a.id">
+                      {{ a.label || a.line1 }}
+                    </option>
+                  </select>
+                </div>
                 <div class="space-y-1">
                   <label class="text-xs font-semibold uppercase tracking-wider text-muted-ink">Street address</label>
-                  <input [(ngModel)]="address.street" class="w-full rounded-md border border-hairline bg-surface-alt px-4 py-2.5 text-sm focus:border-brand focus:outline-none" />
+                  <input [(ngModel)]="address.street" [disabled]="!!selectedAddressId" (ngModelChange)="addressChanged()" class="w-full rounded-md border border-hairline bg-surface-alt px-4 py-2.5 text-sm focus:border-brand focus:outline-none disabled:opacity-70" />
                 </div>
                 <div class="grid gap-5 md:grid-cols-2">
                   <div class="space-y-1">
                     <label class="text-xs font-semibold uppercase tracking-wider text-muted-ink">City</label>
-                    <input [(ngModel)]="address.city" class="w-full rounded-md border border-hairline bg-surface-alt px-4 py-2.5 text-sm focus:border-brand focus:outline-none" />
+                    <input [(ngModel)]="address.city" [disabled]="!!selectedAddressId" (ngModelChange)="addressChanged()" class="w-full rounded-md border border-hairline bg-surface-alt px-4 py-2.5 text-sm focus:border-brand focus:outline-none disabled:opacity-70" />
                   </div>
                   <div class="space-y-1">
                     <label class="text-xs font-semibold uppercase tracking-wider text-muted-ink">State</label>
-                    <input [(ngModel)]="address.state" class="w-full rounded-md border border-hairline bg-surface-alt px-4 py-2.5 text-sm focus:border-brand focus:outline-none" />
+                    <input [(ngModel)]="address.state" [disabled]="!!selectedAddressId" (ngModelChange)="addressChanged()" class="w-full rounded-md border border-hairline bg-surface-alt px-4 py-2.5 text-sm focus:border-brand focus:outline-none disabled:opacity-70" />
                   </div>
                 </div>
                 <div class="grid gap-5 md:grid-cols-2">
                   <div class="space-y-1">
                     <label class="text-xs font-semibold uppercase tracking-wider text-muted-ink">Country</label>
-                    <input [(ngModel)]="address.country" class="w-full rounded-md border border-hairline bg-surface-alt px-4 py-2.5 text-sm focus:border-brand focus:outline-none" />
+                    <input [(ngModel)]="address.country" [disabled]="!!selectedAddressId" (ngModelChange)="addressChanged()" class="w-full rounded-md border border-hairline bg-surface-alt px-4 py-2.5 text-sm focus:border-brand focus:outline-none disabled:opacity-70" />
                   </div>
                   <div class="space-y-1">
                     <label class="text-xs font-semibold uppercase tracking-wider text-muted-ink">Postal code</label>
-                    <input [(ngModel)]="address.postal" class="w-full rounded-md border border-hairline bg-surface-alt px-4 py-2.5 text-sm focus:border-brand focus:outline-none" />
+                    <input [(ngModel)]="address.postal" [disabled]="!!selectedAddressId" (ngModelChange)="addressChanged()" class="w-full rounded-md border border-hairline bg-surface-alt px-4 py-2.5 text-sm focus:border-brand focus:outline-none disabled:opacity-70" />
                   </div>
+                </div>
+                <p class="text-xs text-muted-ink">We’ll locate your delivery address automatically when you continue. Include your building number, street, city and state.</p>
+                <div *ngIf="deliveryQuote()" class="rounded-xl border border-brand/20 bg-brand/5 p-4 text-sm">
+                  <p class="font-semibold">Delivery quote is ready</p>
+                  <p *ngIf="deliveryQuote()?.estimatedDeliveryAmount && deliveryQuote()?.estimatedDeliveryAmount !== deliveryQuote()?.deliveryAmount" class="mt-1">
+                    PandaGo fee estimate: {{ deliveryQuote()?.estimatedDeliveryAmount }} NGN; bound delivery fee: {{ deliveryQuote()?.deliveryAmount }} NGN.
+                  </p>
+                  <p *ngIf="deliveryQuote()?.estimatedDeliveryAmount === deliveryQuote()?.deliveryAmount || !deliveryQuote()?.estimatedDeliveryAmount" class="mt-1">
+                    Delivery fee: {{ deliveryQuote()?.deliveryAmount }} NGN.
+                  </p>
+                  <p *ngIf="deliveryQuote()?.estimatedDeliveryTime" class="mt-1">
+                    Estimated delivery: {{ deliveryQuote()?.estimatedDeliveryTime | date:'medium' }}
+                    <span *ngIf="deliveryQuote()?.deliveryDuration">({{ deliveryQuote()?.deliveryDuration }})</span>
+                  </p>
+                  <p *ngIf="deliveryQuote()?.lowerBound && deliveryQuote()?.upperBound" class="mt-1">
+                    Estimated time range: {{ deliveryQuote()?.lowerBound }} to {{ deliveryQuote()?.upperBound }}.
+                  </p>
+                  <p *ngIf="deliveryQuote()?.provider === 'PANDAGO'" class="mt-2 text-xs text-muted-ink">
+                    PandaGo's delivery-time estimate is historical and does not include live traffic or weather. The bound fee is used for checkout.
+                  </p>
                 </div>
               </div>
 
@@ -199,9 +256,10 @@ const BANKS = ["Access Bank", "First Bank", "Guaranty Trust Bank", "United Bank 
                 <button
                   *ngIf="step() < 2"
                   (click)="advance()"
+                  [disabled]="quoteLoading()"
                   class="inline-flex items-center gap-2 rounded-full bg-brand text-white px-6 py-3 text-sm font-semibold hover:bg-brand-deep transition-colors"
                 >
-                  Continue <svg lucideArrowRight class="h-4 w-4"></svg>
+                  {{ quoteLoading() ? 'Getting delivery quote...' : 'Continue' }} <svg *ngIf="!quoteLoading()" lucideArrowRight class="h-4 w-4"></svg>
                 </button>
                 <button
                   *ngIf="step() === 2"
@@ -216,26 +274,26 @@ const BANKS = ["Access Bank", "First Bank", "Guaranty Trust Bank", "United Bank 
             <aside class="lg:sticky lg:top-28 h-fit rounded-2xl border border-hairline bg-white p-6">
               <h3 class="text-base font-bold">Order summary</h3>
               <ul class="mt-4 space-y-3 max-h-64 overflow-auto pr-1">
-                <li *ngFor="let i of shop.cart()" class="flex items-center gap-3 text-sm">
-                  <div class="h-12 w-12 rounded-lg overflow-hidden bg-surface-alt shrink-0">
-                    <img *ngIf="i.image" [src]="i.image" alt="" class="h-full w-full object-cover" />
+                <li *ngFor="let i of checkoutItems()" class="flex items-center gap-3 text-sm">
+                  <div class="h-12 w-12 rounded-lg overflow-hidden bg-surface-alt shrink-0 border border-hairline">
+                    <img *ngIf="i.imageUrl" [src]="i.imageUrl" alt="" class="h-full w-full object-cover" />
                   </div>
                   <div class="flex-1 min-w-0">
                     <p class="truncate font-semibold">{{ i.name }}</p>
-                    <p class="text-xs text-muted-ink">Qty {{ i.qty }}</p>
+                    <p class="text-xs text-muted-ink">Qty {{ i.quantity }}</p>
                   </div>
-                  <p class="font-semibold">{{ i.price > 0 ? catalog.formatPrice(i.price * i.qty * 100) : 'Price from Commerce' }}</p>
+                  <p class="font-semibold">{{ i.unitPriceMinorUnits > 0 ? catalog.formatPrice(i.unitPriceMinorUnits * i.quantity) : 'Price from Commerce' }}</p>
                 </li>
               </ul>
               
               <dl class="mt-6 space-y-3 text-sm border-t border-hairline pt-6">
                 <div class="flex items-center justify-between">
-                  <dt class="text-muted-ink">Subtotal</dt>
+                  <dt class="text-muted-ink">Subtotal ({{ checkoutItems().length }} items)</dt>
                   <dd class="font-semibold">{{ catalog.formatPrice(subtotalMinor()) }}</dd>
                 </div>
                 <div class="flex items-center justify-between">
                   <dt class="text-muted-ink">Shipping</dt>
-                  <dd class="font-semibold">After delivery quote</dd>
+                  <dd class="font-semibold">{{ deliveryQuote() ? (deliveryQuote()!.deliveryAmount + ' NGN') : 'Quote after address' }}</dd>
                 </div>
                 <div class="flex items-center justify-between">
                   <dt class="text-muted-ink">Tax</dt>
@@ -243,11 +301,11 @@ const BANKS = ["Access Bank", "First Bank", "Guaranty Trust Bank", "United Bank 
                 </div>
                 <div class="h-px bg-hairline my-2"></div>
                 <div class="flex items-center justify-between">
-                  <dt class="text-base font-bold">Estimated total</dt>
+                  <dt class="text-base font-bold">Merchandise subtotal preview</dt>
                   <dd class="text-lg font-extrabold text-[#D62828]">{{ catalog.formatPrice(subtotalMinor()) }}</dd>
                 </div>
               </dl>
-              <p class="mt-3 text-xs text-muted-ink">Shipping and tax will be included in your final quote.</p>
+              <p class="mt-3 text-xs text-muted-ink">Commerce calculates the authoritative prices, delivery fee, tax, and final total before payment.</p>
             </aside>
           </div>
         </div>
@@ -338,6 +396,12 @@ export class CheckoutComponent implements OnInit {
   payment = signal<PayId>("credit");
   errorMsg = signal<string | null>(null);
   modalError = signal<string | null>(null);
+  quoteLoading = signal(false);
+  deliveryQuote = signal<CarrierQuotePreview | null>(null);
+  savedAddresses: CheckoutAddress[] = [];
+  selectedAddressId = '';
+  private createdAddressId: string | null = null;
+  private deliveryQuoteAddressId: string | null = null;
 
   payLabel = computed(() => PAY_LABEL[this.payment()]);
 
@@ -354,18 +418,39 @@ export class CheckoutComponent implements OnInit {
     this.syncCustomer();
     if (this.session.authenticated()) {
       this.account.loadAddresses().subscribe(addrs => {
-        if (addrs && addrs.length > 0) {
-          const a = addrs.find(x => x.isDefault) || addrs[0];
+        this.savedAddresses = addrs ?? [];
+        if (this.savedAddresses.length > 0) {
+          const a = this.savedAddresses.find(x => x.isDefault)
+            || this.savedAddresses[0];
+          this.selectAddress(a.id);
+        }
+      });
+    }
+  }
+
+  selectAddress(id: string) {
+    this.selectedAddressId = id;
+    this.createdAddressId = null;
+    this.deliveryQuote.set(null);
+    this.deliveryQuoteAddressId = null;
+    const a = this.savedAddresses.find(x => x.id === id);
+    if (a) {
           this.address.street = a.line1 || '';
           this.address.city = a.city || '';
           this.address.state = a.region || 'Lagos';
           this.address.country = a.countryCode === 'NG' ? 'Nigeria' : a.countryCode;
-          this.address.postal = a.postalCode || '100001';
+          this.address.postal = a.postalCode || '';
           if (a.recipient && !this.customer.fullName) this.customer.fullName = a.recipient;
           if (a.phone && !this.customer.phone) this.customer.phone = a.phone;
-        }
-      });
+    } else if (!id) {
+      this.address = { street: '', city: '', state: 'Lagos', country: 'Nigeria', postal: '' };
     }
+  }
+
+  addressChanged() {
+    this.createdAddressId = null;
+    this.deliveryQuote.set(null);
+    this.deliveryQuoteAddressId = null;
   }
 
   private syncCustomer() {
@@ -381,8 +466,13 @@ export class CheckoutComponent implements OnInit {
     if (sessionEmail && !this.customer.email) this.customer.email = sessionEmail;
   }
 
+  checkoutItems = computed(() => {
+    const sel = this.cart.selectedItems();
+    return sel.length > 0 ? sel : this.cart.items();
+  });
+
   subtotalMinor = computed((): number => {
-    const items = this.cart.items();
+    const items = this.checkoutItems();
     return items.reduce((sum, i) => sum + i.unitPriceMinorUnits * i.quantity, 0);
   });
   // Final prices, delivery and tax are calculated only by the Commerce quote APIs.
@@ -400,11 +490,13 @@ export class CheckoutComponent implements OnInit {
     if (this.step() === 1) {
       if (!this.address.street.trim()) return "Street address is required.";
       if (!this.address.city.trim()) return "City is required.";
+      if (!this.address.state.trim()) return "State is required to locate your delivery address.";
+
     }
     return null;
   }
 
-  advance() {
+  async advance() {
     this.errorMsg.set(null);
     if (!this.session.authenticated()) {
       this.session.signIn('/checkout');
@@ -412,7 +504,65 @@ export class CheckoutComponent implements OnInit {
     }
     const err = this.validate();
     if (err) { this.errorMsg.set(err); return; }
+    if (this.step() === 1) {
+      try {
+        await this.requestDeliveryQuote();
+      } catch (error: any) {
+        this.errorMsg.set(this.errorMessage(error));
+        return;
+      }
+    }
     this.next();
+  }
+
+  private async ensureAddressId(): Promise<string> {
+    if (this.selectedAddressId) return this.selectedAddressId;
+    if (this.createdAddressId) return this.createdAddressId;
+    const recipient = this.customer.fullName || this.session.fullName() || 'Customer';
+    const saved = await firstValueFrom(this.http.post<{ id: string }>('/api/v1/me/addresses', {
+      label: 'Checkout',
+      recipient,
+      phone: this.customer.phone,
+      line1: this.address.street,
+      line2: null,
+      city: this.address.city,
+      region: this.address.state,
+      postalCode: this.address.postal || null,
+      countryCode: 'NG',
+      organizationId: null,
+      isDefault: false
+    }, { headers: new HttpHeaders({ 'Idempotency-Key': crypto.randomUUID() }) }));
+    this.createdAddressId = saved.id;
+    return saved.id;
+  }
+
+  private async requestDeliveryQuote(): Promise<CarrierQuotePreview> {
+    const cartId = this.cart.cartId();
+    if (!cartId) throw new Error('No server-side Commerce cart is available. Add an item after signing in.');
+    this.quoteLoading.set(true);
+    try {
+      const addressId = await this.ensureAddressId();
+      const quote = await firstValueFrom(this.http.post<CarrierQuotePreview>(`/api/v1/carts/${cartId}/delivery-quotes`, {
+        addressId
+      }, { headers: new HttpHeaders({
+        'If-Match': `\"${this.cart.cartVersion()}\"`,
+        'Idempotency-Key': crypto.randomUUID()
+      }) }));
+      this.deliveryQuote.set(quote);
+      this.deliveryQuoteAddressId = addressId;
+      return quote;
+    } finally {
+      this.quoteLoading.set(false);
+    }
+  }
+
+  private errorMessage(error: any, fallback = 'Delivery quote could not be obtained. Please try again.'): string {
+    const deliveryUnavailable = error?.url?.includes('/delivery-quotes') &&
+      (error?.status === 404 || error?.error?.code === 'FEATURE_DISABLED');
+    if (deliveryUnavailable) return error?.error?.code === 'FEATURE_DISABLED'
+      ? 'Delivery quotes are disabled on the server (FEATURE_DISABLED). The delivery provider must be enabled before an address can be quoted.'
+      : 'The delivery quote resource was not found (HTTP 404). Reload your cart and address; if it persists, check the server delivery route.';
+    return error?.error?.detail || error?.error?.title || error?.message || fallback;
   }
 
   validatePayment(): string | null {
@@ -444,32 +594,15 @@ export class CheckoutComponent implements OnInit {
     try {
       const cartId = this.cart.cartId();
       if (!cartId) throw new Error('No server-side Commerce cart is available. Add an item after signing in.');
-
-      const recipient = this.customer.fullName || this.session.fullName() || 'Customer';
-      const address = await firstValueFrom(this.http.post<any>('/api/v1/me/addresses', {
-        label: 'Checkout',
-        recipient,
-        phone: this.customer.phone,
-        line1: this.address.street,
-        line2: null,
-        city: this.address.city,
-        region: this.address.state,
-        postalCode: this.address.postal || null,
-        countryCode: 'NG',
-        organizationId: null,
-        isDefault: false
-      }, { headers: new HttpHeaders({ 'Idempotency-Key': crypto.randomUUID() }) }));
-
-      const carrierQuote = await firstValueFrom(this.http.post<any>(`/api/v1/carts/${cartId}/delivery-quotes`, {
-        addressId: address.id
-      }, { headers: new HttpHeaders({
-        'If-Match': `\"${this.cart.cartVersion()}\"`,
-        'Idempotency-Key': crypto.randomUUID()
-      }) }));
+      const addressId = await this.ensureAddressId();
+      let carrierQuote = this.deliveryQuote();
+      if (!carrierQuote || this.deliveryQuoteAddressId !== addressId || Date.parse(carrierQuote.expiresAt) <= Date.now()) {
+        carrierQuote = await this.requestDeliveryQuote();
+      }
 
       const quote = await firstValueFrom(this.http.post<any>('/api/v1/checkout/quotes', {
         cartId,
-        addressId: address.id,
+        addressId,
         carrierQuoteId: carrierQuote.id
       }, { headers: new HttpHeaders({ 'Idempotency-Key': crypto.randomUUID() }) }));
 
@@ -493,12 +626,7 @@ export class CheckoutComponent implements OnInit {
     } catch (error: any) {
       this.processing.set(false);
       console.error('[Checkout] payNow error:', error);
-      const deliveryUnavailable = error?.url?.includes('/delivery-quotes') &&
-        (error?.status === 404 || error?.error?.code === 'FEATURE_DISABLED');
-      const msg = deliveryUnavailable
-        ? 'Delivery is currently unavailable. Please try again later.'
-        : error?.error?.detail || error?.error?.title || error?.message || "Order checkout failed. Please try again.";
-      this.modalError.set(msg);
+      this.modalError.set(this.errorMessage(error, 'Order checkout failed. Please try again.'));
     }
   }
 }

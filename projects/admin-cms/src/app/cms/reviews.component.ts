@@ -2,12 +2,12 @@ import { Component, signal, computed, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AdminHeadingComponent, BadgeComponent, AdminService, AdminReview } from 'shared-ui';
-import { LucideCheck, LucideMessageCircle, LucideTrash2 } from '@lucide/angular';
+import { LucideCheck, LucideTrash2 } from '@lucide/angular';
 
 @Component({
   selector: 'app-admin-reviews',
   standalone: true,
-  imports: [CommonModule, FormsModule, AdminHeadingComponent, BadgeComponent, LucideCheck, LucideMessageCircle, LucideTrash2],
+  imports: [CommonModule, FormsModule, AdminHeadingComponent, BadgeComponent, LucideCheck, LucideTrash2],
   template: `
     <lib-admin-heading title="Customer Reviews" subtitle="Moderate and respond to product reviews."></lib-admin-heading>
     

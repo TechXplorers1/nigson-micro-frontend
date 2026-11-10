@@ -1,4 +1,4 @@
-﻿export interface Review {
+export interface Review {
   id: string;
   productId?: string;
   sku?: string;

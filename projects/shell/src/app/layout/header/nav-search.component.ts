@@ -26,6 +26,7 @@ import { LucideSearch, LucideX } from '@lucide/angular';
           *ngIf="!full"
           type="button"
           aria-label="Search products"
+          title="Search products"
           (click)="open() ? submit() : open.set(true)"
           class="grid h-10 w-10 shrink-0 place-items-center rounded-full transition-colors"
           [ngClass]="open() 
@@ -50,6 +51,7 @@ import { LucideSearch, LucideX } from '@lucide/angular';
           *ngIf="full"
           type="button"
           aria-label="Search products"
+          title="Search products"
           (click)="submit()"
           class="grid h-full w-16 shrink-0 place-items-center bg-brand text-white transition-colors hover:bg-brand-deep"
         >
@@ -61,6 +63,7 @@ import { LucideSearch, LucideX } from '@lucide/angular';
           *ngIf="!full && open()"
           type="button"
           aria-label="Close search"
+          title="Clear search"
           (click)="query.set(''); open.set(false)"
           class="grid h-8 w-8 shrink-0 place-items-center rounded-full text-muted-ink hover:text-brand transition-colors"
         >
@@ -100,7 +103,6 @@ export class NavSearchComponent {
       return;
     }
     this.open.set(false);
-    this.query.set(''); // Clear search on submit just like the original React app
-    this.router.navigate(['/search'], { queryParams: { q: term } });
+    this.router.navigate(['/products'], { queryParams: { q: term } });
   }
 }

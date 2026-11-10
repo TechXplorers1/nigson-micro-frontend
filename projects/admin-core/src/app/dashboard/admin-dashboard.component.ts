@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AdminService, AdminHeadingComponent, StatCardComponent } from 'shared-ui';
 import { LucidePackage, LucideUsers, LucideShoppingCart, LucideTrendingUp, LucideBoxes, LucideBuilding2, LucideClipboardList, LucideMail } from '@lucide/angular';
@@ -24,7 +24,7 @@ import { RouterLink } from '@angular/router';
       <lib-stat-card label="Total Orders" [value]="admin.orders().length" [icon]="true">
         <svg lucideShoppingCart class="h-5 w-5"></svg>
       </lib-stat-card>
-      <lib-stat-card label="Total Inventory" [value]="inventory()" [icon]="true">
+      <lib-stat-card label="Total Inventory" [value]="inventoryCount()" [icon]="true">
         <svg lucideBoxes class="h-5 w-5"></svg>
       </lib-stat-card>
     </div>
@@ -49,8 +49,5 @@ import { RouterLink } from '@angular/router';
 })
 export class AdminDashboardComponent {
   admin = inject(AdminService);
-
-  get inventory() {
-    return () => this.admin.products().reduce((n, p) => n + p.stock, 0);
-  }
+  inventoryCount = computed(() => this.admin.products().reduce((n, p) => n + p.stock, 0));
 }

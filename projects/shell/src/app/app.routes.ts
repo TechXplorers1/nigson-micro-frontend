@@ -37,16 +37,24 @@ export const routes: Routes = [
   {
     path: 'admin',
     canActivate: [adminGuard],
-    loadComponent: () => loadRemoteModule('admin-core', './AdminLayout')
-      .then(m => m.AdminLayoutComponent)
+    loadComponent: () => loadRemoteModule({
+      remoteName: 'admin-core',
+      remoteEntry: 'http://localhost:4205/remoteEntry.json',
+      exposedModule: './AdminLayout'
+    }).then(m => m.AdminLayoutComponent)
+      .catch(() => loadRemoteModule('admin-core', './AdminLayout').then(m => m.AdminLayoutComponent))
       .catch(() => import('../../../admin-core/src/app/layout/admin-layout.component').then(m => m.AdminLayoutComponent)),
     children: [
       // admin-core owned routes
       {
         path: '',
         pathMatch: 'full',
-        loadComponent: () => loadRemoteModule('admin-core', './AdminDashboard')
-          .then(m => m.AdminDashboardComponent)
+        loadComponent: () => loadRemoteModule({
+          remoteName: 'admin-core',
+          remoteEntry: 'http://localhost:4205/remoteEntry.json',
+          exposedModule: './AdminDashboard'
+        }).then(m => m.AdminDashboardComponent)
+          .catch(() => loadRemoteModule('admin-core', './AdminDashboard').then(m => m.AdminDashboardComponent))
           .catch(() => import('../../../admin-core/src/app/dashboard/admin-dashboard.component').then(m => m.AdminDashboardComponent))
       },
       {
@@ -71,26 +79,38 @@ export const routes: Routes = [
       // CMS routes (admin-cms MFE with local fallback)
       {
         path: 'pages',
-        loadComponent: () => loadRemoteModule('admin-cms', './Pages')
-          .then(m => m.AdminPagesComponent)
+        loadComponent: () => loadRemoteModule({
+          remoteName: 'admin-cms',
+          remoteEntry: 'http://localhost:4211/remoteEntry.json',
+          exposedModule: './Pages'
+        }).then(m => m.AdminPagesComponent)
           .catch(() => import('../../../admin-cms/src/app/cms/pages.component').then(m => m.AdminPagesComponent))
       },
       {
         path: 'pages/:id',
-        loadComponent: () => loadRemoteModule('admin-cms', './VisualHome')
-          .then(m => m.VisualHomeEditorComponent)
+        loadComponent: () => loadRemoteModule({
+          remoteName: 'admin-cms',
+          remoteEntry: 'http://localhost:4211/remoteEntry.json',
+          exposedModule: './VisualHome'
+        }).then(m => m.VisualHomeEditorComponent)
           .catch(() => import('../../../admin-cms/src/app/cms/visual-home-editor.component').then(m => m.VisualHomeEditorComponent))
       },
       {
         path: 'reviews',
-        loadComponent: () => loadRemoteModule('admin-cms', './Reviews')
-          .then(m => m.AdminReviewsComponent)
+        loadComponent: () => loadRemoteModule({
+          remoteName: 'admin-cms',
+          remoteEntry: 'http://localhost:4211/remoteEntry.json',
+          exposedModule: './Reviews'
+        }).then(m => m.AdminReviewsComponent)
           .catch(() => import('../../../admin-cms/src/app/cms/reviews.component').then(m => m.AdminReviewsComponent))
       },
       {
         path: 'blog',
-        loadComponent: () => loadRemoteModule('admin-cms', './Blog')
-          .then(m => m.AdminBlogComponent)
+        loadComponent: () => loadRemoteModule({
+          remoteName: 'admin-cms',
+          remoteEntry: 'http://localhost:4211/remoteEntry.json',
+          exposedModule: './Blog'
+        }).then(m => m.AdminBlogComponent)
           .catch(() => import('../../../admin-cms/src/app/cms/blog.component').then(m => m.AdminBlogComponent))
       },
 

@@ -1,14 +1,14 @@
-﻿import { Component, HostListener, computed, signal, effect } from '@angular/core';
+import { Component, HostListener, computed, signal, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink, RouterLinkActive, Router } from '@angular/router';
-import { LucideMenu, LucideX, LucideChevronDown, LucideChevronRight, LucideShoppingCart, LucideShoppingBag, LucideUser, LucideUserRound, LucidePackage, LucideLogOut, LucideHandshake, LucideTruck, LucideSearch } from '@lucide/angular';
+import { RouterLink, Router } from '@angular/router';
+import { LucideMenu, LucideX, LucideChevronRight, LucideShoppingBag, LucideUser, LucideUserRound, LucidePackage, LucideLogOut, LucideSearch } from '@lucide/angular';
 import { ShopService } from 'shared-ui';
 import { NavSearchComponent } from './nav-search.component';
 
 @Component({
   selector: 'app-header',
   standalone: true,
-  imports: [CommonModule, RouterLink, RouterLinkActive, LucideMenu, LucideX, LucideChevronDown, LucideChevronRight, LucideShoppingCart, LucideShoppingBag, LucideUser, LucideUserRound, LucidePackage, LucideLogOut, LucideHandshake, LucideTruck, LucideSearch, NavSearchComponent],
+  imports: [CommonModule, RouterLink, LucideMenu, LucideX, LucideChevronRight, LucideShoppingBag, LucideUser, LucideUserRound, LucidePackage, LucideLogOut, LucideSearch, NavSearchComponent],
   templateUrl: './header.html',
   styleUrls: ['./header.css']
 })

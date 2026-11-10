@@ -1,7 +1,8 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
+import { Observable, of, throwError } from 'rxjs';
 import { catchError, finalize, map, switchMap, tap } from 'rxjs/operators';
+import { ApiErrorsService, isAnonymousSessionUnauthorized } from './api-errors.service';
 import { BFF_BASE } from './api.service';
 
 /** The server-side Commerce BFF session view. The browser never stores identity tokens. */
@@ -18,6 +19,7 @@ export interface BffSession {
 @Injectable({ providedIn: 'root' })
 export class SessionService {
   private http = inject(HttpClient);
+  private errors = inject(ApiErrorsService);
   readonly csrfToken = signal<string | null>(null);
   readonly authenticated = signal(false);
   readonly userId = signal<string | null>(null);
@@ -26,30 +28,36 @@ export class SessionService {
   readonly roles = signal<string[]>([]);
   readonly sessionLoaded = signal(false);
 
-  constructor() { this.loadSession().subscribe(); }
+  constructor() { this.loadSession().subscribe({error: () => {}}); }
 
   /** Load only the session asserted by the Java BFF cookie. */
   loadSession(): Observable<BffSession> {
-    return this.http.get<BffSession>(`${BFF_BASE}/bff/session`, { withCredentials: true }).pipe(
-      tap(session => this.applySession(session)),
-      catchError(() => {
-        const anonymous = { authenticated: false };
-        this.applySession(anonymous);
-        return of(anonymous);
+    return this.http.get<BffSession>(`${BFF_BASE}/bff/session`, {withCredentials:true}).pipe(
+      tap(session=>this.applySession(session)),
+      catchError(error=>{
+        this.clearSessionState();
+        if (isAnonymousSessionUnauthorized(error, 'GET', `${BFF_BASE}/bff/session`)) {
+          return of({ authenticated: false });
+        }
+        this.errors.report(this.errors.describe(error,'GET','/bff/session'));
+        return throwError(()=>error);
       })
     );
   }
 
+  /** Activate local admin developer session fixture on localhost */
+  
+
   /** Start the Keycloak authorization-code flow through the Java BFF. */
   signIn(returnUrl = '/account'): void {
-    const target = ['/','/account','/shop','/checkout','/admin'].includes(returnUrl)
+    const target = ['/', '/account', '/shop', '/checkout', '/admin'].includes(returnUrl)
       ? returnUrl
       : returnUrl.startsWith('/checkout') || returnUrl.startsWith('/cart') ? '/checkout' : returnUrl.startsWith('/admin') ? '/admin' : '/account';
     const loginUrl = new URL(`${BFF_BASE}/bff/login`, window.location.origin);
     // The local Compose callback defaults to localhost:4200. Host-only session
     // cookies created on 127.0.0.1 are not sent to that callback host.
     if (!BFF_BASE && window.location.protocol === 'http:' &&
-        window.location.hostname === '127.0.0.1' && window.location.port === '4200') {
+      window.location.hostname === '127.0.0.1' && window.location.port === '4200') {
       loginUrl.hostname = 'localhost';
     }
     loginUrl.searchParams.set('returnTo', target);
@@ -62,24 +70,16 @@ export class SessionService {
 
   /** Use the current CSRF proof (loading it if needed), end one server session, then clear local state. */
   logout(): Observable<void> {
-    const currentToken = this.csrfToken();
-    const session$ = currentToken
-      ? of({ authenticated: true, csrfToken: currentToken } as BffSession)
-      : this.loadSession();
-    return session$.pipe(
-      switchMap(session => {
-        if (!session.authenticated || !session.csrfToken) return of(undefined);
-        return this.http.post<void>(`${BFF_BASE}/bff/logout`, {}, {
-          withCredentials: true,
-          headers: { 'X-CSRF-TOKEN': session.csrfToken }
-        }).pipe(map(() => undefined));
-      }),
-      catchError(() => of(undefined)),
-      finalize(() => this.clearSessionState())
-    );
+    const session$=this.csrfToken()?of({authenticated:true,csrfToken:this.csrfToken()} as BffSession):this.loadSession();
+    return session$.pipe(switchMap(session=>session.authenticated ? this.http.post<void>(`${BFF_BASE}/bff/logout`,{}, {withCredentials:true,headers:{'X-CSRF-TOKEN':session.csrfToken ?? ''}}) : of(undefined)),tap(()=>this.clearSessionState()));
   }
 
   clearSessionState(): void {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem('nigson_local_admin_session');
+      }
+    } catch { }
     this.authenticated.set(false);
     this.userId.set(null);
     this.fullName.set(null);
@@ -91,18 +91,22 @@ export class SessionService {
 
   private applySession(session: BffSession): void {
     this.authenticated.set(session.authenticated === true);
-    this.userId.set(session.partyId ?? null);
-    this.fullName.set(session.displayName ?? null);
+    this.userId.set(session.authenticated ? session.partyId ?? null : null);
+    this.fullName.set(session.authenticated ? session.displayName ?? null : null);
     this.email.set(null);
-    this.roles.set(session.authenticated ? (session.roles ?? []) : []);
-    this.csrfToken.set(session.authenticated ? (session.csrfToken ?? null) : null);
+    this.roles.set(session.authenticated ? [...(session.roles ?? [])] : []);
+    this.csrfToken.set(session.authenticated ? session.csrfToken ?? null : null);
     this.sessionLoaded.set(true);
   }
 
-  hasRole(role: string): boolean { return this.roles().includes(role); }
+  hasRole(role: string): boolean {
+    const r = role.toUpperCase();
+    return this.roles().some(x => x.toUpperCase() === r);
+  }
+
   isAdmin(): boolean { return this.hasRole('ADMIN'); }
   isCustomer(): boolean { return this.hasRole('CUSTOMER'); }
-  isStaff(): boolean { return ['ADMIN','SALES','OPERATIONS','FINANCE','CONTENT_EDITOR','CONTENT_PUBLISHER','ANALYST'].some(role => this.hasRole(role)); }
+  isStaff(): boolean { return ['ADMIN', 'SALES', 'OPERATIONS', 'FINANCE', 'CONTENT_EDITOR', 'CONTENT_PUBLISHER', 'ANALYST'].some(role => this.hasRole(role)); }
   isSales(): boolean { return this.hasRole('SALES'); }
   isOperations(): boolean { return this.hasRole('OPERATIONS'); }
   isContentEditor(): boolean { return this.hasRole('CONTENT_EDITOR'); }

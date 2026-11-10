@@ -1,3 +1,4 @@
+import { apiErrorInterceptor } from 'shared-ui';
 import {
   ApplicationConfig,
   provideBrowserGlobalErrorListeners,
@@ -16,7 +17,7 @@ import {
   AccountService,
   CatalogService,
 } from 'shared-ui';
-import { switchMap, of, forkJoin } from 'rxjs';
+import { switchMap, of, forkJoin, catchError } from 'rxjs';
 
 /**
  * Shell app.config.ts (TASK-01, TASK-05, TASK-07)
@@ -29,7 +30,8 @@ import { switchMap, of, forkJoin } from 'rxjs';
 function initApp(session: SessionService, cart: CartService, account: AccountService, catalog: CatalogService) {
   return () => session.loadSession().pipe(
     switchMap(() => catalog.validateMarket()),
-    switchMap(() => session.authenticated() ? forkJoin([cart.loadCart(), account.loadProfile()]) : of(null))
+    switchMap(() => session.authenticated() ? forkJoin([cart.loadCart(), account.loadProfile()]) : of(null)),
+    catchError(() => of(null))
   );
 }
 
@@ -38,7 +40,7 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
     provideHttpClient(
-      withInterceptors([csrfInterceptor, idempotencyInterceptor, ifMatchInterceptor, auth401Interceptor])
+      withInterceptors([apiErrorInterceptor, csrfInterceptor, idempotencyInterceptor, ifMatchInterceptor, auth401Interceptor])
     ),
     {
       provide: APP_INITIALIZER,

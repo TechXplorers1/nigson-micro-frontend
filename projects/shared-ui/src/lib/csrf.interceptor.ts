@@ -15,6 +15,10 @@ const MUTATION_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
  * Excludes Keycloak identity requests.
  */
 export const csrfInterceptor: HttpInterceptorFn = (req, next) => {
+  if (!MUTATION_METHODS.has(req.method)) {
+    return next(req);
+  }
+
   const session = inject(SessionService);
 
   // Do not attach to Keycloak or non-Nigson API requests

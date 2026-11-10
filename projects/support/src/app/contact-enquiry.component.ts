@@ -133,9 +133,13 @@ export class ContactEnquiryComponent {
       email: this.email,
       message: this.message
     }).subscribe({
-      next: () => {
+      next: (res) => {
         this.loading.set(false);
-        this.submitted.set(true);
+        if (res.success) {
+          this.submitted.set(true);
+        } else {
+          this.error.set(res.error || 'Failed to submit enquiry. Please try again.');
+        }
       },
       error: (err: any) => {
         this.loading.set(false);

@@ -1,4 +1,4 @@
-﻿import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AccountService, AddressDTO, AddressInput } from 'shared-ui';
@@ -150,6 +150,42 @@ import {
             </div>
           </div>
 
+          <div class="grid gap-4 md:grid-cols-2">
+            <div>
+              <label class="block text-xs font-semibold uppercase tracking-wider text-muted-ink mb-1">
+                Delivery Latitude (optional)
+              </label>
+              <input
+                type="number"
+                step="any"
+                min="-90"
+                max="90"
+                [(ngModel)]="formData.latitude"
+                name="latitude"
+                placeholder="6.5244"
+                class="w-full rounded-xl border border-hairline bg-white px-4 py-2.5 text-sm focus:outline-none focus:border-brand"
+              />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold uppercase tracking-wider text-muted-ink mb-1">
+                Delivery Longitude (optional)
+              </label>
+              <input
+                type="number"
+                step="any"
+                min="-180"
+                max="180"
+                [(ngModel)]="formData.longitude"
+                name="longitude"
+                placeholder="3.3792"
+                class="w-full rounded-xl border border-hairline bg-white px-4 py-2.5 text-sm focus:outline-none focus:border-brand"
+              />
+            </div>
+            <p class="text-xs text-muted-ink md:col-span-2">
+              Add both coordinates to request PandaGo delivery quotes. Coordinates are sent to the delivery provider only when you request a quote.
+            </p>
+          </div>
+
           <div class="flex items-center gap-2 pt-2">
             <input
               type="checkbox"
@@ -263,6 +299,8 @@ export class AddressesComponent implements OnInit {
     region: '',
     postalCode: '',
     countryCode: 'NG',
+    latitude: null,
+    longitude: null,
     isDefault: false
   };
 
@@ -281,6 +319,8 @@ export class AddressesComponent implements OnInit {
       region: '',
       postalCode: '',
       countryCode: 'NG',
+      latitude: null,
+      longitude: null,
       isDefault: this.accountSvc.addresses().length === 0
     };
     this.formError.set(null);
@@ -299,6 +339,8 @@ export class AddressesComponent implements OnInit {
       region: addr.region ?? '',
       postalCode: addr.postalCode ?? '',
       countryCode: addr.countryCode || 'NG',
+      latitude: addr.latitude ?? null,
+      longitude: addr.longitude ?? null,
       isDefault: addr.isDefault
     };
     this.formError.set(null);
@@ -316,6 +358,14 @@ export class AddressesComponent implements OnInit {
 
     if (!this.formData.recipient || !this.formData.phone || !this.formData.line1 || !this.formData.city) {
       this.formError.set('Please fill in all required fields.');
+      return;
+    }
+    const latitude = this.formData.latitude;
+    const longitude = this.formData.longitude;
+    if ((latitude == null) !== (longitude == null) ||
+        latitude != null && (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) ||
+        longitude != null && (!Number.isFinite(longitude) || longitude < -180 || longitude > 180)) {
+      this.formError.set('Enter both valid delivery coordinates, or leave both blank.');
       return;
     }
 

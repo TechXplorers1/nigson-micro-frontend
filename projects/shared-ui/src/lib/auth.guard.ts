@@ -1,5 +1,6 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
+import { map } from 'rxjs/operators';
 import { SessionService } from './session.service';
 
 /**
@@ -13,12 +14,14 @@ export const authGuard: CanActivateFn = (route, state) => {
   const session = inject(SessionService);
   const router = inject(Router);
 
-  if (session.authenticated()) {
-    return true;
-  }
+  const check = () => {
+    if (session.authenticated()) {
+      return true;
+    }
+    return router.parseUrl('/auth/login?redirect=' + encodeURIComponent(state.url));
+  };
 
-  const returnUrl = state.url;
-  return router.parseUrl('/auth/login?redirect=' + encodeURIComponent(returnUrl));
+  return session.sessionLoaded() ? check() : session.loadSession().pipe(map(() => check()));
 };
 
 /**
@@ -28,16 +31,18 @@ export const adminGuard: CanActivateFn = (route, state) => {
   const session = inject(SessionService);
   const router = inject(Router);
 
-  if (session.authenticated() && session.isAdmin()) {
-    return true;
-  }
+  const check = () => {
+    if (session.authenticated() && session.isAdmin()) {
+      return true;
+    }
+    if (!session.authenticated()) {
+      return router.parseUrl('/auth/login?redirect=' + encodeURIComponent(state.url));
+    }
+    // Authenticated but not admin — redirect to account
+    return router.parseUrl('/account');
+  };
 
-  if (!session.authenticated()) {
-    return router.parseUrl('/auth/login?redirect=' + encodeURIComponent(state.url));
-  }
-
-  // Authenticated but not admin — redirect to home
-  return router.parseUrl('/');
+  return session.sessionLoaded() ? check() : session.loadSession().pipe(map(() => check()));
 };
 
 /**
@@ -47,13 +52,15 @@ export const staffGuard: CanActivateFn = (route, state) => {
   const session = inject(SessionService);
   const router = inject(Router);
 
-  if (session.authenticated() && session.isStaff()) {
-    return true;
-  }
+  const check = () => {
+    if (session.authenticated() && session.isStaff()) {
+      return true;
+    }
+    if (!session.authenticated()) {
+      return router.parseUrl('/auth/login?redirect=' + encodeURIComponent(state.url));
+    }
+    return router.parseUrl('/account');
+  };
 
-  if (!session.authenticated()) {
-    return router.parseUrl('/auth/login?redirect=' + encodeURIComponent(state.url));
-  }
-
-  return router.parseUrl('/');
+  return session.sessionLoaded() ? check() : session.loadSession().pipe(map(() => check()));
 };

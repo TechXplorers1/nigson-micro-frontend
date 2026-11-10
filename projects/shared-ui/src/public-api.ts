@@ -33,6 +33,7 @@ export * from './lib/marketing/page-header.component';
 
 // HTTP infrastructure (TASK-01 to TASK-07)
 export * from './lib/api.service';
+export * from './lib/api-errors.service';
 export * from './lib/session.service';
 export * from './lib/csrf.interceptor';
 export * from './lib/idempotency.interceptor';

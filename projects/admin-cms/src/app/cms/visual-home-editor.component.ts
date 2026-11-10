@@ -4,13 +4,10 @@ import { RouterModule, ActivatedRoute } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { catchError, of } from 'rxjs';
 import { CmsService, SessionService, ContentRevisionEdit, PageContent, SectionContent, SectionDef } from 'shared-ui';
-import { 
-  LucidePlus, LucidePencil, LucideTrash2, LucideGlobe, LucideFileText, LucideSave, 
-  LucideEye, LucideEyeOff, LucideGripVertical, LucideCheckCircle2, LucideChevronRight, 
-  LucidePanelTop, LucideSparkles, LucideGrid3x3, LucideFlame, LucideBuilding2, 
-  LucideTag, LucideTrendingUp, LucideShieldCheck, LucideMessageSquareQuote, 
-  LucideBriefcase, LucidePanelBottom, LucideExternalLink, LucideRefreshCw,
-  LucideHeading, LucideList, LucideArrowLeft, LucideX
+import {
+  LucidePlus, LucidePencil, LucideGlobe, LucideSave,
+  LucideEye, LucideEyeOff, LucideGripVertical, LucideCheckCircle2, LucideChevronRight,
+  LucideExternalLink, LucideRefreshCw, LucideHeading, LucideList, LucideArrowLeft
 } from '@lucide/angular';
 import { FormsModule } from '@angular/forms';
 import { AdminBlogPost, DEFAULT_POSTS, parseMarkdownToSections } from './blog.component';
@@ -20,12 +17,9 @@ import { AdminBlogPost, DEFAULT_POSTS, parseMarkdownToSections } from './blog.co
   standalone: true,
   imports: [
     CommonModule, FormsModule, RouterModule,
-    LucidePlus, LucidePencil, LucideTrash2, LucideGlobe, LucideFileText, LucideSave, 
-    LucideEye, LucideEyeOff, LucideGripVertical, LucideCheckCircle2, LucideChevronRight, 
-    LucidePanelTop, LucideSparkles, LucideGrid3x3, LucideFlame, LucideBuilding2, 
-    LucideTag, LucideTrendingUp, LucideShieldCheck, LucideMessageSquareQuote, 
-    LucideBriefcase, LucidePanelBottom, LucideExternalLink, LucideRefreshCw,
-    LucideHeading, LucideList, LucideArrowLeft, LucideX
+    LucidePlus, LucidePencil, LucideGlobe, LucideSave,
+    LucideEye, LucideEyeOff, LucideGripVertical, LucideCheckCircle2, LucideChevronRight,
+    LucideExternalLink, LucideRefreshCw, LucideHeading, LucideList, LucideArrowLeft
   ],
   template: `
     <div class="fixed inset-0 z-50 flex flex-col bg-[#f0f2f5] font-sans antialiased select-none">
@@ -494,7 +488,7 @@ export class VisualHomeEditorComponent implements OnInit, AfterViewInit {
   backendSynced = signal(false);
   saveSuccess = signal(false);
   toastMessage = signal<string | null>(null);
-  
+
   previewFrame = viewChild<ElementRef<HTMLIFrameElement>>('previewFrame');
 
   pageId = signal<string>('home');
@@ -518,7 +512,7 @@ export class VisualHomeEditorComponent implements OnInit, AfterViewInit {
   pub = computed(() => this.cms.published()[this.pageId()]);
 
   isDirty = computed(() => JSON.stringify(this.pub()?.sections) !== JSON.stringify(this.draft()?.sections));
-  
+
   validSectionIds = computed(() => new Set(this.pageDef()?.sections.map((s: SectionDef) => s.id) || []));
   activeSections = computed(() => (this.draft()?.sections || []).filter((s: SectionContent) => this.validSectionIds().has(s.id)));
 
@@ -571,7 +565,7 @@ export class VisualHomeEditorComponent implements OnInit, AfterViewInit {
           this.insightArticles.set(parsed.posts);
         }
       }
-    } catch {}
+    } catch { }
 
     // 2. Fetch from PostgreSQL database bridge and merge without overwriting
     this.http.get<any>('/api/v1/content?type=BLOG&locale=en&page=0&size=100').pipe(
@@ -606,7 +600,10 @@ export class VisualHomeEditorComponent implements OnInit, AfterViewInit {
       parsed.posts = articles;
       localStorage.setItem('nigson.admin.v2', JSON.stringify(parsed));
       localStorage.setItem('nigson_admin_blog_posts', JSON.stringify(articles));
-    } catch {}
+    } catch { }
+
+    this.saveSuccess.set(true);
+    setTimeout(() => this.saveSuccess.set(false), 3000);
   }
 
   selectSection(id: string) {
@@ -691,7 +688,7 @@ export class VisualHomeEditorComponent implements OnInit, AfterViewInit {
   setField(secId: string, key: string, value: string) {
     this.cms.updateDraft(this.pageId(), (p: PageContent) => ({
       ...p,
-      sections: p.sections.map((s: SectionContent) => 
+      sections: p.sections.map((s: SectionContent) =>
         s.id === secId ? { ...s, fields: { ...s.fields, [key]: value } } : s
       )
     }));
@@ -717,7 +714,7 @@ export class VisualHomeEditorComponent implements OnInit, AfterViewInit {
   toggleVisible(secId: string) {
     this.cms.updateDraft(this.pageId(), (p: PageContent) => ({
       ...p,
-      sections: p.sections.map((s: SectionContent) => 
+      sections: p.sections.map((s: SectionContent) =>
         s.id === secId ? { ...s, visible: !s.visible } : s
       )
     }));
@@ -740,7 +737,7 @@ export class VisualHomeEditorComponent implements OnInit, AfterViewInit {
   handlePublish() {
     const pageId = this.pageId();
     const currentDraft = this.draft();
-    
+
     if (pageId === 'insights') {
       this.saveInsightArticles();
     }

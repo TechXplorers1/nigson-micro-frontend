@@ -1,14 +1,14 @@
 import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { AdminService, AdminHeadingComponent, BadgeComponent } from 'shared-ui';
+import { AdminService, AdminHeadingComponent } from 'shared-ui';
 import { LucidePlus, LucidePencil, LucideTrash2, LucideSearch, LucideEye } from '@lucide/angular';
 import { RouterLink } from '@angular/router';
 
 @Component({
   selector: 'app-product-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, AdminHeadingComponent, BadgeComponent, LucidePlus, LucidePencil, LucideTrash2, LucideSearch, LucideEye],
+  imports: [CommonModule, FormsModule, RouterLink, AdminHeadingComponent, LucidePlus, LucidePencil, LucideTrash2, LucideSearch, LucideEye],
   template: `
     <lib-admin-heading title="Products" [subtitle]="admin.products().length + ' products tracked in inventory'">
       <a routerLink="new" class="flex h-10 items-center gap-2 rounded-full bg-brand px-5 text-sm font-bold text-white transition-colors hover:bg-brand-600 shadow-sm">

@@ -1,9 +1,9 @@
-﻿import { Component, inject, computed, OnInit, signal } from '@angular/core';
+import { Component, inject, computed, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, ActivatedRoute } from '@angular/router';
 import { OrderService, BackendOrder, OrderTracking } from 'shared-ui';
 import { 
-  LucideArrowLeft, LucideXCircle, LucideTruck, LucideCheckCircle2, LucideClock
+  LucideArrowLeft, LucideXCircle, LucideTruck
 } from '@lucide/angular';
 
 @Component({
@@ -11,7 +11,7 @@ import {
   standalone: true,
   imports: [
     CommonModule, RouterLink,
-    LucideArrowLeft, LucideXCircle, LucideTruck, LucideCheckCircle2, LucideClock
+    LucideArrowLeft, LucideXCircle, LucideTruck
   ],
   template: `
     <div class="space-y-6">

@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { ShopService, SessionService } from 'shared-ui';
 import {
-  LucideEye, LucideEyeOff, LucideLogOut, LucideTrash2, LucideX, LucideSave,
+  LucideLogOut, LucideTrash2, LucideX, LucideSave,
   LucideShieldCheck
 } from '@lucide/angular';
 
@@ -22,7 +22,7 @@ import {
   standalone: true,
   imports: [
     CommonModule, FormsModule,
-    LucideEye, LucideEyeOff, LucideLogOut, LucideTrash2,
+    LucideLogOut, LucideTrash2,
     LucideX, LucideSave, LucideShieldCheck
   ],
   template: `

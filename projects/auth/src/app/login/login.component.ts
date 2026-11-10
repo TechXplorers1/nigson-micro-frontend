@@ -35,6 +35,7 @@ export class LoginComponent implements OnInit {
   private router = inject(Router);
   readonly redirecting = signal(false);
   readonly error = signal<string | null>(null);
+  readonly isLocal = signal(typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'));
 
   ngOnInit(): void {
     this.session.loadSession().subscribe(() => {
@@ -48,6 +49,7 @@ export class LoginComponent implements OnInit {
     if (raw.startsWith('/admin')) return '/admin';
     return '/account';
   }
+
 
   signIn(): void {
     this.redirecting.set(true);

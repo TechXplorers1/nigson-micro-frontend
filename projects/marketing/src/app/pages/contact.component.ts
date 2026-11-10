@@ -167,11 +167,11 @@ export class ContactComponent {
       subject: (this.f.subject || this.f.type).trim(),
       message: this.f.message.trim()
     }).subscribe({
-      next: (ok) => {
-        if (ok) {
+      next: (res) => {
+        if (res.success) {
           this.submitted.set(true);
         } else {
-          this.submitError.set('Failed to send enquiry. Please check your information and try again.');
+          this.submitError.set(res.error || 'Failed to send enquiry. Please check your information and try again.');
         }
       },
       error: () => {

@@ -14,7 +14,6 @@ import {
   LucideX,
   LucideCheckCircle2,
   LucideSearch,
-  LucideEye,
   LucideList,
   LucideHeading
 } from '@lucide/angular';
@@ -125,7 +124,6 @@ export const DEFAULT_POSTS: AdminBlogPost[] = [];
     LucideX,
     LucideCheckCircle2,
     LucideSearch,
-    LucideEye,
     LucideList,
     LucideHeading
   ],

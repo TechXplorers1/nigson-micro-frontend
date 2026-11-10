@@ -1,4 +1,4 @@
-﻿import { Routes } from '@angular/router';
+import { Routes } from '@angular/router';
 import { AccountLayoutComponent } from './layout/account-layout.component';
 
 export const routes: Routes = [
