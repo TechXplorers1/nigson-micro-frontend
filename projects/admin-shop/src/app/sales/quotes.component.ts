@@ -10,6 +10,11 @@ import { LucideSearch, LucideEye, LucideX } from '@lucide/angular';
   imports: [CommonModule, FormsModule, AdminHeadingComponent, BadgeComponent, StatCardComponent, LucideSearch, LucideEye, LucideX],
   template: `
     <lib-admin-heading title="Quote Requests" subtitle="Wholesale pricing requests from customers and retailers"></lib-admin-heading>
+
+    <div *ngIf="admin.quoteLoadError()" class="mb-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 flex items-center justify-between">
+      <span>{{ admin.quoteLoadError() }}</span>
+      <button (click)="admin.loadStaffQuotes().subscribe()" class="font-semibold text-red-600 hover:text-red-800">Try again</button>
+    </div>
     
     <div class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <lib-stat-card label="Total requests" [value]="admin.quotes().length.toString()"></lib-stat-card>
@@ -47,7 +52,7 @@ import { LucideSearch, LucideEye, LucideX } from '@lucide/angular';
               <td class="px-6 py-4 whitespace-nowrap font-semibold">{{ q.number }}</td>
               <td class="px-6 py-4">{{ q.customer }}<br><span class="text-xs text-muted-ink">{{ q.email }}</span></td>
               <td class="px-6 py-4">{{ q.product }}<br><span class="text-xs text-muted-ink">{{ q.sku }}</span></td>
-              <td class="px-6 py-4 font-semibold">{{ q.quantity }}</td>
+              <td class="px-6 py-4 font-semibold">{{ q.quantity || '—' }}</td>
               <td class="px-6 py-4 whitespace-nowrap text-muted-ink">{{ q.date | date:'mediumDate' }}</td>
               <td class="px-6 py-4"><lib-badge [tone]="getTone(q.status)">{{ q.status }}</lib-badge></td>
               <td class="px-6 py-4 text-right">
@@ -183,4 +188,3 @@ export class AdminQuotesComponent implements OnInit {
     this.view.set(null);
   }
 }
-

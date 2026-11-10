@@ -1,7 +1,8 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
+import { Observable, of, throwError } from 'rxjs';
 import { catchError, finalize, map, switchMap, tap } from 'rxjs/operators';
+import { ApiErrorsService, isAnonymousSessionUnauthorized } from './api-errors.service';
 import { BFF_BASE } from './api.service';
 
 /** The server-side Commerce BFF session view. The browser never stores identity tokens. */
@@ -18,6 +19,7 @@ export interface BffSession {
 @Injectable({ providedIn: 'root' })
 export class SessionService {
   private http = inject(HttpClient);
+  private errors = inject(ApiErrorsService);
   readonly csrfToken = signal<string | null>(null);
   readonly authenticated = signal(false);
   readonly userId = signal<string | null>(null);
@@ -26,46 +28,25 @@ export class SessionService {
   readonly roles = signal<string[]>([]);
   readonly sessionLoaded = signal(false);
 
-  constructor() { this.loadSession().subscribe(); }
+  constructor() { this.loadSession().subscribe({error: () => {}}); }
 
   /** Load only the session asserted by the Java BFF cookie. */
   loadSession(): Observable<BffSession> {
-    return this.http.get<BffSession>(`${BFF_BASE}/bff/session`, { withCredentials: true }).pipe(
-      tap(session => this.applySession(session)),
-      catchError(() => {
-        try {
-          if (typeof localStorage !== 'undefined' && localStorage.getItem('nigson_local_admin_session') === 'true') {
-            this.mockLocalAdminSession();
-            return of({
-              authenticated: true,
-              partyId: '43c829a8-5ddc-5d8a-be64-557f8998c1a9',
-              displayName: 'admin Local Fixture',
-              roles: ['ADMIN', 'SALES', 'OPERATIONS', 'FINANCE', 'CONTENT_EDITOR', 'CONTENT_PUBLISHER', 'ANALYST', 'CUSTOMER']
-            });
-          }
-        } catch { }
-        const anonymous = { authenticated: false };
-        this.applySession(anonymous);
-        return of(anonymous);
+    return this.http.get<BffSession>(`${BFF_BASE}/bff/session`, {withCredentials:true}).pipe(
+      tap(session=>this.applySession(session)),
+      catchError(error=>{
+        this.clearSessionState();
+        if (isAnonymousSessionUnauthorized(error, 'GET', `${BFF_BASE}/bff/session`)) {
+          return of({ authenticated: false });
+        }
+        this.errors.report(this.errors.describe(error,'GET','/bff/session'));
+        return throwError(()=>error);
       })
     );
   }
 
   /** Activate local admin developer session fixture on localhost */
-  mockLocalAdminSession(): void {
-    this.applySession({
-      authenticated: true,
-      partyId: '43c829a8-5ddc-5d8a-be64-557f8998c1a9',
-      displayName: 'admin Local Fixture',
-      roles: ['ADMIN', 'SALES', 'OPERATIONS', 'FINANCE', 'CONTENT_EDITOR', 'CONTENT_PUBLISHER', 'ANALYST', 'CUSTOMER'],
-      csrfToken: 'mock-local-dev-csrf-token-43charslongabcdefghijk'
-    });
-    try {
-      if (typeof localStorage !== 'undefined') {
-        localStorage.setItem('nigson_local_admin_session', 'true');
-      }
-    } catch { }
-  }
+  
 
   /** Start the Keycloak authorization-code flow through the Java BFF. */
   signIn(returnUrl = '/account'): void {
@@ -89,21 +70,8 @@ export class SessionService {
 
   /** Use the current CSRF proof (loading it if needed), end one server session, then clear local state. */
   logout(): Observable<void> {
-    const currentToken = this.csrfToken();
-    const session$ = currentToken
-      ? of({ authenticated: true, csrfToken: currentToken } as BffSession)
-      : this.loadSession();
-    return session$.pipe(
-      switchMap(session => {
-        if (!session.authenticated || !session.csrfToken) return of(undefined);
-        return this.http.post<void>(`${BFF_BASE}/bff/logout`, {}, {
-          withCredentials: true,
-          headers: { 'X-CSRF-TOKEN': session.csrfToken }
-        }).pipe(map(() => undefined));
-      }),
-      catchError(() => of(undefined)),
-      finalize(() => this.clearSessionState())
-    );
+    const session$=this.csrfToken()?of({authenticated:true,csrfToken:this.csrfToken()} as BffSession):this.loadSession();
+    return session$.pipe(switchMap(session=>session.authenticated ? this.http.post<void>(`${BFF_BASE}/bff/logout`,{}, {withCredentials:true,headers:{'X-CSRF-TOKEN':session.csrfToken ?? ''}}) : of(undefined)),tap(()=>this.clearSessionState()));
   }
 
   clearSessionState(): void {
@@ -122,39 +90,12 @@ export class SessionService {
   }
 
   private applySession(session: BffSession): void {
-    if (session.authenticated !== true) {
-      try {
-        const isLocal = typeof window !== 'undefined' &&
-          (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-        const isAdminPath = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
-        if (isLocal && (isAdminPath || localStorage.getItem('nigson_local_admin_session') === 'true')) {
-          this.mockLocalAdminSession();
-          return;
-        }
-      } catch { }
-    }
-
     this.authenticated.set(session.authenticated === true);
-    this.userId.set(session.partyId ?? null);
-    this.fullName.set(session.displayName ?? null);
+    this.userId.set(session.authenticated ? session.partyId ?? null : null);
+    this.fullName.set(session.authenticated ? session.displayName ?? null : null);
     this.email.set(null);
-
-    let roles = session.authenticated ? (session.roles ?? []) : [];
-    const name = (session.displayName || '').toLowerCase();
-    const isLocalAdmin = session.authenticated && (
-      name.includes('admin') ||
-      session.partyId === '43c829a8-5ddc-5d8a-be64-557f8998c1a9' ||
-      roles.some(r => r.toUpperCase() === 'ADMIN')
-    );
-    if (isLocalAdmin) {
-      const staffRoles = ['ADMIN', 'SALES', 'OPERATIONS', 'FINANCE', 'CONTENT_EDITOR', 'CONTENT_PUBLISHER', 'ANALYST'];
-      for (const r of staffRoles) {
-        if (!roles.includes(r)) roles.push(r);
-      }
-    }
-
-    this.roles.set(roles);
-    this.csrfToken.set(session.authenticated ? (session.csrfToken ?? null) : null);
+    this.roles.set(session.authenticated ? [...(session.roles ?? [])] : []);
+    this.csrfToken.set(session.authenticated ? session.csrfToken ?? null : null);
     this.sessionLoaded.set(true);
   }
 
@@ -163,11 +104,7 @@ export class SessionService {
     return this.roles().some(x => x.toUpperCase() === r);
   }
 
-  isAdmin(): boolean {
-    if (this.hasRole('ADMIN')) return true;
-    const name = (this.fullName() || '').toLowerCase();
-    return name.includes('admin') || this.userId() === '43c829a8-5ddc-5d8a-be64-557f8998c1a9';
-  }
+  isAdmin(): boolean { return this.hasRole('ADMIN'); }
   isCustomer(): boolean { return this.hasRole('CUSTOMER'); }
   isStaff(): boolean { return ['ADMIN', 'SALES', 'OPERATIONS', 'FINANCE', 'CONTENT_EDITOR', 'CONTENT_PUBLISHER', 'ANALYST'].some(role => this.hasRole(role)); }
   isSales(): boolean { return this.hasRole('SALES'); }

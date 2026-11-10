@@ -142,10 +142,7 @@ export class AdminLayoutComponent implements OnInit {
     return null;
   });
   isAdmin = computed(() => {
-    const isLocal = typeof window !== 'undefined' &&
-      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-    if (isLocal) return true;
-    return this.session.isAdmin() || this.shop.isAdmin();
+    return this.session.isAdmin();
   });
   hydrated = computed(() => this.session.sessionLoaded() || this.shop.hydrated());
   sidebarOpen = signal(false);
@@ -200,14 +197,6 @@ export class AdminLayoutComponent implements OnInit {
   ];
 
   ngOnInit() {
-    const isLocal = typeof window !== 'undefined' &&
-      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-    if (isLocal) {
-      if (!this.session.authenticated() || !this.session.isAdmin()) {
-        this.session.mockLocalAdminSession();
-      }
-      return;
-    }
     if (this.session.sessionLoaded()) {
       if (!this.session.authenticated()) {
         this.router.navigate(['/auth/login'], { queryParams: { redirect: '/admin' } });

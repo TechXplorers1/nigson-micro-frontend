@@ -1,3 +1,4 @@
+import { apiErrorInterceptor } from 'shared-ui';
 import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
@@ -9,7 +10,7 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
     provideHttpClient(
-      withInterceptors([csrfInterceptor, idempotencyInterceptor, ifMatchInterceptor])
+      withInterceptors([apiErrorInterceptor, csrfInterceptor, idempotencyInterceptor, ifMatchInterceptor])
     ),
   ],
 };
