@@ -26,6 +26,7 @@ type CheckoutAddress = {
   latitude?: number | null;
   longitude?: number | null;
   isDefault: boolean;
+  version: number;
 };
 type CarrierQuotePreview = {
   id: string;
@@ -134,7 +135,7 @@ const BANKS = ["Access Bank", "First Bank", "Guaranty Trust Bank", "United Bank 
                   <select [(ngModel)]="selectedAddressId" (ngModelChange)="selectAddress($event)" class="w-full rounded-md border border-hairline bg-surface-alt px-4 py-2.5 text-sm focus:border-brand focus:outline-none">
                     <option value="">Use a new address</option>
                     <option *ngFor="let a of savedAddresses" [value]="a.id">
-                      {{ a.label || a.line1 }}{{ a.latitude != null && a.longitude != null ? ' (delivery coordinates saved)' : '' }}
+                      {{ a.label || a.line1 }}
                     </option>
                   </select>
                 </div>
@@ -162,12 +163,7 @@ const BANKS = ["Access Bank", "First Bank", "Guaranty Trust Bank", "United Bank 
                     <input [(ngModel)]="address.postal" [disabled]="!!selectedAddressId" (ngModelChange)="addressChanged()" class="w-full rounded-md border border-hairline bg-surface-alt px-4 py-2.5 text-sm focus:border-brand focus:outline-none disabled:opacity-70" />
                   </div>
                 </div>
-                <p *ngIf="savedAddresses.length === 0" class="text-xs text-muted-ink">
-                  A saved address with delivery coordinates is needed for a PandaGo estimate.
-                </p>
-                <p *ngIf="savedAddresses.length > 0" class="text-xs text-muted-ink">
-                  PandaGo estimates require coordinates on the selected saved address.
-                </p>
+                <p class="text-xs text-muted-ink">We’ll locate your delivery address automatically when you continue. Include your building number, street, city and state.</p>
                 <div *ngIf="deliveryQuote()" class="rounded-xl border border-brand/20 bg-brand/5 p-4 text-sm">
                   <p class="font-semibold">Delivery quote is ready</p>
                   <p *ngIf="deliveryQuote()?.estimatedDeliveryAmount && deliveryQuote()?.estimatedDeliveryAmount !== deliveryQuote()?.deliveryAmount" class="mt-1">
@@ -424,9 +420,7 @@ export class CheckoutComponent implements OnInit {
       this.account.loadAddresses().subscribe(addrs => {
         this.savedAddresses = addrs ?? [];
         if (this.savedAddresses.length > 0) {
-          const a = this.savedAddresses.find(x => x.isDefault && x.latitude != null && x.longitude != null)
-            || this.savedAddresses.find(x => x.latitude != null && x.longitude != null)
-            || this.savedAddresses.find(x => x.isDefault)
+          const a = this.savedAddresses.find(x => x.isDefault)
             || this.savedAddresses[0];
           this.selectAddress(a.id);
         }
@@ -496,6 +490,8 @@ export class CheckoutComponent implements OnInit {
     if (this.step() === 1) {
       if (!this.address.street.trim()) return "Street address is required.";
       if (!this.address.city.trim()) return "City is required.";
+      if (!this.address.state.trim()) return "State is required to locate your delivery address.";
+
     }
     return null;
   }
@@ -563,7 +559,9 @@ export class CheckoutComponent implements OnInit {
   private errorMessage(error: any, fallback = 'Delivery quote could not be obtained. Please try again.'): string {
     const deliveryUnavailable = error?.url?.includes('/delivery-quotes') &&
       (error?.status === 404 || error?.error?.code === 'FEATURE_DISABLED');
-    if (deliveryUnavailable) return 'Delivery is currently unavailable. Please try again later.';
+    if (deliveryUnavailable) return error?.error?.code === 'FEATURE_DISABLED'
+      ? 'Delivery quotes are disabled on the server (FEATURE_DISABLED). The delivery provider must be enabled before an address can be quoted.'
+      : 'The delivery quote resource was not found (HTTP 404). Reload your cart and address; if it persists, check the server delivery route.';
     return error?.error?.detail || error?.error?.title || error?.message || fallback;
   }
 
