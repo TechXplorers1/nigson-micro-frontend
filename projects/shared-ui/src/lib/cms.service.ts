@@ -55,7 +55,7 @@ export const PAGE_CONTENT_IDS: Record<string, string> = {
 };
 
 export const CONTENT_ITEM_VERSIONS: Record<string, number> = {
-  home: 10,
+  home: 22,
   about: 1,
   careers: 0,
   contact: 2,
@@ -852,7 +852,32 @@ export class CmsService {
   readonly hydrated = signal(false);
 
   constructor() {
+    try {
+      const savedVersions = localStorage.getItem('nigson_content_item_versions');
+      if (savedVersions) {
+        Object.assign(CONTENT_ITEM_VERSIONS, JSON.parse(savedVersions));
+      }
+    } catch { }
     this.init();
+  }
+
+  /** Synchronize current content item versions from backend staff API */
+  syncItemVersions(): Observable<Record<string, number>> {
+    return this.http.get<any>('/api/v1/staff/content?size=100', { withCredentials: true }).pipe(
+      map(res => {
+        const items = res?.items || [];
+        for (const it of items) {
+          if (it.slug && typeof it.itemVersion === 'number') {
+            CONTENT_ITEM_VERSIONS[it.slug] = it.itemVersion;
+          }
+        }
+        try {
+          localStorage.setItem('nigson_content_item_versions', JSON.stringify(CONTENT_ITEM_VERSIONS));
+        } catch { }
+        return CONTENT_ITEM_VERSIONS;
+      }),
+      catchError(() => of(CONTENT_ITEM_VERSIONS))
+    );
   }
 
   private init() {
@@ -1049,23 +1074,30 @@ export class CmsService {
   /** TASK-63: Save draft revision via POST /api/v1/staff/content/:id/revisions (API-079) */
   createRevision(contentId: string, edit: ContentRevisionEdit, pageId?: string, csrfToken?: string): Observable<any> {
     const token = csrfToken || this.session.csrfToken();
-    const expectedVer = pageId && CONTENT_ITEM_VERSIONS[pageId] !== undefined ? CONTENT_ITEM_VERSIONS[pageId] : 0;
-    const headers: Record<string, string> = {
-      "If-Match": `"${expectedVer}"`,
-      "Idempotency-Key": crypto.randomUUID()
-    };
-    if (token) {
-      headers["X-CSRF-TOKEN"] = token;
-    }
-    return this.http.post<any>(`/api/v1/staff/content/${contentId}/revisions`, edit, { headers, withCredentials: true }).pipe(
-      tap(rev => {
-        if (pageId && rev?.id) {
-          CONTENT_ITEM_VERSIONS[pageId] = (CONTENT_ITEM_VERSIONS[pageId] || 0) + 1;
+    return this.syncItemVersions().pipe(
+      switchMap(versions => {
+        const expectedVer = pageId && versions[pageId] !== undefined ? versions[pageId] : (CONTENT_ITEM_VERSIONS[pageId || ''] ?? 12);
+        const headers: Record<string, string> = {
+          "If-Match": `"${expectedVer}"`,
+          "Idempotency-Key": crypto.randomUUID()
+        };
+        if (token) {
+          headers["X-CSRF-TOKEN"] = token;
         }
-      }),
-      catchError(err => {
-        console.error('[CmsService] createRevision failed:', err);
-        return of(null);
+        return this.http.post<any>(`/api/v1/staff/content/${contentId}/revisions`, edit, { headers, withCredentials: true }).pipe(
+          tap(rev => {
+            if (pageId && rev?.id) {
+              CONTENT_ITEM_VERSIONS[pageId] = (CONTENT_ITEM_VERSIONS[pageId] || expectedVer) + 1;
+              try {
+                localStorage.setItem('nigson_content_item_versions', JSON.stringify(CONTENT_ITEM_VERSIONS));
+              } catch { }
+            }
+          }),
+          catchError(err => {
+            console.error('[CmsService] createRevision failed:', err);
+            return of(null);
+          })
+        );
       })
     );
   }
@@ -1122,12 +1154,137 @@ export class CmsService {
       tap(() => {
         if (pageId) {
           CONTENT_ITEM_VERSIONS[pageId] = (CONTENT_ITEM_VERSIONS[pageId] || 0) + 1;
+          try {
+            localStorage.setItem('nigson_content_item_versions', JSON.stringify(CONTENT_ITEM_VERSIONS));
+          } catch { }
         }
       }),
       map(() => true),
       catchError(err => {
         console.error('[CmsService] publishRevision failed:', err);
         return of(false);
+      })
+    );
+  }
+
+  /** Create a new content item via POST /api/v1/staff/content (API-078) */
+  createContent(payload: any, csrfToken?: string): Observable<any> {
+    const token = csrfToken || this.session.csrfToken();
+    const headers: Record<string, string> = {
+      "Idempotency-Key": crypto.randomUUID()
+    };
+    if (token) {
+      headers["X-CSRF-TOKEN"] = token;
+    }
+    return this.http.post<any>('/api/v1/staff/content', payload, { headers, withCredentials: true }).pipe(
+      catchError(err => {
+        console.error('[CmsService] createContent failed:', err);
+        return of(null);
+      })
+    );
+  }
+
+  /** Publish a blog article directly to PostgreSQL via backend Experience service */
+  publishArticle(post: { title: string; slug: string; body: string; excerpt?: string; tag?: string; author?: string; image?: string; status?: string }): Observable<boolean> {
+    const csrf$ = this.session.csrfToken()
+      ? of(this.session.csrfToken())
+      : this.session.loadSession().pipe(map(s => s.csrfToken ?? null));
+
+    return csrf$.pipe(
+      switchMap(csrf => {
+        if (!csrf) {
+          console.warn('[CmsService] No active staff session/CSRF token found; local publication updated only.');
+          return of(false);
+        }
+
+        const rawSlug = post.slug || post.title || 'article';
+        const cleanSlug = rawSlug.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || ('article-' + Date.now());
+        const title = post.title.trim().slice(0, 70);
+        const excerpt = (post.excerpt || post.body || title).trim().slice(0, 180);
+        const bodyText = (post.body || excerpt).trim().slice(0, 20000);
+
+        return this.http.get<any>('/api/v1/content?type=BLOG&locale=en&page=0&size=100').pipe(
+          catchError(() => of({ content: [] })),
+          switchMap(page => {
+            const list = page?.content || page?.items || (Array.isArray(page) ? page : []);
+            const existing = list.find((it: any) => it.slug === cleanSlug);
+            if (existing?.id) {
+              const edit: ContentRevisionEdit = {
+                title: post.title.trim().slice(0, 220),
+                body: {
+                  schemaVersion: 1,
+                  blocks: [{ type: 'TEXT', text: bodyText }]
+                },
+                metadata: {
+                  title,
+                  description: excerpt,
+                  robots: 'INDEX',
+                  alternates: [],
+                  structuredData: {
+                    tag: post.tag || 'Insight',
+                    author: post.author || 'Nigson Team',
+                    image: post.image || '/assets/blog-market.jpg'
+                  }
+                }
+              };
+              return this.createRevision(existing.id, edit, cleanSlug, csrf).pipe(
+                switchMap(rev => {
+                  if (!rev?.id) return of(false);
+                  return this.submitForReview(rev.id, csrf).pipe(
+                    switchMap(reviewed => {
+                      if (!reviewed) return of(false);
+                      return this.approveRevision(rev.id, csrf).pipe(
+                        switchMap(approved => {
+                          if (!approved) return of(false);
+                          return this.publishRevision(rev.id, csrf, 'Published to live site', cleanSlug);
+                        })
+                      );
+                    })
+                  );
+                })
+              );
+            } else {
+              const createPayload = {
+                type: 'BLOG',
+                slug: cleanSlug,
+                locale: 'en',
+                title: post.title.trim().slice(0, 220),
+                body: {
+                  schemaVersion: 1,
+                  blocks: [{ type: 'TEXT', text: bodyText }]
+                },
+                metadata: {
+                  title,
+                  description: excerpt,
+                  robots: 'INDEX',
+                  alternates: [],
+                  structuredData: {
+                    tag: post.tag || 'Insight',
+                    author: post.author || 'Nigson Team',
+                    image: post.image || '/assets/blog-market.jpg'
+                  }
+                }
+              };
+
+              return this.createContent(createPayload, csrf).pipe(
+                switchMap(rev => {
+                  if (!rev?.id) return of(false);
+                  return this.submitForReview(rev.id, csrf).pipe(
+                    switchMap(reviewed => {
+                      if (!reviewed) return of(false);
+                      return this.approveRevision(rev.id, csrf).pipe(
+                        switchMap(approved => {
+                          if (!approved) return of(false);
+                          return this.publishRevision(rev.id, csrf, 'Published to live site', cleanSlug);
+                        })
+                      );
+                    })
+                  );
+                })
+              );
+            }
+          })
+        );
       })
     );
   }
@@ -1154,36 +1311,35 @@ export class CmsService {
       switchMap(csrf => {
         if (!csrf) {
           console.warn('[CmsService] No active staff session/CSRF token found; local publication updated only.');
-          return of(true);
+          return of(false);
         }
         return this.createRevision(contentId, edit, pageId, csrf).pipe(
           switchMap(rev => {
-            if (!rev?.id) return of(true);
+            if (!rev?.id) return of(false);
             return this.submitForReview(rev.id, csrf, 'Content updated for publication').pipe(
               switchMap(reviewed => {
-                if (!reviewed) return of(true);
+                if (!reviewed) return of(false);
                 return this.approveRevision(rev.id, csrf, 'Approved for publication').pipe(
                   switchMap(approved => {
-                    if (!approved) return of(true);
+                    if (!approved) return of(false);
                     return this.publishRevision(rev.id, csrf, 'Published to live site', pageId).pipe(
                       tap(() => {
                         console.log(`[CmsService] Page ${pageId} successfully published to Java backend.`);
                         this.syncFromDatabase();
                       }),
                       map(() => true),
-                      catchError(() => of(true))
+                      catchError(() => of(false))
                     );
                   }),
-                  catchError(() => of(true))
+                  catchError(() => of(false))
                 );
               }),
-              catchError(() => of(true))
+              catchError(() => of(false))
             );
           }),
-          map(() => true),
           catchError(err => {
             console.warn('[CmsService] Background Java CMS sync warning (local publication succeeded):', err);
-            return of(true);
+            return of(false);
           })
         );
       }),

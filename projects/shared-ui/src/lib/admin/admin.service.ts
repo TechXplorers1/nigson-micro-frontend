@@ -130,115 +130,24 @@ function getInitialStockLog(): StockLog[] {
     }
   } catch { }
 
-  return [
-    { id: "sl_init_1", sku: "CHAVEENPHONES", product: "chaveen phones", change: 100, qty: 100, reason: "Opening Stock", date: "2026-11-05T06:40:00.000Z", by: "Nigson Administrator", supplier: "Nigson HQ", ref: "INIT-CHAVEEN" },
-    { id: "sl_init_2", sku: "DEMO-EL-01-01", product: "Demo True Wireless Earbuds", change: 18, qty: 18, reason: "Opening Stock", date: "2026-11-04T08:20:00.000Z", by: "System Bootstrap", supplier: "Shenzhen Factory", ref: "INIT-0101" },
-    { id: "sl_init_3", sku: "DEMO-EL-01-02", product: "Demo Wireless Charging Stand", change: 9, qty: 9, reason: "Opening Stock", date: "2026-11-04T08:20:00.000Z", by: "System Bootstrap", supplier: "Shenzhen Factory", ref: "INIT-0102" },
-    { id: "sl_init_4", sku: "DEMO-EL-01-03", product: "Demo Braided USB-C Cable (2m)", change: 24, qty: 24, reason: "Opening Stock", date: "2026-11-04T08:20:00.000Z", by: "System Bootstrap", supplier: "Shenzhen Factory", ref: "INIT-0103" },
-    { id: "sl_init_5", sku: "DEMO-EL-02-01", product: "Demo Noise-Cancelling Headphones", change: 35, qty: 35, reason: "Opening Stock", date: "2026-11-04T08:20:00.000Z", by: "System Bootstrap", supplier: "Shenzhen Factory", ref: "INIT-0201" },
-    { id: "sl_init_6", sku: "DEMO-EL-02-02", product: "Demo Smart Fitness Tracker", change: 12, qty: 12, reason: "Opening Stock", date: "2026-11-04T08:20:00.000Z", by: "System Bootstrap", supplier: "Local Distributor", ref: "INIT-0202" },
-    { id: "sl_init_7", sku: "DEMO-EL-03-01", product: "Demo 65W GaN Fast Charger", change: 16, qty: 16, reason: "Opening Stock", date: "2026-11-04T08:20:00.000Z", by: "System Bootstrap", supplier: "Nigson HQ", ref: "INIT-0301" },
-    { id: "sl_init_8", sku: "DEMO-EL-03-03", product: "Demo Heavy-Duty Power Bank 20000mAh", change: 22, qty: 22, reason: "Opening Stock", date: "2026-11-04T08:20:00.000Z", by: "System Bootstrap", supplier: "Nigson HQ", ref: "INIT-0303" },
-    { id: "sl_init_9", sku: "DEMO-EL-04-01", product: "Demo Magnetic Phone Mount", change: 28, qty: 28, reason: "Opening Stock", date: "2026-11-04T08:20:00.000Z", by: "System Bootstrap", supplier: "Local Distributor", ref: "INIT-0401" },
-    { id: "sl_init_10", sku: "DEMO-EL-04-02", product: "Demo Bluetooth Car FM Transmitter", change: 45, qty: 45, reason: "Opening Stock", date: "2026-11-04T08:20:00.000Z", by: "System Bootstrap", supplier: "Local Distributor", ref: "INIT-0402" },
-    { id: "sl_init_11", sku: "DEMO-EL-07-03", product: "Demo Surge Protector Extension", change: 60, qty: 60, reason: "Opening Stock", date: "2026-11-04T08:20:00.000Z", by: "System Bootstrap", supplier: "Nigson HQ", ref: "INIT-0703" }
-  ];
+  return [];
+}
+
+function isStaffOrFixture(email?: string, name?: string): boolean {
+  if (!email) return false;
+  const e = email.toLowerCase().trim();
+  const n = (name || '').toLowerCase();
+  return (
+    e.endsWith('@example.invalid') ||
+    e.includes('fixture') ||
+    e === 'guest@nigson.com' ||
+    e.includes('dev-admin') ||
+    n.includes('fixture') ||
+    ['admin', 'editor', 'publisher', 'sales', 'finance', 'operations', 'analyst'].includes(e.split('@')[0])
+  );
 }
 
 const LS_CUSTOMERS = 'nigson_customers';
-
-const DEFAULT_CUSTOMERS: AdminCustomer[] = [
-  {
-    id: "cust-1",
-    name: "Kene Nigson",
-    email: "kene@example.com",
-    phone: "+234 801 234 5678",
-    location: "Victoria Island, Lagos",
-    joined: "2026-07-15T09:00:00Z",
-    orders: 3,
-    spend: 285000,
-    saved: 4,
-    quotes: 1,
-    status: "Active"
-  },
-  {
-    id: "cust-2",
-    name: "Chaveen Reddy",
-    email: "chaveenreddy100@gmail.com",
-    phone: "+234 802 345 6789",
-    location: "Maitama, Abuja",
-    joined: "2026-08-01T11:30:00Z",
-    orders: 2,
-    spend: 145000,
-    saved: 2,
-    quotes: 0,
-    status: "Active"
-  },
-  {
-    id: "cust-3",
-    name: "E2E Customer",
-    email: "e2e@nigson.ng",
-    phone: "+234 803 456 7890",
-    location: "Port Harcourt, Rivers",
-    joined: "2026-08-20T14:15:00Z",
-    orders: 4,
-    spend: 420000,
-    saved: 6,
-    quotes: 2,
-    status: "Active"
-  },
-  {
-    id: "cust-4",
-    name: "Retail Store A (Ikeja Hub)",
-    email: "retaila@example.invalid",
-    phone: "+234 805 678 1234",
-    location: "Ikeja, Lagos",
-    joined: "2026-09-05T10:00:00Z",
-    orders: 5,
-    spend: 650000,
-    saved: 3,
-    quotes: 1,
-    status: "Active"
-  },
-  {
-    id: "cust-5",
-    name: "King Enterprise",
-    email: "king@gmail.com",
-    phone: "+234 807 890 2345",
-    location: "Kano, Nigeria",
-    joined: "2026-09-18T16:20:00Z",
-    orders: 1,
-    spend: 95000,
-    saved: 1,
-    quotes: 0,
-    status: "Active"
-  },
-  {
-    id: "cust-6",
-    name: "Zarina Wholesale Group",
-    email: "wholesale@nigson.ng",
-    phone: "+234 809 123 4567",
-    location: "Onitsha, Anambra",
-    joined: "2026-10-02T13:45:00Z",
-    orders: 3,
-    spend: 510000,
-    saved: 5,
-    quotes: 3,
-    status: "Active"
-  }
-];
-
-function isStaffOrFixture(email?: string, name?: string): boolean {
-  const e = (email || '').toLowerCase().trim();
-  const n = (name || '').toLowerCase().trim();
-  return (
-    e.includes('admin@example.invalid') ||
-    e.includes('operations@example.invalid') ||
-    e.includes('analyst@example.invalid') ||
-    n.includes('admin local fixture') ||
-    n.includes('local fixture')
-  );
-}
 
 function getInitialCustomers(): AdminCustomer[] {
   try {
@@ -251,7 +160,7 @@ function getInitialCustomers(): AdminCustomer[] {
       }
     }
   } catch { }
-  return [...DEFAULT_CUSTOMERS];
+  return [];
 }
 
 const LS_ADMINS = 'nigson_admin_users';
@@ -289,15 +198,7 @@ function getInitialAdmins(): AdminUser[] {
       if (Array.isArray(parsed) && parsed.length > 0) return parsed;
     }
   } catch { }
-  return [
-    { id: "43c829a8-5ddc-5d8a-be64-557f8998c1a9", name: "admin Local Fixture", email: "admin@example.invalid", roleId: "ADMIN", status: "Active", lastLogin: new Date().toISOString(), version: 1 },
-    { id: "20f23ef1-2395-5c7e-abe7-00e07dcde379", name: "Sales Specialist", email: "sales@example.invalid", roleId: "SALES", status: "Active", lastLogin: new Date().toISOString(), version: 1 },
-    { id: "5cb1caac-6970-5ef9-99c6-8d3be9d2d793", name: "Operations Manager", email: "operations@example.invalid", roleId: "OPERATIONS", status: "Active", lastLogin: new Date().toISOString(), version: 1 },
-    { id: "ef88a0dc-27c1-5ef9-b53e-a745d253d5cc", name: "Finance Officer", email: "financea@example.invalid", roleId: "FINANCE", status: "Active", lastLogin: new Date().toISOString(), version: 1 },
-    { id: "3c2b8f13-37c3-5764-a6ea-f1085167acb4", name: "Data Analyst", email: "analyst@example.invalid", roleId: "ANALYST", status: "Active", lastLogin: new Date().toISOString(), version: 1 },
-    { id: "au_2", name: "Chaveen Reddy", email: "chaveenreddy100@gmail.com", roleId: "ADMIN", status: "Active", lastLogin: new Date().toISOString(), version: 1 },
-    { id: "au_3", name: "chaveen Customer", email: "chaveen@gmail.com", roleId: "ADMIN", status: "Active", lastLogin: new Date().toISOString(), version: 1 },
-  ];
+  return [];
 }
 
 const ALL_SECTIONS: SectionKey[] = ["dashboard", "pages", "products", "reviews", "distributors", "quotes", "inquiries", "inventory", "orders", "customers", "analytics", "blog", "admins", "roles"];

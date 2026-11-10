@@ -31,13 +31,14 @@ import { AdminBlogPost, DEFAULT_POSTS, parseMarkdownToSections } from './blog.co
     <div class="fixed inset-0 z-50 flex flex-col bg-[#f0f2f5] font-sans antialiased select-none">
       
       <!-- TOAST: PUBLISH SUCCESS -->
-      <div *ngIf="publishSuccess()" class="fixed top-20 right-6 z-50 flex items-center gap-3 rounded-xl bg-emerald-600 px-4 py-3 text-white shadow-2xl transition-all">
-        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-700">
+      <div *ngIf="publishSuccess()" class="fixed top-20 right-6 z-50 flex items-center gap-3 rounded-xl px-4 py-3 text-white shadow-2xl transition-all" [class.bg-emerald-600]="backendSynced()" [class.bg-amber-600]="!backendSynced()">
+        <div class="flex h-8 w-8 items-center justify-center rounded-lg" [class.bg-emerald-700]="backendSynced()" [class.bg-amber-700]="!backendSynced()">
           <svg lucideCheckCircle2 class="h-5 w-5"></svg>
         </div>
         <div>
-          <p class="text-xs font-bold leading-none">Published Successfully!</p>
-          <p class="text-[11px] text-emerald-100 mt-0.5">Edits are now live on {{ pageDef()?.name }} ({{ pageDef()?.path }}).</p>
+          <p class="text-xs font-bold leading-none">{{ backendSynced() ? 'Published to Database & Live!' : 'Published Locally in Browser' }}</p>
+          <p class="text-[11px] text-white/90 mt-0.5" *ngIf="backendSynced()">Edits are saved to PostgreSQL database & live on {{ pageDef()?.name }}.</p>
+          <p class="text-[11px] text-white/90 mt-0.5" *ngIf="!backendSynced()">Saved in local browser. Sign in via /auth/login for persistent database sync.</p>
         </div>
         <a [href]="pageDef()?.path" target="_blank" class="ml-2 rounded-md bg-white/20 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-white/30 transition-colors flex items-center gap-1">
           View Live <svg lucideExternalLink class="h-3 w-3"></svg>
@@ -490,6 +491,7 @@ export class VisualHomeEditorComponent implements OnInit, AfterViewInit {
 
   isPublishing = this.cms.isPublishing;
   publishSuccess = signal(false);
+  backendSynced = signal(false);
   saveSuccess = signal(false);
   toastMessage = signal<string | null>(null);
   
@@ -565,21 +567,33 @@ export class VisualHomeEditorComponent implements OnInit, AfterViewInit {
       const raw = localStorage.getItem('nigson.admin.v2');
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed.posts) && parsed.posts.length >= 4) {
+        if (Array.isArray(parsed.posts) && parsed.posts.length > 0) {
           this.insightArticles.set(parsed.posts);
         }
       }
     } catch {}
 
-    // 2. Fetch from PostgreSQL database bridge
+    // 2. Fetch from PostgreSQL database bridge and merge without overwriting
     this.http.get<any>('/api/v1/content?type=BLOG&locale=en&page=0&size=100').pipe(
       catchError(() => of(null))
     ).subscribe(page => {
-      const data = (page?.items ?? []).map((item: any) => {
+      const rawList = page?.content || page?.items || (Array.isArray(page) ? page : []);
+      if (!rawList.length) return;
+      const data = rawList.filter((item: any) => item.slug !== 'insights').map((item: any) => {
         const body = (item.body?.blocks ?? []).filter((block: any) => block.type === 'TEXT').map((block: any) => block.text).join('\n\n');
         return { id: item.id, title: item.title, slug: item.slug, tag: item.metadata?.tag || 'Insight', author: item.metadata?.author || '', date: item.publishedAt || '', status: 'Published', excerpt: item.metadata?.excerpt || body.slice(0, 220), image: '', body } as AdminBlogPost;
       });
-      this.insightArticles.set(data);
+      if (data.length) {
+        const current = this.insightArticles();
+        const merged = [...current];
+        for (const dp of data) {
+          if (!merged.some(p => p.slug === dp.slug || p.id === dp.id)) {
+            merged.push(dp);
+          }
+        }
+        this.insightArticles.set(merged);
+        this.saveInsightArticles();
+      }
     });
   }
 
@@ -591,8 +605,8 @@ export class VisualHomeEditorComponent implements OnInit, AfterViewInit {
       const parsed = JSON.parse(raw);
       parsed.posts = articles;
       localStorage.setItem('nigson.admin.v2', JSON.stringify(parsed));
+      localStorage.setItem('nigson_admin_blog_posts', JSON.stringify(articles));
     } catch {}
-
   }
 
   selectSection(id: string) {
@@ -617,6 +631,7 @@ export class VisualHomeEditorComponent implements OnInit, AfterViewInit {
     this.reloadPreview();
     this.saveSuccess.set(true);
     setTimeout(() => this.saveSuccess.set(false), 3000);
+    this.cms.publishArticle(art).subscribe();
   }
 
   addNewInsightArticle() {
@@ -751,16 +766,16 @@ export class VisualHomeEditorComponent implements OnInit, AfterViewInit {
 
     this.cms.executePublishPipeline(pageId, editPayload).subscribe({
       next: (ok) => {
-        if (ok) {
-          this.publishSuccess.set(true);
-          this.reloadPreview();
-          setTimeout(() => this.publishSuccess.set(false), 4500);
-        }
-      },
-      error: () => {
+        this.backendSynced.set(ok === true);
         this.publishSuccess.set(true);
         this.reloadPreview();
-        setTimeout(() => this.publishSuccess.set(false), 4500);
+        setTimeout(() => this.publishSuccess.set(false), 5000);
+      },
+      error: () => {
+        this.backendSynced.set(false);
+        this.publishSuccess.set(true);
+        this.reloadPreview();
+        setTimeout(() => this.publishSuccess.set(false), 5000);
       }
     });
   }

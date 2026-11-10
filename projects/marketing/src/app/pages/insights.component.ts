@@ -5,7 +5,7 @@ import { HttpClient } from '@angular/common/http';
 import { catchError, of } from 'rxjs';
 import { CmsService, PageHeaderComponent } from 'shared-ui';
 import { LucideArrowRight } from '@lucide/angular';
-import { BlogPost } from './blog-posts';
+import { BlogPost, POSTS, getAllPublishedPosts, parseMarkdownToSections } from './blog-posts';
 
 @Component({
   selector: 'app-insights',
@@ -74,18 +74,47 @@ export class InsightsComponent implements OnInit {
   articles = computed(() => this.page.get('articles'));
   cta = computed(() => this.page.get('cta'));
 
-  posts = signal<BlogPost[]>([]);
+  posts = signal<BlogPost[]>(getAllPublishedPosts());
 
   ngOnInit() {
+    this.loadPosts();
+  }
+
+  private loadPosts() {
+    const list: BlogPost[] = getAllPublishedPosts();
+    this.posts.set(list);
+
     this.http.get<any>('/api/v1/content?type=BLOG&locale=en&page=0&size=100').pipe(
       catchError(() => of(null))
     ).subscribe(page => {
-      const mapped: BlogPost[] = (page?.items ?? []).map((item: any) => {
-        const blocks = item.body?.blocks ?? [];
-        const body = blocks.filter((block: any) => block.type === 'TEXT').map((block: any) => block.text).filter(Boolean);
-        return { slug: item.slug, title: item.title, date: item.publishedAt || '', tag: item.metadata?.tag || 'Insight', author: item.metadata?.author || '', readMinutes: 3, excerpt: item.metadata?.excerpt || body.join(' ').slice(0, 220), img: '/assets/blog-market.jpg', body, sections: [] };
-      });
-      this.posts.set(mapped);
+      const rawList = page?.content || page?.items || (Array.isArray(page) ? page : []);
+      if (rawList && rawList.length > 0) {
+        const current = [...this.posts()];
+        for (const item of rawList) {
+          if (item.slug === 'insights') continue;
+          const blocks = item.body?.blocks ?? [];
+          const body = blocks.filter((block: any) => block.type === 'TEXT').map((block: any) => block.text).filter(Boolean);
+          const existingIdx = current.findIndex(p => p.slug === item.slug);
+          const postItem: BlogPost = {
+            slug: item.slug,
+            title: item.title,
+            date: item.publishedAt ? new Date(item.publishedAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '',
+            tag: item.metadata?.tag || item.metadata?.structuredData?.tag || 'Insight',
+            author: item.metadata?.author || item.metadata?.structuredData?.author || 'Nigson Team',
+            readMinutes: 3,
+            excerpt: item.metadata?.description || item.metadata?.excerpt || body.join(' ').slice(0, 220),
+            img: item.metadata?.image || item.metadata?.structuredData?.image || '/assets/blog-market.jpg',
+            body,
+            sections: parseMarkdownToSections(body.join('\n\n'))
+          };
+          if (existingIdx >= 0) {
+            current[existingIdx] = postItem;
+          } else {
+            current.push(postItem);
+          }
+        }
+        this.posts.set(current);
+      }
     });
   }
 }

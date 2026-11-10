@@ -12,7 +12,7 @@ import {
   LucideMessageCircle, 
   LucideUser 
 } from '@lucide/angular';
-import { BlogPost } from './blog-posts';
+import { BlogPost, POSTS, getAllPublishedPosts, parseMarkdownToSections } from './blog-posts';
 
 @Component({
   selector: 'app-insight-post',
@@ -137,11 +137,13 @@ export class InsightPostComponent implements OnInit {
   private http = inject(HttpClient);
   
   slug = toSignal(this.route.paramMap.pipe(map(params => params.get('slug'))));
-  customPost = signal<BlogPost | undefined>(undefined);
-  posts = signal<BlogPost[]>([]);
+  posts = signal<BlogPost[]>(getAllPublishedPosts());
   
   currentPost = computed(() => {
-    return this.customPost();
+    const s = this.slug();
+    if (!s) return undefined;
+    const decoded = decodeURIComponent(s);
+    return this.posts().find(item => item.slug === s || item.slug === decoded);
   });
 
   relatedPosts = computed(() => {
@@ -154,13 +156,29 @@ export class InsightPostComponent implements OnInit {
     this.http.get<any>('/api/v1/content?type=BLOG&locale=en&page=0&size=100').pipe(
       catchError(() => of(null))
     ).subscribe(page => {
-      const mapped: BlogPost[] = (page?.items ?? []).map((item: any) => {
+      const mapped: BlogPost[] = (page?.content || page?.items || []).map((item: any) => {
         const body = (item.body?.blocks ?? []).filter((block: any) => block.type === 'TEXT').map((block: any) => block.text).filter(Boolean);
-        return { slug: item.slug, title: item.title, date: item.publishedAt || '', tag: item.metadata?.tag || 'Insight', author: item.metadata?.author || '', readMinutes: 3, excerpt: item.metadata?.excerpt || body.join(' ').slice(0, 220), img: '/assets/blog-market.jpg', body, sections: [] };
+        return {
+          slug: item.slug,
+          title: item.title,
+          date: item.publishedAt ? new Date(item.publishedAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '',
+          tag: item.metadata?.tag || item.metadata?.structuredData?.tag || 'Insight',
+          author: item.metadata?.author || item.metadata?.structuredData?.author || 'Nigson Team',
+          readMinutes: 3,
+          excerpt: item.metadata?.description || item.metadata?.excerpt || body.join(' ').slice(0, 220),
+          img: item.metadata?.image || item.metadata?.structuredData?.image || '/assets/blog-market.jpg',
+          body,
+          sections: parseMarkdownToSections(body.join('\n\n'))
+        };
       });
-      this.posts.set(mapped);
-      const slug = this.slug();
-      this.customPost.set(mapped.find(item => item.slug === slug));
+      const list: BlogPost[] = [...this.posts()];
+      for (const m of mapped) {
+        if (m.slug === 'insights') continue;
+        const idx = list.findIndex(p => p.slug === m.slug);
+        if (idx >= 0) list[idx] = m;
+        else list.push(m);
+      }
+      this.posts.set(list);
     });
   }
 }

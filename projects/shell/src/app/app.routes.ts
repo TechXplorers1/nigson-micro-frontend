@@ -38,7 +38,8 @@ export const routes: Routes = [
     path: 'admin',
     canActivate: [adminGuard],
     loadComponent: () => loadRemoteModule('admin-core', './AdminLayout')
-      .then(m => m.AdminLayoutComponent),
+      .then(m => m.AdminLayoutComponent)
+      .catch(() => import('../../../admin-core/src/app/layout/admin-layout.component').then(m => m.AdminLayoutComponent)),
     children: [
       // admin-core owned routes
       {
@@ -46,133 +47,143 @@ export const routes: Routes = [
         pathMatch: 'full',
         loadComponent: () => loadRemoteModule('admin-core', './AdminDashboard')
           .then(m => m.AdminDashboardComponent)
+          .catch(() => import('../../../admin-core/src/app/dashboard/admin-dashboard.component').then(m => m.AdminDashboardComponent))
       },
       {
         path: 'analytics',
         loadComponent: () => loadRemoteModule('admin-core', './Analytics')
           .then(m => m.AnalyticsComponent)
+          .catch(() => import('../../../admin-core/src/app/analytics/analytics.component').then(m => m.AnalyticsComponent))
       },
       {
         path: 'users',
         loadComponent: () => loadRemoteModule('admin-core', './Users')
           .then(m => m.AdminUsersComponent)
+          .catch(() => import('../../../admin-core/src/app/users/users.component').then(m => m.AdminUsersComponent))
       },
       {
         path: 'roles',
         loadComponent: () => loadRemoteModule('admin-core', './Roles')
           .then(m => m.AdminRolesComponent)
+          .catch(() => import('../../../admin-core/src/app/roles/roles.component').then(m => m.AdminRolesComponent))
       },
 
-      // CMS routes (admin-cms MFE)
+      // CMS routes (admin-cms MFE with local fallback)
       {
         path: 'pages',
-        loadComponent: () => loadRemoteModule({
-          remoteName: 'admin-cms',
-          remoteEntry: 'http://localhost:4211/remoteEntry.json',
-          exposedModule: './Pages'
-        }).then(m => m.AdminPagesComponent)
+        loadComponent: () => loadRemoteModule('admin-cms', './Pages')
+          .then(m => m.AdminPagesComponent)
+          .catch(() => import('../../../admin-cms/src/app/cms/pages.component').then(m => m.AdminPagesComponent))
       },
       {
         path: 'pages/:id',
-        loadComponent: () => loadRemoteModule({
-          remoteName: 'admin-cms',
-          remoteEntry: 'http://localhost:4211/remoteEntry.json',
-          exposedModule: './VisualHome'
-        }).then(m => m.VisualHomeEditorComponent)
+        loadComponent: () => loadRemoteModule('admin-cms', './VisualHome')
+          .then(m => m.VisualHomeEditorComponent)
+          .catch(() => import('../../../admin-cms/src/app/cms/visual-home-editor.component').then(m => m.VisualHomeEditorComponent))
       },
       {
         path: 'reviews',
-        loadComponent: () => loadRemoteModule({
-          remoteName: 'admin-cms',
-          remoteEntry: 'http://localhost:4211/remoteEntry.json',
-          exposedModule: './Reviews'
-        }).then(m => m.AdminReviewsComponent)
+        loadComponent: () => loadRemoteModule('admin-cms', './Reviews')
+          .then(m => m.AdminReviewsComponent)
+          .catch(() => import('../../../admin-cms/src/app/cms/reviews.component').then(m => m.AdminReviewsComponent))
       },
       {
         path: 'blog',
-        loadComponent: () => loadRemoteModule({
-          remoteName: 'admin-cms',
-          remoteEntry: 'http://localhost:4211/remoteEntry.json',
-          exposedModule: './Blog'
-        }).then(m => m.AdminBlogComponent)
+        loadComponent: () => loadRemoteModule('admin-cms', './Blog')
+          .then(m => m.AdminBlogComponent)
+          .catch(() => import('../../../admin-cms/src/app/cms/blog.component').then(m => m.AdminBlogComponent))
       },
 
-      // Inventory routes (admin-shop MFE)
+      // Inventory routes (admin-shop MFE with local fallback)
       {
         path: 'inventory',
         loadComponent: () => loadRemoteModule('admin-shop', './InventoryDashboard')
           .then(m => m.InventoryDashboardComponent)
+          .catch(() => import('../../../admin-shop/src/app/inventory/inventory-dashboard.component').then(m => m.InventoryDashboardComponent))
       },
       {
         path: 'inventory/products',
         loadComponent: () => loadRemoteModule('admin-shop', './ProductList')
           .then(m => m.ProductListComponent)
+          .catch(() => import('../../../admin-shop/src/app/inventory/product-list.component').then(m => m.ProductListComponent))
       },
       {
         path: 'inventory/products/new',
         loadComponent: () => loadRemoteModule('admin-shop', './ProductEdit')
           .then(m => m.ProductEditComponent)
+          .catch(() => import('../../../admin-shop/src/app/inventory/product-edit.component').then(m => m.ProductEditComponent))
       },
       {
         path: 'inventory/products/:sku/edit',
         loadComponent: () => loadRemoteModule('admin-shop', './ProductEdit')
           .then(m => m.ProductEditComponent)
+          .catch(() => import('../../../admin-shop/src/app/inventory/product-edit.component').then(m => m.ProductEditComponent))
       },
       {
         path: 'inventory/stock-in',
         loadComponent: () => loadRemoteModule('admin-shop', './StockAdjustment')
-          .then(m => m.StockAdjustmentComponent),
+          .then(m => m.StockAdjustmentComponent)
+          .catch(() => import('../../../admin-shop/src/app/inventory/stock-adjustment.component').then(m => m.StockAdjustmentComponent)),
         data: { type: 'stock-in' }
       },
       {
         path: 'inventory/adjustment',
         loadComponent: () => loadRemoteModule('admin-shop', './StockAdjustment')
-          .then(m => m.StockAdjustmentComponent),
+          .then(m => m.StockAdjustmentComponent)
+          .catch(() => import('../../../admin-shop/src/app/inventory/stock-adjustment.component').then(m => m.StockAdjustmentComponent)),
         data: { type: 'adjustment' }
       },
       {
         path: 'inventory/movements',
         loadComponent: () => loadRemoteModule('admin-shop', './StockMovements')
           .then(m => m.StockMovementsComponent)
+          .catch(() => import('../../../admin-shop/src/app/inventory/stock-movements.component').then(m => m.StockMovementsComponent))
       },
       {
         path: 'inventory/low-stock',
         loadComponent: () => loadRemoteModule('admin-shop', './StockReport')
-          .then(m => m.StockReportComponent),
+          .then(m => m.StockReportComponent)
+          .catch(() => import('../../../admin-shop/src/app/inventory/stock-report.component').then(m => m.StockReportComponent)),
         data: { type: 'low-stock' }
       },
       {
         path: 'inventory/out-of-stock',
         loadComponent: () => loadRemoteModule('admin-shop', './StockReport')
-          .then(m => m.StockReportComponent),
+          .then(m => m.StockReportComponent)
+          .catch(() => import('../../../admin-shop/src/app/inventory/stock-report.component').then(m => m.StockReportComponent)),
         data: { type: 'out-of-stock' }
       },
 
-      // Sales / Lead routes (admin-shop MFE)
+      // Sales / Lead routes (admin-shop MFE with local fallback)
       {
         path: 'orders',
         loadComponent: () => loadRemoteModule('admin-shop', './Orders')
           .then(m => m.AdminOrdersComponent)
+          .catch(() => import('../../../admin-shop/src/app/sales/orders.component').then(m => m.AdminOrdersComponent))
       },
       {
         path: 'customers',
         loadComponent: () => loadRemoteModule('admin-shop', './Customers')
           .then(m => m.AdminCustomersComponent)
+          .catch(() => import('../../../admin-shop/src/app/sales/customers.component').then(m => m.AdminCustomersComponent))
       },
       {
         path: 'quotes',
         loadComponent: () => loadRemoteModule('admin-shop', './Quotes')
           .then(m => m.AdminQuotesComponent)
+          .catch(() => import('../../../admin-shop/src/app/sales/quotes.component').then(m => m.AdminQuotesComponent))
       },
       {
         path: 'applications',
         loadComponent: () => loadRemoteModule('admin-shop', './Applications')
           .then(m => m.AdminApplicationsComponent)
+          .catch(() => import('../../../admin-shop/src/app/sales/applications.component').then(m => m.AdminApplicationsComponent))
       },
       {
         path: 'inquiries',
         loadComponent: () => loadRemoteModule('admin-shop', './Inquiries')
           .then(m => m.AdminInquiriesComponent)
+          .catch(() => import('../../../admin-shop/src/app/sales/inquiries.component').then(m => m.AdminInquiriesComponent))
       },
     ]
   },
