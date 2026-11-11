@@ -104,13 +104,7 @@ export class ShopService {
 
   readonly cartCount = computed(() => this.cart().reduce((n, i) => n + i.qty, 0));
   readonly cartSubtotal = computed(() => this.cart().reduce((n, i) => n + i.qty * i.price, 0));
-  readonly isAdmin = computed(() => {
-    const u = this.user();
-    if (!u) return false;
-    if (u.roles?.some(r => r.toUpperCase() === 'ADMIN')) return true;
-    const name = (u.fullName || '').toLowerCase();
-    return name.includes('admin') || u.id === '43c829a8-5ddc-5d8a-be64-557f8998c1a9';
-  });
+  readonly isAdmin = computed(() => this.session.isAdmin());
 
   constructor() {
     this.init();
