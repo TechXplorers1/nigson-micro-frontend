@@ -23,6 +23,7 @@ export interface Product {
   sku: string;
   /** SKU UUID for cart operations */
   skuId?: string;
+  quoteSkus?: Array<{ id: string; code: string; variantName?: string }>;
   name: string;
   /** Category UUID — resolved to name via categories list */
   categoryId: string;
@@ -488,6 +489,7 @@ export class CatalogService {
             id: item.id,
             sku: override?.sku || sku,
             skuId: item.skus?.[0]?.id || demoInfo?.skuId || item.id,
+              quoteSkus: [],
             name: override?.name || item.name,
             categoryId: override?.categoryId || cat,
             categoryName: cat,
@@ -662,6 +664,11 @@ export class CatalogService {
           id: raw.id,
           sku: override?.sku || sku,
           skuId: raw.skus?.[0]?.id || raw.id,
+          quoteSkus: (raw.skus || []).filter((s: any) => s.available).map((s: any) => ({
+            id: s.id,
+            code: s.code,
+            variantName: s.variantName || undefined
+          })),
           name: override?.name || raw.name,
           categoryId: raw.categories?.[0]?.id || catName,
           categoryName: override?.categoryName || catName,

@@ -88,19 +88,7 @@ module.exports = {
   '/api/v1/carts': direct(commerce),
   '/api/v1/checkout': direct(commerce),
   '/api/v1/orders': direct(commerce),
-  '/api/v1/quotes': {
-    target: commerce,
-    secure: false,
-    changeOrigin: true,
-    logLevel: 'silent',
-    bypass: (req, res) => {
-      if (req.method === 'GET' && (req.url === '/api/v1/quotes' || req.url === '/api/v1/quotes/')) {
-        res.setHeader('Content-Type', 'application/json');
-        res.end('[]');
-        return true;
-      }
-    }
-  },
+  '/api/v1/quotes': direct(commerce),
   '/api/v1/me/distributor-applications': direct(commerce),
   '/api/v1/me': direct(commerce),
   '/api/v1/markets': {
@@ -176,7 +164,7 @@ module.exports = {
   '/api/v1/channels': direct(experience),
   '/api/v1/campaigns': direct(experience),
   '/api/v1/seo': direct(experience),
-  '/api/v1/quote-requests': direct(experience),
+  '/api/v1/quote-requests': direct(commerce),
   '/storage': {
     ...direct('http://localhost:4566'),
     pathRewrite: { '^/storage': '' }

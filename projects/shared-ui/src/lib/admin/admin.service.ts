@@ -252,6 +252,7 @@ export type AdminQuote = {
   id: string; number: string; customer: string; email: string; phone: string;
   product: string; sku: string; quantity: number; message: string; date: string;
   status: "Pending" | "Under Review" | "Quoted" | "Closed";
+  version?: number;
 };
 
 export type AdminInquiry = {
@@ -635,6 +636,7 @@ export class AdminService {
   applicationError = signal<string | null>(null);
   distributorMarket = signal<{ id: string; code: string; currency: string } | null>(null);
   quotes = signal<AdminQuote[]>(SEED_QUOTES);
+  quoteLoadError = signal<string | null>(null);
   inquiries = signal<AdminInquiry[]>(SEED_INQUIRIES);
   orders = signal<AdminOrder[]>(getInitialOrders());
   customers = signal<AdminCustomer[]>(getInitialCustomers());
@@ -901,18 +903,43 @@ export class AdminService {
   }
 
   setQuoteStatus(id: string, status: string) {
-    this.quotes.update(qs => qs.map(q => q.id === id ? { ...q, status: status as any } : q));
-    this.persistQuotes();
+    const current = this.quotes().find(quote => quote.id === id);
+    if (!current || !['Pending', 'Under Review', 'Quoted', 'Closed'].includes(status)) return;
+    const states: Record<string, string> = {
+      Pending: 'NEW',
+      'Under Review': 'IN_PROGRESS',
+      Quoted: 'RESOLVED',
+      Closed: 'CLOSED'
+    };
+    const isServerLead = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    if (!isServerLead) {
+      this.quotes.update(quotes => quotes.map(quote => quote.id === id ? { ...quote, status: status as AdminQuote['status'] } : quote));
+      this.persistQuotes();
+      this.log(`Local quote ${id} set to ${status}`);
+      return;
+    }
+    if (current.version == null) {
+      console.warn(`[AdminService] Cannot update quote lead ${id}: current version is missing.`);
+      return;
+    }
     const headers = new HttpHeaders({
       'Content-Type': 'application/json',
-      'If-Match': '"0"',
+      'If-Match': `"${current.version}"`,
       'Idempotency-Key': crypto.randomUUID()
     });
-    this.http.post(`/api/v1/staff/quotes/${id}/status`, { status, reason: `Status set to ${status}` }, { headers }).subscribe({
-      next: () => this.log(`Quote ${id} set to ${status}`),
-      error: (err) => console.warn(`[AdminService] setQuoteStatus backend error:`, err?.status ?? err)
+    this.http.patch<any>(`/api/v1/staff/leads/${id}`, {
+      state: states[status],
+      note: 'Quote request status updated by staff'
+    }, { headers }).subscribe({
+      next: lead => {
+        this.quotes.update(quotes => quotes.map(quote => quote.id === id
+          ? { ...quote, status: status as AdminQuote['status'], version: lead.version }
+          : quote));
+        this.persistQuotes();
+      },
+      error: err => console.warn(`[AdminService] Quote lead update failed:`, err?.status ?? err)
     });
-    this.log(`Quote ${id} set to ${status}`);
+    this.log(`Quote lead ${id} update requested: ${status}`);
   }
 
   setApplicationStatus(id: string, status: string, note?: string, documentsVerified = false): Observable<any | null> {
@@ -1645,41 +1672,37 @@ export class AdminService {
     return '55555555-2222-3333-4444-555555555501';
   }
 
-  /** TASK-69: Load staff quotes from GET /api/v1/quotes */
+  /** Load quote leads through the staff-owned Experience lead API. */
   loadStaffQuotes(): Observable<AdminQuote[]> {
-    return this.http.get<any>('/api/v1/quotes').pipe(
+    this.quoteLoadError.set(null);
+    return this.http.get<any>('/api/v1/staff/leads', { params: { type: 'QUOTE', page: '0', size: '100' } }).pipe(
       map(res => {
-        const items = res?.content || res?.items || (Array.isArray(res) ? res : []);
+        const items = res?.items || [];
         return items.map((q: any) => ({
           id: q.id,
-          number: q.quoteNumber || ('QUO-' + q.id.slice(0, 6)),
-          date: q.createdAt || new Date().toISOString(),
-          customer: q.customerName || 'Customer',
-          email: q.customerEmail || '',
-          phone: q.customerPhone || '',
-          product: q.productName || 'Wholesale Request',
-          sku: q.sku || '',
-          quantity: q.quantity || 1,
-          message: q.notes || q.message || '',
-          status: q.state || q.status || 'Pending'
+          number: 'REQ-' + q.id.slice(0, 8),
+          date: q.createdAt,
+          customer: q.name || 'Customer',
+          email: q.email || '',
+          phone: q.phone || '',
+          product: q.subject || 'Wholesale Request',
+          sku: '',
+          quantity: 0,
+          message: q.message || '',
+          status: (q.state === 'NEW' ? 'Pending' : q.state === 'RESOLVED' ? 'Quoted' : q.state === 'CLOSED' ? 'Closed' : 'Under Review') as AdminQuote['status'],
+          version: q.version
         }));
       }),
       tap(quotes => {
-        if (quotes.length > 0) {
-          this.quotes.update(existing => {
-            const map = new Map(existing.map(e => [e.id, e]));
-            for (const q of quotes) map.set(q.id, q);
-            return Array.from(map.values());
-          });
-          this.persistQuotes();
-        }
+        this.quotes.set(quotes);
+        this.persistQuotes();
       }),
       catchError(err => {
-        console.warn('[AdminService] loadStaffQuotes backend 404/unrouted, using local quotes:', err?.status ?? err);
-        if (this.quotes().length === 0) {
-          this.quotes.set(SEED_QUOTES);
-        }
-        return of(this.quotes());
+        console.warn('[AdminService] Unable to load staff quote requests:', err?.status ?? err);
+        this.quoteLoadError.set(err?.error?.detail || 'Unable to load quote requests. Please try again.');
+        this.quotes.set([]);
+        this.persistQuotes();
+        return of([]);
       })
     );
   }

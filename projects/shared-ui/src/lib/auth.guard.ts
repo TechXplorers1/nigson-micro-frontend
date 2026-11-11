@@ -14,15 +14,6 @@ export const authGuard: CanActivateFn = (route, state) => {
   const session = inject(SessionService);
   const router = inject(Router);
 
-  const isLocal = typeof window !== 'undefined' &&
-    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-  if (isLocal) {
-    if (!session.authenticated()) {
-      session.mockLocalAdminSession();
-    }
-    return true;
-  }
-
   const check = () => {
     if (session.authenticated()) {
       return true;
@@ -39,13 +30,6 @@ export const authGuard: CanActivateFn = (route, state) => {
 export const adminGuard: CanActivateFn = (route, state) => {
   const session = inject(SessionService);
   const router = inject(Router);
-
-  const isLocal = typeof window !== 'undefined' &&
-    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-  if (isLocal) {
-    session.mockLocalAdminSession();
-    return true;
-  }
 
   const check = () => {
     if (session.authenticated() && session.isAdmin()) {
@@ -67,13 +51,6 @@ export const adminGuard: CanActivateFn = (route, state) => {
 export const staffGuard: CanActivateFn = (route, state) => {
   const session = inject(SessionService);
   const router = inject(Router);
-
-  const isLocal = typeof window !== 'undefined' &&
-    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-  if (isLocal) {
-    session.mockLocalAdminSession();
-    return true;
-  }
 
   const check = () => {
     if (session.authenticated() && session.isStaff()) {

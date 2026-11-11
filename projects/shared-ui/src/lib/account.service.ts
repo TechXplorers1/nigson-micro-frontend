@@ -37,6 +37,8 @@ export interface AddressDTO {
   region?: string | null;
   postalCode?: string | null;
   countryCode: string;
+  latitude?: number | null;
+  longitude?: number | null;
   organizationId?: string | null;
   isDefault: boolean;
   version: number;
@@ -52,6 +54,8 @@ export interface AddressInput {
   region?: string;
   postalCode?: string;
   countryCode: string;
+  latitude?: number | null;
+  longitude?: number | null;
   isDefault?: boolean;
 }
 
@@ -65,6 +69,8 @@ export interface AddressPatch {
   region?: string | null;
   postalCode?: string | null;
   countryCode?: string;
+  latitude?: number | null;
+  longitude?: number | null;
   isDefault?: boolean;
 }
 

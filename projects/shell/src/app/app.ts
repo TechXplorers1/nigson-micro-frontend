@@ -13,7 +13,7 @@ import { filter } from 'rxjs/operators';
 import { HeaderComponent } from './layout/header/header';
 import { FooterComponent } from './layout/footer/footer';
 import { FloatingActionsComponent } from './layout/floating-actions.component';
-import { LoginRequiredComponent, ShopService } from 'shared-ui';
+import { LoginRequiredComponent, ShopService, ApiErrorsService } from 'shared-ui';
 import { LucideCheck, LucideX } from '@lucide/angular';
 
 @Component({
@@ -27,6 +27,11 @@ import { LucideCheck, LucideX } from '@lucide/angular';
   template: `
     <div class="flex min-h-screen flex-col font-sans antialiased text-foreground bg-background relative">
       <app-header *ngIf="!isAdminRoute()"></app-header>
+      <section *ngIf="apiErrors.failures().length" aria-label="Backend errors" class="m-4 space-y-2">
+        <div *ngFor="let failure of apiErrors.failures()" role="alert" class="flex justify-between gap-4 rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-900">
+          <span>{{failure.message}}</span><button type="button" (click)="apiErrors.dismiss(failure.id)" aria-label="Dismiss backend error">✕</button>
+        </div>
+      </section>
       <main class="flex-1">
         <router-outlet></router-outlet>
       </main>
@@ -73,6 +78,7 @@ export class AppComponent {
   title = 'shell';
   isAdminRoute = signal(typeof window !== 'undefined' && window.location.pathname.startsWith('/admin'));
   shop = inject(ShopService);
+  apiErrors = inject(ApiErrorsService);
 
   constructor() {
     const router = inject(Router);
