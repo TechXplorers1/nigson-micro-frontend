@@ -21,7 +21,7 @@ import { AdminService, AdminHeadingComponent, BadgeComponent } from 'shared-ui';
       </div>
       
       <div class="rounded-[20px] border border-gray-100 bg-white p-8 shadow-sm mb-8">
-        <form (ngSubmit)="saveStockIn()" class="grid gap-6 sm:grid-cols-2">
+        <label class="mb-4 block text-sm font-semibold">Warehouse<select [(ngModel)]="locationId" name="warehouse" class="mt-1 w-full rounded-lg border p-2"><option value="">Choose warehouse</option><option *ngFor="let location of admin.stockLocations()" [value]="location.id">{{location.name}} ({{location.code}})</option></select></label><form (ngSubmit)="saveStockIn()" class="grid gap-6 sm:grid-cols-2">
           <div>
             <label class="mb-2 block text-xs font-bold uppercase tracking-widest text-muted-ink">Product *</label>
             <select [(ngModel)]="sku" name="sku" required class="w-full rounded-full border border-gray-200 bg-white px-5 py-3 text-sm text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
@@ -52,7 +52,7 @@ import { AdminService, AdminHeadingComponent, BadgeComponent } from 'shared-ui';
             <input type="text" [(ngModel)]="notes" name="notes" class="w-full rounded-full border border-gray-200 bg-white px-5 py-3 text-sm text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
           </div>
           <div class="sm:col-span-2 flex justify-end mt-2">
-            <button type="submit" [disabled]="!sku || !qty" class="rounded-full bg-brand px-6 py-3 text-sm font-bold text-white hover:bg-brand-600 disabled:opacity-50 shadow-sm transition-colors">Receive stock</button>
+            
             <button type="submit" [disabled]="!sku || !qty || isSubmitting()" class="rounded-full bg-brand px-6 py-3 text-sm font-bold text-white hover:bg-brand-600 disabled:opacity-50 shadow-sm transition-colors">
               {{ isSubmitting() ? 'Receiving stock...' : 'Receive stock' }}
             </button>
@@ -104,7 +104,7 @@ import { AdminService, AdminHeadingComponent, BadgeComponent } from 'shared-ui';
       </div>
       
       <div class="rounded-[20px] border border-gray-100 bg-white p-8 shadow-sm mb-8">
-        <form (ngSubmit)="saveAdjustment()" class="grid gap-6 sm:grid-cols-2">
+        <label class="mb-4 block text-sm font-semibold">Warehouse<select [(ngModel)]="locationId" name="warehouse" class="mt-1 w-full rounded-lg border p-2"><option value="">Choose warehouse</option><option *ngFor="let location of admin.stockLocations()" [value]="location.id">{{location.name}} ({{location.code}})</option></select></label><form (ngSubmit)="saveAdjustment()" class="grid gap-6 sm:grid-cols-2">
           <div>
             <label class="mb-2 block text-xs font-bold uppercase tracking-widest text-muted-ink">Product *</label>
             <select [(ngModel)]="sku" (change)="onSkuSelect()" name="sku" required class="w-full rounded-full border border-gray-200 bg-white px-5 py-3 text-sm text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
@@ -142,7 +142,7 @@ import { AdminService, AdminHeadingComponent, BadgeComponent } from 'shared-ui';
               New stock after adjustment: {{ getProjectedStock() }}
             </p>
             <div class="flex justify-end mt-2">
-              <button type="submit" [disabled]="!sku || !qty" class="rounded-full bg-brand px-6 py-3 text-sm font-bold text-white hover:bg-brand-600 disabled:opacity-50 shadow-sm transition-colors">Apply adjustment</button>
+              
               <button type="submit" [disabled]="!sku || !qty || isSubmitting()" class="rounded-full bg-brand px-6 py-3 text-sm font-bold text-white hover:bg-brand-600 disabled:opacity-50 shadow-sm transition-colors">
                 {{ isSubmitting() ? 'Applying adjustment...' : 'Apply adjustment' }}
               </button>
@@ -199,6 +199,7 @@ export class StockAdjustmentComponent implements OnInit {
 
   // Form Fields
   sku = '';
+  locationId = '';
   qty = 1;
   notes = '';
 
@@ -221,7 +222,9 @@ export class StockAdjustmentComponent implements OnInit {
   }
 
   ngOnInit() {
+    this.admin.loadStockLocations().subscribe();
     this.admin.loadStaffProducts().subscribe();
+    this.admin.loadStockMovements().subscribe();
     this.admin.loadStaffInventory().subscribe();
   }
 
@@ -241,13 +244,6 @@ export class StockAdjustmentComponent implements OnInit {
 
   saveStockIn() {
     if (!this.sku || !this.qty) return;
-    this.admin.adjustStock(this.sku, this.qty, 'Stock Received');
-    // Note: To perfectly match, we'd add supplier/ref/notes to the log. The AdminService uses a simpler log.
-    // Let's reset form
-    this.sku = '';
-    this.qty = 1;
-    this.ref = '';
-    this.notes = '';
     if (!this.sku || !this.qty || this.isSubmitting()) return;
     this.isSubmitting.set(true);
     this.successMessage.set('');
@@ -257,6 +253,7 @@ export class StockAdjustmentComponent implements OnInit {
     const targetQty = Number(this.qty);
 
     this.admin.postStockAdjustment(targetSku, targetQty, 'Stock Received', {
+      locationId: this.locationId,
       supplier: this.supplier,
       ref: this.ref,
       notes: this.notes
@@ -279,11 +276,6 @@ export class StockAdjustmentComponent implements OnInit {
   }
 
   saveAdjustment() {
-    if (!this.sku || !this.qty) return;
-    this.sku = '';
-    this.qty = 1;
-    this.notes = '';
-    this.currentStock = null;
     if (!this.sku || !this.qty || this.isSubmitting()) return;
     this.isSubmitting.set(true);
     this.successMessage.set('');
@@ -293,6 +285,7 @@ export class StockAdjustmentComponent implements OnInit {
     const finalChange = this.increase ? Number(this.qty) : -Number(this.qty);
 
     this.admin.postStockAdjustment(targetSku, finalChange, this.reason, {
+      locationId: this.locationId,
       notes: this.notes
     }).subscribe({
       next: () => {

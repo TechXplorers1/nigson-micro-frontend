@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { catchError, of } from 'rxjs';
-import { AdminHeadingComponent } from 'shared-ui';
+import { AdminHeadingComponent, CmsService } from 'shared-ui';
 import {
   LucidePlus,
   LucidePencil,
@@ -105,240 +105,6 @@ export function parseMarkdownToSections(markdown: string): BlogSection[] {
 
   return sections.length > 0 ? sections : [{ paragraphs: [markdown.trim()] }];
 }
-
-export const DEFAULT_POSTS: AdminBlogPost[] = [
-  {
-    id: 'post-1',
-    title: 'Welcome to Nigson Products',
-    slug: 'welcome',
-    tag: 'Industry',
-    author: 'Nigson Editorial Team',
-    date: 'Oct 2026',
-    status: 'Published',
-    excerpt: 'Welcome to our new store.',
-    image: '/assets/blog-market.jpg',
-    body: `Welcome to Nigson Products. We are excited to announce the launch of our new official online store and distributor hub, bringing Nigeria's premier technology accessories, power solutions, and commercial products directly to retailers and consumers nationwide.
-
-### What We Offer
-- Authentic, high-grade mobile & computing accessories
-- Enterprise power protection & rapid GaN charging units
-- Dedicated B2B wholesale pricing with nationwide delivery
-- Comprehensive manufacturer warranties on all inventory
-
-### Partner With Nigson
-Whether you operate a retail shop or oversee corporate procurement, our dedicated sales desk is ready to support your business with competitive margins and dependable supply.`,
-    sections: [
-      {
-        paragraphs: [
-          "Welcome to Nigson Products. We are excited to announce the launch of our new official online store and distributor hub, bringing Nigeria's premier technology accessories, power solutions, and commercial products directly to retailers and consumers nationwide."
-        ]
-      },
-      {
-        heading: "What We Offer",
-        bullets: [
-          "Authentic, high-grade mobile & computing accessories",
-          "Enterprise power protection & rapid GaN charging units",
-          "Dedicated B2B wholesale pricing with nationwide delivery",
-          "Comprehensive manufacturer warranties on all inventory"
-        ]
-      },
-      {
-        heading: "Partner With Nigson",
-        paragraphs: [
-          "Whether you operate a retail shop or oversee corporate procurement, our dedicated sales desk is ready to support your business with competitive margins and dependable supply."
-        ]
-      }
-    ]
-  },
-  {
-    id: 'post-2',
-    title: 'Launching the GaN 100W adapter across Nigeria',
-    slug: 'launching-gan-100w',
-    tag: 'Product Update',
-    author: 'Nigson Product Team',
-    date: 'Jun 2026',
-    status: 'Published',
-    excerpt: 'Our new 4-port GaN charger is now available to distributors nationwide.',
-    image: '/assets/blog-gan.jpg',
-    body: `Nigson is proud to announce the nationwide rollout of our flagship GaN 100W four-port desktop adapter — engineered for power users, small offices and busy homes across Nigeria.
-
-### Why GaN matters
-GaN (Gallium Nitride) technology delivers up to 3× more efficiency than conventional silicon chargers, in a footprint less than half the size. That means faster charging, lower heat, and a single wall socket that can power a laptop, two phones and a pair of earbuds simultaneously.
-
-### What ships in the box
-- Universal Nigerian pin compatibility
-- Over-current and over-voltage protection
-- Four ports — 3× USB-C, 1× USB-A
-- Nigson standard 12-month warranty
-
-### Availability
-Retailers report strong early demand — particularly from remote-work customers and university students. Stock is available now from our Lagos, Aba and Kano hubs.
-
-Distributors can request bulk pricing via our Quote form or the WhatsApp sales desk.`,
-    sections: [
-      {
-        paragraphs: [
-          "Nigson is proud to announce the nationwide rollout of our flagship GaN 100W four-port desktop adapter — engineered for power users, small offices and busy homes across Nigeria."
-        ]
-      },
-      {
-        heading: "Why GaN matters",
-        paragraphs: [
-          "GaN (Gallium Nitride) technology delivers up to 3× more efficiency than conventional silicon chargers, in a footprint less than half the size. That means faster charging, lower heat, and a single wall socket that can power a laptop, two phones and a pair of earbuds simultaneously."
-        ]
-      },
-      {
-        heading: "What ships in the box",
-        bullets: [
-          "Universal Nigerian pin compatibility",
-          "Over-current and over-voltage protection",
-          "Four ports — 3× USB-C, 1× USB-A",
-          "Nigson standard 12-month warranty"
-        ]
-      },
-      {
-        heading: "Availability",
-        paragraphs: [
-          "Retailers report strong early demand — particularly from remote-work customers and university students. Stock is available now from our Lagos, Aba and Kano hubs.",
-          "Distributors can request bulk pricing via our Quote form or the WhatsApp sales desk."
-        ]
-      }
-    ]
-  },
-  {
-    id: 'post-3',
-    title: 'The 2026 phone accessories market outlook',
-    slug: '2026-market-outlook',
-    tag: 'Industry',
-    author: 'Nigson Insights Desk',
-    date: 'May 2026',
-    status: 'Published',
-    excerpt: "Consumer demand is shifting — here's how retailers should plan inventory.",
-    image: '/assets/blog-market.jpg',
-    body: `Nigeria's phone accessories market is projected to grow 14% in 2026, driven by rising smartphone penetration and the migration to USB-C across nearly every device category.
-
-### Three shifts that matter this year
-- USB-C is now the dominant connector across new phones — stock accordingly.
-- Power banks above 20,000mAh outsell smaller units 3:1 as grid reliability remains uneven.
-- TWS earbuds keep displacing wired sets, especially in the 15,000–30,000 NGN band.
-
-### Planning with Nigson
-Distributors partnering with Nigson benefit from advance sight of import cycles and category forecasts — allowing them to align stock and cash flow with demand curves rather than react to them.
-
-Talk to your account manager about the 2026 planning pack, or request one directly from our sales team.`,
-    sections: [
-      {
-        paragraphs: [
-          "Nigeria's phone accessories market is projected to grow 14% in 2026, driven by rising smartphone penetration and the migration to USB-C across nearly every device category."
-        ]
-      },
-      {
-        heading: "Three shifts that matter this year",
-        bullets: [
-          "USB-C is now the dominant connector across new phones — stock accordingly.",
-          "Power banks above 20,000mAh outsell smaller units 3:1 as grid reliability remains uneven.",
-          "TWS earbuds keep displacing wired sets, especially in the 15,000–30,000 NGN band."
-        ]
-      },
-      {
-        heading: "Planning with Nigson",
-        paragraphs: [
-          "Distributors partnering with Nigson benefit from advance sight of import cycles and category forecasts — allowing them to align stock and cash flow with demand curves rather than react to them.",
-          "Talk to your account manager about the 2026 planning pack, or request one directly from our sales team."
-        ]
-      }
-    ]
-  },
-  {
-    id: 'post-4',
-    title: 'Nigson Properties breaks ground on Periwinkle',
-    slug: 'periwinkle-groundbreaking',
-    tag: 'Announcement',
-    author: 'Nigson Communications',
-    date: 'Apr 2026',
-    status: 'Published',
-    excerpt: '9-unit mixed residential development kicks off in Lekki.',
-    image: '/assets/blog-groundbreak.jpg',
-    body: `Nigson Properties Limited has officially broken ground on Periwinkle — a 9-unit mixed residential development in Lekki, comprising eight 3-bedroom units and a signature 4-bedroom pent-floor with BQ.
-
-### What we are building
-- Eight 3-bedroom units and one 4-bedroom pent-floor with BQ
-- Premium finishes and smart-home readiness
-- Dedicated solar and inverter power
-- Generous shared amenities
-
-### Timeline and next steps
-Construction is scheduled for 18 months, with a target handover of Q4 2027. Early buyer registrations are open — units at ground-breaking pricing are available on a first-come basis.
-
-Contact our Properties team to arrange a private walkthrough of the plans and pricing.`,
-    sections: [
-      {
-        paragraphs: [
-          "Nigson Properties Limited has officially broken ground on Periwinkle — a 9-unit mixed residential development in Lekki, comprising eight 3-bedroom units and a signature 4-bedroom pent-floor with BQ."
-        ]
-      },
-      {
-        heading: "What we are building",
-        bullets: [
-          "Eight 3-bedroom units and one 4-bedroom pent-floor with BQ",
-          "Premium finishes and smart-home readiness",
-          "Dedicated solar and inverter power",
-          "Generous shared amenities"
-        ]
-      },
-      {
-        heading: "Timeline and next steps",
-        paragraphs: [
-          "Construction is scheduled for 18 months, with a target handover of Q4 2027. Early buyer registrations are open — units at ground-breaking pricing are available on a first-come basis.",
-          "Contact our Properties team to arrange a private walkthrough of the plans and pricing."
-        ]
-      }
-    ]
-  },
-  {
-    id: 'post-5',
-    title: 'How to spot counterfeit power banks',
-    slug: 'spot-counterfeit-power-banks',
-    tag: 'Guide',
-    author: 'Nigson Quality Assurance',
-    date: 'Mar 2026',
-    status: 'Published',
-    excerpt: 'A quick checklist for retailers to protect their customers.',
-    image: '/assets/blog-counterfeit.jpg',
-    body: `Counterfeit power banks aren't just a margin problem — they're a safety hazard. Here's the quick checklist we train every Nigson retailer to run before accepting stock.
-
-### The four-point checklist
-- Weight test: a 20,000mAh unit under 350g is almost certainly under-rated or filled with sand/paper.
-- Charge cycle: a genuine 10,000mAh unit should recharge a 4,000mAh phone at least twice.
-- Print quality: crisp printing, aligned USB ports, matched serial numbers on box, unit and certificate.
-- Certification: SONCAP, CE and RoHS marks, plus a scannable QR authenticity code.
-
-### When in doubt
-Buy from an authorised Nigson distributor. Our supply chain guarantees genuine cells, tested to spec, every cycle.`,
-    sections: [
-      {
-        paragraphs: [
-          "Counterfeit power banks aren't just a margin problem — they're a safety hazard. Here's the quick checklist we train every Nigson retailer to run before accepting stock."
-        ]
-      },
-      {
-        heading: "The four-point checklist",
-        bullets: [
-          "Weight test: a 20,000mAh unit under 350g is almost certainly under-rated or filled with sand/paper.",
-          "Charge cycle: a genuine 10,000mAh unit should recharge a 4,000mAh phone at least twice.",
-          "Print quality: crisp printing, aligned USB ports, matched serial numbers on box, unit and certificate.",
-          "Certification: SONCAP, CE and RoHS marks, plus a scannable QR authenticity code."
-        ]
-      },
-      {
-        heading: "When in doubt",
-        paragraphs: [
-          "Buy from an authorised Nigson distributor. Our supply chain guarantees genuine cells, tested to spec, every cycle."
-        ]
-      }
-    ]
-  }
-];
 
 @Component({
   selector: 'app-admin-blog',
@@ -533,7 +299,7 @@ Buy from an authorised Nigson distributor. Our supply chain guarantees genuine c
                   (click)="resetToDefaults()"
                   class="mt-3 text-xs font-semibold text-brand hover:underline"
                 >
-                  Reset to Insights Defaults
+                  Reload Articles
                 </button>
               </td>
             </tr>
@@ -835,6 +601,7 @@ export class AdminBlogComponent {
 
   posts = signal<AdminBlogPost[]>([]);
   private http = inject(HttpClient);
+  cms=inject(CmsService);
 
   // Modal State
   isModalOpen = signal(false);
@@ -861,63 +628,20 @@ export class AdminBlogComponent {
       tag: 'Industry',
       author: 'Nigson Team',
       date: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
-      status: 'Published',
+      status: 'Draft',
       excerpt: '',
       image: '/assets/blog-market.jpg',
       body: ''
     };
   }
 
-  load() {
-    // 1. Try loading from localStorage first
-    try {
-      const raw = localStorage.getItem('nigson.admin.v2');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed.posts) && parsed.posts.length > 0) {
-          // Check if it's the old 2 dummy posts or missing structured headings
-          const hasInsightsContent = parsed.posts.some((p: any) => p.slug === 'launching-gan-100w' && p.body?.includes('###'));
-          if (hasInsightsContent && parsed.posts.length >= 5) {
-            this.posts.set(parsed.posts);
-          }
-        }
-      }
-    } catch {}
+  load(){this.cms.loadBlogs().subscribe({next:rows=>this.posts.set(rows),error:e=>this.showToast(this.cms.message(e))});}
 
-    // 2. Fetch from PostgreSQL database bridge
-    this.http.get<any>('/api/v1/content?type=BLOG&locale=en&page=0&size=100').pipe(
-      catchError(() => of(null))
-    ).subscribe(page => {
-      const data = (page?.items ?? []).map((item: any) => {
-        const body = (item.body?.blocks ?? []).filter((block: any) => block.type === 'TEXT').map((block: any) => block.text).join('\n\n');
-        return { id: item.id, title: item.title, slug: item.slug, tag: item.metadata?.tag || 'Insight', author: item.metadata?.author || '', date: item.publishedAt || '', status: 'Published', excerpt: item.metadata?.excerpt || body.slice(0, 220), image: '', body } as AdminBlogPost;
-      });
-      this.posts.set(data);
-      if (data.length) this.syncLocalStorage(data);
-    });
-  }
+  resetToDefaults(){this.load();}
 
-  resetToDefaults() {
-    this.posts.set([...DEFAULT_POSTS]);
-    this.saveAll();
-    this.showToast('Reset to 5 Insights articles with headings & bullets');
-  }
+  syncLocalStorage(_posts:AdminBlogPost[]){}
 
-  syncLocalStorage(posts: AdminBlogPost[]) {
-    try {
-      const raw = localStorage.getItem('nigson.admin.v2') || '{}';
-      const parsed = JSON.parse(raw);
-      parsed.posts = posts;
-      localStorage.setItem('nigson.admin.v2', JSON.stringify(parsed));
-    } catch {}
-  }
-
-  saveAll() {
-    const allPosts = this.posts();
-    this.syncLocalStorage(allPosts);
-
-    this.showToast('Saved in this browser only. Use the structured Experience content revision workflow to publish.');
-  }
+  saveAll(){this.load();}
 
   showToast(message: string) {
     this.toastMessage.set(message);
@@ -993,62 +717,11 @@ export class AdminBlogComponent {
     this.editingPost.body = (this.editingPost.body || '') + snippet;
   }
 
-  savePost() {
-    if (!this.editingPost.title.trim()) {
-      alert('Please enter a title for the post.');
-      return;
-    }
+  savePost(){if(!this.editingPost.title.trim())return this.showToast('Enter an article title.');if(!this.editingPost.slug.trim())this.editingPost.slug=this.editingPost.title.toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');this.cms.saveBlog(this.editingPost).subscribe({next:()=>{this.load();this.closeModal();this.showToast('Article saved.');},error:e=>this.showToast(this.cms.message(e))});}
 
-    if (!this.editingPost.slug.trim()) {
-      this.editingPost.slug = this.editingPost.title
-        .toLowerCase()
-        .trim()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-|-$/g, '');
-    }
+  delete(id:string){const post=this.posts().find(p=>p.id===id) as any;if(!post)return;if(!post.revision||!['PUBLISHED','APPROVED'].includes(post.revision.state))return this.showToast('Draft revisions are retained for audit. Publish or edit this draft.');this.cms.withdrawContent(post.revision).subscribe({next:()=>{this.load();this.showToast('Article withdrawn from the public site.');},error:e=>this.showToast(this.cms.message(e))});}
 
-    if (!this.editingPost.excerpt.trim()) {
-      this.editingPost.excerpt = this.editingPost.body
-        ? this.editingPost.body.split('\n')[0].replace(/^#{1,4}\s+/, '').slice(0, 120) + '...'
-        : 'Article from Nigson.';
-    }
-
-    // Automatically parse sections so both formats are saved
-    const parsedSections = parseMarkdownToSections(this.editingPost.body || '');
-    const currentPost: AdminBlogPost = {
-      ...this.editingPost,
-      sections: parsedSections
-    };
-
-    if (this.isEditing()) {
-      this.posts.update(ps => ps.map(p => p.id === currentPost.id ? currentPost : p));
-      this.showToast(`Updated "${currentPost.title}"`);
-    } else {
-      this.posts.update(ps => [currentPost, ...ps]);
-      this.showToast(`Created new article "${currentPost.title}"`);
-    }
-
-    this.saveAll();
-    this.closeModal();
-  }
-
-  delete(id: string) {
-    const postToDelete = this.posts().find(p => p.id === id);
-    const title = postToDelete ? `"${postToDelete.title}"` : 'this post';
-
-    if (confirm(`Are you sure you want to delete ${title}?`)) {
-      this.posts.update(ps => ps.filter(p => p.id !== id));
-      this.saveAll();
-      this.showToast('Post deleted');
-    }
-  }
-
-  toggleStatus(p: AdminBlogPost) {
-    const nextStatus: 'Published' | 'Draft' = p.status === 'Published' ? 'Draft' : 'Published';
-    this.posts.update(ps => ps.map(x => x.id === p.id ? { ...x, status: nextStatus } : x));
-    this.saveAll();
-    this.showToast(`Post marked as ${nextStatus}`);
-  }
+  toggleStatus(post:AdminBlogPost){const current=post as any;const request=post.status==='Published'?this.cms.withdrawContent(current.revision):this.cms.saveBlog({...post,status:'Published'});request.subscribe({next:()=>{this.load();this.showToast('Publication status updated.');},error:e=>this.showToast(this.cms.message(e))});}
 
   handleImageError(event: Event) {
     const img = event.target as HTMLImageElement;

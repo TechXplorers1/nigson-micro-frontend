@@ -13,6 +13,7 @@ import { LucideSearch, LucideFileText, LucideExternalLink, LucideGlobe, LucideCh
     LucideSearch, LucideFileText, LucideExternalLink, LucideGlobe, LucideCheckCircle2
   ],
   template: `
+<div *ngIf="cms.error()" role="alert" class="m-4 rounded border border-red-300 bg-red-50 p-4 text-red-800">{{cms.error()}}</div>
     <div class="px-8 py-8 relative">
       <!-- TOAST NOTIFICATION -->
       <div *ngIf="publishSuccessMessage()" class="fixed top-20 right-8 z-50 flex items-center gap-3 rounded-xl bg-emerald-600 px-5 py-3.5 text-white shadow-2xl transition-all">
@@ -104,6 +105,7 @@ import { LucideSearch, LucideFileText, LucideExternalLink, LucideGlobe, LucideCh
 })
 export class AdminPagesComponent {
   cms = inject(CmsService);
+  constructor(){this.cms.loadDrafts().subscribe({error:e=>this.cms.error.set(this.cms.message(e))});}
   
   searchQuery = signal('');
   publishingId = signal<string | null>(null);
@@ -142,38 +144,5 @@ export class AdminPagesComponent {
     return id === 'home' ? '/admin/pages/home' : '/admin/pages/' + id;
   }
 
-  publishDirect(id: string) {
-    this.publishingId.set(id);
-    const pDef = this.cms.pageDef(id);
-    const currentDraft = this.cms.drafts()[id];
-    
-    const editPayload: ContentRevisionEdit = {
-      title: pDef?.name || id,
-      body: {
-        schemaVersion: 1,
-        blocks: (currentDraft?.sections || []).map(s => ({
-          type: 'TEXT',
-          text: JSON.stringify({ id: s.id, visible: s.visible, fields: s.fields, cards: s.cards })
-        }))
-      },
-      metadata: {
-        metaTitle: (pDef?.name || id) + ' | Nigson Wholesale',
-        metaDescription: 'Official page for ' + (pDef?.name || id),
-        keywords: ['wholesale', 'nigeria', id]
-      }
-    };
-
-    this.cms.executePublishPipeline(id, editPayload).subscribe({
-      next: () => {
-        this.publishingId.set(null);
-        this.publishSuccessMessage.set(`Page "${pDef?.name || id}" published successfully!`);
-        setTimeout(() => this.publishSuccessMessage.set(null), 4000);
-      },
-      error: () => {
-        this.publishingId.set(null);
-        this.publishSuccessMessage.set(`Page "${pDef?.name || id}" published successfully!`);
-        setTimeout(() => this.publishSuccessMessage.set(null), 4000);
-      }
-    });
-  }
+  publishDirect(id:string){this.publishingId.set(id);this.publishSuccessMessage.set(null);this.cms.executePublishPipeline(id).subscribe({next:()=>{this.publishingId.set(null);this.publishSuccessMessage.set('Page published successfully.');},error:()=>this.publishingId.set(null)});}
 }

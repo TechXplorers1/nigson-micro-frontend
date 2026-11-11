@@ -55,7 +55,7 @@ import { LucideCheck, LucideTrash2 } from '@lucide/angular';
                   <button *ngIf="r.status === 'Published'" (click)="toggleHidden(r.id, true)" class="grid h-8 w-8 place-items-center rounded-lg text-muted-ink transition-colors hover:bg-amber-100 hover:text-amber-600" title="Hide">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-4 w-4"><path d="M13.875 18.825A10.05 10.05 0 0 1 12 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 0 1 1.563-3.029m5.858.908a3 3 0 1 1 4.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18M15.364 8.636A10.076 10.076 0 0 1 21.543 12c-1.275 4.057-5.065 7-9.543 7a9.97 9.97 0 0 1-2.545-.333"/></svg>
                   </button>
-                  <button (click)="deleteReview(r.id)" class="grid h-8 w-8 place-items-center rounded-lg text-muted-ink transition-colors hover:bg-rose-100 hover:text-rose-600" title="Delete">
+                  <button (click)="deleteReview(r.id)" class="grid h-8 w-8 place-items-center rounded-lg text-muted-ink transition-colors hover:bg-rose-100 hover:text-rose-600" title="Reject">
                     <svg lucideTrash2 class="h-4 w-4"></svg>
                   </button>
                 </div>
@@ -87,12 +87,9 @@ export class AdminReviewsComponent implements OnInit {
   });
 
   toggleHidden(id: string, hide: boolean) {
-    this.admin.reviews.update(rs => rs.map(r => r.id === id ? { ...r, status: hide ? 'Hidden' : 'Published' } : r));
+    this.admin.moderateReview(id, hide ? 'WITHDRAW' : 'PUBLISH').subscribe({error: () => {}});
   }
-
   deleteReview(id: string) {
-    if (confirm('Delete this review?')) {
-      this.admin.reviews.update(rs => rs.filter(r => r.id !== id));
-    }
+    if (confirm('Reject this review? Published reviews should be withdrawn first.')) this.admin.moderateReview(id, 'REJECT').subscribe({error: () => {}});
   }
 }
