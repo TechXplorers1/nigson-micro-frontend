@@ -31,7 +31,24 @@ describe('Checkout automatic delivery location', () => {
   });
   it('uses saved addresses without requiring or patching coordinates', async () => {
     const c = setup(); c.selectedAddressId = 'saved-address';
+    c.savedAddresses = [{ id: 'saved-address', phone: c.customer.phone, version: 2 }];
     expect(await c.ensureAddressId()).toBe('saved-address');
+    expect(c.http.patch).not.toHaveBeenCalled();
+  });
+  it('persists a corrected phone on a saved address before quoting', async () => {
+    const c = setup(); c.selectedAddressId = 'saved-address';
+    c.savedAddresses = [{ id: 'saved-address', phone: 'invalid', version: 2 }];
+    c.customer.phone = '08012345678';
+    c.http.patch.mockReturnValue(of({ id: 'saved-address', phone: '+2348012345678', version: 3 }));
+    expect(await c.ensureAddressId()).toBe('saved-address');
+    expect(c.http.patch.mock.calls[0][1]).toEqual({ phone: '+2348012345678' });
+    expect(c.http.patch.mock.calls[0][2].headers.get('If-Match')).toBe('"2"');
+    expect(c.savedAddresses[0].version).toBe(3);
+  });
+  it('rejects an invalid delivery phone before any address or quote call', async () => {
+    const c = setup(); c.customer.phone = '12345678901';
+    await expect(c.ensureAddressId()).rejects.toThrow('country code');
+    expect(c.http.post).not.toHaveBeenCalled();
     expect(c.http.patch).not.toHaveBeenCalled();
   });
   it('shows the exact backend address lookup failure', () => {

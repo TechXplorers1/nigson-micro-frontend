@@ -15,16 +15,16 @@ import { RouterLink } from '@angular/router';
     <lib-admin-heading title="Dashboard" subtitle="Overview of the Nigson Products business"></lib-admin-heading>
 
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-6">
-      <lib-stat-card label="Total Products" [value]="admin.products().length" [icon]="true">
+      <lib-stat-card label="Total Products" to="/admin/inventory/products" [value]="admin.products().length" [icon]="true">
         <svg lucidePackage class="h-5 w-5"></svg>
       </lib-stat-card>
-      <lib-stat-card label="Total Customers" [value]="admin.customers().length" [icon]="true">
+      <lib-stat-card label="Total Customers" to="/admin/customers" [value]="admin.customers().length" [icon]="true">
         <svg lucideUsers class="h-5 w-5"></svg>
       </lib-stat-card>
-      <lib-stat-card label="Total Orders" [value]="admin.orders().length" [icon]="true">
+      <lib-stat-card label="Total Orders" to="/admin/orders" [value]="admin.orders().length" [icon]="true">
         <svg lucideShoppingCart class="h-5 w-5"></svg>
       </lib-stat-card>
-      <lib-stat-card label="Total Inventory" [value]="inventoryCount()" [icon]="true">
+      <lib-stat-card label="Total Inventory" to="/admin/inventory" [value]="inventoryCount()" [icon]="true">
         <svg lucideBoxes class="h-5 w-5"></svg>
       </lib-stat-card>
     </div>

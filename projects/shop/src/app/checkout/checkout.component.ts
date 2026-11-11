@@ -123,7 +123,7 @@ const BANKS = ["Access Bank", "First Bank", "Guaranty Trust Bank", "United Bank 
                   </div>
                   <div class="space-y-1">
                     <label class="text-xs font-semibold uppercase tracking-wider text-muted-ink">Phone</label>
-                    <input [(ngModel)]="customer.phone" placeholder="+234 800 000 0000" class="w-full rounded-md border border-hairline bg-surface-alt px-4 py-2.5 text-sm focus:border-brand focus:outline-none" />
+                    <input [(ngModel)]="customer.phone" placeholder="+2348012345678" class="w-full rounded-md border border-hairline bg-surface-alt px-4 py-2.5 text-sm focus:border-brand focus:outline-none" />
                   </div>
                 </div>
               </div>
@@ -485,7 +485,7 @@ export class CheckoutComponent implements OnInit {
     if (this.step() === 0) {
       if (!this.customer.fullName.trim()) return "Please enter your full name.";
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.customer.email)) return "Please enter a valid email.";
-      if (this.customer.phone.replace(/\D/g, "").length < 10) return "Please enter a valid phone number.";
+      if (!this.deliveryPhone()) return "Enter a valid delivery phone number with country code, for example +2348012345678.";
     }
     if (this.step() === 1) {
       if (!this.address.street.trim()) return "Street address is required.";
@@ -515,14 +515,33 @@ export class CheckoutComponent implements OnInit {
     this.next();
   }
 
+  private deliveryPhone(): string | null {
+    let phone = this.customer.phone.trim().replace(/[\s()-]/g, '');
+    if (/^0[789][01][0-9]{8}$/.test(phone)) phone = '+234' + phone.slice(1);
+    return /^\+[1-9][0-9]{7,14}$/.test(phone) ? phone : null;
+  }
+
   private async ensureAddressId(): Promise<string> {
-    if (this.selectedAddressId) return this.selectedAddressId;
+    const phone = this.deliveryPhone();
+    if (!phone) throw new Error('Enter a valid delivery phone number with country code, for example +2348012345678.');
+    if (this.selectedAddressId) {
+      const address = this.savedAddresses.find(a => a.id === this.selectedAddressId);
+      if (!address) throw new Error('Reload checkout to refresh the selected delivery address.');
+      if (address.phone !== phone) {
+        const updated = await firstValueFrom(this.http.patch<CheckoutAddress>(
+          '/api/v1/me/addresses/' + address.id, { phone },
+          { headers: new HttpHeaders({ 'If-Match': '"' + address.version + '"', 'Idempotency-Key': crypto.randomUUID() }) }
+        ));
+        this.savedAddresses = this.savedAddresses.map(a => a.id === updated.id ? updated : a);
+      }
+      return this.selectedAddressId;
+    }
     if (this.createdAddressId) return this.createdAddressId;
     const recipient = this.customer.fullName || this.session.fullName() || 'Customer';
     const saved = await firstValueFrom(this.http.post<{ id: string }>('/api/v1/me/addresses', {
       label: 'Checkout',
       recipient,
-      phone: this.customer.phone,
+      phone,
       line1: this.address.street,
       line2: null,
       city: this.address.city,
