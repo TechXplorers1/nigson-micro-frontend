@@ -38,7 +38,7 @@
               </a>
             </ng-container>
             <ng-template #routerLinkNode>
-              <a [routerLink]="link.to" class="block text-sm text-background/70 transition-colors hover:text-brand">
+              <a [routerLink]="link.to" [queryParams]="link.queryParams" class="block text-sm text-background/70 transition-colors hover:text-brand">
                 {{ link.label }}
               </a>
             </ng-template>

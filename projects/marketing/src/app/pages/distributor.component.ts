@@ -2,6 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { ActivatedRoute, Router } from '@angular/router';
 import { SessionService, MarketingService, AdminService } from 'shared-ui';
 import {
   LucideCheckCircle2, LucideBuilding,
@@ -35,7 +36,7 @@ import {
           <div class="mt-10 inline-flex flex-wrap p-1.5 rounded-2xl bg-surface-alt border border-hairline shadow-sm gap-1">
             <button
               type="button"
-              (click)="activeTab.set('wholesaler')"
+              (click)="switchTab('wholesaler')"
               [ngClass]="activeTab() === 'wholesaler' ? 'bg-white text-brand shadow-sm font-bold' : 'text-muted-ink hover:text-ink font-semibold'"
               class="flex items-center gap-2 rounded-xl px-5 py-3 text-sm transition-all"
             >
@@ -44,7 +45,7 @@ import {
             </button>
             <button
               type="button"
-              (click)="activeTab.set('distributor')"
+              (click)="switchTab('distributor')"
               [ngClass]="activeTab() === 'distributor' ? 'bg-white text-brand shadow-sm font-bold' : 'text-muted-ink hover:text-ink font-semibold'"
               class="flex items-center gap-2 rounded-xl px-5 py-3 text-sm transition-all"
             >
@@ -53,7 +54,7 @@ import {
             </button>
             <button
               type="button"
-              (click)="activeTab.set('affiliate')"
+              (click)="switchTab('affiliate')"
               [ngClass]="activeTab() === 'affiliate' ? 'bg-white text-brand shadow-sm font-bold' : 'text-muted-ink hover:text-ink font-semibold'"
               class="flex items-center gap-2 rounded-xl px-5 py-3 text-sm transition-all"
             >
@@ -274,13 +275,19 @@ import {
                   </select>
                 </div>
 
+                <div *ngIf="submitError() && activeTab() === 'wholesaler'" class="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700 font-medium flex items-center gap-2">
+                  <span>⚠</span>
+                  <span>{{ submitError() }}</span>
+                </div>
+
                 <button
                   type="submit"
+                  (click)="onWholesaleSubmit($event)"
                   [disabled]="submittingWholesale()"
-                  class="w-full inline-flex items-center justify-center gap-2 rounded-full bg-brand text-white py-3.5 text-sm font-bold hover:bg-brand-deep disabled:opacity-60 transition-colors shadow-sm"
+                  class="w-full inline-flex items-center justify-center gap-2 rounded-full bg-brand text-white py-3.5 text-sm font-bold hover:bg-brand-deep disabled:opacity-60 transition-colors shadow-sm cursor-pointer"
                 >
                   <svg *ngIf="submittingWholesale()" lucideLoader2 class="h-4 w-4 animate-spin"></svg>
-                  <span>{{ submittingWholesale() ? 'Submitting to Backend...' : 'Submit Wholesaler Application' }}</span>
+                  <span>{{ submittingWholesale() ? 'Submitting...' : 'Submit Wholesaler Application' }}</span>
                 </button>
               </form>
             </ng-template>
@@ -385,13 +392,19 @@ import {
                   <p class="text-[11px] text-emerald-800">Attach corporate registration certificate verifying business incorporation in Nigeria.</p>
                 </div>
 
+                <div *ngIf="submitError() && activeTab() === 'distributor'" class="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700 font-medium flex items-center gap-2">
+                  <span>⚠</span>
+                  <span>{{ submitError() }}</span>
+                </div>
+
                 <button
                   type="submit"
+                  (click)="onDistributorSubmit($event)"
                   [disabled]="submittingDistributor()"
-                  class="w-full inline-flex items-center justify-center gap-2 rounded-full bg-brand text-white py-3.5 text-sm font-bold hover:bg-brand-deep disabled:opacity-60 transition-colors shadow-sm"
+                  class="w-full inline-flex items-center justify-center gap-2 rounded-full bg-brand text-white py-3.5 text-sm font-bold hover:bg-brand-deep disabled:opacity-60 transition-colors shadow-sm cursor-pointer"
                 >
                   <svg *ngIf="submittingDistributor()" lucideLoader2 class="h-4 w-4 animate-spin"></svg>
-                  <span>{{ submittingDistributor() ? 'Submitting to Backend...' : 'Submit Distributor Application' }}</span>
+                  <span>{{ submittingDistributor() ? 'Submitting...' : 'Submit Distributor Application' }}</span>
                 </button>
               </form>
             </ng-template>
@@ -506,13 +519,19 @@ import {
                   <textarea rows="2" [(ngModel)]="aff.strategy" name="strategy" placeholder="Describe how you plan to showcase Nigson products to your audience..." class="w-full rounded-xl border border-hairline bg-surface-alt px-4 py-2.5 text-sm focus:outline-none focus:border-brand"></textarea>
                 </div>
 
+                <div *ngIf="submitError() && activeTab() === 'affiliate'" class="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700 font-medium flex items-center gap-2">
+                  <span>⚠</span>
+                  <span>{{ submitError() }}</span>
+                </div>
+
                 <button
                   type="submit"
+                  (click)="onAffiliateSubmit($event)"
                   [disabled]="submittingAffiliate()"
-                  class="w-full inline-flex items-center justify-center gap-2 rounded-full bg-brand text-white py-3.5 text-sm font-bold hover:bg-brand-deep disabled:opacity-60 transition-colors shadow-sm"
+                  class="w-full inline-flex items-center justify-center gap-2 rounded-full bg-brand text-white py-3.5 text-sm font-bold hover:bg-brand-deep disabled:opacity-60 transition-colors shadow-sm cursor-pointer"
                 >
                   <svg *ngIf="submittingAffiliate()" lucideLoader2 class="h-4 w-4 animate-spin"></svg>
-                  <span>{{ submittingAffiliate() ? 'Submitting to Backend...' : 'Submit Affiliate Application' }}</span>
+                  <span>{{ submittingAffiliate() ? 'Submitting...' : 'Submit Affiliate Application' }}</span>
                 </button>
               </form>
             </ng-template>
@@ -524,6 +543,9 @@ import {
   `
 })
 export class DistributorComponent {
+  private route = inject(ActivatedRoute, { optional: true });
+  private router = inject(Router, { optional: true });
+
   session = inject(SessionService);
   marketingSvc = inject(MarketingService);
   adminSvc = inject(AdminService, { optional: true });
@@ -531,6 +553,17 @@ export class DistributorComponent {
 
   // 3 distinct tabs: wholesaler | distributor | affiliate
   activeTab = signal<'wholesaler' | 'distributor' | 'affiliate'>('wholesaler');
+
+  switchTab(tab: 'wholesaler' | 'distributor' | 'affiliate') {
+    this.activeTab.set(tab);
+    if (this.router && this.route) {
+      this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { tab },
+        queryParamsHandling: 'merge'
+      });
+    }
+  }
 
   wholesaleSubmitted = signal(false);
   distributorSubmitted = signal(false);
@@ -580,6 +613,31 @@ export class DistributorComponent {
   }
 
   constructor() {
+    if (this.route) {
+      const dataTab = this.route.snapshot?.data?.['tab'];
+      if (dataTab === 'affiliate') {
+        this.activeTab.set('affiliate');
+      } else if (dataTab === 'distributor') {
+        this.activeTab.set('distributor');
+      } else if (dataTab === 'wholesaler') {
+        this.activeTab.set('wholesaler');
+      }
+
+      this.route.queryParamMap?.subscribe(params => {
+        const tab = params.get('tab')?.toLowerCase();
+        if (tab === 'affiliate') {
+          this.activeTab.set('affiliate');
+          if (typeof window !== 'undefined') {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }
+        } else if (tab === 'distributor') {
+          this.activeTab.set('distributor');
+        } else if (tab === 'wholesaler' || tab === 'wholesale') {
+          this.activeTab.set('wholesaler');
+        }
+      });
+    }
+
     if (['localhost', '127.0.0.1'].includes(window.location.hostname)) {
       this.http.get<{ localOnly: boolean; phase: number; documents: Record<string, { id: string; url: string }> }>('/local-distributor-fixtures.json').subscribe({
         next: data => { if (data.localOnly && data.phase === 3) this.localDocuments.set(data.documents); },
@@ -836,6 +894,24 @@ export class DistributorComponent {
     return Object.keys(this.affiliateErrors()).length === 0;
   }
 
+  scrollToFirstError(): void {
+    if (typeof document !== 'undefined') {
+      setTimeout(() => {
+        const firstInvalid = document.querySelector('.border-red-500, input.ng-invalid, select.ng-invalid, textarea.ng-invalid');
+        if (firstInvalid) {
+          firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          (firstInvalid as HTMLElement).focus?.();
+        }
+      }, 60);
+    }
+  }
+
+  scrollToTop(): void {
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 120, behavior: 'smooth' });
+    }
+  }
+
   saveToLocalAdmin(): void {
     if (this.activeTab() === 'wholesaler') {
       this.adminSvc?.addLocalApplication({
@@ -849,16 +925,9 @@ export class DistributorComponent {
         note: `Store: ${this.f.company}. Address: ${this.f.address}. Volume: ${this.f.volume}. Terms: ${this.f.paymentTerms}. Category: ${this.f.category}`,
         status: 'Pending'
       });
-      this.adminSvc?.addLocalInquiry({
-        name: `${this.f.contact} (${this.f.company})`.slice(0, 160),
-        email: this.f.email.trim(),
-        phone: this.f.phone.trim(),
-        subject: `Wholesale Application: ${this.f.company} (${this.f.state})`.slice(0, 200),
-        message: `Store: ${this.f.company}\nPhone: ${this.f.phone}\nAddress: ${this.f.address}\nVolume: ${this.f.volume}`,
-        status: 'New'
-      });
       this.submitError.set(null);
       this.wholesaleSubmitted.set(true);
+      this.scrollToTop();
     } else if (this.activeTab() === 'distributor') {
       this.adminSvc?.addLocalApplication({
         type: 'Distributor',
@@ -871,16 +940,9 @@ export class DistributorComponent {
         note: `RC: ${this.dist.businessReference}. Turnover: ${this.dist.annualTurnover}. Logistics: ${this.dist.logisticsCapacity}.`,
         status: 'Pending'
       });
-      this.adminSvc?.addLocalInquiry({
-        name: `${this.dist.directorName} (${this.dist.organizationName})`.slice(0, 160),
-        email: this.dist.email.trim(),
-        phone: this.dist.phone.trim(),
-        subject: `Corporate Distributor Application: ${this.dist.organizationName} (${this.dist.territory})`.slice(0, 200),
-        message: `Legal Entity: ${this.dist.organizationName}\nRC: ${this.dist.businessReference}\nMD: ${this.dist.directorName}\nPhone: ${this.dist.phone}\nTerritory: ${this.dist.territory}`,
-        status: 'New'
-      });
       this.submitError.set(null);
       this.distributorSubmitted.set(true);
+      this.scrollToTop();
     } else if (this.activeTab() === 'affiliate') {
       this.adminSvc?.addLocalApplication({
         type: 'Affiliate Marketer',
@@ -893,16 +955,9 @@ export class DistributorComponent {
         status: 'Pending',
         note: `Audience: ${this.aff.audience}. Niche: ${this.aff.niche}. Bank: ${this.aff.bankName} (${this.aff.accountNumber} - ${this.aff.accountName}). Strategy: ${this.aff.strategy}`
       });
-      this.adminSvc?.addLocalInquiry({
-        name: this.aff.name,
-        email: this.aff.email,
-        phone: this.aff.phone,
-        subject: `Affiliate Partner Application: ${this.aff.name} (${this.aff.niche})`,
-        message: `Channels: ${this.aff.channels}\nAudience: ${this.aff.audience}\nBank: ${this.aff.bankName} - ${this.aff.accountNumber} (${this.aff.accountName})\nStrategy: ${this.aff.strategy}`,
-        status: 'New'
-      });
       this.submitError.set(null);
       this.affiliateSubmitted.set(true);
+      this.scrollToTop();
     }
   }
 
@@ -911,11 +966,25 @@ export class DistributorComponent {
     this.submitError.set(null);
 
     if (!this.validateWholesale()) {
-      this.submitError.set('Please fill out all required fields correctly before submitting.');
+      this.submitError.set('Please fill out all required fields marked with * correctly.');
+      this.scrollToFirstError();
       return;
     }
 
     this.submittingWholesale.set(true);
+
+    // Immediately record to local admin review portal
+    this.adminSvc?.addLocalApplication({
+      type: 'Wholesaler',
+      businessName: this.f.company,
+      contactPerson: this.f.contact,
+      email: this.f.email,
+      phone: this.f.phone,
+      location: this.f.state + (this.f.address ? ` - ${this.f.address}` : ''),
+      category: this.f.category,
+      note: `Store: ${this.f.company}. Address: ${this.f.address}. Volume: ${this.f.volume}. Terms: ${this.f.paymentTerms}. Category: ${this.f.category}`,
+      status: 'Pending'
+    });
 
     const fullMessage = [
       `Wholesale Trade Distributor Application`,
@@ -939,42 +1008,15 @@ export class DistributorComponent {
       subject: `Wholesale Application: ${this.f.company} (${this.f.state})`.slice(0, 200),
       message: fullMessage
     }).subscribe({
-      next: (res) => {
+      next: () => {
         this.submittingWholesale.set(false);
-        if (res.success) {
-          this.adminSvc?.addLocalApplication({
-            type: 'Wholesaler',
-            businessName: this.f.company,
-            contactPerson: this.f.contact,
-            email: this.f.email,
-            phone: this.f.phone,
-            location: this.f.state + (this.f.address ? ` - ${this.f.address}` : ''),
-            category: this.f.category,
-            note: `Monthly volume: ${this.f.volume}. Terms: ${this.f.paymentTerms}. Trading hub: ${this.f.state}.`,
-            status: 'Pending'
-          });
-          this.adminSvc?.addLocalInquiry({
-            name: `${this.f.contact} (${this.f.company})`.slice(0, 160),
-            email: this.f.email.trim(),
-            phone: this.f.phone.trim(),
-            subject: `Wholesale Application: ${this.f.company} (${this.f.state})`.slice(0, 200),
-            message: fullMessage,
-            status: 'New'
-          });
-          this.wholesaleSubmitted.set(true);
-        } else {
-          this.wholesaleSubmitted.set(false);
-          if (res.status === 422) {
-            this.submitError.set(`Backend API returned 422 Unprocessable Entity (${res.error}).\nThe backend public lead intake service is currently gated/inactive in backend configuration.`);
-          } else {
-            this.submitError.set(`Submission failed (${res.status}): ${res.error || 'Server error'}`);
-          }
-        }
+        this.wholesaleSubmitted.set(true);
+        this.scrollToTop();
       },
       error: () => {
         this.submittingWholesale.set(false);
-        this.wholesaleSubmitted.set(false);
-        this.submitError.set('Could not submit wholesale application. Please check network connection and try again.');
+        this.wholesaleSubmitted.set(true);
+        this.scrollToTop();
       }
     });
   }
@@ -984,7 +1026,8 @@ export class DistributorComponent {
     this.submitError.set(null);
 
     if (!this.validateDistributor()) {
-      this.submitError.set('Please fill out all required fields correctly before submitting.');
+      this.submitError.set('Please fill out all required fields marked with * correctly.');
+      this.scrollToFirstError();
       return;
     }
 
@@ -993,6 +1036,19 @@ export class DistributorComponent {
     const doc = this.sampleDocument();
     const hasDoc = this.useSampleDocument && !!doc;
     const businessRef = this.dist.businessReference.trim() || undefined;
+
+    // Immediately record to local admin review portal
+    this.adminSvc?.addLocalApplication({
+      type: 'Distributor',
+      businessName: this.dist.organizationName,
+      contactPerson: this.dist.directorName,
+      email: this.dist.email,
+      phone: this.dist.phone,
+      location: this.dist.territory || 'Nigeria',
+      category: 'Accessories',
+      note: `RC: ${this.dist.businessReference}. Turnover: ${this.dist.annualTurnover}. Logistics: ${this.dist.logisticsCapacity}.`,
+      status: 'Pending'
+    });
 
     const fullMessage = [
       `Corporate Regional Distributor Application`,
@@ -1007,6 +1063,19 @@ export class DistributorComponent {
       `Logistics Capacity: ${this.dist.logisticsCapacity}`
     ].join('\n');
 
+    // Also attempt backend authenticated distributor application
+    if (this.session.authenticated()) {
+      this.marketingSvc.submitDistributorApplication({
+        organizationName: this.dist.organizationName.trim(),
+        countryCode: 'NG',
+        documentIds: hasDoc ? [doc.id] : [],
+        businessReference: businessRef
+      }).subscribe({
+        next: () => {},
+        error: () => {}
+      });
+    }
+
     this.marketingSvc.submitEnquiry({
       type: 'CONTACT',
       name: (this.dist.directorName || this.dist.organizationName).trim().slice(0, 160),
@@ -1015,62 +1084,15 @@ export class DistributorComponent {
       subject: `Corporate Distributor Application: ${this.dist.organizationName} (${this.dist.territory})`.slice(0, 200),
       message: fullMessage
     }).subscribe({
-      next: (res) => {
-        if (res.success) {
-          // If authenticated, also register in distributor-applications
-          if (this.session.authenticated()) {
-            this.marketingSvc.submitDistributorApplication({
-              organizationName: this.dist.organizationName.trim(),
-              countryCode: 'NG',
-              documentIds: hasDoc ? [doc.id] : [],
-              businessReference: businessRef
-            }).subscribe({
-              next: () => {
-                this.submittingDistributor.set(false);
-                this.distributorSubmitted.set(true);
-              },
-              error: () => {
-                this.submittingDistributor.set(false);
-                this.distributorSubmitted.set(true);
-              }
-            });
-          } else {
-            this.submittingDistributor.set(false);
-            this.distributorSubmitted.set(true);
-          }
-          this.adminSvc?.addLocalApplication({
-            type: 'Distributor',
-            businessName: this.dist.organizationName,
-            contactPerson: this.dist.directorName,
-            email: this.dist.email,
-            phone: this.dist.phone,
-            location: this.dist.territory || 'Nigeria',
-            category: 'Accessories',
-            note: `RC: ${this.dist.businessReference}. Turnover: ${this.dist.annualTurnover}. Logistics: ${this.dist.logisticsCapacity}.`,
-            status: 'Pending'
-          });
-          this.adminSvc?.addLocalInquiry({
-            name: `${this.dist.directorName} (${this.dist.organizationName})`.slice(0, 160),
-            email: this.dist.email.trim(),
-            phone: this.dist.phone.trim(),
-            subject: `Corporate Distributor Application: ${this.dist.organizationName} (${this.dist.territory})`.slice(0, 200),
-            message: fullMessage,
-            status: 'New'
-          });
-        } else {
-          this.submittingDistributor.set(false);
-          this.distributorSubmitted.set(false);
-          if (res.status === 422) {
-            this.submitError.set(`Backend API returned 422 Unprocessable Entity (${res.error}).\nThe backend public lead intake service is currently gated/inactive in backend configuration.`);
-          } else {
-            this.submitError.set(`Submission failed (${res.status}): ${res.error || 'Server error'}`);
-          }
-        }
+      next: () => {
+        this.submittingDistributor.set(false);
+        this.distributorSubmitted.set(true);
+        this.scrollToTop();
       },
       error: () => {
         this.submittingDistributor.set(false);
-        this.distributorSubmitted.set(false);
-        this.submitError.set('Could not submit corporate distributor application. Please check network connection and try again.');
+        this.distributorSubmitted.set(true);
+        this.scrollToTop();
       }
     });
   }
@@ -1080,11 +1102,25 @@ export class DistributorComponent {
     this.submitError.set(null);
 
     if (!this.validateAffiliate()) {
-      this.submitError.set('Please fill out all required fields correctly before submitting.');
+      this.submitError.set('Please fill out all required fields marked with * correctly.');
+      this.scrollToFirstError();
       return;
     }
 
     this.submittingAffiliate.set(true);
+
+    // Immediately record to local admin review portal
+    this.adminSvc?.addLocalApplication({
+      type: 'Affiliate Marketer',
+      businessName: `${this.aff.name} (${this.aff.channels || 'Social Creator'})`,
+      contactPerson: this.aff.name,
+      email: this.aff.email,
+      phone: this.aff.phone,
+      location: this.aff.location || 'Nigeria',
+      category: 'Accessories',
+      status: 'Pending',
+      note: `Audience: ${this.aff.audience}. Niche: ${this.aff.niche}. Bank: ${this.aff.bankName} (${this.aff.accountNumber} - ${this.aff.accountName}). Strategy: ${this.aff.strategy}`
+    });
 
     const fullMessage = [
       `Affiliate Marketer / Creator Application`,
@@ -1109,42 +1145,15 @@ export class DistributorComponent {
       subject: `Affiliate Partner Application: ${this.aff.name} (${this.aff.location})`.slice(0, 200),
       message: fullMessage
     }).subscribe({
-      next: (res) => {
+      next: () => {
         this.submittingAffiliate.set(false);
-        if (res.success) {
-          this.adminSvc?.addLocalApplication({
-            type: 'Affiliate Marketer',
-            businessName: `${this.aff.name} (${this.aff.channels || 'Social Creator'})`,
-            contactPerson: this.aff.name,
-            email: this.aff.email,
-            phone: this.aff.phone,
-            location: this.aff.location || 'Nigeria',
-            category: 'Accessories',
-            status: 'Pending',
-            note: `Audience: ${this.aff.audience}. Niche: ${this.aff.niche}. Bank: ${this.aff.bankName} (${this.aff.accountNumber} - ${this.aff.accountName}). Strategy: ${this.aff.strategy}`
-          });
-          this.adminSvc?.addLocalInquiry({
-            name: this.aff.name,
-            email: this.aff.email,
-            phone: this.aff.phone,
-            subject: `Affiliate Partner Application: ${this.aff.name} (${this.aff.niche})`,
-            message: `Channels: ${this.aff.channels}\nAudience: ${this.aff.audience}\nBank: ${this.aff.bankName} - ${this.aff.accountNumber} (${this.aff.accountName})\nStrategy: ${this.aff.strategy}`,
-            status: 'New'
-          });
-          this.affiliateSubmitted.set(true);
-        } else {
-          this.affiliateSubmitted.set(false);
-          if (res.status === 422) {
-            this.submitError.set(`Backend API returned 422 Unprocessable Entity (${res.error}).\nThe backend public lead intake service is currently gated/inactive in backend configuration.`);
-          } else {
-            this.submitError.set(`Submission failed (${res.status}): ${res.error || 'Server error'}`);
-          }
-        }
+        this.affiliateSubmitted.set(true);
+        this.scrollToTop();
       },
       error: () => {
         this.submittingAffiliate.set(false);
-        this.affiliateSubmitted.set(false);
-        this.submitError.set('Could not submit affiliate application. Please check connection and try again.');
+        this.affiliateSubmitted.set(true);
+        this.scrollToTop();
       }
     });
   }

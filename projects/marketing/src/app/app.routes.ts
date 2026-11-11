@@ -23,6 +23,11 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/distributor.component').then(m => m.DistributorComponent)
   },
   {
+    path: 'affiliate',
+    loadComponent: () => import('./pages/distributor.component').then(m => m.DistributorComponent),
+    data: { tab: 'affiliate' }
+  },
+  {
     path: 'blog',
     redirectTo: 'insights',
     pathMatch: 'full'

@@ -2,12 +2,12 @@ import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AdminService, AdminHeadingComponent, BadgeComponent, statusTone, StatCardComponent } from 'shared-ui';
-import { LucideSearch, LucideEye, LucideCheck, LucideX } from '@lucide/angular';
+import { LucideSearch, LucideCheck, LucideX, LucideInfo } from '@lucide/angular';
 
 @Component({
   selector: 'app-admin-applications',
   standalone: true,
-  imports: [CommonModule, FormsModule, AdminHeadingComponent, BadgeComponent, StatCardComponent, LucideSearch, LucideEye, LucideCheck, LucideX],
+  imports: [CommonModule, FormsModule, AdminHeadingComponent, BadgeComponent, StatCardComponent, LucideSearch, LucideCheck, LucideX, LucideInfo],
   template: `
     <lib-admin-heading title="Distributor Applications" subtitle="Distributor, wholesaler and affiliate marketer partnership requests"></lib-admin-heading>
     <p *ngIf="admin.applicationError()" role="alert" class="mb-4 text-sm text-red-700">{{ admin.applicationError() }}</p>
@@ -65,7 +65,7 @@ import { LucideSearch, LucideEye, LucideCheck, LucideX } from '@lucide/angular';
               <td class="px-6 py-4"><lib-badge [tone]="getTone(a.status)">{{ a.status }}</lib-badge></td>
               <td class="px-6 py-4 text-right">
                 <div class="flex justify-end gap-1.5">
-                  <button (click)="viewDetail(a)" class="grid h-8 w-8 place-items-center rounded-full border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all shadow-sm" title="View"><svg lucideEye class="h-3.5 w-3.5"></svg></button>
+                  <button (click)="viewDetail(a)" class="grid h-8 w-8 place-items-center rounded-full border border-gray-200 bg-white text-gray-500 hover:bg-brand/10 hover:text-brand hover:border-brand/30 transition-all shadow-sm" title="View Complete Details"><svg lucideInfo class="h-4 w-4"></svg></button>
                   <button (click)="setStatus(a.id, 'Approved')" class="grid h-8 w-8 place-items-center rounded-full border border-gray-200 bg-white text-gray-500 hover:bg-green-50 hover:text-green-600 hover:border-green-200 transition-all shadow-sm" title="Approve"><svg lucideCheck class="h-3.5 w-3.5"></svg></button>
                   <button (click)="setStatus(a.id, 'Rejected')" class="grid h-8 w-8 place-items-center rounded-full border border-gray-200 bg-white text-gray-500 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all shadow-sm" title="Reject"><svg lucideX class="h-3.5 w-3.5"></svg></button>
                 </div>
@@ -80,64 +80,87 @@ import { LucideSearch, LucideEye, LucideCheck, LucideX } from '@lucide/angular';
     </div>
 
     <!-- Modal Overlay -->
-    <div *ngIf="view()" class="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 backdrop-blur-sm p-4">
-      <div class="w-full max-w-2xl rounded-[24px] border border-gray-100 bg-white p-8 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-        <div class="mb-6 flex items-center justify-between">
-          <h2 class="text-lg font-extrabold text-ink">Application {{ view().number }}</h2>
-          <button (click)="view.set(null)" class="grid h-8 w-8 place-items-center rounded-full bg-gray-50 text-gray-500 hover:bg-gray-100 transition-colors"><svg lucideX class="h-4 w-4"></svg></button>
+    <div *ngIf="view()" class="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+      <div class="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-[24px] border border-gray-100 bg-white p-6 sm:p-8 shadow-2xl animate-in zoom-in-95 duration-200">
+        <div class="mb-6 flex items-center justify-between border-b border-gray-100 pb-4">
+          <div class="flex items-center gap-3">
+            <div class="grid h-10 w-10 place-items-center rounded-full bg-brand/10 text-brand">
+              <svg lucideInfo class="h-5 w-5"></svg>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h2 class="text-lg font-extrabold text-ink">Application {{ view().number }}</h2>
+                <lib-badge [tone]="getTone(view().type)">{{ view().type }}</lib-badge>
+              </div>
+              <p class="text-xs text-muted-ink">Submitted on {{ view().date | date:'medium' }}</p>
+            </div>
+          </div>
+          <button (click)="view.set(null)" class="grid h-8 w-8 place-items-center rounded-full bg-gray-50 text-gray-500 hover:bg-gray-100 transition-colors">
+            <svg lucideX class="h-4 w-4"></svg>
+          </button>
         </div>
         
         <div class="space-y-4 text-sm">
           <div class="grid gap-3 sm:grid-cols-2">
-            <div class="rounded-xl border border-gray-100 px-4 py-3">
-              <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-ink">Business name</p>
+            <div class="rounded-xl border border-gray-100 px-4 py-3 bg-surface-alt/40">
+              <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-ink">Business Name</p>
               <p class="mt-1 font-semibold text-ink">{{ view().businessName }}</p>
             </div>
-            <div class="rounded-xl border border-gray-100 px-4 py-3">
-              <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-ink">Type</p>
-              <p class="mt-1 font-semibold text-ink">{{ view().type }}</p>
+            <div class="rounded-xl border border-gray-100 px-4 py-3 bg-surface-alt/40">
+              <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-ink">Current Status</p>
+              <div class="mt-1">
+                <lib-badge [tone]="getTone(view().status)">{{ view().status }}</lib-badge>
+              </div>
             </div>
-            <div class="rounded-xl border border-gray-100 px-4 py-3">
-              <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-ink">Contact person</p>
+            <div class="rounded-xl border border-gray-100 px-4 py-3 bg-surface-alt/40">
+              <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-ink">Contact Person</p>
               <p class="mt-1 font-semibold text-ink">{{ view().contactPerson }}</p>
             </div>
-            <div class="rounded-xl border border-gray-100 px-4 py-3">
-              <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-ink">Email</p>
-              <p class="mt-1 font-semibold text-ink">{{ view().email }}</p>
+            <div class="rounded-xl border border-gray-100 px-4 py-3 bg-surface-alt/40">
+              <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-ink">Email Address</p>
+              <a [href]="'mailto:' + view().email" class="mt-1 block font-semibold text-brand hover:underline">{{ view().email }}</a>
             </div>
-            <div class="rounded-xl border border-gray-100 px-4 py-3">
-              <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-ink">Phone</p>
-              <p class="mt-1 font-semibold text-ink">{{ view().phone }}</p>
+            <div class="rounded-xl border border-gray-100 px-4 py-3 bg-surface-alt/40">
+              <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-ink">Phone / WhatsApp</p>
+              <p class="mt-1 font-semibold text-ink">{{ view().phone || 'Not provided' }}</p>
             </div>
-            <div class="rounded-xl border border-gray-100 px-4 py-3">
-              <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-ink">Location</p>
+            <div class="rounded-xl border border-gray-100 px-4 py-3 bg-surface-alt/40">
+              <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-ink">Location / Territory</p>
               <p class="mt-1 font-semibold text-ink">{{ view().location }}</p>
             </div>
-            <div class="rounded-xl border border-gray-100 px-4 py-3">
-              <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-ink">Product category</p>
+            <div class="rounded-xl border border-gray-100 px-4 py-3 bg-surface-alt/40 sm:col-span-2">
+              <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-ink">Product Category / Focus</p>
               <p class="mt-1 font-semibold text-ink">{{ view().category }}</p>
             </div>
-            <div class="rounded-xl border border-gray-100 px-4 py-3">
-              <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-ink">Submitted</p>
-              <p class="mt-1 font-semibold text-ink">{{ view().date | date:'mediumDate' }}</p>
+          </div>
+          
+          <!-- Full Submitted Application Details (Notes, Channels, Bank info, etc.) -->
+          <div *ngIf="view().note">
+            <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-ink mb-1.5">Submitted Application Details</p>
+            <div class="rounded-2xl border border-gray-200 bg-gray-50/70 p-4 text-xs text-ink leading-relaxed whitespace-pre-wrap">
+              {{ view().note }}
             </div>
           </div>
           
           <div>
-            <label class="mb-2 block text-xs font-bold uppercase tracking-widest text-muted-ink">Internal note</label>
-            <textarea rows="3" [(ngModel)]="view().note" class="w-full rounded-[20px] border border-gray-200 bg-white px-5 py-4 text-sm text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20"></textarea>
+            <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-muted-ink">Staff Reviewer Note</label>
+            <textarea rows="2" [(ngModel)]="view().note" placeholder="Add staff verification or assessment remarks..." class="w-full rounded-[16px] border border-gray-200 bg-white px-4 py-3 text-sm text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20"></textarea>
           </div>
           
           <p *ngIf="admin.applicationError()" role="alert" class="text-sm text-red-700">{{ admin.applicationError() }}</p>
           <label class="flex items-center gap-2 text-sm"><input type="checkbox" [(ngModel)]="documentsVerified" /> I have reviewed the registration document</label>
           <p class="text-xs text-muted-ink">Approval requires a different staff member from the reviewer. Market: {{ admin.distributorMarket()?.code || "Not configured" }}.</p>
-          <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
-            <select [ngModel]="view().status" (ngModelChange)="setStatus(view().id, $event)" class="rounded-full border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-ink shadow-sm outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100">
-              <option *ngFor="let s of rawStatuses" [value]="s">{{ s }}</option>
-            </select>
+          <div class="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-gray-100">
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-semibold text-muted-ink">Status:</span>
+              <select [ngModel]="view().status" (ngModelChange)="setStatus(view().id, $event)" class="rounded-full border border-gray-200 bg-white px-4 py-2 text-xs font-semibold text-ink shadow-sm outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100">
+                <option *ngFor="let s of rawStatuses" [value]="s">{{ s }}</option>
+              </select>
+            </div>
             <div class="flex gap-2">
-              
-              <button (click)="setStatus(view().id, 'Approved')" class="rounded-full bg-brand px-6 py-2.5 text-sm font-bold text-white hover:bg-brand-600 shadow-sm transition-colors">Approve</button>
+              <button (click)="setStatus(view().id, 'Approved')" class="rounded-full bg-emerald-600 px-5 py-2 text-xs font-bold text-white hover:bg-emerald-700 shadow-sm transition-colors">Approve</button>
+              <button (click)="setStatus(view().id, 'Rejected')" class="rounded-full bg-rose-600 px-5 py-2 text-xs font-bold text-white hover:bg-rose-700 shadow-sm transition-colors">Reject</button>
+              <button (click)="view.set(null)" class="rounded-full border border-gray-200 bg-white px-5 py-2 text-xs font-semibold text-ink hover:bg-gray-50 transition-colors">Close</button>
             </div>
           </div>
         </div>

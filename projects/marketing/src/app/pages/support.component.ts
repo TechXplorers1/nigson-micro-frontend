@@ -211,6 +211,10 @@ export class SupportComponent {
   page = computed(() => {
     const s = this.slug();
     if (!s) return undefined;
+    if (s === 'affiliate') {
+      this.router.navigate(['/distributor'], { queryParams: { tab: 'affiliate' } });
+      return undefined;
+    }
     const p = PAGES[s];
     if (!p) {
       this.router.navigate(['/home']);

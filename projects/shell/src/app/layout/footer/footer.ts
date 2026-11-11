@@ -4,6 +4,18 @@ import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MarketingService } from 'shared-ui';
 
+export interface FooterLink {
+  label: string;
+  to?: string;
+  queryParams?: Record<string, string>;
+  href?: string;
+}
+
+export interface FooterColumn {
+  heading: string;
+  links: FooterLink[];
+}
+
 @Component({
   selector: 'app-footer',
   standalone: true,
@@ -44,7 +56,7 @@ export class FooterComponent {
   
   readonly currentYear = new Date().getFullYear();
 
-  readonly COLUMNS = [
+  readonly COLUMNS: FooterColumn[] = [
     {
       heading: "Get to Know Us",
       links: [
@@ -75,9 +87,9 @@ export class FooterComponent {
     {
       heading: "Business",
       links: [
-        { label: "Wholesale", to: "/distributor" },
-        { label: "Become a Partner", to: "/distributor" },
-        { label: "Become an Affiliate", to: "/support/affiliate" },
+        { label: "Wholesale", to: "/distributor", queryParams: { tab: 'wholesaler' } },
+        { label: "Become a Partner", to: "/distributor", queryParams: { tab: 'distributor' } },
+        { label: "Become an Affiliate", to: "/distributor", queryParams: { tab: 'affiliate' } },
         { label: "Request a Quote", to: "/quote" },
       ],
     },

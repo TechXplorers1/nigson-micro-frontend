@@ -309,6 +309,126 @@ export class CatalogService {
     }
   }
 
+  formatLocalProduct(item: any): Product {
+    const override = (item.id ? this.getProductOverride(item.id) : null) ||
+                     (item.sku ? this.getProductOverride(item.sku) : null) || {};
+    const merged = { ...item, ...override };
+
+    const price = Number(merged.retail ?? merged.price ?? 0);
+    const priceMinor = merged.priceMinorUnits ?? (price > 0 ? Math.round(price * 100) : undefined);
+    const cat = merged.categoryName || merged.category || resolveCategoryFromSku(merged.sku || '', merged.brand || 'General');
+
+    // Collect all image candidates
+    let imageList: string[] = [];
+    if (Array.isArray(merged.images) && merged.images.length > 0) {
+      imageList = merged.images.filter((img: any) => typeof img === 'string' && img.trim().length > 0);
+    }
+    if (imageList.length === 0 && merged.image && typeof merged.image === 'string' && merged.image.trim()) {
+      imageList = [merged.image.trim()];
+    }
+    if (imageList.length === 0) {
+      imageList = [this.CAT_IMG[cat] || this.FALLBACK_IMG];
+    }
+    const resolvedImages = imageList.map((url: string) => this.resolveImageUrl(url));
+
+    const p: Product = {
+      id: merged.id || crypto.randomUUID(),
+      sku: merged.sku || extractSku(undefined, merged.name),
+      skuId: merged.skuId || merged.id,
+      name: merged.name || 'Product',
+      categoryId: merged.categoryId || cat,
+      categoryName: cat,
+      description: (merged.description || merged.desc || merged.name || '').replace(/\s*<!--\[price:.*?\]-->/g, '').trim(),
+      images: resolvedImages,
+      priceMinorUnits: priceMinor,
+      price: price > 0 ? price : (priceMinor ? priceMinor / 100 : undefined),
+      stock: merged.stock ?? 0,
+      lowLevel: merged.lowLevel ?? 10,
+      publicationStatus: 'PUBLISHED',
+      brand: merged.brand || 'Nigson',
+      tags: merged.tags || [],
+      specifications: merged.specifications || {},
+      ...merged
+    };
+    p.images = resolvedImages;
+    p.priceMinorUnits = priceMinor;
+    p.price = price > 0 ? price : (priceMinor ? priceMinor / 100 : undefined);
+    p.categoryName = cat;
+    return p;
+  }
+
+  getLocalAdminProducts(): Product[] {
+    try {
+      const prods: Product[] = [];
+      const seenIds = new Set<string>();
+      const seenSkus = new Set<string>();
+
+      // 1. Read from nigson_admin_products
+      const raw = typeof localStorage !== 'undefined' ? localStorage.getItem('nigson_admin_products') : null;
+      if (raw) {
+        const adminList = JSON.parse(raw);
+        if (Array.isArray(adminList)) {
+          for (const item of adminList) {
+            if (!item || item.status === 'ARCHIVED' || item.status === 'Archived') continue;
+            const p = this.formatLocalProduct(item);
+            if (p.id) seenIds.add(p.id.toLowerCase());
+            if (p.sku) seenSkus.add(p.sku.toUpperCase());
+            prods.push(p);
+          }
+        }
+      }
+
+      // 2. Scan localStorage for any extra nigson_prod_override_* not in nigson_admin_products
+      if (typeof localStorage !== 'undefined') {
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith('nigson_prod_override_')) {
+            try {
+              const val = localStorage.getItem(key);
+              if (val) {
+                const parsed = JSON.parse(val);
+                if (parsed && (parsed.name || parsed.sku)) {
+                  const idLower = (parsed.id || '').toLowerCase();
+                  const skuUpper = (parsed.sku || '').toUpperCase();
+                  if ((idLower && !seenIds.has(idLower)) && (!skuUpper || !seenSkus.has(skuUpper))) {
+                    const p = this.formatLocalProduct(parsed);
+                    if (p.id) seenIds.add(p.id.toLowerCase());
+                    if (p.sku) seenSkus.add(p.sku.toUpperCase());
+                    prods.push(p);
+                  }
+                }
+              }
+            } catch { }
+          }
+        }
+      }
+
+      return prods;
+    } catch (e) {
+      console.warn('[CatalogService] Error reading local admin products:', e);
+      return [];
+    }
+  }
+
+  findLocalProduct(idOrSku: string): Product | null {
+    if (!idOrSku) return null;
+    const clean = idOrSku.trim().toUpperCase();
+    const all = this.getLocalAdminProducts();
+    const match = all.find(p =>
+      p.id?.toUpperCase() === clean ||
+      p.sku?.toUpperCase() === clean ||
+      (p.skuId && p.skuId.toUpperCase() === clean) ||
+      p.name?.toUpperCase() === clean
+    );
+    if (match) return match;
+
+    const override = this.getProductOverride(idOrSku) || this.getProductOverride(clean) || this.getProductOverride(idOrSku.toLowerCase());
+    if (override && (override.name || override.sku)) {
+      return this.formatLocalProduct(override);
+    }
+    return null;
+  }
+
   // ─── Products ─────────────────────────────────────────────────────────────
 
   /**
@@ -324,6 +444,33 @@ export class CatalogService {
     if (filters.page != null) params = params.set('page', String(filters.page));
     if (filters.size != null) params = params.set('size', String(filters.size));
     if (filters.sort) params = params.set('sort', filters.sort);
+
+    const localProds = this.getLocalAdminProducts();
+    const q = (filters.q || '').trim().toLowerCase();
+    const filterByQ = (p: Product) => {
+      if (!q) return true;
+      return (p.name && p.name.toLowerCase().includes(q)) ||
+             (p.sku && p.sku.toLowerCase().includes(q)) ||
+             (p.categoryName && p.categoryName.toLowerCase().includes(q)) ||
+             (p.description && p.description.toLowerCase().includes(q)) ||
+             (p.brand && p.brand.toLowerCase().includes(q));
+    };
+
+    const filterByCat = (p: Product) => {
+      if (!filters.categoryId) return true;
+      const cats = this.categories();
+      const selectedCat = cats.find(c => c.id === filters.categoryId || c.slug === filters.categoryId || c.name.toLowerCase() === filters.categoryId?.toLowerCase());
+      const catName = selectedCat ? selectedCat.name.toLowerCase() : filters.categoryId.toLowerCase();
+      const pCat = (p.categoryName || p.categoryId || '').toLowerCase();
+      return p.categoryId === filters.categoryId || pCat === catName || pCat.includes(catName) || catName.includes(pCat);
+    };
+
+    const filterByBrand = (p: Product) => {
+      if (!filters.brandId) return true;
+      return p.brand?.toLowerCase() === filters.brandId.toLowerCase();
+    };
+
+    const matchingLocal = localProds.filter(p => filterByQ(p) && filterByCat(p) && filterByBrand(p));
 
     return this.http.get<any>('/api/v1/catalogue/products', { params }).pipe(
       map(res => {
@@ -355,12 +502,27 @@ export class CatalogService {
           };
           return p;
         });
+
+        // Deduplicate local admin products against backend content
+        const backendIds = new Set(content.map(p => p.id?.toLowerCase()));
+        const backendSkus = new Set(content.map(p => p.sku?.toUpperCase()).filter(Boolean));
+
+        const newAdminProds = matchingLocal.filter(lp =>
+          (!lp.id || !backendIds.has(lp.id.toLowerCase())) &&
+          (!lp.sku || !backendSkus.has(lp.sku.toUpperCase()))
+        );
+
+        // Put newly added admin products at the front
+        const mergedContent = [...newAdminProds, ...content];
+
         return {
-          content,
-          totalElements: res?.totalElements ?? content.length,
-          totalPages: res?.totalPages ?? 1,
-          number: res?.page ?? 0,
-          size: res?.size ?? 20
+          content: mergedContent,
+          totalElements: (res?.totalElements != null && res.totalElements > 0)
+            ? res.totalElements + newAdminProds.length
+            : mergedContent.length,
+          totalPages: Math.max(1, Math.ceil(mergedContent.length / (filters.size || 20))),
+          number: res?.page ?? (filters.page ?? 0),
+          size: res?.size ?? (filters.size ?? 20)
         };
       }),
       tap(page => {
@@ -374,49 +536,93 @@ export class CatalogService {
         this.loaded.set(true);
       }),
       catchError(err => {
-        console.error('[CatalogService] Backend /api/v1/catalogue/products failed:', err);
-        this.products.set([]);
-        this.totalElements.set(0);
-        this.totalPages.set(0);
-        this.currentPage.set(0);
+        console.warn('[CatalogService] Backend /api/v1/catalogue/products unavailable, using local admin products:', err?.status ?? err);
+        const mergedContent = matchingLocal;
+        const page: ProductsPage = {
+          content: mergedContent,
+          totalElements: mergedContent.length,
+          totalPages: Math.max(1, Math.ceil(mergedContent.length / (filters.size || 20))),
+          number: filters.page ?? 0,
+          size: filters.size ?? 20
+        };
+        const enriched = this.enrichWithCategories(page.content);
+        this.products.set(enriched);
+        this.syncWithCart(enriched);
+        this.totalElements.set(page.totalElements);
+        this.totalPages.set(page.totalPages);
+        this.currentPage.set(page.number);
         this.loading.set(false);
         this.loaded.set(true);
-        return of({ content: [], totalElements: 0, totalPages: 0, number: 0, size: 20 });
+        return of(page);
       })
     );
   }
 
-  /**
-   * TASK-21: Load single product by UUID.
   /**
    * TASK-21: Load single product by UUID or SKU.
    * Resolves UUID, fetches backend record with all images/specifications, and merges overrides.
    */
   getProduct(idOrSku: string): Observable<Product> {
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSku);
-    if (!isUuid) {
-      // Find UUID by SKU or slug from loaded products
-      const found = this.products().find(p =>
-        p.sku?.toUpperCase() === idOrSku.toUpperCase() ||
-        p.id === idOrSku ||
-        p.name?.toUpperCase().startsWith(idOrSku.toUpperCase())
-      );
-      if (found?.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(found.id)) {
-        return this.getProductByUuid(found.id, idOrSku);
-      }
-      return this.loadProducts({ size: 100 }).pipe(
-        switchMap(page => {
-          const match = page.content.find(p =>
-            p.sku?.toUpperCase() === idOrSku.toUpperCase() ||
-            p.id === idOrSku ||
-            p.name?.toUpperCase().startsWith(idOrSku.toUpperCase())
-          );
-          const targetId = match?.id || idOrSku;
-          return this.getProductByUuid(targetId, idOrSku);
+    const localMatch = this.findLocalProduct(idOrSku);
+
+    if (isUuid) {
+      return this.getProductByUuid(idOrSku, localMatch?.sku).pipe(
+        catchError(() => {
+          if (localMatch) {
+            const finalP = this.enrichWithCategories([localMatch])[0];
+            this.syncWithCart([finalP]);
+            return of(finalP);
+          }
+          throw new Error('Product not found: ' + idOrSku);
         })
       );
     }
-    return this.getProductByUuid(idOrSku);
+
+    if (localMatch) {
+      if (localMatch.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(localMatch.id)) {
+        return this.getProductByUuid(localMatch.id, idOrSku).pipe(
+          catchError(() => {
+            const finalP = this.enrichWithCategories([localMatch])[0];
+            this.syncWithCart([finalP]);
+            return of(finalP);
+          })
+        );
+      }
+      const finalP = this.enrichWithCategories([localMatch])[0];
+      this.syncWithCart([finalP]);
+      return of(finalP);
+    }
+
+    const found = this.products().find(p =>
+      p.sku?.toUpperCase() === idOrSku.toUpperCase() ||
+      p.id === idOrSku ||
+      p.name?.toUpperCase().startsWith(idOrSku.toUpperCase())
+    );
+    if (found?.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(found.id)) {
+      return this.getProductByUuid(found.id, idOrSku);
+    }
+
+    return this.loadProducts({ size: 100 }).pipe(
+      switchMap(page => {
+        const match = page.content.find(p =>
+          p.sku?.toUpperCase() === idOrSku.toUpperCase() ||
+          p.id === idOrSku ||
+          p.name?.toUpperCase().startsWith(idOrSku.toUpperCase())
+        );
+        const targetId = match?.id || idOrSku;
+        return this.getProductByUuid(targetId, idOrSku);
+      }),
+      catchError(err => {
+        const fallback = this.findLocalProduct(idOrSku);
+        if (fallback) {
+          const finalP = this.enrichWithCategories([fallback])[0];
+          this.syncWithCart([finalP]);
+          return of(finalP);
+        }
+        throw err;
+      })
+    );
   }
 
   private getProductByUuid(uuid: string, aliasSku?: string): Observable<Product> {
@@ -476,9 +682,11 @@ export class CatalogService {
         return finalP;
       }),
       catchError(err => {
-        const override = this.getProductOverride(uuid) || (aliasSku ? this.getProductOverride(aliasSku) : null);
-        if (override) {
-          return of(override as Product);
+        const localMatch = this.findLocalProduct(uuid) || (aliasSku ? this.findLocalProduct(aliasSku) : null);
+        if (localMatch) {
+          const finalP = this.enrichWithCategories([localMatch])[0];
+          this.syncWithCart([finalP]);
+          return of(finalP);
         }
         console.error('[CatalogService] getProduct failed:', err);
         throw err;
@@ -492,7 +700,10 @@ export class CatalogService {
   getRecommended(id: string): Observable<Product[]> {
     return this.http.get<any[]>(`/api/v1/catalogue/products/${id}/recommendations?market=NG`).pipe(
       map(list => this.enrichWithCategories(list || [])),
-      catchError(() => of([]))
+      catchError(() => {
+        const current = this.products().filter(p => p.id !== id && p.sku !== id);
+        return of(current.slice(0, 4));
+      })
     );
   }
 
@@ -500,16 +711,47 @@ export class CatalogService {
 
   loadCategories(): Observable<Category[]> {
     return this.http.get<any[]>('/api/v1/catalogue/categories?market=NG').pipe(
-      map(cats => (cats || []).map(c => ({
-        id: c.id,
-        name: c.name,
-        slug: c.slug,
-        imageUrl: this.CAT_IMG[c.name] || this.FALLBACK_IMG
-      }))),
+      map(cats => {
+        const list: Category[] = (cats || []).map(c => ({
+          id: c.id,
+          name: c.name,
+          slug: c.slug,
+          imageUrl: this.CAT_IMG[c.name] || this.FALLBACK_IMG
+        }));
+
+        // Also ensure any category present in local admin products is represented
+        const existingNames = new Set(list.map(c => c.name.toLowerCase()));
+        const localProds = this.getLocalAdminProducts();
+        for (const lp of localProds) {
+          const catName = lp.categoryName || lp.categoryId;
+          if (catName && !existingNames.has(catName.toLowerCase()) && catName !== 'General' && catName !== 'Uncategorised') {
+            existingNames.add(catName.toLowerCase());
+            list.push({
+              id: lp.categoryId || catName.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+              name: catName,
+              slug: catName.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+              imageUrl: this.CAT_IMG[catName] || this.FALLBACK_IMG
+            });
+          }
+        }
+        return list;
+      }),
       tap(cats => this.categories.set(cats)),
       catchError(err => {
         console.error('[CatalogService] loadCategories failed:', err);
-        return of([]);
+        const fallbackCats: Category[] = [
+          { id: 'laptops', name: 'Laptops', slug: 'laptops', imageUrl: this.CAT_IMG['Laptops'] || this.FALLBACK_IMG },
+          { id: 'smartphones', name: 'Smartphones', slug: 'smartphones', imageUrl: this.CAT_IMG['Smartphones'] || this.FALLBACK_IMG },
+          { id: 'tablets', name: 'Tablets', slug: 'tablets', imageUrl: this.CAT_IMG['Tablets'] || this.FALLBACK_IMG },
+          { id: 'audio', name: 'Audio', slug: 'audio', imageUrl: this.CAT_IMG['Audio'] || this.FALLBACK_IMG },
+          { id: 'gaming', name: 'Gaming', slug: 'gaming', imageUrl: this.CAT_IMG['Gaming'] || this.FALLBACK_IMG },
+          { id: 'networking', name: 'Networking', slug: 'networking', imageUrl: this.CAT_IMG['Networking'] || this.FALLBACK_IMG },
+          { id: 'storage', name: 'Storage', slug: 'storage', imageUrl: this.CAT_IMG['Storage'] || this.FALLBACK_IMG },
+          { id: 'power-accessories', name: 'Power and Accessories', slug: 'power-and-accessories', imageUrl: this.CAT_IMG['Power and Accessories'] || this.FALLBACK_IMG },
+          { id: 'cables', name: 'Cables', slug: 'cables', imageUrl: this.CAT_IMG['Cables'] || this.FALLBACK_IMG }
+        ];
+        this.categories.set(fallbackCats);
+        return of(fallbackCats);
       })
     );
   }

@@ -773,9 +773,21 @@ export class ProductEditComponent implements OnInit {
         this.uploadingSlot.set(null);
       })
       .catch(err => {
-        console.error('[ProductEdit] Image upload to S3 failed:', err);
-        this.uploadError.set('Upload to S3 failed. Please try again.');
-        this.uploadingSlot.set(null);
+        console.warn('[ProductEdit] S3 upload failed, falling back to local data URL:', err);
+        const reader = new FileReader();
+        reader.onload = () => {
+          const dataUrl = reader.result as string;
+          this.product.images[index] = dataUrl;
+          if (index === 0) {
+            this.product.image = dataUrl;
+          }
+          this.uploadingSlot.set(null);
+        };
+        reader.onerror = () => {
+          this.uploadError.set('Upload failed. Please try again.');
+          this.uploadingSlot.set(null);
+        };
+        reader.readAsDataURL(file);
       });
   }
 

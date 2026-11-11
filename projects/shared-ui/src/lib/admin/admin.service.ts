@@ -259,6 +259,30 @@ export type AdminInquiry = {
   message: string; date: string; status: "New" | "In Progress" | "Resolved";
 };
 
+export function isPartnerSubmission(item: { subject?: string; message?: string }): boolean {
+  const s = (item.subject || '').toLowerCase();
+  const m = (item.message || '').toLowerCase();
+  if (
+    s.includes('affiliate') ||
+    s.includes('distributor application') ||
+    s.includes('corporate distributor') ||
+    s.includes('wholesale application') ||
+    s.includes('partner application')
+  ) {
+    return true;
+  }
+  if (
+    m.includes('affiliate marketer') ||
+    m.includes('corporate regional distributor') ||
+    m.includes('corporate distributor application') ||
+    m.includes('trade & bulk wholesale') ||
+    m.includes('wholesale application')
+  ) {
+    return true;
+  }
+  return false;
+}
+
 export type AdminOrderStatus = "Pending" | "Confirmed" | "Processing" | "Packed" | "Shipped" | "Delivered" | "Cancelled";
 
 export type AdminOrder = {
@@ -707,9 +731,11 @@ export class AdminService {
       if (storedInqs) {
         const parsed = JSON.parse(storedInqs);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const existingIds = new Set(parsed.map((p: any) => p.id));
+          const nonPartnerInqs = parsed.filter((p: any) => !isPartnerSubmission(p));
+          const existingIds = new Set(nonPartnerInqs.map((p: any) => p.id));
           const missingSeeds = SEED_INQUIRIES.filter(s => !existingIds.has(s.id));
-          this.inquiries.set([...parsed, ...missingSeeds]);
+          this.inquiries.set([...nonPartnerInqs, ...missingSeeds]);
+          this.persistInquiries();
         }
       }
     } catch { }
@@ -1418,7 +1444,8 @@ export class AdminService {
     return this.http.get<any[]>('/api/v1/staff/leads').pipe(
       map(leads => {
         if (!Array.isArray(leads)) return this.inquiries();
-        const dbInqs: AdminInquiry[] = leads.map(l => ({
+        const contactLeads = leads.filter(l => !isPartnerSubmission({ subject: l.subject, message: l.message }));
+        const dbInqs: AdminInquiry[] = contactLeads.map(l => ({
           id: l.id,
           name: l.name,
           email: l.email || '',
@@ -1429,7 +1456,8 @@ export class AdminService {
           status: (l.status === 'RESOLVED' || l.status === 'CLOSED') ? 'Resolved' as const : 'New' as const
         }));
         this.inquiries.update(existing => {
-          const map = new Map(existing.map(e => [e.id, e]));
+          const filteredExisting = existing.filter(e => !isPartnerSubmission(e));
+          const map = new Map(filteredExisting.map(e => [e.id, e]));
           for (const d of dbInqs) map.set(d.id, d);
           return Array.from(map.values());
         });

@@ -420,6 +420,10 @@ export class ProductDetailComponent implements OnInit {
     if (overridePrice != null && overridePrice > 0) {
       return overridePrice;
     }
+    const nairaPrice = this.product()?.price;
+    if (nairaPrice != null && nairaPrice > 0) {
+      return Math.round(nairaPrice * 100);
+    }
     return this.commercePriceMinor() ?? 0;
   });
 
