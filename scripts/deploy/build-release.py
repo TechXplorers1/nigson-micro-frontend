@@ -3,6 +3,7 @@
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -40,6 +41,16 @@ def main():
             shutil.copytree(browser, destination, dirs_exist_ok=True)
         (site / 'federation.manifest.json').write_text(json.dumps(
             {name: f'/remotes/{name}/remoteEntry.json' for name in remotes}, indent=2) + '\n')
+        site_key = os.environ.get('NIGSON_GOOGLE_RECAPTCHA_SITE_KEY', '').strip()
+        if not re.fullmatch(r'[A-Za-z0-9_-]{20,100}', site_key):
+            raise SystemExit('NIGSON_GOOGLE_RECAPTCHA_SITE_KEY must be configured for a production release.')
+        index = site / 'index.html'
+        html = index.read_text()
+        pattern = r'<meta name="google-recaptcha-site-key" content="[^"]*"\s*/?>'
+        html, replacements = re.subn(pattern, f'<meta name="google-recaptcha-site-key" content="{site_key}" />', html)
+        if replacements != 1:
+            raise SystemExit('Shell index must contain exactly one Google reCAPTCHA site-key meta tag.')
+        index.write_text(html)
         # Local account fixtures are never deployment assets.
         for fixture in site.rglob('local-distributor-fixtures.json'):
             fixture.unlink()

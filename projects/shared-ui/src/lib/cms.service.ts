@@ -1,6 +1,6 @@
 import { Injectable, signal, computed, inject, NgZone } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, of, switchMap, map, catchError, tap, defer, throwError, finalize } from 'rxjs';
+import { Observable, of, switchMap, map, catchError, tap, defer, throwError, finalize, forkJoin } from 'rxjs';
 import { SessionService } from './session.service';
 
 
@@ -830,8 +830,9 @@ export class CmsService {
   }
   private list(path:string,page=0):Observable<any[]> {
     return this.http.get<any>(`${path}${path.includes('?')?'&':'?'}page=${page}&size=100`).pipe(switchMap(r=>{
-      if(!Array.isArray(r.items))throw new Error('Invalid content list response.');
-      return page+1<r.totalPages?this.list(path,page+1).pipe(map(next=>[...r.items,...next])):of(r.items);
+      const rows=r.items??r.content;
+      if(!Array.isArray(rows))throw new Error('Invalid content list response.');
+      return page+1<r.totalPages?this.list(path,page+1).pipe(map(next=>[...rows,...next])):of(rows);
     }));
   }
   loadStaffContent():Observable<any[]> {return this.list('/api/v1/staff/content').pipe(tap(rows=>this.records=rows));}
@@ -843,7 +844,7 @@ export class CmsService {
     }catch{return null;}
   }
   syncFromDatabase():void {
-    this.list('/api/v1/content?locale=en').subscribe({next:rows=>{
+    forkJoin([...new Set(PAGES.map(page=>this.type(page.id)))].map(type=>this.list('/api/v1/content?locale=en&type='+type))).pipe(map(pages=>pages.flat())).subscribe({next:rows=>{
       const next=clone(this.state());for(const r of rows){const page=this.decode(r);if(page&&pageDef(page.id)){next.published[page.id]=page;next.drafts[page.id]=clone(page);}}
       this.state.set(next);this.hydrated.set(true);
     },error:e=>{this.error.set(this.message(e));this.hydrated.set(true);}});

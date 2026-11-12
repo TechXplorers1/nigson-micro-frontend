@@ -80,10 +80,10 @@ export class InsightsComponent implements OnInit {
     this.http.get<any>('/api/v1/content?type=BLOG&locale=en&page=0&size=100').pipe(
       catchError(() => of(null))
     ).subscribe(page => {
-      const mapped: BlogPost[] = (page?.items ?? []).map((item: any) => {
+      const mapped: BlogPost[] = (page?.content ?? page?.items ?? []).map((item: any) => {
         const blocks = item.body?.blocks ?? [];
         const body = blocks.filter((block: any) => block.type === 'TEXT').map((block: any) => block.text).filter(Boolean);
-        return { slug: item.slug, title: item.title, date: item.publishedAt || '', tag: item.metadata?.tag || 'Insight', author: item.metadata?.author || '', readMinutes: 3, excerpt: item.metadata?.excerpt || body.join(' ').slice(0, 220), img: '/assets/blog-market.jpg', body, sections: [] };
+        return { slug: item.slug, title: item.title, date: item.publishedAt || '', tag: item.metadata?.structuredData?.tag || 'Insight', author: item.metadata?.structuredData?.author || '', readMinutes: 3, excerpt: item.metadata?.structuredData?.excerpt || body.join(' ').slice(0, 220), img: '/assets/blog-market.jpg', body, sections: [] };
       });
       this.posts.set(mapped);
     });

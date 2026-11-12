@@ -703,6 +703,21 @@ export class AdminService {
     } catch { }
   }
 
+  message(error: any): string {
+    if (error?.error?.code === 'MARKET_RULE_VIOLATION') {
+      return 'The Nigeria market is not activated, so catalogue and pricing data are unavailable. Activate the market with approved tax, returns, price-book, delivery and provider configuration before editing products.';
+    }
+    return error?.error?.detail || error?.message || 'The operation failed. Reload the current record and try again.';
+  }
+  private fail(key: string, error: any): Observable<never> { this.errors.update(all => ({ ...all, [key]: this.message(error) })); return throwError(() => error); }
+  private clear(key: string): void { this.errors.update(all => { const copy = { ...all }; delete copy[key]; return copy; }); }
+  private headers(version?: number): HttpHeaders {
+    if (version !== undefined && (!Number.isSafeInteger(version) || version < 0)) throw new Error('The current record version is missing. Reload before saving.');
+    let headers = new HttpHeaders({ 'Idempotency-Key': crypto.randomUUID() });
+    if (version !== undefined) headers = headers.set('If-Match', `"${version}"`);
+    return headers;
+  }
+
   persistInquiries(): void {
     try {
       localStorage.setItem('nigson_admin_inquiries', JSON.stringify(this.inquiries()));

@@ -1,20 +1,24 @@
 import '@angular/compiler';
 import { Injector } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Subject } from 'rxjs';
+import { firstValueFrom, Subject } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 import { MarketingService, BackendDistributorApplication } from './marketing.service';
 import { SessionService } from './session.service';
+import { GoogleRecaptchaService } from './google-recaptcha.service';
 
 function setup() {
   const response = new Subject<BackendDistributorApplication>();
-  const http = { post: vi.fn(() => response.asObservable()) };
+  const enquiryResponse = new Subject<any>();
+  const http = { post: vi.fn((url: string) => url === '/api/v1/enquiries' ? enquiryResponse.asObservable() : response.asObservable()) };
+  const recaptcha = { execute: vi.fn(() => Promise.resolve('verified-google-token')) };
   const injector = Injector.create({ providers: [
     { provide: HttpClient, useValue: http },
     { provide: SessionService, useValue: {} },
+    { provide: GoogleRecaptchaService, useValue: recaptcha },
     { provide: MarketingService, useFactory: () => new MarketingService() }
   ] });
-  return { service: injector.get(MarketingService), http, response };
+  return { service: injector.get(MarketingService), http, response, enquiryResponse, recaptcha };
 }
 const payload = { organizationName: 'Local test company', countryCode: 'NG', documentIds: ['document-id'] };
 
@@ -46,5 +50,45 @@ describe('Distributor submission outcomes', () => {
     const request = service.submitDistributorApplication(payload, 'stable-key').subscribe();
     request.unsubscribe();
     expect(service.submittingDistributor()).toBe(false);
+  });
+
+  it('uses a real reCAPTCHA token for lead intake and sends no synthetic fallback', async () => {
+    const { service, http, enquiryResponse, recaptcha } = setup();
+    const next = vi.fn();
+    service.submitEnquiry({
+      type: 'CONTACT',
+      name: 'Example User',
+      email: 'user@example.com',
+      subject: 'Real enquiry',
+      message: 'Please contact me.'
+    }).subscribe(next);
+
+    await Promise.resolve();
+    expect(recaptcha.execute).toHaveBeenCalledWith('lead_submit');
+    expect(http.post).toHaveBeenCalledWith('/api/v1/enquiries', expect.objectContaining({
+      antiSpamToken: 'verified-google-token'
+    }), expect.anything());
+
+    enquiryResponse.next({ id: 'lead-id' });
+    enquiryResponse.complete();
+    expect(next).toHaveBeenCalledWith(expect.objectContaining({ success: true, status: 201 }));
+  });
+
+  it('does not send lead intake when reCAPTCHA cannot provide a token', async () => {
+    const { service, http, recaptcha } = setup();
+    vi.mocked(recaptcha.execute).mockRejectedValue(new Error('Google reCAPTCHA is not configured.'));
+    const result = await firstValueFrom(service.submitEnquiry({
+      type: 'CONTACT',
+      name: 'Example User',
+      email: 'user@example.com',
+      subject: 'Real enquiry',
+      message: 'Please contact me.'
+    }));
+
+    expect(http.post).not.toHaveBeenCalled();
+    expect(result).toEqual(expect.objectContaining({
+      success: false,
+      error: 'Google reCAPTCHA is not configured.'
+    }));
   });
 });

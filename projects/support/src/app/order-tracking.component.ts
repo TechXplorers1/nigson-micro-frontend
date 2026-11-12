@@ -12,7 +12,7 @@ import { OrderService, OrderTracking } from 'shared-ui';
     <div class="max-w-3xl mx-auto px-4 py-12">
       <div class="mb-8 text-center">
         <h1 class="text-3xl font-bold text-gray-900 tracking-tight">Shipment Tracking</h1>
-        <p class="text-gray-600 mt-2">Enter your Order ID to track real-time delivery status via FedEx API.</p>
+        <p class="text-gray-600 mt-2">Enter your Order ID to track real-time delivery status from the delivery provider.</p>
         <div class="mt-4">
           <a routerLink="/support" class="inline-flex items-center text-sm font-semibold text-blue-600 hover:text-blue-800">
             &larr; Need help? Submit a support request
@@ -58,7 +58,7 @@ import { OrderService, OrderTracking } from 'shared-ui';
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-xl text-sm">
           <div>
             <span class="text-gray-500 block text-xs">Courier</span>
-            <span class="font-semibold text-gray-800">{{ tracking()?.carrier || 'FedEx Express Nigeria' }}</span>
+            <span class="font-semibold text-gray-800">{{ tracking()?.carrier || 'Carrier not assigned' }}</span>
           </div>
           <div>
             <span class="text-gray-500 block text-xs">Tracking Number</span>

@@ -1,32 +1,9 @@
+import {apiFailureDetail} from './api-errors.service';
 import { Injectable, inject, signal } from "@angular/core";
 import { HttpClient, HttpHeaders, HttpErrorResponse } from "@angular/common/http";
 import { Observable, of, from, tap, catchError, map, switchMap, finalize } from "rxjs";
 import { SessionService } from "./session.service";
-
-/** Local dev anti-spam HMAC-SHA256 signature generator matching backend LocalLeadMocks.AntiSpam */
-async function createLeadAntiSpamToken(idempotencyKey: string): Promise<string> {
-  const nonce = "syntheticnonce123456";
-  const keyBase64 = "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=";
-  try {
-    const rawKey = Uint8Array.from(atob(keyBase64), c => c.charCodeAt(0));
-    const cryptoKey = await window.crypto.subtle.importKey(
-      "raw",
-      rawKey,
-      { name: "HMAC", hash: "SHA-256" },
-      false,
-      ["sign"]
-    );
-    const message = new TextEncoder().encode(`${nonce}\n${idempotencyKey}`);
-    const signature = await window.crypto.subtle.sign("HMAC", cryptoKey, message);
-    const sigBase64 = btoa(String.fromCharCode(...new Uint8Array(signature)))
-      .replace(/\+/g, "-")
-      .replace(/\//g, "_")
-      .replace(/=+$/, "");
-    return `${nonce}.${sigBase64}`;
-  } catch {
-    return `${nonce}.fallback`;
-  }
-}
+import { GoogleRecaptchaService } from "./google-recaptcha.service";
 
 export interface EnquiryResult {
   success: boolean;
@@ -90,6 +67,7 @@ export interface CareerOpportunity {
 export class MarketingService {
   private http = inject(HttpClient);
   private session = inject(SessionService);
+  private recaptcha = inject(GoogleRecaptchaService);
 
   readonly submittingEnquiry = signal(false);
   readonly submittingDistributor = signal(false);
@@ -106,7 +84,7 @@ export class MarketingService {
     // while experience.lead database stores the full structured details in message and subject.
     const intakeType = (payload.type === 'DISTRIBUTOR' || payload.type === 'QUOTE') ? 'CONTACT' : payload.type;
 
-    return from(createLeadAntiSpamToken(idempotencyKey)).pipe(
+    return from(payload.antiSpamToken ? Promise.resolve(payload.antiSpamToken) : this.recaptcha.execute("lead_submit")).pipe(
       switchMap(token => {
         const body: Record<string, any> = {
           type: intakeType,
@@ -114,7 +92,7 @@ export class MarketingService {
           email: (payload.email || '').trim().toLowerCase().slice(0, 254),
           subject: (payload.subject || 'Commercial Partner Enquiry').trim().slice(0, 200),
           message: (payload.message || '').trim(),
-          antiSpamToken: payload.antiSpamToken || token
+          antiSpamToken: token
         };
 
         if (payload.phone) {
@@ -139,7 +117,7 @@ export class MarketingService {
           catchError((err: HttpErrorResponse) => {
             console.error("[MarketingService] submitEnquiry failed:", err);
             this.submittingEnquiry.set(false);
-            const detail = err?.error?.detail || err?.error?.title || (err.status === 422 ? 'This feature is currently gated or inactive in backend environment.' : (err.message || 'Submission error'));
+            const detail = apiFailureDetail(err, 'Submission error');
             return of({
               success: false,
               status: err.status || 500,
@@ -147,6 +125,13 @@ export class MarketingService {
             });
           })
         );
+      })
+    ).pipe(
+      catchError((error: HttpErrorResponse | Error) => {
+        this.submittingEnquiry.set(false);
+        const detail = error instanceof Error ? error.message
+          : error?.error?.detail || error?.error?.title || error?.message || 'Submission error';
+        return of({ success: false, status: error instanceof Error ? 503 : error.status || 500, error: detail });
       })
     );
   }
