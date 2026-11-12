@@ -1,6 +1,6 @@
 import { Injectable, computed, signal, inject } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Observable, of, tap, map, catchError, from, forkJoin, switchMap } from 'rxjs';
+import { Observable, of, tap, map, catchError, from, forkJoin, switchMap, finalize } from 'rxjs';
 import { SessionService } from '../session.service';
 import { ShopService } from '../shop.service';
 import { CatalogService } from '../catalog.service';
@@ -56,119 +56,21 @@ export type AdminReview = {
 
 export type LeadStatus = "Pending" | "Under Review" | "Approved" | "Rejected";
 
+export type AdminApplicationDocument = {
+  fileId: string;
+  type: string;
+  scanStatus: string;
+};
+
 export type AdminApplication = {
   id: string; number: string; type: "Distributor" | "Wholesaler" | "Affiliate Marketer"; businessName: string;
   contactPerson: string; email: string; phone: string; location: string; category: string;
   date: string; status: LeadStatus; note?: string; version?: number;
+  source?: 'distributor' | 'lead';
+  businessReference?: string;
+  reviewReason?: string;
+  documents?: AdminApplicationDocument[];
 };
-
-export const SEED_APPLICATIONS: AdminApplication[] = [
-  {
-    id: "app_dist_1",
-    number: "APP-D0101",
-    type: "Distributor",
-    businessName: "Westgate Communications Ltd",
-    contactPerson: "Obinna Nnamdi",
-    email: "corporate@westgate.ng",
-    phone: "+234 802 110 4490",
-    location: "Lagos, Nigeria",
-    category: "Accessories",
-    date: new Date(Date.now() - 1 * 86400000).toISOString(),
-    status: "Pending",
-    note: "RC: 1849204. Operates 4 regional fulfillment warehouses across South-West Nigeria.",
-    version: 1
-  },
-  {
-    id: "app_dist_2",
-    number: "APP-D0102",
-    type: "Distributor",
-    businessName: "Sahara Digital Supplies",
-    contactPerson: "Musa Danjuma",
-    email: "musa@saharadigital.com",
-    phone: "+234 803 778 2210",
-    location: "Abuja / FCT",
-    category: "Power Banks",
-    date: new Date(Date.now() - 3 * 86400000).toISOString(),
-    status: "Under Review",
-    note: "RC: 2991042. Looking to secure exclusive regional distribution for Northern states.",
-    version: 1
-  },
-  {
-    id: "app_dist_3",
-    number: "APP-D0103",
-    type: "Distributor",
-    businessName: "Niger Delta Mobile Logistics",
-    contactPerson: "Tamuno George",
-    email: "t.george@ndmobile.ng",
-    phone: "+234 805 667 9901",
-    location: "Port Harcourt, Rivers",
-    category: "Earbuds",
-    date: new Date(Date.now() - 6 * 86400000).toISOString(),
-    status: "Approved",
-    note: "CAC verified and authorized dealer tier granted.",
-    version: 2
-  },
-  {
-    id: "app_ws_1",
-    number: "APP-W0201",
-    type: "Wholesaler",
-    businessName: "Bright Star Phone Accessories Store",
-    contactPerson: "Sunday Adebayo",
-    email: "sunday.brightstar@yahoo.com",
-    phone: "+234 818 440 2231",
-    location: "Alaba Int'l Market, Lagos",
-    category: "Accessories",
-    date: new Date(Date.now() - 2 * 86400000).toISOString(),
-    status: "Pending",
-    note: "Alaba Market wholesale stockist. Monthly turnaround approx ₦3.5M.",
-    version: 1
-  },
-  {
-    id: "app_ws_2",
-    number: "APP-W0202",
-    type: "Wholesaler",
-    businessName: "Kasuwa Tech Plaza Stall 14",
-    contactPerson: "Aliyu Haruna",
-    email: "aliyu.kasuwa@gmail.com",
-    phone: "+234 813 992 4450",
-    location: "Kano Central Market, Kano",
-    category: "Cables",
-    date: new Date(Date.now() - 5 * 86400000).toISOString(),
-    status: "Approved",
-    note: "Wholesale tier activated with Tier-1 carton volume discounts.",
-    version: 2
-  },
-  {
-    id: "app_aff_1",
-    number: "APP-A0301",
-    type: "Affiliate Marketer",
-    businessName: "TechBro Reviews Nigeria (TikTok & YouTube)",
-    contactPerson: "Chidi Okafor",
-    email: "chidi@techbroreviews.ng",
-    phone: "+234 814 220 9945",
-    location: "Lagos, Nigeria",
-    category: "Accessories",
-    date: new Date(Date.now() - 1 * 86400000).toISOString(),
-    status: "Pending",
-    note: "Channels: @techbro_ng (120k TikTok followers, 45k YouTube subs). Niche: Gadget unboxings & charging test reviews. Payout: GTBank 0234567890.",
-    version: 1
-  },
-  {
-    id: "app_aff_2",
-    number: "APP-A0302",
-    type: "Affiliate Marketer",
-    businessName: "Campus Deals Broadcast Hub",
-    contactPerson: "Zainab Abubakar",
-    email: "zainab.deals@campusmail.ng",
-    phone: "+234 809 113 4455",
-    location: "Zaria / Kaduna",
-    category: "Earbuds",
-    date: new Date(Date.now() - 3 * 86400000).toISOString(),
-    status: "Approved",
-    note: "Channels: 8 active student WhatsApp community channels across ABU Zaria & UNILAG. Commission tier: 10% on power accessories. Payout: Access Bank 0112233445.",
-    version: 2
-  }
-];
 
 export const SEED_QUOTES: AdminQuote[] = [
   {
@@ -276,6 +178,7 @@ export function isPartnerSubmission(item: { subject?: string; message?: string }
     m.includes('affiliate marketer') ||
     m.includes('corporate regional distributor') ||
     m.includes('corporate distributor application') ||
+    m.includes('wholesale trade distributor') ||
     m.includes('trade & bulk wholesale') ||
     m.includes('wholesale application')
   ) {
@@ -632,7 +535,8 @@ export class AdminService {
   products = signal<AdminProduct[]>(getInitialProducts());
   pages = signal<AdminPage[]>([]);
   reviews = signal<AdminReview[]>([]);
-  applications = signal<AdminApplication[]>(SEED_APPLICATIONS);
+  applications = signal<AdminApplication[]>([]);
+  loadingApplications = signal(false);
   applicationError = signal<string | null>(null);
   distributorMarket = signal<{ id: string; code: string; currency: string } | null>(null);
   quotes = signal<AdminQuote[]>(SEED_QUOTES);
@@ -650,14 +554,9 @@ export class AdminService {
     this.products.set(getInitialProducts());
     this.orders.set(getInitialOrders());
     this.hydrateFromStorage();
-    this.http.get<Array<{ id: string; code: string; currency: string }>>('/api/v1/markets').subscribe({
+    this.http.get<Array<{ id: string; code: string; currency: string }>>('/api/v1/markets', { withCredentials: true }).subscribe({
       next: markets => this.distributorMarket.set(markets.find(market => market.code === 'NG') ?? null), error: () => { }
     });
-    if (['localhost', '127.0.0.1'].includes(window.location.hostname)) {
-      this.http.get<{ localOnly: boolean; phase: number; market: { id: string; code: string; currency: string } }>('/local-distributor-fixtures.json').subscribe({
-        next: data => { if (data.localOnly && data.phase === 3 && data.market?.code === 'NG') this.distributorMarket.set(data.market); }, error: () => { }
-      });
-    }
     this.loadInitialStaffData();
   }
 
@@ -678,13 +577,13 @@ export class AdminService {
   persistProducts(): void {
     try {
       localStorage.setItem(LS_PRODUCTS, JSON.stringify(this.products()));
-    } catch {}
+    } catch { }
   }
 
   persistOrders(): void {
     try {
       localStorage.setItem(LS_ORDERS, JSON.stringify(this.orders()));
-    } catch {}
+    } catch { }
   }
 
   public hydrateFromStorage() {
@@ -698,20 +597,8 @@ export class AdminService {
     }
 
     try {
-      const storedApps = localStorage.getItem('nigson_admin_applications');
-      if (storedApps) {
-        const parsed = JSON.parse(storedApps);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          // Merge seed applications so new types (e.g. Affiliate Marketer) are immediately visible
-          const existingIds = new Set(parsed.map((p: any) => p.id));
-          const missingSeeds = SEED_APPLICATIONS.filter(s => !existingIds.has(s.id));
-          this.applications.set([...parsed, ...missingSeeds]);
-        }
-      }
+      localStorage.removeItem('nigson_admin_applications');
     } catch { }
-    if (this.applications().length === 0) {
-      this.applications.set(SEED_APPLICATIONS);
-    }
 
     try {
       const storedQuotes = localStorage.getItem('nigson_admin_quotes');
@@ -810,43 +697,16 @@ export class AdminService {
     this.log(`Stock for ${productName || productSku} adjusted by ${change > 0 ? "+" : ""}${change}`);
   }
 
-  persistApplications(): void {
-    try {
-      localStorage.setItem('nigson_admin_applications', JSON.stringify(this.applications()));
-    } catch {}
-  }
-
   persistQuotes(): void {
     try {
       localStorage.setItem('nigson_admin_quotes', JSON.stringify(this.quotes()));
-    } catch {}
+    } catch { }
   }
 
   persistInquiries(): void {
     try {
       localStorage.setItem('nigson_admin_inquiries', JSON.stringify(this.inquiries()));
-    } catch {}
-  }
-
-  addLocalApplication(app: Partial<AdminApplication>): void {
-    const prefix = app.type === 'Wholesaler' ? 'APP-W' : app.type === 'Affiliate Marketer' ? 'APP-A' : 'APP-D';
-    const fullApp: AdminApplication = {
-      id: app.id || 'app_' + Math.random().toString(36).slice(2, 9),
-      number: app.number || (prefix + Math.floor(1000 + Math.random() * 9000)),
-      type: (app.type || 'Distributor') as 'Distributor' | 'Wholesaler' | 'Affiliate Marketer',
-      businessName: app.businessName || 'Business Applicant',
-      contactPerson: app.contactPerson || '',
-      email: app.email || '',
-      phone: app.phone || '',
-      location: app.location || 'Nigeria',
-      category: app.category || 'Accessories',
-      date: app.date || new Date().toISOString(),
-      status: app.status || 'Pending',
-      note: app.note || '',
-      version: 1
-    };
-    this.applications.update(all => [fullApp, ...all]);
-    this.persistApplications();
+    } catch { }
   }
 
   addLocalQuote(q: Partial<AdminQuote>): void {
@@ -945,30 +805,100 @@ export class AdminService {
   setApplicationStatus(id: string, status: string, note?: string, documentsVerified = false): Observable<any | null> {
     this.applicationError.set(null);
     const current = this.applications().find(application => application.id === id);
-    if (current?.version == null || !['Under Review', 'Approved', 'Rejected'].includes(status)) {
+    if (!current || current.version == null || !['Under Review', 'Approved', 'Rejected'].includes(status)) {
       this.applicationError.set('Load the current application and choose a review or decision.');
       return of(null);
     }
-    const nextVersion = (current?.version ?? 0) + 1;
-    // Immediately update local signal and persist so UI responds instantly
-    this.applications.update(all => all.map(a => a.id === id ? {
-      ...a,
-      status: status as LeadStatus,
-      note: note || a.note,
-      version: nextVersion
-    } : a));
-    this.persistApplications();
-    this.log(`Application ${id} status updated to ${status}`);
 
-    const reason = note?.trim() || 'Distributor application reviewed by staff';
-    const { action, body } = distributorCommand(status, reason, documentsVerified, this.distributorMarket()?.id);
-    const headers = new HttpHeaders({ 'Content-Type': 'application/json', 'If-Match': `"${current?.version ?? 0}"`, 'Idempotency-Key': crypto.randomUUID() });
-    return this.http.post<any>(`/api/v1/staff/distributor-applications/${id}/${action}`, body, { headers }).pipe(
-      catchError(err => {
-        // If backend phase check fails (422) or unrouted, keep local change intact
-        return of({ state: status === 'Approved' ? 'APPROVED' : status === 'Rejected' ? 'REJECTED' : 'UNDER_REVIEW', version: nextVersion });
+    if (current.source === 'lead') {
+      const targetStateMap: Record<string, string> = {
+        'Under Review': 'IN_PROGRESS',
+        'Approved': 'RESOLVED',
+        'Rejected': 'CLOSED'
+      };
+      const sanitizedNote = (note || '')
+        .replace(/\r\n/g, '\n')
+        .replace(/[\u0000-\u0008\u000B-\u001F\u007F]/g, '')
+        .trim()
+        .slice(0, 2000)
+        .trim() || `Partner application marked ${status} by staff`;
+
+      const headers = new HttpHeaders({
+        'Content-Type': 'application/json',
+        'If-Match': `"${current.version}"`,
+        'Idempotency-Key': crypto.randomUUID()
+      });
+
+      return this.http.patch<any>(`/api/v1/staff/leads/${id}`, {
+        state: targetStateMap[status],
+        note: sanitizedNote
+      }, { headers, withCredentials: true }).pipe(
+        map(updated => {
+          const leadState = updated?.state || targetStateMap[status];
+          const displayStatus: LeadStatus =
+            leadState === 'RESOLVED' ? 'Approved' :
+              leadState === 'CLOSED' ? 'Rejected' :
+                (leadState === 'IN_PROGRESS' || leadState === 'ASSIGNED') ? 'Under Review' : 'Pending';
+          const nextVersion = updated?.version ?? (current.version! + 1);
+          this.applications.update(all => all.map(a => a.id === id ? {
+            ...a,
+            status: displayStatus,
+            reviewReason: sanitizedNote,
+            version: nextVersion
+          } : a));
+          this.log(`Partner lead ${id} status updated in DB to ${leadState}`);
+          return { state: leadState, version: nextVersion };
+        }),
+        catchError(err => {
+          this.applicationError.set(
+            err?.error?.detail || err?.error?.title || err?.error?.message || 'Unable to update partner lead status in database.'
+          );
+          return of(null);
+        })
+      );
+    }
+
+    const sanitizedReason = (note || '')
+      .replace(/[\u0000-\u001F\u007F]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 500)
+      .trim() || 'Distributor application reviewed by staff';
+
+    let command: { action: string; body: any };
+    try {
+      command = distributorCommand(status, sanitizedReason, documentsVerified, this.distributorMarket()?.id);
+    } catch (err: any) {
+      this.applicationError.set(err?.message || 'Invalid review or decision request.');
+      return of(null);
+    }
+
+    const headers = new HttpHeaders({
+      'Content-Type': 'application/json',
+      'If-Match': `"${current.version}"`,
+      'Idempotency-Key': crypto.randomUUID()
+    });
+
+    return this.http.post<any>(`/api/v1/staff/distributor-applications/${id}/${command.action}`, command.body, { headers, withCredentials: true }).pipe(
+      tap(res => {
+        if (!res) return;
+        const nextStatus = distributorDisplayState(res.state);
+        const nextVersion = res.version ?? (current.version! + 1);
+        this.applications.update(all => all.map(a => a.id === id ? {
+          ...a,
+          status: nextStatus,
+          reviewReason: sanitizedReason,
+          note: sanitizedReason,
+          version: nextVersion
+        } : a));
+        this.log(`Distributor application ${id} updated in DB to ${res.state}`);
       }),
-      map(res => res || { state: status === 'Approved' ? 'APPROVED' : status === 'Rejected' ? 'REJECTED' : 'UNDER_REVIEW', version: nextVersion })
+      catchError(err => {
+        this.applicationError.set(
+          err?.error?.detail || err?.error?.title || err?.error?.message || 'Unable to update distributor application status in database.'
+        );
+        return of(null);
+      })
     );
   }
 
@@ -1447,41 +1377,51 @@ export class AdminService {
       'ASSIGNED': 'Under Review',
       'IN_PROGRESS': 'Under Review',
       'RESOLVED': 'Approved',
-      'CLOSED': 'Approved'
+      'CLOSED': 'Rejected'
     };
+
+    const leadState = lead.state || lead.status || 'NEW';
 
     return {
       id: lead.id,
       number,
       type,
+      source: 'lead',
       businessName: businessName || lead.name,
       contactPerson: contactPerson || lead.name,
       email: lead.email || '',
       phone: lead.phone || '',
       location,
       category,
-      date: lead.created_at || new Date().toISOString(),
-      status: statusMap[lead.status] || 'Pending',
+      date: lead.createdAt || lead.created_at || new Date().toISOString(),
+      status: statusMap[leadState] || 'Pending',
       note: lead.message,
-      version: 1
+      version: lead.version ?? 0
     };
   }
 
   loadStaffInquiries(): Observable<AdminInquiry[]> {
-    return this.http.get<any[]>('/api/v1/staff/leads').pipe(
-      map(leads => {
+    return this.http.get<any>('/api/v1/staff/leads', {
+      params: { page: '0', size: '50', sort: 'createdAt,desc' },
+      withCredentials: true
+    }).pipe(
+      map(res => {
+        const leads = Array.isArray(res) ? res : (res?.items ?? res?.content ?? []);
         if (!Array.isArray(leads)) return this.inquiries();
         const contactLeads = leads.filter(l => !isPartnerSubmission({ subject: l.subject, message: l.message }));
-        const dbInqs: AdminInquiry[] = contactLeads.map(l => ({
-          id: l.id,
-          name: l.name,
-          email: l.email || '',
-          phone: l.phone || '',
-          subject: l.subject,
-          message: l.message,
-          date: l.created_at || new Date().toISOString(),
-          status: (l.status === 'RESOLVED' || l.status === 'CLOSED') ? 'Resolved' as const : 'New' as const
-        }));
+        const dbInqs: AdminInquiry[] = contactLeads.map(l => {
+          const leadState = l.state || l.status || 'NEW';
+          return {
+            id: l.id,
+            name: l.name,
+            email: l.email || '',
+            phone: l.phone || '',
+            subject: l.subject,
+            message: l.message,
+            date: l.createdAt || l.created_at || new Date().toISOString(),
+            status: (leadState === 'RESOLVED' || leadState === 'CLOSED') ? 'Resolved' as const : (leadState === 'IN_PROGRESS' || leadState === 'ASSIGNED') ? 'In Progress' as const : 'New' as const
+          };
+        });
         this.inquiries.update(existing => {
           const filteredExisting = existing.filter(e => !isPartnerSubmission(e));
           const map = new Map(filteredExisting.map(e => [e.id, e]));
@@ -1495,59 +1435,87 @@ export class AdminService {
     );
   }
 
-  /** Load queue summaries from database leads & authorized details without inventing applicant data. */
+  /** Load Distributor (distributor_application) & Wholesaler/Affiliate (experience.lead) rows directly from PostgreSQL. */
   loadStaffApplications(): Observable<AdminApplication[]> {
-    return this.http.get<any[]>('/api/v1/staff/leads').pipe(
-      map(leads => {
-        if (!Array.isArray(leads)) return this.applications();
-        const dbApps = leads.map(l => this.parseLeadApplication(l));
-        if (dbApps.length > 0) {
-          this.applications.update(existing => {
-            const map = new Map(existing.map(e => [e.id, e]));
-            for (const d of dbApps) map.set(d.id, d);
-            return Array.from(map.values());
-          });
-          this.persistApplications();
-        }
-        return this.applications();
-      }),
-      catchError(() => {
-        return this.http.get<{ content: any[] }>('/api/v1/staff/distributor-applications').pipe(
-          switchMap(res => !res.content?.length ? of([]) : forkJoin(res.content.map(application =>
-            this.http.get<any>(`/api/v1/staff/distributor-applications/${application.id}`).pipe(map(detail => ({ ...application, ...detail })))
-          ))),
+    this.applicationError.set(null);
+    this.loadingApplications.set(true);
+
+    let distError: string | null = null;
+    let leadError: string | null = null;
+
+    const extractErr = (err: any, fallback: string) =>
+      err?.error?.detail || err?.error?.title || err?.error?.message ||
+      (err?.status === 401 || err?.status === 403 ? 'Staff sign-in required to view partner applications.' : fallback);
+
+    const distributorApps$ = this.http.get<{ content?: any[] }>('/api/v1/staff/distributor-applications', {
+      params: { page: '0', size: '50', sort: 'submittedAt,desc' },
+      withCredentials: true
+    }).pipe(
+      switchMap(res => {
+        const items = res?.content ?? [];
+        if (items.length === 0) return of([] as AdminApplication[]);
+        return forkJoin(items.map(application =>
+          this.http.get<any>(`/api/v1/staff/distributor-applications/${application.id}`, { withCredentials: true }).pipe(
+            map(detail => ({ ...application, ...detail })),
+            catchError(() => of(application))
+          )
+        )).pipe(
           map(applications => applications.map(application => ({
             id: application.id,
-            number: 'APP-' + application.id.slice(0, 6).toUpperCase(),
+            number: 'APP-D' + application.id.replace(/-/g, '').slice(0, 4).toUpperCase(),
             type: 'Distributor' as const,
-            businessName: application.organizationName,
-            contactPerson: '', email: '', phone: '',
-            location: application.countryCode,
-            category: 'Wholesale',
-            date: application.submittedAt,
+            source: 'distributor' as const,
+            businessName: application.organizationName || 'Corporate Distributor',
+            contactPerson: application.businessReference ? `Reg: ${application.businessReference}` : 'Corporate Entity',
+            email: '',
+            phone: '',
+            location: application.countryCode || 'NG',
+            category: 'Corporate Distributor',
+            date: application.submittedAt || new Date().toISOString(),
             status: distributorDisplayState(application.state),
-            note: application.reviewReason || application.businessReference,
-            version: application.version
-          }))),
-          tap(backendApps => {
-            if (backendApps.length > 0) {
-              this.applications.update(existing => {
-                const map = new Map(existing.map(e => [e.id, e]));
-                for (const b of backendApps) map.set(b.id, b);
-                return Array.from(map.values());
-              });
-              this.persistApplications();
-            }
-          }),
-          catchError(() => {
-            this.applicationError.set(null);
-            if (this.applications().length === 0) {
-              this.applications.set(SEED_APPLICATIONS);
-            }
-            return of(this.applications());
-          })
+            note: application.reviewReason || (application.businessReference ? `CAC RC / Ref: ${application.businessReference}` : 'Corporate distributor application awaiting staff verification.'),
+            businessReference: application.businessReference || '',
+            reviewReason: application.reviewReason || '',
+            documents: Array.isArray(application.documents) ? application.documents : [],
+            version: application.version ?? 0
+          })))
         );
+      }),
+      catchError(err => {
+        distError = extractErr(err, 'Unable to load corporate distributor applications.');
+        return of([] as AdminApplication[]);
       })
+    );
+
+    const leadApps$ = this.http.get<any>('/api/v1/staff/leads', {
+      params: { page: '0', size: '50', sort: 'createdAt,desc' },
+      withCredentials: true
+    }).pipe(
+      map(res => {
+        const leads = Array.isArray(res) ? res : (res?.items ?? res?.content ?? []);
+        if (!Array.isArray(leads)) return [] as AdminApplication[];
+        return leads
+          .filter(l => isPartnerSubmission({ subject: l.subject, message: l.message }))
+          .map(l => this.parseLeadApplication(l))
+          .filter(app => app.type === 'Wholesaler' || app.type === 'Affiliate Marketer');
+      }),
+      catchError(err => {
+        leadError = extractErr(err, 'Unable to load wholesale and affiliate applications.');
+        return of([] as AdminApplication[]);
+      })
+    );
+
+    return forkJoin([distributorApps$, leadApps$]).pipe(
+      map(([distributorApps, leadApps]) => {
+        const combined = [...distributorApps, ...leadApps].sort(
+          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+        );
+        this.applications.set(combined);
+        const errors = [distError, leadError].filter((msg): msg is string => Boolean(msg));
+        this.applicationError.set(errors.length > 0 ? errors.join(' ') : null);
+        return combined;
+      }),
+      finalize(() => this.loadingApplications.set(false))
     );
   }
 

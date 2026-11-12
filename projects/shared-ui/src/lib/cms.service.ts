@@ -1,11 +1,6 @@
-/**
- * Nigson CMS — section based page content management.
- * Front-end only: content lives in React state and persists to localStorage,
- * so the public website always renders the latest PUBLISHED content.
- */
 import { Injectable, signal, computed, inject, NgZone } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, of, switchMap, map, catchError, tap } from 'rxjs';
+import { Observable, of, switchMap, map, catchError, tap, defer, throwError, finalize } from 'rxjs';
 import { SessionService } from './session.service';
 
 
@@ -753,7 +748,7 @@ export const sectionDef = (pageId: string, sectionId: string) => pageDef(pageId)
 
 const defaultPage = (def: PageDef): PageContent => ({
   id: def.id,
-  status: "Published",
+  status: "Draft",
   updatedAt: new Date(0).toISOString(),
   sections: def.sections.map((s) => ({
     id: s.id,
@@ -816,212 +811,87 @@ export type SectionApi = {
   cards: <T>(mapper: (fields: Record<string, string>, index: number) => T) => T[];
 };
 
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable({providedIn:'root'})
 export class CmsService {
-  private http = inject(HttpClient);
-  private session = inject(SessionService);
-  private ngZone = inject(NgZone);
-  readonly isPublishing = signal(false);
-  readonly state = signal<CmsState>({ published: defaultStore(), drafts: defaultStore() });
-  readonly hydrated = signal(false);
-
-  constructor() {
-    this.init();
+  private http=inject(HttpClient);
+  private session=inject(SessionService);
+  readonly isPublishing=signal(false);
+  readonly error=signal('');
+  readonly state=signal<CmsState>({published:defaultStore(),drafts:defaultStore()});
+  readonly hydrated=signal(false);
+  readonly drafts=computed(()=>this.state().drafts);
+  readonly published=computed(()=>this.state().published);
+  private records:any[]=[];
+  constructor(){ this.syncFromDatabase(); }
+  message(e:any){return e?.error?.detail || e?.message || 'Content request failed.';}
+  private headers(version?:number){
+    if(version!==undefined && !Number.isSafeInteger(version)) throw new Error('Reload the content before saving: current version is missing.');
+    return {'Idempotency-Key':crypto.randomUUID(),...(version===undefined?{}:{'If-Match':`"${version}"`})};
   }
-
-  private init() {
-    try {
-      const raw = localStorage.getItem(KEY);
-      this.state.set(mergeWithDefaults(raw ? JSON.parse(raw) : null));
-    } catch {
-      /* ignore */
-    }
-    this.hydrated.set(true);
-
-
-    if (typeof window !== 'undefined') {
-      window.addEventListener('storage', (event: StorageEvent) => {
-        if (event.key === KEY && event.newValue) {
-          try {
-            const next = mergeWithDefaults(JSON.parse(event.newValue));
-            this.ngZone.run(() => {
-              this.state.set(next);
-            });
-          } catch {
-            /* ignore */
-          }
-        }
-      });
-    }
+  private list(path:string,page=0):Observable<any[]> {
+    return this.http.get<any>(`${path}${path.includes('?')?'&':'?'}page=${page}&size=100`).pipe(switchMap(r=>{
+      if(!Array.isArray(r.items))throw new Error('Invalid content list response.');
+      return page+1<r.totalPages?this.list(path,page+1).pipe(map(next=>[...r.items,...next])):of(r.items);
+    }));
   }
-
-  /** Legacy local page drafts are not compatible with the Java structured content DTO. */
-  syncFromDatabase(): void {
-    console.info('[CmsService] Published content is served by the Experience Java API. Legacy local drafts are not synchronized.');
+  loadStaffContent():Observable<any[]> {return this.list('/api/v1/staff/content').pipe(tap(rows=>this.records=rows));}
+  private type(id:string){return ({home:'HOME',about:'ABOUT',contact:'CONTACT',careers:'CAREERS',insights:'HOME',distributor:'DIVISION'} as Record<string,string>)[id] || 'DIVISION';}
+  private decode(row:any):PageContent|null {
+    try{const sections=(row.body?.blocks||[]).filter((b:any)=>b.type==='TEXT').map((b:any)=>JSON.parse(b.text));
+      if(!sections.length || !sections.every((s:any)=>s.id && s.fields && Array.isArray(s.cards)))return null;
+      return {id:row.slug,status:row.state==='PUBLISHED'||row.publishedAt?'Published':'Draft',updatedAt:row.publishedAt||'',sections};
+    }catch{return null;}
   }
-
-  saveToDatabase(_pageId: string): Observable<boolean> {
-    console.warn('[CmsService] Local page format is not accepted by the Java content revision API; use structured revision methods.');
-    return of(false);
+  syncFromDatabase():void {
+    this.list('/api/v1/content?locale=en').subscribe({next:rows=>{
+      const next=clone(this.state());for(const r of rows){const page=this.decode(r);if(page&&pageDef(page.id)){next.published[page.id]=page;next.drafts[page.id]=clone(page);}}
+      this.state.set(next);this.hydrated.set(true);
+    },error:e=>{this.error.set(this.message(e));this.hydrated.set(true);}});
   }
-
-  private persist(next: CmsState) {
-    this.state.set(next);
-    try {
-      localStorage.setItem(KEY, JSON.stringify(next));
-    } catch {
-      /* ignore */
-    }
+  loadDrafts():Observable<any[]> {return this.loadStaffContent().pipe(tap(rows=>{
+    const next=clone(this.state());for(const r of rows){const page=this.decode(r);if(page&&pageDef(page.id))next.drafts[page.id]=page;}this.state.set(next);
+  }));}
+  pageDef(id:string){return pageDef(id);}
+  updateDraft(id:string,mutator:(p:PageContent)=>PageContent){const next=clone(this.state());if(next.drafts[id]){next.drafts[id]=mutator(next.drafts[id]);next.drafts[id].status='Draft';this.state.set(next);}}
+  private pageEdit(id:string):ContentRevisionEdit {
+    const def=pageDef(id),page=this.drafts()[id];if(!def||!page)throw new Error('Unknown content page.');
+    return {title:def.name,body:{schemaVersion:1,blocks:page.sections.map(s=>({type:'TEXT',text:JSON.stringify(s)}))},metadata:{metaTitle:def.name+' | Nigson',metaDescription:'Official '+def.name+' page'}};
   }
-
-  getPageSections(pageId: string) {
-    const isPreview = typeof window !== 'undefined' && window.location.search.includes('preview=true');
-    const page = computed(() => {
-      const s = this.state();
-      return isPreview ? (s.drafts[pageId] ?? s.published[pageId]) : s.published[pageId];
-    });
-    return {
-      order: computed(() => page()?.sections.map((s) => s.id) ?? []),
-      get: (sectionId: string): SectionApi => {
-        const p = page();
-        if (!p) return { id: sectionId, visible: false, t: () => '', cards: () => [] };
-        const s = p.sections.find((x) => x.id === sectionId);
-        if (!s) return { id: sectionId, visible: false, t: () => '', cards: () => [] };
-
-        return {
-          id: s.id,
-          visible: s.visible,
-          t: (key: string) => s.fields[key] ?? '',
-          cards: <T,>(mapper: (f: Record<string, string>, i: number) => T) => (s.cards ?? []).map((c, i) => mapper(c.fields, i))
-        };
-      }
-    };
+  private edit(edit:ContentRevisionEdit){return {...edit,metadata:{title:edit.metadata.metaTitle.slice(0,70),description:edit.metadata.metaDescription.slice(0,180),canonicalUrl:null,robots:'INDEX',alternates:[],structuredData:{}}};}
+  saveContent(type:string,slug:string,edit:any):Observable<any> {
+    this.error.set('');
+    return this.loadStaffContent().pipe(switchMap(rows=>{
+      const existing=rows.find(r=>r.type===type&&r.slug===slug&&r.locale==='en');
+      return existing?this.http.post<any>(`/api/v1/staff/content/${existing.contentItemId}/revisions`,edit,{headers:this.headers(existing.itemVersion)}):this.http.post<any>('/api/v1/staff/content',{type,slug,locale:'en',...edit},{headers:this.headers()});
+    }),catchError(e=>{this.error.set(this.message(e));return throwError(()=>e);}));
   }
-
-  // --- Editor APIs ---
-  pageDef(pageId: string) {
-    return PAGES.find(p => p.id === pageId);
+  saveToDatabase(id:string):Observable<boolean>{return defer(()=>this.saveContent(this.type(id),id,this.edit(this.pageEdit(id)))).pipe(map(()=>true));}
+  saveDraft(id:string):Observable<boolean>{return this.saveToDatabase(id);}
+  fetchContent(type:string,slug:string):Observable<ContentDTO|null>{return this.http.get<ContentDTO>(`/api/v1/content/${type.toUpperCase()}/${encodeURIComponent(slug)}?locale=en`);}
+  private step(revision:any,path:string,body:any):Observable<any>{return this.http.post<any>(`/api/v1/staff/content-revisions/${revision.id}/${path}`,body,{headers:this.headers(revision.version)});}
+  publishContent(revision:any):Observable<any>{
+    let result=of(revision);
+    if(revision.state==='DRAFT')result=result.pipe(switchMap(r=>this.step(r,'review',{reason:'Submitted from admin content editor'})));
+    if(['DRAFT','REVIEW'].includes(revision.state))result=result.pipe(switchMap(r=>this.step(r,'approval',{approve:true,reason:'Approved from admin content editor'})));
+    return result.pipe(switchMap(r=>r.state==='PUBLISHED'?of(r):this.step(r,'publication',{action:'PUBLISH',reason:'Published from admin content editor'})));
   }
-
-  drafts = computed(() => this.state().drafts);
-  published = computed(() => this.state().published);
-
-  updateDraft(pageId: string, mutator: (p: PageContent) => PageContent) {
-    const next = clone(this.state());
-    if (next.drafts[pageId]) {
-      next.drafts[pageId] = mutator(clone(next.drafts[pageId]));
-      next.drafts[pageId].updatedAt = new Date().toISOString();
-      this.persist(next);
-    }
+  withdrawContent(revision:any):Observable<any>{return this.step(revision,'publication',{action:'WITHDRAW',reason:'Withdrawn from admin content editor'});}
+  executePublishPipeline(id:string,edit?:ContentRevisionEdit):Observable<boolean>{
+    this.isPublishing.set(true);return defer(()=>this.saveContent(this.type(id),id,this.edit(edit||this.pageEdit(id)))).pipe(switchMap(r=>this.publishContent(r)),tap(()=>{
+      const next=clone(this.state());next.published[id]=clone(next.drafts[id]);next.published[id].status='Published';next.drafts[id].status='Published';this.state.set(next);
+    }),map(()=>true),catchError(e=>{this.error.set(this.message(e));return throwError(()=>e);}),finalize(()=>this.isPublishing.set(false)));
   }
-
-  saveDraft(pageId: string) {
-    const next = clone(this.state());
-    if (next.drafts[pageId]) {
-      next.drafts[pageId].updatedAt = new Date().toISOString();
-      this.persist(next);
-      this.saveToDatabase(pageId).subscribe();
-    }
+  getPageSections(id:string){
+    const preview=typeof window!=='undefined'&&window.location.search.includes('preview=true');
+    const page=computed(()=>preview?this.drafts()[id]:this.published()[id]);
+    return {order:computed(()=>page()?.sections.map(s=>s.id)||[]),get:(sectionId:string):SectionApi=>{
+      const s=page()?.sections.find(s=>s.id===sectionId);return {id:sectionId,visible:s?.visible??false,t:key=>s?.fields[key]||'',cards:<T>(mapper:(f:Record<string,string>,i:number)=>T)=>(s?.cards||[]).map((c,i)=>mapper(c.fields,i))};
+    }};
   }
-
-  publishPage(pageId: string) {
-    const next = clone(this.state());
-    if (next.drafts[pageId]) {
-      next.published[pageId] = clone(next.drafts[pageId]);
-      next.published[pageId].status = "Published";
-      next.published[pageId].updatedAt = new Date().toISOString();
-      next.drafts[pageId].status = "Published";
-      next.drafts[pageId].updatedAt = next.published[pageId].updatedAt;
-      this.persist(next);
-    }
-  }
-
-  // --- Backend CMS HTTP APIs (TASK-62 & TASK-63) ---
-
-  /** TASK-62: Fetch public published content from GET /api/v1/content/:type/:slug (API-076) */
-  fetchContent(type: string, slug: string): Observable<ContentDTO | null> {
-    return this.http.get<ContentDTO>(`/api/v1/content/${type.toUpperCase()}/${slug}`).pipe(
-      catchError(err => {
-        console.warn(`[CmsService] fetchContent ${type}/${slug} failed, using default page sections:`, err?.status ?? err);
-        return of(null);
-      })
-    );
-  }
-
-  /** TASK-63: Save draft revision via POST /api/v1/staff/content/:id/revisions (API-079) */
-  createRevision(contentId: string, edit: ContentRevisionEdit): Observable<any> {
-    const headers = {
-      "If-Match": '"0"',
-      "Idempotency-Key": crypto.randomUUID()
-    };
-    return this.http.post<any>(`/api/v1/staff/content/${contentId}/revisions`, edit, { headers }).pipe(
-      catchError(err => {
-        console.error('[CmsService] createRevision failed:', err);
-        return of(null);
-      })
-    );
-  }
-
-  /** TASK-63: Submit revision for review via POST /api/v1/staff/content-revisions/:id/review (API-080) */
-  submitForReview(revisionId: string, reason = 'Content updated for publication'): Observable<boolean> {
-    const headers = {
-      "If-Match": '"0"',
-      "Idempotency-Key": crypto.randomUUID()
-    };
-    return this.http.post(`/api/v1/staff/content-revisions/${revisionId}/review`, { reason }, { headers }).pipe(
-      map(() => true),
-      catchError(err => {
-        console.error('[CmsService] submitForReview failed:', err);
-        return of(false);
-      })
-    );
-  }
-
-  /** TASK-63: Approve revision via POST /api/v1/staff/content-revisions/:id/approval (API-081) */
-  approveRevision(revisionId: string, reason = 'Approved for publication'): Observable<boolean> {
-    const headers = {
-      "If-Match": '"0"',
-      "Idempotency-Key": crypto.randomUUID()
-    };
-    return this.http.post(`/api/v1/staff/content-revisions/${revisionId}/approval`, { approve: true, reason }, { headers }).pipe(
-      map(() => true),
-      catchError(err => {
-        console.error('[CmsService] approveRevision failed:', err);
-        return of(false);
-      })
-    );
-  }
-
-  /** TASK-63: Publish revision via POST /api/v1/staff/content-revisions/:id/publication (API-082) */
-  publishRevision(revisionId: string, reason = 'Published to live site'): Observable<boolean> {
-    const headers = {
-      "If-Match": '"0"',
-      "Idempotency-Key": crypto.randomUUID()
-    };
-    return this.http.post(`/api/v1/staff/content-revisions/${revisionId}/publication`, { action: 'PUBLISH', reason }, { headers }).pipe(
-      map(() => true),
-      catchError(err => {
-        console.error('[CmsService] publishRevision failed:', err);
-        return of(false);
-      })
-    );
-  }
-
-  /** Execute complete publication workflow and persist directly to backend database */
-  executePublishPipeline(pageId: string, edit?: ContentRevisionEdit): Observable<boolean> {
-    this.isPublishing.set(true);
-
-    // Local CMS page records use a legacy DTO. Do not claim publication without an
-    // acknowledged Java structured-content publication revision.
-    return this.saveToDatabase(pageId).pipe(
-      tap(() => this.isPublishing.set(false)),
-      catchError(err => {
-        console.warn('[CmsService] Java content publication was not acknowledged:', err);
-        this.isPublishing.set(false);
-        return of(false);
-      })
-    );
+  loadBlogs():Observable<any[]>{return this.loadStaffContent().pipe(map(rows=>rows.filter(r=>r.type==='BLOG').map(r=>this.blog(r))));}
+  private blog(r:any){const extra=r.metadata?.structuredData||{};return {...extra,id:r.contentItemId,revision:r,title:r.title,slug:r.slug,status:r.state==='PUBLISHED'?'Published':'Draft',body:(r.body?.blocks||[]).filter((b:any)=>b.type==='TEXT').map((b:any)=>b.text).join('\n\n'),tag:extra.tag||'',author:extra.author||'',date:r.publishedAt||extra.date||'',excerpt:extra.excerpt||'',image:extra.image||''};}
+  saveBlog(post:any):Observable<any>{
+    const edit={title:post.title,body:{schemaVersion:1,blocks:[{type:'TEXT',text:post.body||post.excerpt||post.title}]},metadata:{title:post.title.slice(0,70),description:(post.excerpt||post.title).slice(0,180),robots:'INDEX',canonicalUrl:null,alternates:[],structuredData:{tag:post.tag||'',author:post.author||'',excerpt:post.excerpt||'',image:post.image||'',date:post.date||''}}};
+    return this.saveContent('BLOG',post.slug,edit).pipe(switchMap(r=>post.status==='Published'?this.publishContent(r):of(r)),map(r=>this.blog(r)));
   }
 }

@@ -1,4 +1,6 @@
 import { Component, inject, signal, OnInit } from '@angular/core';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -69,6 +71,7 @@ export interface CustomSpec {
       </div>
 
       <!-- Success Notification Banner -->
+      <div *ngIf="uploadError()" role="alert" class="mb-4 rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-800">{{uploadError()}}</div>
       <div *ngIf="saveSuccess()" class="flex items-center justify-between rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-3.5 text-xs font-bold text-emerald-800 animate-fade-in shadow-sm">
         <div class="flex items-center gap-2">
           <svg class="h-4 w-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -207,8 +210,8 @@ export interface CustomSpec {
               <div>
                 <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-muted-ink">Catalog Status</label>
                 <select [(ngModel)]="product.status" name="status" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20 font-semibold">
-                  <option value="Active">Active (Live in Store)</option>
-                  <option value="Out of Stock">Out of Stock</option>
+                  <option value="Active">Publish in Nigeria</option>
+                  
                   <option value="Draft">Draft</option>
                   <option value="Archived">Archived</option>
                 </select>
@@ -216,31 +219,35 @@ export interface CustomSpec {
             </div>
           </div>
 
+          <section class="rounded-2xl border border-hairline bg-white p-5">
+            <h2 class="font-bold">Measured shipping package</h2><p class="mb-3 text-xs text-muted-ink">Required when creating a SKU. Enter measured values; no shipping dimensions are guessed.</p>
+            <div class="grid grid-cols-2 gap-3"><label *ngFor="let field of packagingFields" class="text-xs">{{field.label}}<input type="number" min="0" step="0.001" [(ngModel)]="measurements[field.key]" [name]="'measurement-'+field.key" class="mt-1 w-full rounded-lg border p-2" /></label></div>
+          </section>
           <!-- Pricing & Commercial Tiers Card -->
           <div class="rounded-[20px] border border-gray-100 bg-white p-6 shadow-sm space-y-4">
             <div class="flex items-center justify-between border-b border-gray-100 pb-3">
               <div>
                 <h2 class="text-xs font-extrabold uppercase tracking-[0.14em] text-muted-ink">Commercial Pricing (₦)</h2>
-                <p class="text-[11px] text-muted-ink mt-0.5">Controls the "Starting From" price on the customer card and distributor rate</p>
+                <p class="text-[11px] text-muted-ink mt-0.5">Prices come from approved price books. Product changes do not change commercial prices.</p>
               </div>
             </div>
 
             <div class="grid gap-4 sm:grid-cols-3">
               <div>
                 <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-brand">Starting Price (₦) *</label>
-                <input type="number" [(ngModel)]="product.retail" name="retail" required placeholder="e.g. 18500" class="w-full rounded-2xl border-2 border-brand/50 bg-brand/5 px-4 py-2.5 text-base font-black text-brand shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
+                <input type="number" [(ngModel)]="product.retail" name="retail" readonly placeholder="e.g. 18500" class="w-full rounded-2xl border-2 border-brand/50 bg-brand/5 px-4 py-2.5 text-base font-black text-brand shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
                 <p class="mt-1 text-[10px] text-muted-ink font-semibold">Displays on storefront card.</p>
               </div>
 
               <div>
                 <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-muted-ink">Wholesale Rate (₦)</label>
-                <input type="number" [(ngModel)]="product.wholesale" name="wholesale" placeholder="e.g. 14500" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
+                <input type="number" [(ngModel)]="product.wholesale" name="wholesale" readonly placeholder="e.g. 14500" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
                 <p class="mt-1 text-[10px] text-muted-ink">For bulk orders.</p>
               </div>
 
               <div>
                 <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-muted-ink">Distributor Rate (₦)</label>
-                <input type="number" [(ngModel)]="product.distributor" name="distributor" placeholder="e.g. 12000" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
+                <input type="number" [(ngModel)]="product.distributor" name="distributor" readonly placeholder="e.g. 12000" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
                 <p class="mt-1 text-[10px] text-muted-ink">For verified partners.</p>
               </div>
 
@@ -434,13 +441,13 @@ export interface CustomSpec {
               <div class="border-t border-gray-100 pt-4 sm:col-span-2 grid gap-5 sm:grid-cols-2">
                 <div>
                   <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-muted-ink">Current Inventory Stock (Units) *</label>
-                  <input type="number" [(ngModel)]="product.stock" name="stock" required placeholder="e.g. 100" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
+                  <input type="number" [(ngModel)]="product.stock" name="stock" readonly required placeholder="e.g. 100" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
                   <p class="mt-1 text-[10px] text-muted-ink">Tracked across warehouse balances.</p>
                 </div>
 
                 <div>
                   <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-muted-ink">Low Stock Alert Threshold (Units)</label>
-                  <input type="number" [(ngModel)]="product.lowLevel" name="lowLevel" placeholder="e.g. 10" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
+                  <input type="number" [(ngModel)]="product.lowLevel" name="lowLevel" readonly placeholder="e.g. 10" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
                   <p class="mt-1 text-[10px] text-muted-ink">Triggers warning in admin dashboard.</p>
                 </div>
               </div>
@@ -480,6 +487,12 @@ export class ProductEditComponent implements OnInit {
   private router = inject(Router);
   private admin = inject(AdminService);
   private catalog = inject(CatalogService);
+  private http = inject(HttpClient);
+  originalState = 'DRAFT';
+  private skuConfig: any = null;
+  private originalPackaging = '';
+  measurements: Record<string,string> = {};
+  packagingFields = [{key:'maximumUnitsPerPackage',label:'Units per package'},{key:'unitWeightKg',label:'Unit weight (kg)'},{key:'tareWeightKg',label:'Packaging weight (kg)'},{key:'lengthCm',label:'Length (cm)'},{key:'widthCm',label:'Width (cm)'},{key:'heightCm',label:'Height (cm)'}];
 
   readonly isNew = signal(false);
   readonly isSaving = signal(false);
@@ -511,9 +524,9 @@ export class ProductEditComponent implements OnInit {
     id: '',
     name: '',
     sku: '',
-    category: 'Cables',
+    category: '',
     brand: '',
-    status: 'Active',
+    status: 'Draft',
     price: null,
     retail: null,
     wholesale: null,
@@ -547,9 +560,9 @@ export class ProductEditComponent implements OnInit {
       id: '',
       name: '',
       sku: '',
-      category: 'Cables',
+      category: '',
       brand: '',
-      status: 'Active',
+      status: 'Draft',
       price: null,
       retail: null,
       wholesale: null,
@@ -581,6 +594,7 @@ export class ProductEditComponent implements OnInit {
   }
 
   ngOnInit() {
+    this.http.get<any[]>('/api/v1/catalogue/categories?market=NG').subscribe({next:rows=>this.categories=rows.map(row=>row.name),error:error=>this.uploadError.set(this.admin.message(error))});
     this.route.paramMap.subscribe(params => {
       const skuOrId = params.get('sku');
       if (!skuOrId || skuOrId === 'new') {
@@ -606,189 +620,48 @@ export class ProductEditComponent implements OnInit {
     this.customSpecs.splice(index, 1);
   }
 
-  private loadProductData(skuOrId: string) {
-    const search = (skuOrId || '').toLowerCase().trim();
-
-    // 1. Check local admin products signal first (immediate reflection with zero latency)
-    const fromSignal = this.admin.products().find(p =>
-      p.sku?.toLowerCase() === search ||
-      p.id?.toLowerCase() === search ||
-      (p as any).slug?.toLowerCase() === search ||
-      p.name?.toLowerCase().includes(search)
-    );
-
-    if (fromSignal) {
-      this.populateProduct(fromSignal);
-      return;
-    }
-
-    // 2. Load from staff products if signal is not yet loaded (e.g. direct URL or browser reload)
-    this.admin.loadStaffProducts().subscribe({
-      next: (products) => {
-        const found = (products || []).find(p =>
-          p.sku?.toLowerCase() === search ||
-          p.id?.toLowerCase() === search ||
-          (p as any).slug?.toLowerCase() === search ||
-          p.name?.toLowerCase().includes(search)
-        );
-        if (found) {
-          this.populateProduct(found);
-        } else {
-          // 3. Fallback to CatalogService
-          this.catalog.getProduct(skuOrId).subscribe({
-            next: (full) => {
-              if (full) this.populateProduct(full);
-            },
-            error: (err) => console.warn('[ProductEdit] Could not load product via getProduct:', err)
-          });
-        }
-      },
-      error: () => {
-        this.catalog.getProduct(skuOrId).subscribe({
-          next: (full) => {
-            if (full) this.populateProduct(full);
-          }
-        });
+  private async loadProductData(skuOrId: string) {
+    this.uploadError.set(null);
+    try {
+      const products = await firstValueFrom(this.admin.loadStaffProducts());
+      const match = products.find(p => p.id === skuOrId || p.sku === skuOrId);
+      const id = match?.id || (/^[a-f0-9-]{36}$/i.test(skuOrId) ? skuOrId : null);
+      if (!id) throw new Error('This product was not found in the staff catalogue.');
+      const full = await firstValueFrom(this.http.get<any>('/api/v1/staff/products/' + id));
+      this.populateProduct({...match, ...full, brand: full.brand?.name || '', category: full.categories?.[0]?.name || '', sku: full.skus?.[0]?.code || '', skuId: full.skus?.[0]?.id, images: full.assets.map((a: any) => a.url).filter(Boolean)});
+      if (this.product.skuId) {
+        this.skuConfig = await firstValueFrom(this.http.get<any>('/api/v1/staff/skus/' + this.product.skuId));
+        const rule = this.skuConfig.carrierPackaging;
+        if (rule) for (const field of this.packagingFields) this.measurements[field.key] = rule[field.key];
+        this.originalPackaging = JSON.stringify(rule);
       }
-    });
+    } catch (error: any) { this.uploadError.set(this.admin.message(error)); }
   }
 
   private populateProduct(full: any) {
-    if (!full) return;
-
-    const sku = full.sku || (full.skus?.[0]?.code) || extractSku(full.slug, full.name);
-    const resolvedCategory = full.category || full.categoryName || resolveCategoryFromSku(sku, 'Cables');
-    const override = this.catalog.getProductOverride(full.id) || (sku ? this.catalog.getProductOverride(sku) : null);
-    const retailPrice = full.retail ?? full.retailPrice ?? full.price ?? override?.retail ?? override?.price ?? 0;
-
-    // Populate images (all available from S3 and backend)
-    const rawImages: string[] = full.images?.length 
-      ? [...full.images] 
-      : (full.image ? [full.image] : (full.imageUrl ? [this.catalog.resolveImageUrl(full.imageUrl)] : []));
-    
-    const loadedImages: string[] = rawImages.filter((img: string) => !!img && typeof img === 'string' && img.trim().length > 0);
-    while (loadedImages.length < 5) loadedImages.push('');
-
-    // Extract custom specifications
-    const known = new Set(['warranty', 'connectors', 'power_rating', 'powerRating', 'compatibility', 'buildMaterial', 'certification', 'importer']);
-    this.customSpecs = [];
     const specs = full.specifications || {};
-    if (specs && typeof specs === 'object') {
-      for (const [k, v] of Object.entries(specs)) {
-        if (!known.has(k) && v != null && String(v).trim()) {
-          const displayVal = Array.isArray(v) ? v.join(', ') : String(v);
-          this.customSpecs.push({ key: k, value: displayVal });
-        }
-      }
-    }
-
-    const connRaw = specs['connectors'] || full.connectors;
-    const connFormatted = Array.isArray(connRaw) ? connRaw.join(', ') : (connRaw || '');
-
-    this.product = {
-      ...this.product,
-      id: full.id,
-      name: full.name || '',
-      sku: sku || '',
-      category: resolvedCategory || 'Cables',
-      brand: full.brand || full.brandName || 'Nigson',
-      status: full.status === 'ARCHIVED' ? 'Archived' : (full.status || 'Active'),
-      retail: retailPrice,
-      price: retailPrice,
-      wholesale: full.wholesale ?? full.wholesalePrice ?? (retailPrice ? Math.round(retailPrice * 0.8) : null),
-      distributor: full.distributor ?? full.distributorPrice ?? (retailPrice ? Math.round(retailPrice * 0.7) : null),
-      priceSubtitle: full.priceSubtitle || '',
-      images: loadedImages.slice(0, 5),
-      image: loadedImages[0] || '',
-      desc: full.desc || full.description || '',
-      features: full.features ? (Array.isArray(full.features) ? full.features.join('\n') : full.features) : '',
-      overview: full.overview || '',
-      highlights: full.highlights ? (Array.isArray(full.highlights) ? full.highlights.join('\n') : full.highlights) : '',
-      warranty: specs['warranty'] || full.warranty || '',
-      connectors: connFormatted,
-      powerRating: specs['power_rating'] || specs['powerRating'] || full.powerRating || '',
-      compatibility: specs['compatibility'] || full.compatibility || '',
-      buildMaterial: specs['buildMaterial'] || full.buildMaterial || '',
-      certification: specs['certification'] || full.certification || '',
-      importer: specs['importer'] || full.importer || '',
-      packaging: full.packaging ? (Array.isArray(full.packaging) ? full.packaging.join('\n') : full.packaging) : '',
-      cartonSpecs: full.cartonSpecs ? (Array.isArray(full.cartonSpecs) ? full.cartonSpecs.join('\n') : full.cartonSpecs) : '',
-      stock: full.stock ?? null,
-      lowLevel: full.lowLevel ?? null,
-      warehouseStatus: full.warehouseStatus || '',
-      dispatchTurnaround: full.dispatchTurnaround || '',
-      nationwideShipping: full.nationwideShipping || '',
-      minWholesaleOrder: full.minWholesaleOrder || ''
-    };
-
-    const skuId = full.skuId || full.skus?.[0]?.id;
-    if (skuId && (!this.product.retail || this.product.retail === 0)) {
-      this.catalog.getPrice(skuId).subscribe({
-        next: (pr) => {
-          if (pr && pr.priceMinorUnits > 0) {
-            const naira = pr.priceMinorUnits / 100;
-            this.product.retail = naira;
-            this.product.price = naira;
-            this.product.wholesale = Math.round(naira * 0.8);
-            this.product.distributor = Math.round(naira * 0.7);
-          }
-        },
-        error: () => {}
-      });
-    }
+    this.originalState = full.status;
+    this.product = {...this.product, ...full, desc: full.description || '', status: ({ACTIVE:'Active',DRAFT:'Draft',ARCHIVED:'Archived'} as any)[full.status] || 'Draft', retail: full.price ?? null, wholesale: null, distributor: null, images: [...(full.images || [])]};
+    for (const key of ['warranty','connectors','powerRating','compatibility','buildMaterial','certification','importer','packaging','cartonSpecs','warehouseStatus','dispatchTurnaround','nationwideShipping','minWholesaleOrder','features','overview','highlights','priceSubtitle']) this.product[key] = specs[key] ?? '';
+    const known = new Set(['warranty','connectors','powerRating','compatibility','buildMaterial','certification','importer','packaging','cartonSpecs','warehouseStatus','dispatchTurnaround','nationwideShipping','minWholesaleOrder','features','overview','highlights','priceSubtitle']);
+    this.customSpecs = Object.entries(specs).filter(([key]) => !known.has(key)).map(([key,value]) => ({key, value: String(value)}));
+    while (this.product.images.length < 5) this.product.images.push('');
   }
 
-  onFileChange(event: any, index: number) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    this.uploadingSlot.set(index);
+  async onFileChange(event: any, index: number) {
+    const file: File | undefined = event.target.files?.[0]; if (!file) return;
     this.uploadError.set(null);
-
-    // Sanitize filename & extension
-    const ext = file.name.split('.').pop()?.toLowerCase() || 'png';
-    const cleanExt = ['png', 'jpg', 'jpeg', 'webp'].includes(ext) ? ext : 'png';
-    const skuCode = (this.product.sku || 'product').toLowerCase().replace(/[^a-z0-9_-]/g, '');
-    const filename = `slot-${index + 1}-${Date.now()}.${cleanExt}`;
-    const s3Key = `products/${skuCode}/${filename}`;
-    const uploadUrl = `http://localhost:4566/nigson-product-images/${s3Key}`;
-
-    // Upload directly to LocalStack S3 bucket via HTTP PUT
-    fetch(uploadUrl, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': file.type || 'image/png',
-        'x-amz-acl': 'public-read'
-      },
-      body: file
-    })
-      .then(res => {
-        if (!res.ok) {
-          throw new Error(`S3 upload returned status ${res.status}`);
-        }
-        this.product.images[index] = uploadUrl;
-        if (index === 0) {
-          this.product.image = uploadUrl;
-        }
-        this.uploadingSlot.set(null);
-      })
-      .catch(err => {
-        console.warn('[ProductEdit] S3 upload failed, falling back to local data URL:', err);
-        const reader = new FileReader();
-        reader.onload = () => {
-          const dataUrl = reader.result as string;
-          this.product.images[index] = dataUrl;
-          if (index === 0) {
-            this.product.image = dataUrl;
-          }
-          this.uploadingSlot.set(null);
-        };
-        reader.onerror = () => {
-          this.uploadError.set('Upload failed. Please try again.');
-          this.uploadingSlot.set(null);
-        };
-        reader.readAsDataURL(file);
-      });
+    if (!this.product.id || this.isNew()) { this.uploadError.set('Save the product draft before uploading an image.'); return; }
+    this.uploadingSlot.set(index);
+    try {
+      const bytes = await file.arrayBuffer(); const digest = await crypto.subtle.digest('SHA-256', bytes);
+      const checksum = [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2,'0')).join('');
+      const upload = await firstValueFrom(this.http.post<any>('/api/v1/commerce/files/uploads', {purpose:'IMAGE',filename:file.name,mimeType:file.type,size:file.size,checksumSha256:checksum,linkedResourceId:this.product.id}, {headers:new HttpHeaders({'Idempotency-Key':crypto.randomUUID()})}));
+      const transfer = await fetch(upload.uploadUrl,{method:'PUT',headers:upload.requiredHeaders,body:file});
+      if (!transfer.ok) throw new Error('Image storage rejected the upload (HTTP '+transfer.status+').');
+      const completed = await firstValueFrom(this.http.post<any>('/api/v1/commerce/files/'+upload.assetId+'/completion',{checksumSha256:checksum},{headers:new HttpHeaders({'Idempotency-Key':crypto.randomUUID(),'If-Match':'"0"'})}));
+      this.uploadError.set('Image uploaded. It must pass the security scan before publication. Current state: '+completed.state+'.');
+    } catch(error: any) { this.uploadError.set(this.admin.message(error)); } finally {this.uploadingSlot.set(null);}
   }
 
   removeImage(index: number) {
@@ -798,86 +671,37 @@ export class ProductEditComponent implements OnInit {
     }
   }
 
-  save() {
-    this.isSaving.set(true);
-    this.uploadError.set(null);
-
-    const cleanImages = (this.product.images || []).filter((img: string) => !!img && img.trim().length > 0);
-
-    const specsPayload: Record<string, any> = {
-      warranty: this.product.warranty,
-      connectors: this.product.connectors,
-      power_rating: this.product.powerRating,
-      powerRating: this.product.powerRating,
-      compatibility: this.product.compatibility,
-      buildMaterial: this.product.buildMaterial,
-      certification: this.product.certification,
-      importer: this.product.importer
-    };
-
-    for (const item of this.customSpecs) {
-      if (item.key && item.key.trim() && item.value && item.value.trim()) {
-        specsPayload[item.key.trim()] = item.value.trim();
+  async save() {
+    if (this.isSaving()) return; this.isSaving.set(true); this.saveSuccess.set(false);this.uploadError.set(null);
+    try {
+      if (!this.product.name?.trim() || !this.product.sku?.trim() || !this.product.category) throw new Error('Name, SKU and a backend category are required.');
+      if (!this.isNew() && this.product.status === 'Draft' && this.originalState !== 'DRAFT') throw new Error('Published products can be archived, not changed back to a draft.');
+      const hasMeasurements = this.packagingFields.some(field => String(this.measurements[field.key] ?? '').trim());
+      let rule: any;
+      if (this.isNew() || hasMeasurements) {
+        rule = {schemaVersion:1};
+        for (const field of this.packagingFields) {
+          const value = String(this.measurements[field.key] ?? '').trim();
+          if (!/^[0-9]+(?:\.[0-9]{1,3})?$/.test(value) || (field.key !== 'tareWeightKg' && Number(value) <= 0)) throw new Error('Enter measured package weights, dimensions and units per package.');
+          rule[field.key] = value;
+        }
       }
-    }
-
-    const priceNum = Number(this.product.retail || this.product.price || 0);
-    const payload = {
-      ...this.product,
-      id: this.product.id || crypto.randomUUID(),
-      price: priceNum,
-      retail: priceNum,
-      retailPrice: priceNum,
-      wholesale: Number(this.product.wholesale || Math.round(priceNum * 0.8)),
-      wholesalePrice: Number(this.product.wholesale || Math.round(priceNum * 0.8)),
-      distributor: Number(this.product.distributor || Math.round(priceNum * 0.7)),
-      distributorPrice: Number(this.product.distributor || Math.round(priceNum * 0.7)),
-      desc: this.product.desc,
-      description: this.product.desc,
-      categoryName: this.product.category,
-      images: cleanImages.length > 0 ? cleanImages : [this.product.image || '/assets/hero-accessories.jpg'],
-      image: cleanImages[0] || this.product.image || '/assets/hero-accessories.jpg',
-      specifications: specsPayload
-    };
-
-    if (this.isNew()) {
-      this.admin.createProduct(payload).subscribe({
-        next: (created) => {
-          const finalId = created?.id || payload.id;
-          const fullPayload = { ...payload, id: finalId };
-          this.catalog.saveProductOverride(finalId, fullPayload);
-          if (payload.sku) this.catalog.saveProductOverride(payload.sku, fullPayload);
-          this.admin.loadStaffProducts().subscribe();
-          this.catalog.loadProducts().subscribe();
-          this.isSaving.set(false);
-          this.saveSuccess.set(true);
-          setTimeout(() => this.router.navigate(['/admin/inventory/products']), 1200);
-        },
-        error: () => {
-          this.catalog.saveProductOverride(payload.id, payload);
-          if (payload.sku) this.catalog.saveProductOverride(payload.sku, payload);
-          this.isSaving.set(false);
-          this.saveSuccess.set(true);
-          setTimeout(() => this.router.navigate(['/admin/inventory/products']), 1200);
-        }
-      });
-    } else {
-      this.admin.updateProduct(payload.id || payload.sku, payload).subscribe({
-        next: () => {
-          this.catalog.saveProductOverride(payload.id, payload);
-          if (payload.sku) this.catalog.saveProductOverride(payload.sku, payload);
-          this.admin.loadStaffProducts().subscribe();
-          this.isSaving.set(false);
-          this.saveSuccess.set(true);
-          setTimeout(() => this.saveSuccess.set(false), 5000);
-        },
-        error: () => {
-          this.catalog.saveProductOverride(payload.id, payload);
-          if (payload.sku) this.catalog.saveProductOverride(payload.sku, payload);
-          this.isSaving.set(false);
-          this.saveSuccess.set(true);
-        }
-      });
-    }
+      const specifications: Record<string,any> = {};
+      for (const key of ['warranty','connectors','powerRating','compatibility','buildMaterial','certification','importer','packaging','cartonSpecs','warehouseStatus','dispatchTurnaround','nationwideShipping','minWholesaleOrder','features','overview','highlights','priceSubtitle']) if (this.product[key] !== undefined && this.product[key] !== null && this.product[key] !== '') specifications[key] = this.product[key];
+      for (const spec of this.customSpecs) if (spec.key.trim() && spec.value !== '') specifications[spec.key.trim()] = spec.value;
+      const payload = {...this.product,description:this.product.desc,specifications,carrierPackaging:rule};
+      let saved = await firstValueFrom(this.isNew() ? this.admin.createProduct(payload) : this.admin.updateProduct(this.product.id,payload));
+      this.product.id = saved.id; this.product.version = saved.version; this.product.skuId = saved.skus?.[0]?.id; this.isNew.set(false);
+      if (this.skuConfig && rule && JSON.stringify(rule) !== this.originalPackaging) {
+        await firstValueFrom(this.http.patch<any>('/api/v1/staff/skus/'+this.skuConfig.id,{carrierPackaging:rule},{headers:new HttpHeaders({'If-Match':'"'+this.skuConfig.version+'"','Idempotency-Key':crypto.randomUUID()})}));
+      }
+      if (this.product.status === 'Active' && saved.status !== 'ACTIVE') saved = await firstValueFrom(this.admin.publishProduct(saved.id,'PUBLISH'));
+      if (this.product.status === 'Archived' && saved.status !== 'ARCHIVED') saved = await firstValueFrom(this.admin.publishProduct(saved.id,'ARCHIVE'));
+      this.product.version = saved.version;this.originalState = saved.status;this.originalPackaging = JSON.stringify(rule);
+      const fresh = await firstValueFrom(this.http.get<any>('/api/v1/staff/products/'+this.product.id));
+      this.product.version=fresh.version;this.originalState=fresh.status;
+      if(this.product.skuId)this.skuConfig=await firstValueFrom(this.http.get<any>('/api/v1/staff/skus/'+this.product.skuId));
+      this.saveSuccess.set(true);this.admin.loadStaffProducts().subscribe();
+    } catch(error:any) {this.uploadError.set(this.admin.message(error));} finally {this.isSaving.set(false);}
   }
 }

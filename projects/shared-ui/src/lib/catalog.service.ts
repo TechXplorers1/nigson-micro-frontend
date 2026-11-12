@@ -301,14 +301,7 @@ export class CatalogService {
     }
   }
 
-  getProductOverride(idOrSku: string): Partial<Product> | null {
-    try {
-      const raw = localStorage.getItem(`nigson_prod_override_${idOrSku}`);
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
-  }
+  getProductOverride(_idOrSku:string):Partial<Product>|null{return null;}
 
   formatLocalProduct(item: any): Product {
     const override = (item.id ? this.getProductOverride(item.id) : null) ||

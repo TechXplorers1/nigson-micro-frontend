@@ -17,17 +17,14 @@ export function mapStaffProducts(products: any[], balances: any[]): AdminProduct
     const sku = product.skus?.[0];
     const images = (product.assets ?? []).map((asset: any) => asset.url).filter(Boolean);
     const skuCode = sku?.code ?? '';
-    let initialPrice = 0;
-    try {
-      const ovRaw = localStorage.getItem('nigson_prod_override_' + product.id) ||
-        (skuCode ? localStorage.getItem('nigson_prod_override_' + skuCode) : null);
-      if (ovRaw) {
-        const ov = JSON.parse(ovRaw);
-        initialPrice = ov.retail || ov.price || 0;
-      }
-    } catch { }
+    const initialPrice = 0;
     return {
       id: product.id,
+      version: product.version,
+      slug: product.slug,
+      brandId: product.brand?.id,
+      categoryIds: product.categories?.map((category: any) => category.id) || [],
+      packSize: sku?.packSize,
       skuId: sku?.id,
       sku: skuCode,
       name: product.name,

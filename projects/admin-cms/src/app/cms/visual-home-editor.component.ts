@@ -10,7 +10,7 @@ import {
   LucideExternalLink, LucideRefreshCw, LucideHeading, LucideList, LucideArrowLeft
 } from '@lucide/angular';
 import { FormsModule } from '@angular/forms';
-import { AdminBlogPost, DEFAULT_POSTS, parseMarkdownToSections } from './blog.component';
+import { AdminBlogPost, parseMarkdownToSections } from './blog.component';
 
 @Component({
   selector: 'app-visual-home-editor',
@@ -22,6 +22,7 @@ import { AdminBlogPost, DEFAULT_POSTS, parseMarkdownToSections } from './blog.co
     LucideExternalLink, LucideRefreshCw, LucideHeading, LucideList, LucideArrowLeft
   ],
   template: `
+<div *ngIf="cms.error()" role="alert" class="m-4 rounded border border-red-300 bg-red-50 p-4 text-red-800">{{cms.error()}}</div>
     <div class="fixed inset-0 z-50 flex flex-col bg-[#f0f2f5] font-sans antialiased select-none">
       
       <!-- TOAST: PUBLISH SUCCESS -->
@@ -495,7 +496,7 @@ export class VisualHomeEditorComponent implements OnInit, AfterViewInit {
   isSaving = signal<boolean>(false);
 
   // Insights Articles State
-  insightArticles = signal<AdminBlogPost[]>([...DEFAULT_POSTS]);
+  insightArticles = signal<AdminBlogPost[]>([]);
   editingArticle = signal<AdminBlogPost | null>(null);
 
   presetImages = [
@@ -531,6 +532,7 @@ export class VisualHomeEditorComponent implements OnInit, AfterViewInit {
   }
 
   ngOnInit() {
+    this.cms.loadDrafts().subscribe({error:e=>this.cms.error.set(this.cms.message(e))});
     this.route.paramMap.subscribe(params => {
       const routeId = params.get('id');
       if (routeId) {
@@ -553,43 +555,9 @@ export class VisualHomeEditorComponent implements OnInit, AfterViewInit {
     this.reloadPreview();
   }
 
-  loadInsightArticles() {
-    // 1. Check localStorage
-    try {
-      const raw = localStorage.getItem('nigson.admin.v2');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed.posts) && parsed.posts.length >= 4) {
-          this.insightArticles.set(parsed.posts);
-        }
-      }
-    } catch {}
+  loadInsightArticles(){this.cms.loadBlogs().subscribe({next:rows=>this.insightArticles.set(rows),error:e=>this.cms.error.set(this.cms.message(e))});}
 
-    // 2. Fetch from PostgreSQL database bridge
-    this.http.get<any>('/api/v1/content?type=BLOG&locale=en&page=0&size=100').pipe(
-      catchError(() => of(null))
-    ).subscribe(page => {
-      const data = (page?.items ?? []).map((item: any) => {
-        const body = (item.body?.blocks ?? []).filter((block: any) => block.type === 'TEXT').map((block: any) => block.text).join('\n\n');
-        return { id: item.id, title: item.title, slug: item.slug, tag: item.metadata?.tag || 'Insight', author: item.metadata?.author || '', date: item.publishedAt || '', status: 'Published', excerpt: item.metadata?.excerpt || body.slice(0, 220), image: '', body } as AdminBlogPost;
-      });
-      this.insightArticles.set(data);
-    });
-  }
-
-  saveInsightArticles() {
-    const articles = this.insightArticles();
-    // 1. Sync localStorage
-    try {
-      const raw = localStorage.getItem('nigson.admin.v2') || '{}';
-      const parsed = JSON.parse(raw);
-      parsed.posts = articles;
-      localStorage.setItem('nigson.admin.v2', JSON.stringify(parsed));
-    } catch {}
-
-    this.saveSuccess.set(true);
-    setTimeout(() => this.saveSuccess.set(false), 3000);
-  }
+  saveInsightArticles(){this.cms.error.set('Save each article using the article editor before publishing this page.');}
 
   selectSection(id: string) {
     this.selectedSectionId.set(id);
@@ -604,16 +572,7 @@ export class VisualHomeEditorComponent implements OnInit, AfterViewInit {
     this.editingArticle.set(null);
   }
 
-  saveCurrentArticle(art: AdminBlogPost) {
-    // Parse sections with headings & bullets
-    art.sections = parseMarkdownToSections(art.body || '');
-    this.insightArticles.update(list => list.map(item => item.id === art.id ? { ...art } : item));
-    this.saveInsightArticles();
-    this.editingArticle.set(null);
-    this.reloadPreview();
-    this.saveSuccess.set(true);
-    setTimeout(() => this.saveSuccess.set(false), 3000);
-  }
+  saveCurrentArticle(art:AdminBlogPost){this.cms.saveBlog(art).subscribe({next:()=>{this.loadInsightArticles();this.editingArticle.set(null);this.saveSuccess.set(true);this.reloadPreview();},error:e=>this.cms.error.set(this.cms.message(e))});}
 
   addNewInsightArticle() {
     const newArt: AdminBlogPost = {
@@ -704,58 +663,7 @@ export class VisualHomeEditorComponent implements OnInit, AfterViewInit {
     }));
   }
 
-  handleSaveDraft() {
-    this.isSaving.set(true);
-    setTimeout(() => {
-      this.cms.saveDraft(this.pageId());
-      if (this.pageId() === 'insights') {
-        this.saveInsightArticles();
-      }
-      this.isSaving.set(false);
-      this.saveSuccess.set(true);
-      this.reloadPreview();
-      setTimeout(() => this.saveSuccess.set(false), 3000);
-    }, 400);
-  }
+  handleSaveDraft(){this.isSaving.set(true);this.saveSuccess.set(false);this.cms.saveDraft(this.pageId()).subscribe({next:()=>{this.isSaving.set(false);this.saveSuccess.set(true);this.reloadPreview();},error:()=>this.isSaving.set(false)});}
 
-  handlePublish() {
-    const pageId = this.pageId();
-    const currentDraft = this.draft();
-    
-    if (pageId === 'insights') {
-      this.saveInsightArticles();
-    }
-
-    // Convert current sections into ContentRevisionEdit format
-    const editPayload: ContentRevisionEdit = {
-      title: this.pageDef()?.name || pageId,
-      body: {
-        schemaVersion: 1,
-        blocks: (currentDraft?.sections || []).map(s => ({
-          type: 'TEXT',
-          text: JSON.stringify({ id: s.id, visible: s.visible, fields: s.fields, cards: s.cards })
-        }))
-      },
-      metadata: {
-        metaTitle: (this.pageDef()?.name || pageId) + ' | Nigson Wholesale',
-        metaDescription: 'Official page for ' + (this.pageDef()?.name || pageId),
-        keywords: ['wholesale', 'nigeria', pageId]
-      }
-    };
-
-    this.cms.executePublishPipeline(pageId, editPayload).subscribe({
-      next: (ok) => {
-        if (ok) {
-          this.publishSuccess.set(true);
-          this.reloadPreview();
-          setTimeout(() => this.publishSuccess.set(false), 4500);
-        }
-      },
-      error: () => {
-        this.publishSuccess.set(true);
-        this.reloadPreview();
-        setTimeout(() => this.publishSuccess.set(false), 4500);
-      }
-    });
-  }
+  handlePublish(){this.publishSuccess.set(false);this.cms.executePublishPipeline(this.pageId()).subscribe({next:()=>{this.publishSuccess.set(true);this.reloadPreview();},error:()=>this.publishSuccess.set(false)});}
 }
