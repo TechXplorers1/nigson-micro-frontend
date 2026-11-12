@@ -153,6 +153,34 @@ export class InsightPostComponent implements OnInit {
   });
 
   ngOnInit() {
+    const s = this.slug();
+    if (s) {
+      this.http.get<any>(`/api/v1/content/BLOG/${encodeURIComponent(s)}?locale=en`).pipe(
+        catchError(() => of(null))
+      ).subscribe(item => {
+        if (!item || !item.slug) return;
+        const blocks = item.body?.blocks ?? [];
+        const body = blocks.filter((block: any) => block.type === 'TEXT').map((block: any) => block.text).filter(Boolean);
+        const postItem: BlogPost = {
+          slug: item.slug,
+          title: item.title,
+          date: item.publishedAt ? new Date(item.publishedAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '',
+          tag: item.metadata?.tag || item.metadata?.structuredData?.tag || 'Insight',
+          author: item.metadata?.author || item.metadata?.structuredData?.author || 'Nigson Team',
+          readMinutes: 3,
+          excerpt: item.metadata?.description || item.metadata?.excerpt || body.join(' ').slice(0, 220),
+          img: item.metadata?.image || item.metadata?.structuredData?.image || '/assets/blog-market.jpg',
+          body,
+          sections: parseMarkdownToSections(body.join('\n\n'))
+        };
+        const list = [...this.posts()];
+        const idx = list.findIndex(p => p.slug === item.slug);
+        if (idx >= 0) list[idx] = postItem;
+        else list.push(postItem);
+        this.posts.set(list);
+      });
+    }
+
     this.http.get<any>('/api/v1/content?type=BLOG&locale=en&page=0&size=100').pipe(
       catchError(() => of(null))
     ).subscribe(page => {

@@ -3,6 +3,8 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
+    "prestart": "node scripts/sync-federation-cache.js",
+    "prestart:all": "node scripts/sync-federation-cache.js",
     "start": "ng serve shell",
     "start:all": "concurrently \"ng serve marketing\" \"ng serve shop\" \"ng serve auth\" \"ng serve account\" \"ng serve admin-core\" \"ng serve admin-shop\" \"ng serve admin-cms\" \"ng serve shell\"",
     "build": "ng build shell",

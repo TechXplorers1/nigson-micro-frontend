@@ -1103,48 +1103,46 @@ export class CmsService {
   }
 
   /** TASK-63: Submit revision for review via POST /api/v1/staff/content-revisions/:id/review (API-080) */
-  submitForReview(revisionId: string, csrfToken?: string, reason = 'Content updated for publication'): Observable<boolean> {
+  submitForReview(revisionId: string, csrfToken?: string, reason = 'Content updated for publication', expectedVersion = 0): Observable<any> {
     const token = csrfToken || this.session.csrfToken();
     const headers: Record<string, string> = {
-      "If-Match": '"0"',
+      "If-Match": `"${expectedVersion}"`,
       "Idempotency-Key": crypto.randomUUID()
     };
     if (token) {
       headers["X-CSRF-TOKEN"] = token;
     }
-    return this.http.post(`/api/v1/staff/content-revisions/${revisionId}/review`, { reason }, { headers, withCredentials: true }).pipe(
-      map(() => true),
+    return this.http.post<any>(`/api/v1/staff/content-revisions/${revisionId}/review`, { reason }, { headers, withCredentials: true }).pipe(
       catchError(err => {
         console.error('[CmsService] submitForReview failed:', err);
-        return of(false);
+        return of(null);
       })
     );
   }
 
   /** TASK-63: Approve revision via POST /api/v1/staff/content-revisions/:id/approval (API-081) */
-  approveRevision(revisionId: string, csrfToken?: string, reason = 'Approved for publication'): Observable<boolean> {
+  approveRevision(revisionId: string, csrfToken?: string, reason = 'Approved for publication', expectedVersion = 1): Observable<any> {
     const token = csrfToken || this.session.csrfToken();
     const headers: Record<string, string> = {
-      "If-Match": '"1"',
+      "If-Match": `"${expectedVersion}"`,
       "Idempotency-Key": crypto.randomUUID()
     };
     if (token) {
       headers["X-CSRF-TOKEN"] = token;
     }
-    return this.http.post(`/api/v1/staff/content-revisions/${revisionId}/approval`, { approve: true, reason }, { headers, withCredentials: true }).pipe(
-      map(() => true),
+    return this.http.post<any>(`/api/v1/staff/content-revisions/${revisionId}/approval`, { approve: true, reason }, { headers, withCredentials: true }).pipe(
       catchError(err => {
         console.error('[CmsService] approveRevision failed:', err);
-        return of(false);
+        return of(null);
       })
     );
   }
 
   /** TASK-63: Publish revision via POST /api/v1/staff/content-revisions/:id/publication (API-082) */
-  publishRevision(revisionId: string, csrfToken?: string, reason = 'Published to live site', pageId?: string): Observable<boolean> {
+  publishRevision(revisionId: string, csrfToken?: string, reason = 'Published to live site', pageId?: string, expectedVersion = 2): Observable<boolean> {
     const token = csrfToken || this.session.csrfToken();
     const headers: Record<string, string> = {
-      "If-Match": '"2"',
+      "If-Match": `"${expectedVersion}"`,
       "Idempotency-Key": crypto.randomUUID()
     };
     if (token) {
@@ -1230,13 +1228,16 @@ export class CmsService {
               return this.createRevision(existing.id, edit, cleanSlug, csrf).pipe(
                 switchMap(rev => {
                   if (!rev?.id) return of(false);
-                  return this.submitForReview(rev.id, csrf).pipe(
+                  const v0 = rev.version ?? 0;
+                  return this.submitForReview(rev.id, csrf, 'Editorial review', v0).pipe(
                     switchMap(reviewed => {
-                      if (!reviewed) return of(false);
-                      return this.approveRevision(rev.id, csrf).pipe(
+                      if (!reviewed?.id) return of(false);
+                      const v1 = reviewed.version ?? (v0 + 1);
+                      return this.approveRevision(rev.id, csrf, 'Editorial approval', v1).pipe(
                         switchMap(approved => {
-                          if (!approved) return of(false);
-                          return this.publishRevision(rev.id, csrf, 'Published to live site', cleanSlug);
+                          if (!approved?.id) return of(false);
+                          const v2 = approved.version ?? (v1 + 1);
+                          return this.publishRevision(rev.id, csrf, 'Published to live site', cleanSlug, v2);
                         })
                       );
                     })
@@ -1269,13 +1270,16 @@ export class CmsService {
               return this.createContent(createPayload, csrf).pipe(
                 switchMap(rev => {
                   if (!rev?.id) return of(false);
-                  return this.submitForReview(rev.id, csrf).pipe(
+                  const v0 = rev.version ?? 0;
+                  return this.submitForReview(rev.id, csrf, 'Editorial review', v0).pipe(
                     switchMap(reviewed => {
-                      if (!reviewed) return of(false);
-                      return this.approveRevision(rev.id, csrf).pipe(
+                      if (!reviewed?.id) return of(false);
+                      const v1 = reviewed.version ?? (v0 + 1);
+                      return this.approveRevision(rev.id, csrf, 'Editorial approval', v1).pipe(
                         switchMap(approved => {
-                          if (!approved) return of(false);
-                          return this.publishRevision(rev.id, csrf, 'Published to live site', cleanSlug);
+                          if (!approved?.id) return of(false);
+                          const v2 = approved.version ?? (v1 + 1);
+                          return this.publishRevision(rev.id, csrf, 'Published to live site', cleanSlug, v2);
                         })
                       );
                     })
@@ -1316,13 +1320,16 @@ export class CmsService {
         return this.createRevision(contentId, edit, pageId, csrf).pipe(
           switchMap(rev => {
             if (!rev?.id) return of(false);
-            return this.submitForReview(rev.id, csrf, 'Content updated for publication').pipe(
+            const v0 = rev.version ?? 0;
+            return this.submitForReview(rev.id, csrf, 'Content updated for publication', v0).pipe(
               switchMap(reviewed => {
-                if (!reviewed) return of(false);
-                return this.approveRevision(rev.id, csrf, 'Approved for publication').pipe(
+                if (!reviewed?.id) return of(false);
+                const v1 = reviewed.version ?? (v0 + 1);
+                return this.approveRevision(rev.id, csrf, 'Approved for publication', v1).pipe(
                   switchMap(approved => {
-                    if (!approved) return of(false);
-                    return this.publishRevision(rev.id, csrf, 'Published to live site', pageId).pipe(
+                    if (!approved?.id) return of(false);
+                    const v2 = approved.version ?? (v1 + 1);
+                    return this.publishRevision(rev.id, csrf, 'Published to live site', pageId, v2).pipe(
                       tap(() => {
                         console.log(`[CmsService] Page ${pageId} successfully published to Java backend.`);
                         this.syncFromDatabase();

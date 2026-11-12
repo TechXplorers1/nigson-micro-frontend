@@ -656,7 +656,7 @@ export class AdminBlogComponent {
       this.syncLocalStorage(DEFAULT_POSTS);
     }
 
-    // 2. Fetch from PostgreSQL database bridge and merge without wiping local posts
+    // 2. Fetch from PostgreSQL database bridge and update/merge
     this.http.get<any>('/api/v1/content?type=BLOG&locale=en&page=0&size=100').pipe(
       catchError(() => of(null))
     ).subscribe(page => {
@@ -666,18 +666,31 @@ export class AdminBlogComponent {
         .filter((item: any) => item.slug !== 'insights')
         .map((item: any) => {
           const body = (item.body?.blocks ?? []).filter((block: any) => block.type === 'TEXT').map((block: any) => block.text).join('\n\n');
-          return { id: item.id, title: item.title, slug: item.slug, tag: item.metadata?.tag || 'Insight', author: item.metadata?.author || '', date: item.publishedAt || '', status: 'Published', excerpt: item.metadata?.excerpt || body.slice(0, 220), image: '', body } as AdminBlogPost;
+          return {
+            id: item.id,
+            title: item.title,
+            slug: item.slug,
+            tag: item.metadata?.tag || item.metadata?.structuredData?.tag || 'Insight',
+            author: item.metadata?.author || item.metadata?.structuredData?.author || 'Nigson Team',
+            date: item.publishedAt ? new Date(item.publishedAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '',
+            status: 'Published',
+            excerpt: item.metadata?.description || item.metadata?.excerpt || body.slice(0, 220),
+            image: item.metadata?.image || item.metadata?.structuredData?.image || '/assets/blog-market.jpg',
+            body
+          } as AdminBlogPost;
         });
 
-      const current = this.posts();
-      const merged = [...current];
+      const current = [...this.posts()];
       for (const dp of dbPosts) {
-        if (!merged.some(p => p.slug === dp.slug || p.id === dp.id)) {
-          merged.push(dp);
+        const existingIdx = current.findIndex(p => p.slug === dp.slug || p.id === dp.id);
+        if (existingIdx >= 0) {
+          current[existingIdx] = dp;
+        } else {
+          current.push(dp);
         }
       }
-      this.posts.set(merged);
-      this.syncLocalStorage(merged);
+      this.posts.set(current);
+      this.syncLocalStorage(current);
     });
   }
 
