@@ -11,6 +11,13 @@ export function isAnonymousSessionUnauthorized(error: unknown, method: string, u
   return error.error !== null && typeof error.error === 'object' && error.error.code === 'AUTH_REQUIRED';
 }
 
+export function apiFailureDetail(error:any,fallback='The operation failed.'):string {
+  const problem=error?.error;
+  const detail=problem?.detail||problem?.title||error?.message||fallback;
+  const violations=Array.isArray(problem?.violations)?problem.violations.map((v:any)=>v.message).filter((v:any)=>typeof v==='string').join(' '):'';
+  return [detail,violations].filter(Boolean).join(' ');
+}
+
 /** Display the backend's problem response; never turn a failed request into domain data. */
 @Injectable({ providedIn: 'root' })
 export class ApiErrorsService {
@@ -27,9 +34,13 @@ export class ApiErrorsService {
     if (error.status === 0) return `${prefix}: backend unreachable. Check the service and API proxy connection.`;
     const problem = error.error && typeof error.error === 'object' ? error.error : {};
     const code = typeof problem.code === 'string' ? problem.code : error.statusText || 'REQUEST_FAILED';
-    const detail = typeof problem.detail === 'string' ? problem.detail : 'The backend rejected this request.';
+    const gateway = error.status === 502 || error.status === 504;
+    const detail = typeof problem.detail === 'string' ? problem.detail : gateway ? 'The API proxy could not reach the backend. Check the service container, startup configuration and proxy target.' : error.status === 503 ? 'The service is unavailable. Check its health and required configuration.' : 'The backend rejected this request.';
     const violations = Array.isArray(problem.violations) ? problem.violations.map((v: any) => [v.field, v.message].filter(x => typeof x === 'string').join(': ')).filter(Boolean).join('; ') : '';
     const correlation = typeof problem.correlationId === 'string' ? ` Reference: ${problem.correlationId}.` : '';
+    if (error.status === 422 && code === 'MARKET_RULE_VIOLATION') {
+      return `${prefix}: HTTP 422 MARKET_RULE_VIOLATION. The requested market is not activated for selling, so catalogue and pricing data are unavailable until approved market configuration is applied.${correlation}`;
+    }
     return `${prefix}: HTTP ${error.status} ${code}. ${detail}${violations ? ' ' + violations : ''}${correlation}`;
   }
   unavailable<T>(message: string) {

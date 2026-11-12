@@ -1,13 +1,37 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
-import { SessionService, MarketingService, AdminService } from 'shared-ui';
+import { firstValueFrom } from 'rxjs';
+import { SessionService, MarketingService, apiFailureDetail } from 'shared-ui';
 import {
   LucideCheckCircle2, LucideBuilding,
   LucideUsers, LucideLoader2, LucideShieldCheck,
   LucideLayers
 } from '@lucide/angular';
+
+interface FileUploadSession {
+  assetId: string;
+  uploadUrl: string;
+  requiredHeaders: Record<string, string>;
+}
+
+interface UploadedFile {
+  id: string;
+  state: string;
+}
+
+interface FileDownload {
+  url: string;
+}
+
+function problemField(error: unknown, field: string): string | undefined {
+  if (!(error instanceof HttpErrorResponse) || typeof error.error !== 'object' || error.error === null) {
+    return undefined;
+  }
+  const value = (error.error as Record<string, unknown>)[field];
+  return typeof value === 'string' ? value : undefined;
+}
 
 @Component({
   selector: 'app-distributor',
@@ -167,12 +191,6 @@ import {
               </div>
               <button type="button" (click)="submitError.set(null)" class="text-red-600 font-bold ml-2 hover:text-red-800">✕</button>
             </div>
-            <div *ngIf="submitError()?.includes('422')" class="pt-2 border-t border-red-200/60 flex flex-wrap items-center justify-between gap-2 text-xs">
-              <span class="text-red-700 font-medium">You can still record this entry to the local admin review dashboard:</span>
-              <button type="button" (click)="saveToLocalAdmin()" class="rounded-lg bg-red-600 px-3 py-1.5 font-semibold text-white hover:bg-red-700 transition-colors shadow-sm">
-                Save to Local Admin Portal
-              </button>
-            </div>
           </div>
 
           <!-- ================= TAB 1: WHOLESALER FORM ================= -->
@@ -293,17 +311,24 @@ import {
                 <div class="mx-auto grid h-16 w-16 place-items-center rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100">
                   <svg lucideCheckCircle2 class="h-9 w-9"></svg>
                 </div>
-                <h3 class="text-2xl font-extrabold text-ink">Corporate Distributor Application Recorded</h3>
-                <p class="text-sm md:text-base text-muted-foreground max-w-lg mx-auto">
-                  Your corporate application for <strong>{{ dist.organizationName }}</strong> has been officially registered in the distributor database. Our commercial partnerships director will contact your executive office within 1 business day.
+                <h3 class="text-2xl font-extrabold text-ink">
+                  {{ distributorApplicationSubmitted() ? 'Corporate Distributor Application Submitted' : 'Distributor Enquiry Received' }}
+                </h3>
+                <p class="text-sm md:text-base text-muted-foreground max-w-lg mx-auto" *ngIf="distributorApplicationSubmitted(); else distributorEnquiryOnly">
+                  The backend recorded your corporate application for <strong>{{ dist.organizationName }}</strong>. Our commercial partnerships team will contact your executive office.
                 </p>
+                <ng-template #distributorEnquiryOnly>
+                  <p class="text-sm md:text-base text-muted-foreground max-w-lg mx-auto">
+                    Your enquiry for <strong>{{ dist.organizationName }}</strong> was sent to Nigson. This does not create a distributor application; a signed-in application with a verified registration document is required.
+                  </p>
+                </ng-template>
                 <div class="pt-4">
                   <button
                     type="button"
                     (click)="resetDistributor()"
                     class="inline-flex items-center gap-2 rounded-full border border-hairline px-6 py-2.5 text-xs font-semibold hover:border-brand hover:text-brand transition-colors"
                   >
-                    Submit another corporate application
+                    Submit another distributor enquiry
                   </button>
                 </div>
               </div>
@@ -314,6 +339,7 @@ import {
                 <span class="text-xs font-bold uppercase tracking-wider text-brand">Exclusive Corporate Channel</span>
                 <h2 class="text-2xl font-bold text-ink mt-0.5">Corporate Distributor Application</h2>
                 <p class="mt-1 text-sm text-muted-foreground">For incorporated trading companies, regional logistics networks, and major electronics distributors.</p>
+                <p class="mt-2 text-sm text-muted-foreground">Authenticated applicants must upload genuine business-registration proof and wait for its security scan. Unauthenticated submissions are recorded as enquiries only.</p>
               </div>
 
               <form (submit)="onDistributorSubmit($event)" novalidate class="mt-6 space-y-5">
@@ -377,17 +403,48 @@ import {
                   </div>
                 </div>
 
-                <div *ngIf="sampleDocument() as sample" class="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 space-y-2">
-                  <label class="flex items-center gap-2.5 text-xs font-semibold text-emerald-950 cursor-pointer">
-                    <input type="checkbox" [(ngModel)]="useSampleDocument" name="useSampleDocument" class="h-4 w-4 rounded accent-[#D62828]" />
-                    <span>Attach verified CAC business registration document (Ref: {{ sample.id.slice(0, 8) }})</span>
-                  </label>
-                  <p class="text-[11px] text-emerald-800">Attach corporate registration certificate verifying business incorporation in Nigeria.</p>
-                </div>
+                <section *ngIf="session.authenticated()" class="space-y-3 rounded-xl border border-hairline bg-surface-alt p-4" aria-labelledby="registration-proof-label">
+                  <div>
+                    <label id="registration-proof-label" for="registration-proof" class="block text-xs font-bold uppercase tracking-wider text-muted-ink mb-1.5">
+                      Business registration proof <span class="text-brand">*</span>
+                    </label>
+                    <input
+                      id="registration-proof"
+                      type="file"
+                      accept="application/pdf,image/jpeg,image/png"
+                      (change)="onDocumentSelected($event)"
+                      [disabled]="uploadingDocument() || checkingDocument() || submittingDistributor()"
+                      class="block w-full text-sm text-muted-ink file:mr-3 file:rounded-lg file:border-0 file:bg-brand file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white disabled:opacity-60"
+                    />
+                    <p class="mt-1 text-xs text-muted-foreground">PDF, JPEG, or PNG; maximum 10 MB. The document must pass the server-side security scan before you can submit.</p>
+                  </div>
+                  <p *ngIf="selectedDocumentName()" class="text-sm text-ink">{{ selectedDocumentName() }}</p>
+                  <p *ngIf="documentUploadState() === 'QUARANTINED'" class="text-sm text-amber-700" aria-live="polite">
+                    Upload complete. The document is awaiting security-scan approval.
+                  </p>
+                  <p *ngIf="documentUploadState() === 'CLEAN'" class="text-sm text-green-700" aria-live="polite">
+                    The document passed the security scan and is ready to submit.
+                  </p>
+                  <div class="flex flex-wrap items-center gap-3">
+                    <button
+                      *ngIf="selectedDocumentId && documentUploadState() === 'QUARANTINED'"
+                      type="button"
+                      (click)="checkDocumentStatus()"
+                      [disabled]="checkingDocument()"
+                      class="rounded-lg border border-hairline bg-white px-3 py-2 text-sm font-semibold text-ink disabled:opacity-60"
+                    >
+                      {{ checkingDocument() ? 'Checking scan status...' : 'Check scan status' }}
+                    </button>
+                    <a *ngIf="documentDownloadUrl()" [href]="documentDownloadUrl()" target="_blank" rel="noopener noreferrer" class="text-sm font-semibold text-brand underline">
+                      Download uploaded document
+                    </a>
+                  </div>
+                  <p *ngIf="documentUploadError()" class="text-sm text-red-700" role="alert">{{ documentUploadError() }}</p>
+                </section>
 
                 <button
                   type="submit"
-                  [disabled]="submittingDistributor()"
+                  [disabled]="submittingDistributor() || uploadingDocument() || checkingDocument()"
                   class="w-full inline-flex items-center justify-center gap-2 rounded-full bg-brand text-white py-3.5 text-sm font-bold hover:bg-brand-deep disabled:opacity-60 transition-colors shadow-sm"
                 >
                   <svg *ngIf="submittingDistributor()" lucideLoader2 class="h-4 w-4 animate-spin"></svg>
@@ -526,14 +583,14 @@ import {
 export class DistributorComponent {
   session = inject(SessionService);
   marketingSvc = inject(MarketingService);
-  adminSvc = inject(AdminService, { optional: true });
-  private http = inject(HttpClient);
+  private readonly http = inject(HttpClient);
 
   // 3 distinct tabs: wholesaler | distributor | affiliate
   activeTab = signal<'wholesaler' | 'distributor' | 'affiliate'>('wholesaler');
 
   wholesaleSubmitted = signal(false);
   distributorSubmitted = signal(false);
+  distributorApplicationSubmitted = signal(false);
   affiliateSubmitted = signal(false);
 
   submittingWholesale = signal(false);
@@ -542,51 +599,13 @@ export class DistributorComponent {
 
   submitError = signal<string | null>(null);
 
-  private localDocuments = signal<Record<string, { id: string; url: string }>>({});
-  sampleDocument = computed(() => this.localDocuments()[this.session.userId() ?? '']);
-  useSampleDocument = false;
   selectedDocumentId?: string;
-  submitted = signal(false);
-  private operationKey = 'op-' + Math.random().toString(36).substring(2, 9);
-
-  onSubmit(form?: any) {
-    if (this.marketingSvc.submittingDistributor()) return;
-    if (!this.useSampleDocument && !this.selectedDocumentId) {
-      this.submitError.set('Select the local sample document to submit in this test environment.');
-      return;
-    }
-    const docId = this.sampleDocument()?.id || this.selectedDocumentId || 'document-id';
-    const payload = {
-      organizationName: this.dist.organizationName || this.f.company || 'Demo distributor',
-      countryCode: 'NG',
-      documentIds: [docId],
-      businessReference: this.dist.businessReference || undefined
-    };
-    this.marketingSvc.submitDistributorApplication(payload, this.operationKey).subscribe({
-      next: () => {
-        this.submitError.set(null);
-        this.distributorSubmitted.set(true);
-        this.submitted.set(true);
-      },
-      error: (err: any) => {
-        this.submitted.set(false);
-        if (err?.error?.code === 'PROVIDER_OUTCOME_UNKNOWN') {
-          this.submitError.set('Try again. The previous submission timed out or returned an uncertain outcome.');
-        } else {
-          this.submitError.set(err?.error?.message || err?.error?.code || 'Submission failed');
-        }
-      }
-    });
-  }
-
-  constructor() {
-    if (['localhost', '127.0.0.1'].includes(window.location.hostname)) {
-      this.http.get<{ localOnly: boolean; phase: number; documents: Record<string, { id: string; url: string }> }>('/local-distributor-fixtures.json').subscribe({
-        next: data => { if (data.localOnly && data.phase === 3) this.localDocuments.set(data.documents); },
-        error: () => { }
-      });
-    }
-  }
+  selectedDocumentName = signal<string | null>(null);
+  documentUploadState = signal<'QUARANTINED' | 'CLEAN' | null>(null);
+  documentDownloadUrl = signal<string | null>(null);
+  documentUploadError = signal<string | null>(null);
+  uploadingDocument = signal(false);
+  checkingDocument = signal(false);
 
   // ─── TAB 1: WHOLESALER DATA MODEL ──────────────────────────────────────────
   f = {
@@ -836,76 +855,6 @@ export class DistributorComponent {
     return Object.keys(this.affiliateErrors()).length === 0;
   }
 
-  saveToLocalAdmin(): void {
-    if (this.activeTab() === 'wholesaler') {
-      this.adminSvc?.addLocalApplication({
-        type: 'Wholesaler',
-        businessName: this.f.company || 'Wholesale Applicant',
-        contactPerson: this.f.contact,
-        email: this.f.email,
-        phone: this.f.phone,
-        location: this.f.state + (this.f.address ? ` - ${this.f.address}` : ''),
-        category: this.f.category,
-        note: `Store: ${this.f.company}. Address: ${this.f.address}. Volume: ${this.f.volume}. Terms: ${this.f.paymentTerms}. Category: ${this.f.category}`,
-        status: 'Pending'
-      });
-      this.adminSvc?.addLocalInquiry({
-        name: `${this.f.contact} (${this.f.company})`.slice(0, 160),
-        email: this.f.email.trim(),
-        phone: this.f.phone.trim(),
-        subject: `Wholesale Application: ${this.f.company} (${this.f.state})`.slice(0, 200),
-        message: `Store: ${this.f.company}\nPhone: ${this.f.phone}\nAddress: ${this.f.address}\nVolume: ${this.f.volume}`,
-        status: 'New'
-      });
-      this.submitError.set(null);
-      this.wholesaleSubmitted.set(true);
-    } else if (this.activeTab() === 'distributor') {
-      this.adminSvc?.addLocalApplication({
-        type: 'Distributor',
-        businessName: this.dist.organizationName || 'Corporate Applicant',
-        contactPerson: this.dist.directorName,
-        email: this.dist.email,
-        phone: this.dist.phone,
-        location: this.dist.territory || 'Nigeria',
-        category: 'Accessories',
-        note: `RC: ${this.dist.businessReference}. Turnover: ${this.dist.annualTurnover}. Logistics: ${this.dist.logisticsCapacity}.`,
-        status: 'Pending'
-      });
-      this.adminSvc?.addLocalInquiry({
-        name: `${this.dist.directorName} (${this.dist.organizationName})`.slice(0, 160),
-        email: this.dist.email.trim(),
-        phone: this.dist.phone.trim(),
-        subject: `Corporate Distributor Application: ${this.dist.organizationName} (${this.dist.territory})`.slice(0, 200),
-        message: `Legal Entity: ${this.dist.organizationName}\nRC: ${this.dist.businessReference}\nMD: ${this.dist.directorName}\nPhone: ${this.dist.phone}\nTerritory: ${this.dist.territory}`,
-        status: 'New'
-      });
-      this.submitError.set(null);
-      this.distributorSubmitted.set(true);
-    } else if (this.activeTab() === 'affiliate') {
-      this.adminSvc?.addLocalApplication({
-        type: 'Affiliate Marketer',
-        businessName: `${this.aff.name} (${this.aff.channels || 'Social Creator'})`,
-        contactPerson: this.aff.name,
-        email: this.aff.email,
-        phone: this.aff.phone,
-        location: this.aff.location || 'Nigeria',
-        category: 'Accessories',
-        status: 'Pending',
-        note: `Audience: ${this.aff.audience}. Niche: ${this.aff.niche}. Bank: ${this.aff.bankName} (${this.aff.accountNumber} - ${this.aff.accountName}). Strategy: ${this.aff.strategy}`
-      });
-      this.adminSvc?.addLocalInquiry({
-        name: this.aff.name,
-        email: this.aff.email,
-        phone: this.aff.phone,
-        subject: `Affiliate Partner Application: ${this.aff.name} (${this.aff.niche})`,
-        message: `Channels: ${this.aff.channels}\nAudience: ${this.aff.audience}\nBank: ${this.aff.bankName} - ${this.aff.accountNumber} (${this.aff.accountName})\nStrategy: ${this.aff.strategy}`,
-        status: 'New'
-      });
-      this.submitError.set(null);
-      this.affiliateSubmitted.set(true);
-    }
-  }
-
   onWholesaleSubmit(event: Event) {
     event.preventDefault();
     this.submitError.set(null);
@@ -942,25 +891,6 @@ export class DistributorComponent {
       next: (res) => {
         this.submittingWholesale.set(false);
         if (res.success) {
-          this.adminSvc?.addLocalApplication({
-            type: 'Wholesaler',
-            businessName: this.f.company,
-            contactPerson: this.f.contact,
-            email: this.f.email,
-            phone: this.f.phone,
-            location: this.f.state + (this.f.address ? ` - ${this.f.address}` : ''),
-            category: this.f.category,
-            note: `Monthly volume: ${this.f.volume}. Terms: ${this.f.paymentTerms}. Trading hub: ${this.f.state}.`,
-            status: 'Pending'
-          });
-          this.adminSvc?.addLocalInquiry({
-            name: `${this.f.contact} (${this.f.company})`.slice(0, 160),
-            email: this.f.email.trim(),
-            phone: this.f.phone.trim(),
-            subject: `Wholesale Application: ${this.f.company} (${this.f.state})`.slice(0, 200),
-            message: fullMessage,
-            status: 'New'
-          });
           this.wholesaleSubmitted.set(true);
         } else {
           this.wholesaleSubmitted.set(false);
@@ -988,10 +918,17 @@ export class DistributorComponent {
       return;
     }
 
+    const authenticated = this.session.authenticated();
+    const documentId = this.selectedDocumentId?.trim();
+    if (authenticated && (!documentId || this.documentUploadState() !== 'CLEAN')) {
+      this.submitError.set(documentId
+        ? 'The business-registration document must pass the security scan before you can submit the application.'
+        : 'Upload a business-registration document and wait for its security scan before submitting the application.');
+      return;
+    }
+
     this.submittingDistributor.set(true);
 
-    const doc = this.sampleDocument();
-    const hasDoc = this.useSampleDocument && !!doc;
     const businessRef = this.dist.businessReference.trim() || undefined;
 
     const fullMessage = [
@@ -1017,45 +954,34 @@ export class DistributorComponent {
     }).subscribe({
       next: (res) => {
         if (res.success) {
-          // If authenticated, also register in distributor-applications
-          if (this.session.authenticated()) {
-            this.marketingSvc.submitDistributorApplication({
-              organizationName: this.dist.organizationName.trim(),
-              countryCode: 'NG',
-              documentIds: hasDoc ? [doc.id] : [],
-              businessReference: businessRef
-            }).subscribe({
-              next: () => {
-                this.submittingDistributor.set(false);
-                this.distributorSubmitted.set(true);
-              },
-              error: () => {
-                this.submittingDistributor.set(false);
-                this.distributorSubmitted.set(true);
-              }
-            });
-          } else {
+          if (!authenticated) {
             this.submittingDistributor.set(false);
+            this.distributorApplicationSubmitted.set(false);
             this.distributorSubmitted.set(true);
+            return;
           }
-          this.adminSvc?.addLocalApplication({
-            type: 'Distributor',
-            businessName: this.dist.organizationName,
-            contactPerson: this.dist.directorName,
-            email: this.dist.email,
-            phone: this.dist.phone,
-            location: this.dist.territory || 'Nigeria',
-            category: 'Accessories',
-            note: `RC: ${this.dist.businessReference}. Turnover: ${this.dist.annualTurnover}. Logistics: ${this.dist.logisticsCapacity}.`,
-            status: 'Pending'
-          });
-          this.adminSvc?.addLocalInquiry({
-            name: `${this.dist.directorName} (${this.dist.organizationName})`.slice(0, 160),
-            email: this.dist.email.trim(),
-            phone: this.dist.phone.trim(),
-            subject: `Corporate Distributor Application: ${this.dist.organizationName} (${this.dist.territory})`.slice(0, 200),
-            message: fullMessage,
-            status: 'New'
+          if (!documentId) {
+            this.submittingDistributor.set(false);
+            this.submitError.set('Your enquiry was received, but a verified registration document is required to create the distributor application.');
+            return;
+          }
+          this.marketingSvc.submitDistributorApplication({
+            organizationName: this.dist.organizationName.trim(),
+            countryCode: 'NG',
+            documentIds: [documentId],
+            businessReference: businessRef
+          }).subscribe({
+            next: () => {
+              this.submittingDistributor.set(false);
+              this.distributorApplicationSubmitted.set(true);
+              this.distributorSubmitted.set(true);
+            },
+            error: (error: any) => {
+              this.submittingDistributor.set(false);
+              this.distributorSubmitted.set(false);
+              const reason = error?.error?.message || error?.error?.code || 'Distributor application submission failed';
+              this.submitError.set(`Your enquiry was received, but the distributor application was not submitted: ${reason}`);
+            }
           });
         } else {
           this.submittingDistributor.set(false);
@@ -1067,12 +993,108 @@ export class DistributorComponent {
           }
         }
       },
-      error: () => {
+      error: (error: any) => {
         this.submittingDistributor.set(false);
         this.distributorSubmitted.set(false);
-        this.submitError.set('Could not submit corporate distributor application. Please check network connection and try again.');
+        this.submitError.set(error?.error?.message || error?.error?.code || 'Could not submit the distributor enquiry. Please try again.');
       }
     });
+  }
+
+  async onDocumentSelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement | null;
+    const file = input?.files?.[0];
+    this.documentUploadError.set(null);
+    this.selectedDocumentId = undefined;
+    this.selectedDocumentName.set(null);
+    this.documentUploadState.set(null);
+    this.documentDownloadUrl.set(null);
+
+    if (!file) return;
+    if (
+      !['application/pdf', 'image/jpeg', 'image/png'].includes(file.type)
+      || file.size < 1
+      || file.size > 10 * 1024 * 1024
+      || file.name.length > 120
+      || file.name.includes('/')
+      || file.name.includes('\\')
+      || /[\u0000-\u001f\u007f]/.test(file.name)
+    ) {
+      this.documentUploadError.set('Choose a PDF, JPEG, or PNG file no larger than 10 MB with a valid filename.');
+      if (input) input.value = '';
+      return;
+    }
+
+    this.uploadingDocument.set(true);
+    this.selectedDocumentName.set(file.name);
+    try {
+      const checksumSha256 = await this.sha256(file);
+      const upload = await firstValueFrom(this.http.post<FileUploadSession>(
+        '/api/v1/experience/files/uploads',
+        {
+          purpose: 'DISTRIBUTOR_PROOF',
+          filename: file.name,
+          mimeType: file.type,
+          size: file.size,
+          checksumSha256
+        },
+        { headers: { 'Idempotency-Key': crypto.randomUUID() } }
+      ));
+
+      const storageResponse = await fetch(upload.uploadUrl, {
+        method: 'PUT',
+        headers: upload.requiredHeaders,
+        body: file,
+        credentials: 'omit'
+      });
+      if (!storageResponse.ok) {
+        throw new Error(`Document storage upload failed with HTTP ${storageResponse.status}.`);
+      }
+
+      const completed = await firstValueFrom(this.http.post<UploadedFile>(
+        `/api/v1/experience/files/${encodeURIComponent(upload.assetId)}/completion`,
+        { checksumSha256 },
+        { headers: { 'If-Match': '"0"', 'Idempotency-Key': crypto.randomUUID() } }
+      ));
+      if (completed.state !== 'QUARANTINED') {
+        throw new Error(`Unexpected document scan state: ${completed.state}.`);
+      }
+      this.selectedDocumentId = completed.id;
+      this.documentUploadState.set('QUARANTINED');
+    } catch (error) {
+      this.documentUploadError.set(apiFailureDetail(error, 'The document upload could not be completed.'));
+    } finally {
+      this.uploadingDocument.set(false);
+      if (input) input.value = '';
+    }
+  }
+
+  async checkDocumentStatus(): Promise<void> {
+    if (!this.selectedDocumentId || this.documentUploadState() !== 'QUARANTINED') return;
+
+    this.checkingDocument.set(true);
+    this.documentUploadError.set(null);
+    try {
+      const download = await firstValueFrom(this.http.get<FileDownload>(
+        `/api/v1/experience/files/${encodeURIComponent(this.selectedDocumentId)}/download`
+      ));
+      this.documentDownloadUrl.set(download.url);
+      this.documentUploadState.set('CLEAN');
+    } catch (error) {
+      this.documentDownloadUrl.set(null);
+      if (problemField(error, 'code') === 'INVALID_TRANSITION') {
+        this.documentUploadError.set('The document is not available for download yet. It may still be scanning or may have been rejected; try again later or upload a different file.');
+      } else {
+        this.documentUploadError.set(apiFailureDetail(error, 'Could not check the document scan status.'));
+      }
+    } finally {
+      this.checkingDocument.set(false);
+    }
+  }
+
+  private async sha256(file: File): Promise<string> {
+    const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
+    return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
   }
 
   onAffiliateSubmit(event: Event) {
@@ -1112,25 +1134,6 @@ export class DistributorComponent {
       next: (res) => {
         this.submittingAffiliate.set(false);
         if (res.success) {
-          this.adminSvc?.addLocalApplication({
-            type: 'Affiliate Marketer',
-            businessName: `${this.aff.name} (${this.aff.channels || 'Social Creator'})`,
-            contactPerson: this.aff.name,
-            email: this.aff.email,
-            phone: this.aff.phone,
-            location: this.aff.location || 'Nigeria',
-            category: 'Accessories',
-            status: 'Pending',
-            note: `Audience: ${this.aff.audience}. Niche: ${this.aff.niche}. Bank: ${this.aff.bankName} (${this.aff.accountNumber} - ${this.aff.accountName}). Strategy: ${this.aff.strategy}`
-          });
-          this.adminSvc?.addLocalInquiry({
-            name: this.aff.name,
-            email: this.aff.email,
-            phone: this.aff.phone,
-            subject: `Affiliate Partner Application: ${this.aff.name} (${this.aff.niche})`,
-            message: `Channels: ${this.aff.channels}\nAudience: ${this.aff.audience}\nBank: ${this.aff.bankName} - ${this.aff.accountNumber} (${this.aff.accountName})\nStrategy: ${this.aff.strategy}`,
-            status: 'New'
-          });
           this.affiliateSubmitted.set(true);
         } else {
           this.affiliateSubmitted.set(false);
@@ -1167,6 +1170,7 @@ export class DistributorComponent {
 
   resetDistributor() {
     this.distributorSubmitted.set(false);
+    this.distributorApplicationSubmitted.set(false);
     this.dist = {
       organizationName: '',
       countryCode: 'NG',

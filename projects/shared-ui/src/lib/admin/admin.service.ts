@@ -160,7 +160,12 @@ export class AdminService {
   can(section: SectionKey): boolean { return this.session.roles().some(role => ROLE_PERMISSIONS[role]?.includes(section)); }
   isSuper(): boolean { return this.session.isAdmin(); }
   log(text: string): void { this.activity.update(rows => [{ id: crypto.randomUUID(), text, date: new Date().toISOString() }, ...rows].slice(0, 40)); }
-  message(error: any): string { return error?.error?.detail || error?.message || 'The operation failed. Reload the current record and try again.'; }
+  message(error: any): string {
+    if (error?.error?.code === 'MARKET_RULE_VIOLATION') {
+      return 'The Nigeria market is not activated, so catalogue and pricing data are unavailable. Activate the market with approved tax, returns, price-book, delivery and provider configuration before editing products.';
+    }
+    return error?.error?.detail || error?.message || 'The operation failed. Reload the current record and try again.';
+  }
   private fail(key: string, error: any): Observable<never> { this.errors.update(all => ({ ...all, [key]: this.message(error) })); return throwError(() => error); }
   private clear(key: string): void { this.errors.update(all => { const copy = { ...all }; delete copy[key]; return copy; }); }
   private headers(version?: number): HttpHeaders {

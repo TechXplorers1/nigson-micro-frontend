@@ -18,6 +18,14 @@ The backend Compose foundation profile disables BFF sessions by default. For sig
 
 The local `nigson-local` realm enables self-registration. The signup screen starts the same BFF authorization-code flow as sign-in; choose **Register** on Keycloak's sign-in page. Existing Keycloak data volumes are not overwritten by realm import, so enable **Realm settings → Login → User registration** and add the exact callback URI to the `nigson-bff` client's valid redirect URIs when upgrading an existing local realm. Password reset stays disabled until local email delivery is configured.
 
+Public lead submissions use Google reCAPTCHA v3 and fail closed when no token can be obtained. Production release builds require the public `NIGSON_GOOGLE_RECAPTCHA_SITE_KEY` environment value:
+
+```bash
+NIGSON_GOOGLE_RECAPTCHA_SITE_KEY=your-public-site-key python3 scripts/deploy/build-release.py --output /path/to/new-release
+```
+
+Configure the matching reCAPTCHA secret, allowed hostnames, database rate-limit mode/key, and lead recipient on the backend. The site key is public; the secret and rate-limit HMAC key must be supplied through the backend secret manager. Do not use the test-only HMAC token in local application requests.
+
 ## API ownership
 
 - Commerce and `/bff`: catalogue, market, cart, checkout, orders, account and Commerce staff endpoints.

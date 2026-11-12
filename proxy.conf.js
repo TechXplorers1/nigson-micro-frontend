@@ -1,16 +1,15 @@
+const unavailable = target => (_error, req, res) => {
+  if (res.headersSent || res.writableEnded) return;
+  const service = target.endsWith(':8082') ? 'Experience' : target.endsWith(':8081') ? 'Commerce' : 'Storage';
+  res.writeHead(503, {'Content-Type':'application/problem+json','Cache-Control':'no-store'});
+  res.end(JSON.stringify({type:'urn:nigson:problem:backend-unavailable',title:'Backend unavailable',status:503,
+    detail:`${service} is unreachable at ${target}. Check its container status and startup configuration.`,
+    instance:req.url?.split('?')[0],code:'BACKEND_UNAVAILABLE'}));
+};
 const direct = target => ({
-  target,
-  secure: false,
-  changeOrigin: true,
-  logLevel: 'silent',
-  onError: (_error, req, res) => {
-    if (!res.headersSent) {
-      res.writeHead(503, { 'Content-Type': 'application/problem+json' });
-      res.end(JSON.stringify({ type: 'urn:nigson:problem:provider-unavailable', title: 'Backend unavailable', status: 503,
-        detail: 'The local backend could not be reached. Start Commerce and Experience with make run-core.',
-        instance: req.url?.split('?')[0], code: 'PROVIDER_UNAVAILABLE' }));
-    }
-  }
+  target, secure:false, changeOrigin:true, logLevel:'silent',
+  onError:unavailable(target),
+  configure:proxy => proxy.on('error',unavailable(target))
 });
 const commerce = direct('http://localhost:8081');
 const experience = direct('http://localhost:8082');
