@@ -667,5 +667,5 @@ export class VisualHomeEditorComponent implements OnInit, AfterViewInit {
 
   handleSaveDraft(){this.isSaving.set(true);this.saveSuccess.set(false);this.cms.saveDraft(this.pageId()).subscribe({next:()=>{this.isSaving.set(false);this.saveSuccess.set(true);this.reloadPreview();},error:()=>this.isSaving.set(false)});}
 
-  handlePublish(){this.publishSuccess.set(false);this.cms.executePublishPipeline(this.pageId()).subscribe({next:()=>{this.publishSuccess.set(true);this.reloadPreview();},error:()=>this.publishSuccess.set(false)});}
+  handlePublish(){this.publishSuccess.set(false);this.backendSynced.set(false);this.cms.executePublishPipeline(this.pageId()).subscribe({next:()=>{this.backendSynced.set(true);this.publishSuccess.set(true);this.reloadPreview();},error:()=>{this.backendSynced.set(false);this.publishSuccess.set(false);}});}
 }

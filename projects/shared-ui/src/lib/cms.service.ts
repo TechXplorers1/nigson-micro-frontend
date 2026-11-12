@@ -40,24 +40,6 @@ export interface ContentDTO {
   publishedAt: string;
 }
 
-export const PAGE_CONTENT_IDS: Record<string, string> = {
-  home: '10000000-0000-4000-8000-000000000001',
-  about: 'b9ac89ca-e8ae-4fb7-a2e4-2ff713793eac',
-  careers: '3fbc1564-4b2e-4ec0-927a-4d90ea57aec0',
-  contact: '38bee0b9-864d-44eb-8059-75461716f275',
-  distributor: '5963c1c3-2822-4ab0-b863-d731bcddf285',
-  insights: '61c0aa79-ef00-4bc1-a08d-d7b1facb60f8',
-};
-
-export const CONTENT_ITEM_VERSIONS: Record<string, number> = {
-  home: 22,
-  about: 1,
-  careers: 0,
-  contact: 2,
-  distributor: 0,
-  insights: 0
-};
-
 export interface ContentRevisionEdit {
   title: string;
   body: {
@@ -65,14 +47,8 @@ export interface ContentRevisionEdit {
     blocks: any[];
   };
   metadata: {
-    title?: string;
-    description?: string;
-    robots?: string;
-    alternates?: any[];
-    structuredData?: Record<string, any>;
-    canonicalUrl?: string | null;
-    metaTitle?: string;
-    metaDescription?: string;
+    metaTitle: string;
+    metaDescription: string;
     keywords?: string[];
   };
 }
