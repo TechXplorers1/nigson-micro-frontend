@@ -87,14 +87,14 @@ export class AnalyticsComponent implements OnInit {
   ngOnInit() {
     this.admin.loadStaffOrders().subscribe();
     this.admin.loadStaffProducts().subscribe();
-    this.admin.loadCommerceReport().subscribe(rep => {
+    this.admin.loadCommerceReport().subscribe({next:rep => {
       if (rep) {
-        if (rep.sales?.amount) this.reportSales.set(rep.sales.amount / 100);
+        if (rep.sales?.amount) this.reportSales.set(Number(rep.sales.amount));
         if (rep.orders !== undefined) this.reportOrders.set(rep.orders);
         if (rep.customers !== undefined) this.reportCustomers.set(rep.customers);
       }
-    });
-    this.admin.loadEngagementReport().subscribe();
+    },error:()=>{}});
+    this.admin.loadEngagementReport().subscribe({error:()=>{}});
   }
 
   get liveOrders() {

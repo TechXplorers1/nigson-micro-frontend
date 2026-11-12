@@ -11,7 +11,7 @@ import { LucideShieldCheck, LucidePencil } from '@lucide/angular';
     LucideShieldCheck, LucidePencil
   ],
   template: `
-    <lib-admin-heading title="Roles & Permissions" subtitle="Define what modules admin users can access"></lib-admin-heading>
+    <lib-admin-heading title="Roles & Permissions" subtitle="Review the fixed staff roles. Assign roles to existing accounts on Admin Users."></lib-admin-heading>
 
     <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
       <div *ngFor="let r of admin.roles()" class="flex flex-col rounded-2xl border border-hairline bg-white p-5 shadow-sm transition-all hover:shadow-md">
@@ -25,9 +25,7 @@ import { LucideShieldCheck, LucidePencil } from '@lucide/angular';
               <p class="text-xs text-muted-ink">{{ membersCount(r.id) }} members</p>
             </div>
           </div>
-          <button *ngIf="isSuper()" class="grid h-8 w-8 place-items-center rounded-lg text-muted-ink transition-colors hover:bg-brand/10 hover:text-brand" title="Edit Role">
-            <svg lucidePencil class="h-4 w-4"></svg>
-          </button>
+
         </div>
 
         <div class="flex-1 space-y-2 border-t border-hairline pt-4">
@@ -49,6 +47,6 @@ export class AdminRolesComponent {
   }
 
   membersCount(roleId: string) {
-    return this.admin.admins().filter(a => a.roleId === roleId).length;
+    return this.admin.admins().filter(a => (a.roles || [a.roleId]).includes(roleId)).length;
   }
 }

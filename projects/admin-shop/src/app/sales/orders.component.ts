@@ -100,10 +100,8 @@ import { LucideEye } from '@lucide/angular';
         </div>
 
         <div class="flex items-center gap-2">
-          <select #st class="flex-1 rounded-xl border border-hairline bg-surface-alt px-4 py-2" [value]="viewOrder.status">
-            <option *ngFor="let s of statuses" [value]="s">{{ s }}</option>
-          </select>
-          <button (click)="admin.setOrderStatus(viewOrder.id, st.value); viewOrder = null" class="rounded-xl bg-brand px-4 py-2 font-bold text-white">Save Status</button>
+          <p class="text-sm">Shipping and delivery update from recorded fulfillment operations.</p>
+          <button *ngIf="viewOrder.rawState === 'PAID'" (click)="admin.setOrderStatus(viewOrder.id, 'Processing')" class="rounded-xl bg-brand px-4 py-2 font-bold text-white">Release for processing</button>
         </div>
       </div>
     </div>

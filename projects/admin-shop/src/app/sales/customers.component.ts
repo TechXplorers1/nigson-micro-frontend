@@ -191,13 +191,7 @@ import { LucideSearch, LucideEye, LucideX } from '@lucide/angular';
               </span>
             </div>
           </div>
-          <button
-            (click)="toggleStatus(selectedCustomer()!)"
-            class="rounded-xl border border-hairline px-3.5 py-1.5 text-xs font-bold transition-all shadow-xs"
-            [ngClass]="selectedCustomer()!.status === 'Active' ? 'bg-rose-50 text-rose-700 hover:bg-rose-100 border-rose-200' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-200'"
-          >
-            {{ selectedCustomer()!.status === 'Active' ? 'Suspend Account' : 'Activate Account' }}
-          </button>
+          <p class="text-xs text-muted-ink">Customer profile changes are managed by the account owner.</p>
         </div>
 
         <!-- Associated Order History -->

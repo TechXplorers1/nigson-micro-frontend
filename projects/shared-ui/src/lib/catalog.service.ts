@@ -1,6 +1,6 @@
 import { Injectable, inject, signal, computed, Injector } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
+import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
+import { Observable, forkJoin, of } from 'rxjs';
 import { tap, catchError, map, switchMap } from 'rxjs/operators';
 import { CartService } from './cart.service';
 
@@ -251,6 +251,21 @@ export class CatalogService {
   /** Loaded flag — true once initial products list has been fetched */
   readonly loaded = signal(false);
 
+  /**
+   * True when Commerce rejects market-scoped catalogue reads because the
+   * requested market is configured but not activated (422 MARKET_RULE_VIOLATION)
+   * or is unknown (404 NOT_FOUND). Views show an explicit "catalogue not
+   * available" state instead of a generic error or a misleading empty result.
+   */
+  readonly catalogueUnavailable = signal(false);
+
+  private marketUnavailable(error: unknown): boolean {
+    if (!(error instanceof HttpErrorResponse)) return false;
+    const code = (error.error as any)?.code;
+    return (error.status === 422 && code === 'MARKET_RULE_VIOLATION') ||
+      (error.status === 404 && code === 'NOT_FOUND');
+  }
+
   // ─── Static fallback image map (for display while backend images load) ────
 
   readonly CAT_IMG: Record<string, string> = {
@@ -320,14 +335,7 @@ export class CatalogService {
     }
   }
 
-  getProductOverride(idOrSku: string): Partial<Product> | null {
-    try {
-      const raw = localStorage.getItem(`nigson_prod_override_${idOrSku}`);
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
-  }
+  getProductOverride(_idOrSku:string):Partial<Product>|null{return null;}
 
   // ─── Products ─────────────────────────────────────────────────────────────
 
@@ -346,45 +354,9 @@ export class CatalogService {
     if (filters.sort) params = params.set('sort', filters.sort);
 
     return this.http.get<any>('/api/v1/catalogue/products', { params }).pipe(
-      map(res => {
-        const rawItems = res?.items || res?.content || [];
-        const content: Product[] = rawItems.map((item: any) => {
-          const cleanSlug = (item.slug || '').toLowerCase().replace(/^nigson-/, '');
-          const demoInfo = DEMO_SKU_MAP[cleanSlug] || Object.values(DEMO_SKU_MAP).find(d => d.productId === item.id);
-          const sku = item.sku || item.skus?.[0]?.code || demoInfo?.code || extractSku(item.slug, item.name);
-          const override = this.getProductOverride(item.id) || this.getProductOverride(sku);
-          const priceMinor = override?.priceMinorUnits ?? (override?.price != null ? override.price * 100 : undefined);
-          const primaryImg = override?.images?.[0] || (item.imageUrl ? this.resolveImageUrl(item.imageUrl) : this.FALLBACK_IMG);
-          const cat = override?.categoryName || demoInfo?.category || resolveCategoryFromSku(sku, item.brandName || 'General');
-
-          const p: Product = {
-            id: item.id,
-            sku: override?.sku || sku,
-            skuId: item.skus?.[0]?.id || demoInfo?.skuId || item.id,
-            quoteSkus: [],
-            name: override?.name || item.name,
-            categoryId: override?.categoryId || cat,
-            categoryName: cat,
-            description: (override?.description || item.name || '').replace(/\s*<!--\[price:.*?\]-->/g, '').trim(),
-            images: override?.images?.length ? override.images : (item.imageUrl ? [this.resolveImageUrl(item.imageUrl)] : [primaryImg]),
-            priceMinorUnits: priceMinor,
-            price: priceMinor == null ? undefined : priceMinor / 100,
-            publicationStatus: item.available ? 'PUBLISHED' : 'UNAVAILABLE',
-            brand: override?.brand || item.brandName || 'Nigson',
-            tags: [],
-            ...override
-          };
-          return p;
-        });
-        return {
-          content,
-          totalElements: res?.totalElements ?? content.length,
-          totalPages: res?.totalPages ?? 1,
-          number: res?.page ?? 0,
-          size: res?.size ?? 20
-        };
-      }),
+      switchMap(res => this.withProductDetails(res)),
       tap(page => {
+        this.catalogueUnavailable.set(false);
         const enriched = this.enrichWithCategories(page.content);
         this.products.set(enriched);
         this.syncWithCart(enriched);
@@ -395,7 +367,11 @@ export class CatalogService {
         this.loaded.set(true);
       }),
       catchError(err => {
-        console.error('[CatalogService] Backend /api/v1/catalogue/products failed:', err);
+        if (this.marketUnavailable(err)) {
+          this.catalogueUnavailable.set(true);
+        } else {
+          console.error('[CatalogService] Backend /api/v1/catalogue/products failed:', err);
+        }
         this.products.set([]);
         this.totalElements.set(0);
         this.totalPages.set(0);
@@ -408,7 +384,61 @@ export class CatalogService {
   }
 
   /**
-   * TASK-21: Load single product by UUID.
+   * The public list projection is intentionally minimal, so enrich each card
+   * from the authoritative product read: real SKU ids (for the price call),
+   * real category ids/names and published asset URLs. No client-side guessing.
+   */
+  private withProductDetails(res: any): Observable<ProductsPage> {
+    const rawItems: any[] = res?.items || res?.content || [];
+    if (!rawItems.length) {
+      return of({
+        content: [],
+        totalElements: res?.totalElements ?? 0,
+        totalPages: res?.totalPages ?? 0,
+        number: res?.page ?? 0,
+        size: res?.size ?? 20
+      });
+    }
+    const requests = rawItems.map(item =>
+      this.http.get<any>(`/api/v1/catalogue/products/${item.id}?market=NG`).pipe(
+        map(detail => this.toProduct(item, detail)),
+        catchError(() => of(this.toProduct(item, null)))
+      )
+    );
+    return forkJoin(requests).pipe(map(content => ({
+      content,
+      totalElements: res?.totalElements ?? content.length,
+      totalPages: res?.totalPages ?? 1,
+      number: res?.page ?? 0,
+      size: res?.size ?? 20
+    })));
+  }
+
+  private toProduct(item: any, detail: any): Product {
+    const sku = detail?.skus?.[0];
+    const category = detail?.categories?.[0];
+    const override = this.getProductOverride(item.id) || (sku?.code ? this.getProductOverride(sku.code) : null);
+    const assetImages: string[] = (detail?.assets ?? []).map((a: any) => this.resolveImageUrl(a.url)).filter(Boolean);
+    const primaryImage = item.imageUrl ? this.resolveImageUrl(item.imageUrl) : this.FALLBACK_IMG;
+    const product: Product = {
+      id: item.id,
+      sku: sku?.code || '',
+      skuId: sku?.id,
+      quoteSkus: (detail?.skus ?? [])
+        .filter((row: any) => row.available)
+        .map((row: any) => ({ id: row.id, code: row.code, variantName: row.variantName || undefined })),
+      name: item.name,
+      categoryId: category?.id || '',
+      categoryName: category?.name || '',
+      description: (detail?.description || item.name || '').trim(),
+      images: assetImages.length ? assetImages : [primaryImage],
+      publicationStatus: item.available ? 'PUBLISHED' : 'UNAVAILABLE',
+      brand: detail?.brand?.name || item.brandName || '',
+      tags: []
+    };
+    return override ? { ...product, ...override } : product;
+  }
+
   /**
    * TASK-21: Load single product by UUID or SKU.
    * Resolves UUID, fetches backend record with all images/specifications, and merges overrides.
@@ -443,11 +473,9 @@ export class CatalogService {
   private getProductByUuid(uuid: string, aliasSku?: string): Observable<Product> {
     return this.http.get<any>(`/api/v1/catalogue/products/${uuid}?market=NG`).pipe(
       map(raw => {
-        const cleanSlug = (raw.slug || '').toLowerCase().replace(/^nigson-/, '');
-        const demoInfo = DEMO_SKU_MAP[cleanSlug] || Object.values(DEMO_SKU_MAP).find(d => d.productId === raw.id);
-        const sku = raw.sku || raw.skus?.[0]?.code || demoInfo?.code || extractSku(raw.slug, raw.name);
-        const override = this.getProductOverride(raw.id) || this.getProductOverride(sku) || (aliasSku ? this.getProductOverride(aliasSku) : null);
-        const catName = raw.categories?.[0]?.name || demoInfo?.category || resolveCategoryFromSku(sku);
+        const sku = raw.skus?.[0]?.code || '';
+        const override = this.getProductOverride(raw.id) || (sku ? this.getProductOverride(sku) : null) || (aliasSku ? this.getProductOverride(aliasSku) : null);
+        const catName = raw.categories?.[0]?.name || '';
         const priceMinor = override?.priceMinorUnits ?? (override?.price != null ? override.price * 100 : undefined);
 
         // Map ALL backend assets into images array
@@ -525,19 +553,20 @@ export class CatalogService {
   // ─── Categories (TASK-17) ─────────────────────────────────────────────────
 
   loadCategories(): Observable<Category[]> {
-    return this.http.get<any>('/api/v1/catalogue/categories?market=NG').pipe(
-      map(res => {
-        const list: any[] = Array.isArray(res) ? res : (res?.items || res?.content || res?.value || []);
-        return list.map(c => ({
-          id: c.id,
-          name: c.name,
-          slug: c.slug,
-          imageUrl: this.CAT_IMG[c.name] || this.FALLBACK_IMG
-        }));
-      }),
-      tap(cats => this.categories.set(cats)),
+    return this.http.get<any[]>('/api/v1/catalogue/categories?market=NG').pipe(
+      map(cats => (cats || []).map(c => ({
+        id: c.id,
+        name: c.name,
+        slug: c.slug,
+        imageUrl: this.CAT_IMG[c.name] || this.FALLBACK_IMG
+      }))),
+      tap(cats => { this.catalogueUnavailable.set(false); this.categories.set(cats); }),
       catchError(err => {
-        console.error('[CatalogService] loadCategories failed:', err);
+        if (this.marketUnavailable(err)) {
+          this.catalogueUnavailable.set(true);
+        } else {
+          console.error('[CatalogService] loadCategories failed:', err);
+        }
         return of([]);
       })
     );
@@ -548,7 +577,10 @@ export class CatalogService {
   loadBrands(): Observable<Brand[]> {
     return this.http.get<Brand[]>('/api/v1/catalogue/brands').pipe(
       tap(brands => this.brands.set(brands)),
-      catchError(() => of([]))
+      catchError(err => {
+        if (this.marketUnavailable(err)) this.catalogueUnavailable.set(true);
+        return of([]);
+      })
     );
   }
 

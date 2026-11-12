@@ -1,11 +1,6 @@
-/**
- * Nigson CMS — section based page content management.
- * Front-end only: content lives in React state and persists to localStorage,
- * so the public website always renders the latest PUBLISHED content.
- */
 import { Injectable, signal, computed, inject, NgZone } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, of, switchMap, map, catchError, tap, finalize } from 'rxjs';
+import { Observable, of, switchMap, map, catchError, tap, defer, throwError, finalize, forkJoin } from 'rxjs';
 import { SessionService } from './session.service';
 
 
@@ -777,7 +772,7 @@ export const sectionDef = (pageId: string, sectionId: string) => pageDef(pageId)
 
 const defaultPage = (def: PageDef): PageContent => ({
   id: def.id,
-  status: "Published",
+  status: "Draft",
   updatedAt: new Date(0).toISOString(),
   sections: def.sections.map((s) => ({
     id: s.id,
@@ -840,517 +835,88 @@ export type SectionApi = {
   cards: <T>(mapper: (fields: Record<string, string>, index: number) => T) => T[];
 };
 
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable({providedIn:'root'})
 export class CmsService {
-  private http = inject(HttpClient);
-  private session = inject(SessionService);
-  private ngZone = inject(NgZone);
-  readonly isPublishing = signal(false);
-  readonly state = signal<CmsState>({ published: defaultStore(), drafts: defaultStore() });
-  readonly hydrated = signal(false);
-
-  constructor() {
-    try {
-      const savedVersions = localStorage.getItem('nigson_content_item_versions');
-      if (savedVersions) {
-        Object.assign(CONTENT_ITEM_VERSIONS, JSON.parse(savedVersions));
-      }
-    } catch { }
-    this.init();
+  private http=inject(HttpClient);
+  private session=inject(SessionService);
+  readonly isPublishing=signal(false);
+  readonly error=signal('');
+  readonly state=signal<CmsState>({published:defaultStore(),drafts:defaultStore()});
+  readonly hydrated=signal(false);
+  readonly drafts=computed(()=>this.state().drafts);
+  readonly published=computed(()=>this.state().published);
+  private records:any[]=[];
+  constructor(){ this.syncFromDatabase(); }
+  message(e:any){return e?.error?.detail || e?.message || 'Content request failed.';}
+  private headers(version?:number){
+    if(version!==undefined && !Number.isSafeInteger(version)) throw new Error('Reload the content before saving: current version is missing.');
+    return {'Idempotency-Key':crypto.randomUUID(),...(version===undefined?{}:{'If-Match':`"${version}"`})};
   }
-
-  /** Synchronize current content item versions from backend staff API */
-  syncItemVersions(): Observable<Record<string, number>> {
-    return this.http.get<any>('/api/v1/staff/content?size=100', { withCredentials: true }).pipe(
-      map(res => {
-        const items = res?.items || [];
-        for (const it of items) {
-          if (it.slug && typeof it.itemVersion === 'number') {
-            CONTENT_ITEM_VERSIONS[it.slug] = it.itemVersion;
-          }
-        }
-        try {
-          localStorage.setItem('nigson_content_item_versions', JSON.stringify(CONTENT_ITEM_VERSIONS));
-        } catch { }
-        return CONTENT_ITEM_VERSIONS;
-      }),
-      catchError(() => of(CONTENT_ITEM_VERSIONS))
-    );
+  private list(path:string,page=0):Observable<any[]> {
+    return this.http.get<any>(`${path}${path.includes('?')?'&':'?'}page=${page}&size=100`).pipe(switchMap(r=>{
+      const rows=r.items??r.content;
+      if(!Array.isArray(rows))throw new Error('Invalid content list response.');
+      return page+1<r.totalPages?this.list(path,page+1).pipe(map(next=>[...rows,...next])):of(rows);
+    }));
   }
-
-  private init() {
-    try {
-      const raw = localStorage.getItem(KEY);
-      this.state.set(mergeWithDefaults(raw ? JSON.parse(raw) : null));
-    } catch {
-      /* ignore */
-    }
-    this.hydrated.set(true);
-    this.syncFromDatabase();
-
-
-    if (typeof window !== 'undefined') {
-      window.addEventListener('storage', (event: StorageEvent) => {
-        if (event.key === KEY && event.newValue) {
-          try {
-            const next = mergeWithDefaults(JSON.parse(event.newValue));
-            this.ngZone.run(() => {
-              this.state.set(next);
-            });
-          } catch {
-            /* ignore */
-          }
-        }
-      });
-    }
+  loadStaffContent():Observable<any[]> {return this.list('/api/v1/staff/content').pipe(tap(rows=>this.records=rows));}
+  private type(id:string){return ({home:'HOME',about:'ABOUT',contact:'CONTACT',careers:'CAREERS',insights:'HOME',distributor:'DIVISION'} as Record<string,string>)[id] || 'DIVISION';}
+  private decode(row:any):PageContent|null {
+    try{const sections=(row.body?.blocks||[]).filter((b:any)=>b.type==='TEXT').map((b:any)=>JSON.parse(b.text));
+      if(!sections.length || !sections.every((s:any)=>s.id && s.fields && Array.isArray(s.cards)))return null;
+      return {id:row.slug,status:row.state==='PUBLISHED'||row.publishedAt?'Published':'Draft',updatedAt:row.publishedAt||'',sections};
+    }catch{return null;}
   }
-
-  /** Synchronize published content directly from the Java Experience service */
-  syncFromDatabase(): void {
-    const pagesToSync = [
-      { id: 'home', type: 'HOME', slug: 'home' },
-      { id: 'about', type: 'ABOUT', slug: 'about' },
-      { id: 'careers', type: 'CAREERS', slug: 'careers' },
-      { id: 'contact', type: 'CONTACT', slug: 'contact' },
-      { id: 'distributor', type: 'DIVISION', slug: 'distributor' },
-      { id: 'insights', type: 'BLOG', slug: 'insights' }
-    ];
-
-    for (const p of pagesToSync) {
-      this.http.get<any>('/api/v1/content/' + p.type + '/' + p.slug).pipe(
-        catchError(() => of(null))
-      ).subscribe(dto => {
-        if (!dto?.body?.blocks || !Array.isArray(dto.body.blocks)) return;
-        const sections: SectionContent[] = [];
-        for (const block of dto.body.blocks) {
-          if (block.type === 'TEXT' && block.text) {
-            try {
-              const parsed = JSON.parse(block.text);
-              if (parsed && parsed.id) {
-                sections.push({
-                  id: parsed.id,
-                  visible: parsed.visible !== false,
-                  fields: parsed.fields || {},
-                  cards: parsed.cards || []
-                });
-              }
-            } catch {
-              /* ignore parse errors */
-            }
-          }
-        }
-        if (sections.length > 0) {
-          this.applyPublishedSections(p.id, sections, dto.publishedAt);
-        }
-      });
-    }
+  syncFromDatabase():void {
+    forkJoin([...new Set(PAGES.map(page=>this.type(page.id)))].map(type=>this.list('/api/v1/content?locale=en&type='+type))).pipe(map(pages=>pages.flat())).subscribe({next:rows=>{
+      const next=clone(this.state());for(const r of rows){const page=this.decode(r);if(page&&pageDef(page.id)){next.published[page.id]=page;next.drafts[page.id]=clone(page);}}
+      this.state.set(next);this.hydrated.set(true);
+    },error:e=>{this.error.set(this.message(e));this.hydrated.set(true);}});
   }
-
-  private applyPublishedSections(pageId: string, remoteSections: SectionContent[], publishedAt?: string) {
-    const next = clone(this.state());
-    const fallback = next.published[pageId];
-    if (!fallback) return;
-
-    const def = PAGES.find(p => p.id === pageId);
-    if (!def) return;
-
-    next.published[pageId] = {
-      id: pageId,
-      status: 'Published',
-      updatedAt: publishedAt || fallback.updatedAt,
-      sections: def.sections.map(sd => {
-        const found = remoteSections.find(x => x.id === sd.id);
-        const fb = fallback.sections.find(x => x.id === sd.id)!;
-        if (!found) return fb;
-        return {
-          id: sd.id,
-          visible: found.visible !== false,
-          fields: { ...fb.fields, ...(found.fields ?? {}) },
-          cards: Array.isArray(found.cards) && found.cards.length > 0 ? found.cards : fb.cards,
-        };
-      }).sort((a, b) => {
-        const order = remoteSections.map(x => x.id);
-        const ia = order.indexOf(a.id), ib = order.indexOf(b.id);
-        return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
-      })
-    };
-
-    if (!next.drafts[pageId] || next.drafts[pageId].status === 'Published') {
-      next.drafts[pageId] = clone(next.published[pageId]);
-    }
-
-    this.persist(next);
+  loadDrafts():Observable<any[]> {return this.loadStaffContent().pipe(tap(rows=>{
+    const next=clone(this.state());for(const r of rows){const page=this.decode(r);if(page&&pageDef(page.id))next.drafts[page.id]=page;}this.state.set(next);
+  }));}
+  pageDef(id:string){return pageDef(id);}
+  updateDraft(id:string,mutator:(p:PageContent)=>PageContent){const next=clone(this.state());if(next.drafts[id]){next.drafts[id]=mutator(next.drafts[id]);next.drafts[id].status='Draft';this.state.set(next);}}
+  private pageEdit(id:string):ContentRevisionEdit {
+    const def=pageDef(id),page=this.drafts()[id];if(!def||!page)throw new Error('Unknown content page.');
+    return {title:def.name,body:{schemaVersion:1,blocks:page.sections.map(s=>({type:'TEXT',text:JSON.stringify(s)}))},metadata:{metaTitle:def.name+' | Nigson',metaDescription:'Official '+def.name+' page'}};
   }
-
-  saveToDatabase(_pageId: string): Observable<boolean> {
-    return of(true);
+  private edit(edit:ContentRevisionEdit){return {...edit,metadata:{title:edit.metadata.metaTitle.slice(0,70),description:edit.metadata.metaDescription.slice(0,180),canonicalUrl:null,robots:'INDEX',alternates:[],structuredData:{}}};}
+  saveContent(type:string,slug:string,edit:any):Observable<any> {
+    this.error.set('');
+    return this.loadStaffContent().pipe(switchMap(rows=>{
+      const existing=rows.find(r=>r.type===type&&r.slug===slug&&r.locale==='en');
+      return existing?this.http.post<any>(`/api/v1/staff/content/${existing.contentItemId}/revisions`,edit,{headers:this.headers(existing.itemVersion)}):this.http.post<any>('/api/v1/staff/content',{type,slug,locale:'en',...edit},{headers:this.headers()});
+    }),catchError(e=>{this.error.set(this.message(e));return throwError(()=>e);}));
   }
-
-  private persist(next: CmsState) {
-    this.state.set(next);
-    try {
-      localStorage.setItem(KEY, JSON.stringify(next));
-    } catch {
-      /* ignore */
-    }
+  saveToDatabase(id:string):Observable<boolean>{return defer(()=>this.saveContent(this.type(id),id,this.edit(this.pageEdit(id)))).pipe(map(()=>true));}
+  saveDraft(id:string):Observable<boolean>{return this.saveToDatabase(id);}
+  fetchContent(type:string,slug:string):Observable<ContentDTO|null>{return this.http.get<ContentDTO>(`/api/v1/content/${type.toUpperCase()}/${encodeURIComponent(slug)}?locale=en`);}
+  private step(revision:any,path:string,body:any):Observable<any>{return this.http.post<any>(`/api/v1/staff/content-revisions/${revision.id}/${path}`,body,{headers:this.headers(revision.version)});}
+  publishContent(revision:any):Observable<any>{
+    let result=of(revision);
+    if(revision.state==='DRAFT')result=result.pipe(switchMap(r=>this.step(r,'review',{reason:'Submitted from admin content editor'})));
+    if(['DRAFT','REVIEW'].includes(revision.state))result=result.pipe(switchMap(r=>this.step(r,'approval',{approve:true,reason:'Approved from admin content editor'})));
+    return result.pipe(switchMap(r=>r.state==='PUBLISHED'?of(r):this.step(r,'publication',{action:'PUBLISH',reason:'Published from admin content editor'})));
   }
-
-  getPageSections(pageId: string) {
-    const isPreview = typeof window !== 'undefined' && window.location.search.includes('preview=true');
-    const page = computed(() => {
-      const s = this.state();
-      return isPreview ? (s.drafts[pageId] ?? s.published[pageId]) : s.published[pageId];
-    });
-    return {
-      order: computed(() => page()?.sections.map((s) => s.id) ?? []),
-      get: (sectionId: string): SectionApi => {
-        const p = page();
-        if (!p) return { id: sectionId, visible: false, t: () => '', cards: () => [] };
-        const s = p.sections.find((x) => x.id === sectionId);
-        if (!s) return { id: sectionId, visible: false, t: () => '', cards: () => [] };
-
-        return {
-          id: s.id,
-          visible: s.visible,
-          t: (key: string) => s.fields[key] ?? '',
-          cards: <T,>(mapper: (f: Record<string, string>, i: number) => T) => (s.cards ?? []).map((c, i) => mapper(c.fields, i))
-        };
-      }
-    };
+  withdrawContent(revision:any):Observable<any>{return this.step(revision,'publication',{action:'WITHDRAW',reason:'Withdrawn from admin content editor'});}
+  executePublishPipeline(id:string,edit?:ContentRevisionEdit):Observable<boolean>{
+    this.isPublishing.set(true);return defer(()=>this.saveContent(this.type(id),id,this.edit(edit||this.pageEdit(id)))).pipe(switchMap(r=>this.publishContent(r)),tap(()=>{
+      const next=clone(this.state());next.published[id]=clone(next.drafts[id]);next.published[id].status='Published';next.drafts[id].status='Published';this.state.set(next);
+    }),map(()=>true),catchError(e=>{this.error.set(this.message(e));return throwError(()=>e);}),finalize(()=>this.isPublishing.set(false)));
   }
-
-  // --- Editor APIs ---
-  pageDef(pageId: string) {
-    return PAGES.find(p => p.id === pageId);
+  getPageSections(id:string){
+    const preview=typeof window!=='undefined'&&window.location.search.includes('preview=true');
+    const page=computed(()=>preview?this.drafts()[id]:this.published()[id]);
+    return {order:computed(()=>page()?.sections.map(s=>s.id)||[]),get:(sectionId:string):SectionApi=>{
+      const s=page()?.sections.find(s=>s.id===sectionId);return {id:sectionId,visible:s?.visible??false,t:key=>s?.fields[key]||'',cards:<T>(mapper:(f:Record<string,string>,i:number)=>T)=>(s?.cards||[]).map((c,i)=>mapper(c.fields,i))};
+    }};
   }
-
-  drafts = computed(() => this.state().drafts);
-  published = computed(() => this.state().published);
-
-  updateDraft(pageId: string, mutator: (p: PageContent) => PageContent) {
-    const next = clone(this.state());
-    if (next.drafts[pageId]) {
-      next.drafts[pageId] = mutator(clone(next.drafts[pageId]));
-      next.drafts[pageId].updatedAt = new Date().toISOString();
-      this.persist(next);
-    }
-  }
-
-  saveDraft(pageId: string) {
-    const next = clone(this.state());
-    if (next.drafts[pageId]) {
-      next.drafts[pageId].updatedAt = new Date().toISOString();
-      this.persist(next);
-      this.saveToDatabase(pageId).subscribe();
-    }
-  }
-
-  publishPage(pageId: string) {
-    const next = clone(this.state());
-    if (next.drafts[pageId]) {
-      next.published[pageId] = clone(next.drafts[pageId]);
-      next.published[pageId].status = "Published";
-      next.published[pageId].updatedAt = new Date().toISOString();
-      next.drafts[pageId].status = "Published";
-      next.drafts[pageId].updatedAt = next.published[pageId].updatedAt;
-      this.persist(next);
-    }
-  }
-
-  // --- Backend CMS HTTP APIs (TASK-62 & TASK-63) ---
-
-  /** TASK-62: Fetch public published content from GET /api/v1/content/:type/:slug (API-076) */
-  fetchContent(type: string, slug: string): Observable<ContentDTO | null> {
-    return this.http.get<ContentDTO>(`/api/v1/content/${type.toUpperCase()}/${slug}`).pipe(
-      catchError(err => {
-        console.warn(`[CmsService] fetchContent ${type}/${slug} failed, using default page sections:`, err?.status ?? err);
-        return of(null);
-      })
-    );
-  }
-
-  /** TASK-63: Save draft revision via POST /api/v1/staff/content/:id/revisions (API-079) */
-  createRevision(contentId: string, edit: ContentRevisionEdit, pageId?: string, csrfToken?: string): Observable<any> {
-    const token = csrfToken || this.session.csrfToken();
-    return this.syncItemVersions().pipe(
-      switchMap(versions => {
-        const expectedVer = pageId && versions[pageId] !== undefined ? versions[pageId] : (CONTENT_ITEM_VERSIONS[pageId || ''] ?? 12);
-        const headers: Record<string, string> = {
-          "If-Match": `"${expectedVer}"`,
-          "Idempotency-Key": crypto.randomUUID()
-        };
-        if (token) {
-          headers["X-CSRF-TOKEN"] = token;
-        }
-        return this.http.post<any>(`/api/v1/staff/content/${contentId}/revisions`, edit, { headers, withCredentials: true }).pipe(
-          tap(rev => {
-            if (pageId && rev?.id) {
-              CONTENT_ITEM_VERSIONS[pageId] = (CONTENT_ITEM_VERSIONS[pageId] || expectedVer) + 1;
-              try {
-                localStorage.setItem('nigson_content_item_versions', JSON.stringify(CONTENT_ITEM_VERSIONS));
-              } catch { }
-            }
-          }),
-          catchError(err => {
-            console.error('[CmsService] createRevision failed:', err);
-            return of(null);
-          })
-        );
-      })
-    );
-  }
-
-  /** TASK-63: Submit revision for review via POST /api/v1/staff/content-revisions/:id/review (API-080) */
-  submitForReview(revisionId: string, csrfToken?: string, reason = 'Content updated for publication', expectedVersion = 0): Observable<any> {
-    const token = csrfToken || this.session.csrfToken();
-    const headers: Record<string, string> = {
-      "If-Match": `"${expectedVersion}"`,
-      "Idempotency-Key": crypto.randomUUID()
-    };
-    if (token) {
-      headers["X-CSRF-TOKEN"] = token;
-    }
-    return this.http.post<any>(`/api/v1/staff/content-revisions/${revisionId}/review`, { reason }, { headers, withCredentials: true }).pipe(
-      catchError(err => {
-        console.error('[CmsService] submitForReview failed:', err);
-        return of(null);
-      })
-    );
-  }
-
-  /** TASK-63: Approve revision via POST /api/v1/staff/content-revisions/:id/approval (API-081) */
-  approveRevision(revisionId: string, csrfToken?: string, reason = 'Approved for publication', expectedVersion = 1): Observable<any> {
-    const token = csrfToken || this.session.csrfToken();
-    const headers: Record<string, string> = {
-      "If-Match": `"${expectedVersion}"`,
-      "Idempotency-Key": crypto.randomUUID()
-    };
-    if (token) {
-      headers["X-CSRF-TOKEN"] = token;
-    }
-    return this.http.post<any>(`/api/v1/staff/content-revisions/${revisionId}/approval`, { approve: true, reason }, { headers, withCredentials: true }).pipe(
-      catchError(err => {
-        console.error('[CmsService] approveRevision failed:', err);
-        return of(null);
-      })
-    );
-  }
-
-  /** TASK-63: Publish revision via POST /api/v1/staff/content-revisions/:id/publication (API-082) */
-  publishRevision(revisionId: string, csrfToken?: string, reason = 'Published to live site', pageId?: string, expectedVersion = 2): Observable<boolean> {
-    const token = csrfToken || this.session.csrfToken();
-    const headers: Record<string, string> = {
-      "If-Match": `"${expectedVersion}"`,
-      "Idempotency-Key": crypto.randomUUID()
-    };
-    if (token) {
-      headers["X-CSRF-TOKEN"] = token;
-    }
-    return this.http.post(`/api/v1/staff/content-revisions/${revisionId}/publication`, { action: 'PUBLISH', reason }, { headers, withCredentials: true }).pipe(
-      tap(() => {
-        if (pageId) {
-          CONTENT_ITEM_VERSIONS[pageId] = (CONTENT_ITEM_VERSIONS[pageId] || 0) + 1;
-          try {
-            localStorage.setItem('nigson_content_item_versions', JSON.stringify(CONTENT_ITEM_VERSIONS));
-          } catch { }
-        }
-      }),
-      map(() => true),
-      catchError(err => {
-        console.error('[CmsService] publishRevision failed:', err);
-        return of(false);
-      })
-    );
-  }
-
-  /** Create a new content item via POST /api/v1/staff/content (API-078) */
-  createContent(payload: any, csrfToken?: string): Observable<any> {
-    const token = csrfToken || this.session.csrfToken();
-    const headers: Record<string, string> = {
-      "Idempotency-Key": crypto.randomUUID()
-    };
-    if (token) {
-      headers["X-CSRF-TOKEN"] = token;
-    }
-    return this.http.post<any>('/api/v1/staff/content', payload, { headers, withCredentials: true }).pipe(
-      catchError(err => {
-        console.error('[CmsService] createContent failed:', err);
-        return of(null);
-      })
-    );
-  }
-
-  /** Publish a blog article directly to PostgreSQL via backend Experience service */
-  publishArticle(post: { title: string; slug: string; body: string; excerpt?: string; tag?: string; author?: string; image?: string; status?: string }): Observable<boolean> {
-    const csrf$ = this.session.csrfToken()
-      ? of(this.session.csrfToken())
-      : this.session.loadSession().pipe(map(s => s.csrfToken ?? null));
-
-    return csrf$.pipe(
-      switchMap(csrf => {
-        if (!csrf) {
-          console.warn('[CmsService] No active staff session/CSRF token found; local publication updated only.');
-          return of(false);
-        }
-
-        const rawSlug = post.slug || post.title || 'article';
-        const cleanSlug = rawSlug.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || ('article-' + Date.now());
-        const title = post.title.trim().slice(0, 70);
-        const excerpt = (post.excerpt || post.body || title).trim().slice(0, 180);
-        const bodyText = (post.body || excerpt).trim().slice(0, 20000);
-
-        return this.http.get<any>('/api/v1/content?type=BLOG&locale=en&page=0&size=100').pipe(
-          catchError(() => of({ content: [] })),
-          switchMap(page => {
-            const list = page?.content || page?.items || (Array.isArray(page) ? page : []);
-            const existing = list.find((it: any) => it.slug === cleanSlug);
-            if (existing?.id) {
-              const edit: ContentRevisionEdit = {
-                title: post.title.trim().slice(0, 220),
-                body: {
-                  schemaVersion: 1,
-                  blocks: [{ type: 'TEXT', text: bodyText }]
-                },
-                metadata: {
-                  title,
-                  description: excerpt,
-                  robots: 'INDEX',
-                  alternates: [],
-                  structuredData: {
-                    tag: post.tag || 'Insight',
-                    author: post.author || 'Nigson Team',
-                    image: post.image || '/assets/blog-market.jpg'
-                  }
-                }
-              };
-              return this.createRevision(existing.id, edit, cleanSlug, csrf).pipe(
-                switchMap(rev => {
-                  if (!rev?.id) return of(false);
-                  const v0 = rev.version ?? 0;
-                  return this.submitForReview(rev.id, csrf, 'Editorial review', v0).pipe(
-                    switchMap(reviewed => {
-                      if (!reviewed?.id) return of(false);
-                      const v1 = reviewed.version ?? (v0 + 1);
-                      return this.approveRevision(rev.id, csrf, 'Editorial approval', v1).pipe(
-                        switchMap(approved => {
-                          if (!approved?.id) return of(false);
-                          const v2 = approved.version ?? (v1 + 1);
-                          return this.publishRevision(rev.id, csrf, 'Published to live site', cleanSlug, v2);
-                        })
-                      );
-                    })
-                  );
-                })
-              );
-            } else {
-              const createPayload = {
-                type: 'BLOG',
-                slug: cleanSlug,
-                locale: 'en',
-                title: post.title.trim().slice(0, 220),
-                body: {
-                  schemaVersion: 1,
-                  blocks: [{ type: 'TEXT', text: bodyText }]
-                },
-                metadata: {
-                  title,
-                  description: excerpt,
-                  robots: 'INDEX',
-                  alternates: [],
-                  structuredData: {
-                    tag: post.tag || 'Insight',
-                    author: post.author || 'Nigson Team',
-                    image: post.image || '/assets/blog-market.jpg'
-                  }
-                }
-              };
-
-              return this.createContent(createPayload, csrf).pipe(
-                switchMap(rev => {
-                  if (!rev?.id) return of(false);
-                  const v0 = rev.version ?? 0;
-                  return this.submitForReview(rev.id, csrf, 'Editorial review', v0).pipe(
-                    switchMap(reviewed => {
-                      if (!reviewed?.id) return of(false);
-                      const v1 = reviewed.version ?? (v0 + 1);
-                      return this.approveRevision(rev.id, csrf, 'Editorial approval', v1).pipe(
-                        switchMap(approved => {
-                          if (!approved?.id) return of(false);
-                          const v2 = approved.version ?? (v1 + 1);
-                          return this.publishRevision(rev.id, csrf, 'Published to live site', cleanSlug, v2);
-                        })
-                      );
-                    })
-                  );
-                })
-              );
-            }
-          })
-        );
-      })
-    );
-  }
-
-  /** Execute complete publication workflow and persist directly to backend database */
-  executePublishPipeline(pageId: string, edit?: ContentRevisionEdit): Observable<boolean> {
-    this.isPublishing.set(true);
-
-    // 1. Immediately publish page locally so storefront and admin editor update
-    this.publishPage(pageId);
-
-    // 2. If structured content edit is provided, sync to Java Experience backend
-    const contentId = PAGE_CONTENT_IDS[pageId];
-    if (!contentId || !edit) {
-      this.isPublishing.set(false);
-      return of(true);
-    }
-
-    const csrf$ = this.session.csrfToken()
-      ? of(this.session.csrfToken())
-      : this.session.loadSession().pipe(map(s => s.csrfToken ?? null));
-
-    return csrf$.pipe(
-      switchMap(csrf => {
-        if (!csrf) {
-          console.warn('[CmsService] No active staff session/CSRF token found; local publication updated only.');
-          return of(false);
-        }
-        return this.createRevision(contentId, edit, pageId, csrf).pipe(
-          switchMap(rev => {
-            if (!rev?.id) return of(false);
-            const v0 = rev.version ?? 0;
-            return this.submitForReview(rev.id, csrf, 'Content updated for publication', v0).pipe(
-              switchMap(reviewed => {
-                if (!reviewed?.id) return of(false);
-                const v1 = reviewed.version ?? (v0 + 1);
-                return this.approveRevision(rev.id, csrf, 'Approved for publication', v1).pipe(
-                  switchMap(approved => {
-                    if (!approved?.id) return of(false);
-                    const v2 = approved.version ?? (v1 + 1);
-                    return this.publishRevision(rev.id, csrf, 'Published to live site', pageId, v2).pipe(
-                      tap(() => {
-                        console.log(`[CmsService] Page ${pageId} successfully published to Java backend.`);
-                        this.syncFromDatabase();
-                      }),
-                      map(() => true),
-                      catchError(() => of(false))
-                    );
-                  }),
-                  catchError(() => of(false))
-                );
-              }),
-              catchError(() => of(false))
-            );
-          }),
-          catchError(err => {
-            console.warn('[CmsService] Background Java CMS sync warning (local publication succeeded):', err);
-            return of(false);
-          })
-        );
-      }),
-      finalize(() => this.isPublishing.set(false))
-    );
+  loadBlogs():Observable<any[]>{return this.loadStaffContent().pipe(map(rows=>rows.filter(r=>r.type==='BLOG').map(r=>this.blog(r))));}
+  private blog(r:any){const extra=r.metadata?.structuredData||{};return {...extra,id:r.contentItemId,revision:r,title:r.title,slug:r.slug,status:r.state==='PUBLISHED'?'Published':'Draft',body:(r.body?.blocks||[]).filter((b:any)=>b.type==='TEXT').map((b:any)=>b.text).join('\n\n'),tag:extra.tag||'',author:extra.author||'',date:r.publishedAt||extra.date||'',excerpt:extra.excerpt||'',image:extra.image||''};}
+  saveBlog(post:any):Observable<any>{
+    const edit={title:post.title,body:{schemaVersion:1,blocks:[{type:'TEXT',text:post.body||post.excerpt||post.title}]},metadata:{title:post.title.slice(0,70),description:(post.excerpt||post.title).slice(0,180),robots:'INDEX',canonicalUrl:null,alternates:[],structuredData:{tag:post.tag||'',author:post.author||'',excerpt:post.excerpt||'',image:post.image||'',date:post.date||''}}};
+    return this.saveContent('BLOG',post.slug,edit).pipe(switchMap(r=>post.status==='Published'?this.publishContent(r):of(r)),map(r=>this.blog(r)));
   }
 }

@@ -114,6 +114,7 @@ type Item = { to: string; label: string; icon: any; key: SectionKey; exact?: boo
 
         <main class="flex-1 overflow-y-auto p-4 md:p-8">
           <div class="mx-auto max-w-[1200px]">
+            <div *ngFor="let failure of admin.errors() | keyvalue" role="alert" class="mb-4 rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-800"><strong>{{ failure.key }}:</strong> {{ failure.value }}</div>
             <router-outlet></router-outlet>
           </div>
         </main>

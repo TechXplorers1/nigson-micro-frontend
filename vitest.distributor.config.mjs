@@ -8,7 +8,8 @@ export default {
     environment: 'jsdom',
     include: [
       'projects/marketing/src/app/pages/distributor.component.spec.ts',
-      'projects/shared-ui/src/lib/marketing.service.spec.ts'
+      'projects/shared-ui/src/lib/marketing.service.spec.ts',
+      'projects/shared-ui/src/lib/google-recaptcha.service.spec.ts'
     ]
   }
 };

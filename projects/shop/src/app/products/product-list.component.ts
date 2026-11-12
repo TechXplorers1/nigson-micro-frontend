@@ -65,13 +65,22 @@ import { Subject } from 'rxjs';
           >{{ c.name }}</button>
         </div>
 
+        <!-- Catalogue not activated for this market -->
+        <div *ngIf="!catalog.loading() && catalog.catalogueUnavailable()" class="rounded-2xl border border-border bg-surface-alt px-6 py-16 text-center">
+          <h2 class="text-xl md:text-2xl font-bold text-ink mb-3">Catalogue is not available yet</h2>
+          <p class="mx-auto max-w-xl text-sm md:text-base text-muted-foreground">
+            The Nigeria market has not been activated for selling, so products and categories cannot be shown.
+            Please check back later or contact us if you expected the store to be open.
+          </p>
+        </div>
+
         <!-- Loading state -->
-        <div *ngIf="catalog.loading()" class="flex items-center justify-center py-20">
+        <div *ngIf="!catalog.catalogueUnavailable() && catalog.loading()" class="flex items-center justify-center py-20">
           <svg lucideLoader2 class="h-8 w-8 text-brand animate-spin"></svg>
         </div>
 
         <!-- Empty state -->
-        <div *ngIf="!catalog.loading() && catalog.products().length === 0" class="py-20 text-center text-muted-foreground">
+        <div *ngIf="!catalog.catalogueUnavailable() && !catalog.loading() && catalog.products().length === 0" class="py-20 text-center text-muted-foreground">
           No products match your search.
         </div>
 

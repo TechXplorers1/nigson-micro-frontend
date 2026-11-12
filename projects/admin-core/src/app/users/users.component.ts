@@ -14,7 +14,7 @@ import { LucidePlus, LucidePencil, LucideX, LucideSearch } from '@lucide/angular
   template: `
     <lib-admin-heading title="Admin Users" subtitle="Manage access to the Nigson admin portal">
       <button (click)="openNewUser()" class="flex h-10 items-center gap-2 rounded-xl bg-brand px-4 text-sm font-bold text-white transition-colors hover:bg-brand-600 shadow-sm">
-        <svg lucidePlus class="h-4 w-4"></svg> New User
+        <svg lucidePlus class="h-4 w-4"></svg> Assign Staff Access
       </button>
     </lib-admin-heading>
 
@@ -76,7 +76,7 @@ import { LucidePlus, LucidePencil, LucideX, LucideSearch } from '@lucide/angular
               </td>
               <td class="px-6 py-4">
                 <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-gray-100 text-gray-800">
-                  {{ roleName(u.roleId) }}
+                  {{ (u.roles || [u.roleId]).join(', ') }}
                 </span>
               </td>
               <td class="px-6 py-4">
@@ -131,8 +131,8 @@ import { LucidePlus, LucidePencil, LucideX, LucideSearch } from '@lucide/angular
           <div>
             <label class="block text-xs font-bold uppercase tracking-wider text-muted-ink mb-1.5">Assigned Role</label>
             <select
-              [ngModel]="selectedRole()"
-              (ngModelChange)="selectedRole.set($event)"
+              multiple [ngModel]="selectedRoles()"
+              (ngModelChange)="selectedRoles.set($event)"
               class="w-full rounded-xl border border-hairline bg-white px-4 py-2.5 text-sm font-medium focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
             >
               <option *ngFor="let r of admin.roles()" [value]="r.id">{{ r.name }}</option>
@@ -147,7 +147,7 @@ import { LucidePlus, LucidePencil, LucideX, LucideSearch } from '@lucide/angular
 
           <!-- Account Status -->
           <div>
-            <label class="block text-xs font-bold uppercase tracking-wider text-muted-ink mb-1.5">Account Status</label>
+            <label class="block text-xs font-bold uppercase tracking-wider text-muted-ink mb-1.5">Staff access</label>
             <div class="grid grid-cols-2 gap-3">
               <button
                 type="button"
@@ -210,7 +210,7 @@ import { LucidePlus, LucidePencil, LucideX, LucideSearch } from '@lucide/angular
       </div>
     </div>
 
-    <!-- New User / Promote Modal -->
+    <!-- Assign Staff Access / Promote Modal -->
     <div *ngIf="isNewUserOpen()" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
       <div class="w-full max-w-lg rounded-[24px] border border-gray-100 bg-white p-6 sm:p-8 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
         <!-- Modal Header -->
@@ -226,14 +226,7 @@ import { LucidePlus, LucidePencil, LucideX, LucideSearch } from '@lucide/angular
 
         <!-- Mode Switcher Tabs -->
         <div class="mb-5 flex rounded-xl bg-gray-100 p-1">
-          <button
-            type="button"
-            (click)="creationMode.set('create')"
-            class="flex-1 rounded-lg py-1.5 text-xs font-bold transition-all"
-            [ngClass]="creationMode() === 'create' ? 'bg-white text-ink shadow-xs' : 'text-muted-ink hover:text-ink'"
-          >
-            Create New Account
-          </button>
+          
           <button
             type="button"
             (click)="creationMode.set('promote')"
@@ -385,6 +378,7 @@ export class AdminUsersComponent implements OnInit {
 
   // Edit Modal State
   editingUser = signal<AdminUser | null>(null);
+  selectedRoles=signal<string[]>([]);
   selectedRole = signal<string>('ADMIN');
   selectedStatus = signal<'Active' | 'Disabled'>('Active');
   updateReason = signal<string>('Administrative role assignment update');
@@ -392,9 +386,9 @@ export class AdminUsersComponent implements OnInit {
   errorMessage = signal<string | null>(null);
   successMessage = signal<string | null>(null);
 
-  // New User Modal State
+  // Assign Staff Access Modal State
   isNewUserOpen = signal(false);
-  creationMode = signal<'create' | 'promote'>('create');
+  creationMode = signal<'create' | 'promote'>('promote');
   newName = signal('');
   newEmail = signal('');
   newPassword = signal('NigsonAdmin@2026');
@@ -471,7 +465,7 @@ export class AdminUsersComponent implements OnInit {
 
     openNewUser() {
       this.isNewUserOpen.set(true);
-      this.creationMode.set('create');
+      this.creationMode.set('promote');
       this.newName.set('');
       this.newEmail.set('');
       this.newPassword.set('NigsonAdmin@2026');
@@ -532,7 +526,7 @@ export class AdminUsersComponent implements OnInit {
           roleId: this.newRole(),
           status: this.newStatus(),
           lastLogin: new Date().toISOString(),
-          version: 1
+          version: undefined
         };
 
       this.admin.addStaffUser(newUser, password, this.newReason()).subscribe({
@@ -544,7 +538,7 @@ export class AdminUsersComponent implements OnInit {
             this.newSuccess.set(null);
           }, 1200);
         },
-        error: () => {
+        error: (e) => {
           this.newSaving.set(false);
           this.newError.set('Failed to create user in Keycloak.');
         }
@@ -573,10 +567,10 @@ export class AdminUsersComponent implements OnInit {
           roleId: this.newRole(),
           status: 'Active',
           lastLogin: new Date().toISOString(),
-          version: 1
+          version: undefined
         };
 
-        this.admin.updateStaffUser(promotedUser, this.newReason()).subscribe({
+        this.admin.addStaffUser(promotedUser, undefined, this.newReason()).subscribe({
           next: () => {
             this.newSaving.set(false);
             this.newSuccess.set(`${cust.name} promoted to staff role successfully!`);
@@ -585,16 +579,17 @@ export class AdminUsersComponent implements OnInit {
               this.newSuccess.set(null);
             }, 1000);
           },
-          error: () => {
+          error: (e) => {
             this.newSaving.set(false);
-            this.newError.set('Failed to promote user.');
+            this.newError.set(this.admin.message(e));
           }
         });
       }
 
   editUser(u: AdminUser) {
     this.editingUser.set(u);
-    this.selectedRole.set(u.roleId || 'ADMIN');
+    this.selectedRole.set(u.roleId);
+    this.selectedRoles.set([...(u.roles||[u.roleId])]);
     this.selectedStatus.set(u.status || 'Active');
     this.updateReason.set('Administrative role assignment update');
     this.errorMessage.set(null);
@@ -620,7 +615,8 @@ export class AdminUsersComponent implements OnInit {
     this.errorMessage.set(null);
     const updatedUser: AdminUser = {
       ...user,
-      roleId: this.selectedRole(),
+      roleId: this.selectedRoles()[0],
+      roles: this.selectedRoles(),
       status: this.selectedStatus()
     };
 
@@ -636,9 +632,9 @@ export class AdminUsersComponent implements OnInit {
           this.errorMessage.set('Failed to update user role on server.');
         }
       },
-      error: () => {
+      error: (e) => {
         this.saving.set(false);
-        this.errorMessage.set('Error communicating with server.');
+        this.errorMessage.set(this.admin.message(e));
       }
     });
   }

@@ -106,8 +106,6 @@ export function parseMarkdownToSections(markdown: string): BlogSection[] {
   return sections.length > 0 ? sections : [{ paragraphs: [markdown.trim()] }];
 }
 
-export const DEFAULT_POSTS: AdminBlogPost[] = [];
-
 @Component({
   selector: 'app-admin-blog',
   standalone: true,
@@ -301,7 +299,7 @@ export const DEFAULT_POSTS: AdminBlogPost[] = [];
                   (click)="resetToDefaults()"
                   class="mt-3 text-xs font-semibold text-brand hover:underline"
                 >
-                  Reset to Insights Defaults
+                  Reload Articles
                 </button>
               </td>
             </tr>
@@ -603,7 +601,7 @@ export class AdminBlogComponent {
 
   posts = signal<AdminBlogPost[]>([]);
   private http = inject(HttpClient);
-  private cms = inject(CmsService);
+  cms=inject(CmsService);
 
   // Modal State
   isModalOpen = signal(false);
@@ -630,92 +628,20 @@ export class AdminBlogComponent {
       tag: 'Industry',
       author: 'Nigson Team',
       date: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
-      status: 'Published',
+      status: 'Draft',
       excerpt: '',
       image: '/assets/blog-market.jpg',
       body: ''
     };
   }
 
-  load() {
-    // 1. Try loading from localStorage first
-    let loadedFromStorage = false;
-    try {
-      const raw = localStorage.getItem('nigson.admin.v2');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed.posts) && parsed.posts.length > 0) {
-          this.posts.set(parsed.posts);
-          loadedFromStorage = true;
-        }
-      }
-    } catch {}
+  load(){this.cms.loadBlogs().subscribe({next:rows=>this.posts.set(rows),error:e=>this.showToast(this.cms.message(e))});}
 
-    if (!loadedFromStorage) {
-      this.posts.set([...DEFAULT_POSTS]);
-      this.syncLocalStorage(DEFAULT_POSTS);
-    }
+  resetToDefaults(){this.load();}
 
-    // 2. Fetch from PostgreSQL database bridge and update/merge
-    this.http.get<any>('/api/v1/content?type=BLOG&locale=en&page=0&size=100').pipe(
-      catchError(() => of(null))
-    ).subscribe(page => {
-      const rawList = page?.content || page?.items || (Array.isArray(page) ? page : []);
-      if (!rawList.length) return;
-      const dbPosts: AdminBlogPost[] = rawList
-        .filter((item: any) => item.slug !== 'insights')
-        .map((item: any) => {
-          const body = (item.body?.blocks ?? []).filter((block: any) => block.type === 'TEXT').map((block: any) => block.text).join('\n\n');
-          return {
-            id: item.id,
-            title: item.title,
-            slug: item.slug,
-            tag: item.metadata?.tag || item.metadata?.structuredData?.tag || 'Insight',
-            author: item.metadata?.author || item.metadata?.structuredData?.author || 'Nigson Team',
-            date: item.publishedAt ? new Date(item.publishedAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '',
-            status: 'Published',
-            excerpt: item.metadata?.description || item.metadata?.excerpt || body.slice(0, 220),
-            image: item.metadata?.image || item.metadata?.structuredData?.image || '/assets/blog-market.jpg',
-            body
-          } as AdminBlogPost;
-        });
+  syncLocalStorage(_posts:AdminBlogPost[]){}
 
-      const current = [...this.posts()];
-      for (const dp of dbPosts) {
-        const existingIdx = current.findIndex(p => p.slug === dp.slug || p.id === dp.id);
-        if (existingIdx >= 0) {
-          current[existingIdx] = dp;
-        } else {
-          current.push(dp);
-        }
-      }
-      this.posts.set(current);
-      this.syncLocalStorage(current);
-    });
-  }
-
-  resetToDefaults() {
-    this.posts.set([...DEFAULT_POSTS]);
-    this.saveAll();
-    this.showToast('Reset to 5 Insights articles with headings & bullets');
-  }
-
-  syncLocalStorage(posts: AdminBlogPost[]) {
-    try {
-      const raw = localStorage.getItem('nigson.admin.v2') || '{}';
-      const parsed = JSON.parse(raw);
-      parsed.posts = posts;
-      localStorage.setItem('nigson.admin.v2', JSON.stringify(parsed));
-      localStorage.setItem('nigson_admin_blog_posts', JSON.stringify(posts));
-    } catch {}
-  }
-
-  saveAll() {
-    const allPosts = this.posts();
-    this.syncLocalStorage(allPosts);
-
-    this.showToast('Saved in this browser only. Use the structured Experience content revision workflow to publish.');
-  }
+  saveAll(){this.load();}
 
   showToast(message: string) {
     this.toastMessage.set(message);
@@ -791,81 +717,11 @@ export class AdminBlogComponent {
     this.editingPost.body = (this.editingPost.body || '') + snippet;
   }
 
-  savePost() {
-    if (!this.editingPost.title.trim()) {
-      alert('Please enter a title for the post.');
-      return;
-    }
+  savePost(){if(!this.editingPost.title.trim())return this.showToast('Enter an article title.');if(!this.editingPost.slug.trim())this.editingPost.slug=this.editingPost.title.toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');this.cms.saveBlog(this.editingPost).subscribe({next:()=>{this.load();this.closeModal();this.showToast('Article saved.');},error:e=>this.showToast(this.cms.message(e))});}
 
-    if (!this.editingPost.slug.trim()) {
-      this.editingPost.slug = this.editingPost.title
-        .toLowerCase()
-        .trim()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-|-$/g, '');
-    }
+  delete(id:string){const post=this.posts().find(p=>p.id===id) as any;if(!post)return;if(!post.revision||!['PUBLISHED','APPROVED'].includes(post.revision.state))return this.showToast('Draft revisions are retained for audit. Publish or edit this draft.');this.cms.withdrawContent(post.revision).subscribe({next:()=>{this.load();this.showToast('Article withdrawn from the public site.');},error:e=>this.showToast(this.cms.message(e))});}
 
-    if (!this.editingPost.excerpt.trim()) {
-      this.editingPost.excerpt = this.editingPost.body
-        ? this.editingPost.body.split('\n')[0].replace(/^#{1,4}\s+/, '').slice(0, 120) + '...'
-        : 'Article from Nigson.';
-    }
-
-    // Automatically parse sections so both formats are saved
-    const parsedSections = parseMarkdownToSections(this.editingPost.body || '');
-    const currentPost: AdminBlogPost = {
-      ...this.editingPost,
-      sections: parsedSections
-    };
-
-    let updatedPosts: AdminBlogPost[];
-    if (this.isEditing()) {
-      updatedPosts = this.posts().map(p => p.id === currentPost.id ? currentPost : p);
-      this.showToast(`Updated "${currentPost.title}"`);
-    } else {
-      updatedPosts = [currentPost, ...this.posts().filter(p => p.id !== currentPost.id && p.slug !== currentPost.slug)];
-      this.showToast(`Created new article "${currentPost.title}"`);
-    }
-
-    this.posts.set(updatedPosts);
-    this.syncLocalStorage(updatedPosts);
-    this.closeModal();
-
-    this.cms.publishArticle(currentPost).subscribe({
-      next: (ok) => {
-        if (ok) {
-          this.showToast(`Saved "${currentPost.title}" to database & published live!`);
-          this.load();
-        } else {
-          this.showToast(`Saved locally in browser. Sign in via /auth/login for persistent database sync.`);
-        }
-      },
-      error: () => {
-        this.showToast(`Saved locally in browser. Sign in via /auth/login for persistent database sync.`);
-      }
-    });
-  }
-
-  delete(id: string) {
-    const postToDelete = this.posts().find(p => p.id === id);
-    const title = postToDelete ? `"${postToDelete.title}"` : 'this post';
-
-    if (confirm(`Are you sure you want to delete ${title}?`)) {
-      const updated = this.posts().filter(p => p.id !== id);
-      this.posts.set(updated);
-      this.syncLocalStorage(updated);
-      this.showToast('Post deleted');
-    }
-  }
-
-  toggleStatus(p: AdminBlogPost) {
-    const nextStatus: 'Published' | 'Draft' = p.status === 'Published' ? 'Draft' : 'Published';
-    const updated = this.posts().map(x => x.id === p.id ? { ...x, status: nextStatus } : x);
-    this.posts.set(updated);
-    this.syncLocalStorage(updated);
-    this.saveAll();
-    this.showToast(`Post marked as ${nextStatus}`);
-  }
+  toggleStatus(post:AdminBlogPost){const current=post as any;const request=post.status==='Published'?this.cms.withdrawContent(current.revision):this.cms.saveBlog({...post,status:'Published'});request.subscribe({next:()=>{this.load();this.showToast('Publication status updated.');},error:e=>this.showToast(this.cms.message(e))});}
 
   handleImageError(event: Event) {
     const img = event.target as HTMLImageElement;

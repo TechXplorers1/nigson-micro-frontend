@@ -137,6 +137,7 @@ export class StockMovementsComponent implements OnInit {
   detail = signal<any>(null);
 
   ngOnInit() {
+    this.admin.loadStockMovements().subscribe();
     this.admin.loadStaffProducts().subscribe();
     this.admin.loadStaffInventory().subscribe();
   }
