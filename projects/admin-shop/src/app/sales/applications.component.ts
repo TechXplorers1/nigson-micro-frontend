@@ -1,7 +1,7 @@
 import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { AdminService, AdminHeadingComponent, BadgeComponent, statusTone, StatCardComponent } from 'shared-ui';
+import { AdminService, AdminHeadingComponent, BadgeComponent, statusTone, StatCardComponent, distributorDisplayState } from 'shared-ui';
 import { LucideSearch, LucideCheck, LucideX, LucideInfo } from '@lucide/angular';
 
 @Component({
@@ -9,8 +9,13 @@ import { LucideSearch, LucideCheck, LucideX, LucideInfo } from '@lucide/angular'
   standalone: true,
   imports: [CommonModule, FormsModule, AdminHeadingComponent, BadgeComponent, StatCardComponent, LucideSearch, LucideCheck, LucideX, LucideInfo],
   template: `
-    <lib-admin-heading title="Distributor Applications" subtitle="Distributor, wholesaler and affiliate marketer partnership requests"></lib-admin-heading>
-    <p *ngIf="admin.applicationError()" role="alert" class="mb-4 text-sm text-red-700">{{ admin.applicationError() }}</p>
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <lib-admin-heading title="Distributor Applications" subtitle="Distributor, wholesaler and affiliate marketer partnership requests"></lib-admin-heading>
+      <button (click)="refresh()" [disabled]="admin.loadingApplications()" class="rounded-full border border-gray-200 bg-white px-4 py-2 text-xs font-semibold text-ink shadow-sm hover:bg-gray-50 disabled:opacity-50">
+        {{ admin.loadingApplications() ? 'Refreshing...' : 'Refresh from DB' }}
+      </button>
+    </div>
+    <p *ngIf="admin.applicationError()" role="alert" class="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700">{{ admin.applicationError() }}</p>
     
     <div class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <lib-stat-card label="Total applications" [value]="admin.applications().length.toString()"></lib-stat-card>
@@ -72,7 +77,9 @@ import { LucideSearch, LucideCheck, LucideX, LucideInfo } from '@lucide/angular'
               </td>
             </tr>
             <tr *ngIf="filteredList().length === 0">
-              <td colspan="7" class="p-12 text-center text-muted-ink">No applications match your filters.</td>
+              <td colspan="7" class="p-12 text-center text-muted-ink">
+                {{ admin.loadingApplications() ? 'Loading partner applications from database...' : 'No applications match your filters.' }}
+              </td>
             </tr>
           </tbody>
         </table>
@@ -141,15 +148,31 @@ import { LucideSearch, LucideCheck, LucideX, LucideInfo } from '@lucide/angular'
               {{ view().note }}
             </div>
           </div>
+
+          <!-- Uploaded Proof Documents (Corporate Distributor) -->
+          <div *ngIf="view().documents?.length">
+            <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-ink mb-1.5">Verification Documents</p>
+            <div class="space-y-2">
+              <div *ngFor="let d of view().documents" class="flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50/70 px-4 py-2.5 text-xs">
+                <div>
+                  <span class="font-bold text-ink">{{ d.type }}</span>
+                  <span class="ml-2 font-mono text-[11px] text-muted-ink">{{ d.fileId }}</span>
+                </div>
+                <span class="rounded-full bg-white border border-gray-200 px-2.5 py-0.5 text-[11px] font-semibold">{{ d.scanStatus }}</span>
+              </div>
+            </div>
+          </div>
           
           <div>
             <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-muted-ink">Staff Reviewer Note</label>
-            <textarea rows="2" [(ngModel)]="view().note" placeholder="Add staff verification or assessment remarks..." class="w-full rounded-[16px] border border-gray-200 bg-white px-4 py-3 text-sm text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20"></textarea>
+            <textarea rows="2" [(ngModel)]="reviewerNote" placeholder="Add staff verification or assessment remarks..." class="w-full rounded-[16px] border border-gray-200 bg-white px-4 py-3 text-sm text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20"></textarea>
           </div>
           
           <p *ngIf="admin.applicationError()" role="alert" class="text-sm text-red-700">{{ admin.applicationError() }}</p>
-          <label class="flex items-center gap-2 text-sm"><input type="checkbox" [(ngModel)]="documentsVerified" /> I have reviewed the registration document</label>
-          <p class="text-xs text-muted-ink">Approval requires a different staff member from the reviewer. Market: {{ admin.distributorMarket()?.code || "Not configured" }}.</p>
+          <ng-container *ngIf="view().type === 'Distributor'">
+            <label class="flex items-center gap-2 text-sm"><input type="checkbox" [(ngModel)]="documentsVerified" /> I have reviewed the registration document</label>
+            <p class="text-xs text-muted-ink">Approval requires prior verification (&quot;Under Review&quot;) and a different staff member from the reviewer. Market: {{ admin.distributorMarket()?.code || "Not configured" }}.</p>
+          </ng-container>
           <div class="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-gray-100">
             <div class="flex items-center gap-2">
               <span class="text-xs font-semibold text-muted-ink">Status:</span>
@@ -157,7 +180,8 @@ import { LucideSearch, LucideCheck, LucideX, LucideInfo } from '@lucide/angular'
                 <option *ngFor="let s of rawStatuses" [value]="s">{{ s }}</option>
               </select>
             </div>
-            <div class="flex gap-2">
+            <div class="flex flex-wrap gap-2">
+              <button *ngIf="view().status === 'Pending'" (click)="setStatus(view().id, 'Under Review')" class="rounded-full bg-amber-600 px-5 py-2 text-xs font-bold text-white hover:bg-amber-700 shadow-sm transition-colors">Mark Under Review</button>
               <button (click)="setStatus(view().id, 'Approved')" class="rounded-full bg-emerald-600 px-5 py-2 text-xs font-bold text-white hover:bg-emerald-700 shadow-sm transition-colors">Approve</button>
               <button (click)="setStatus(view().id, 'Rejected')" class="rounded-full bg-rose-600 px-5 py-2 text-xs font-bold text-white hover:bg-rose-700 shadow-sm transition-colors">Reject</button>
               <button (click)="view.set(null)" class="rounded-full border border-gray-200 bg-white px-5 py-2 text-xs font-semibold text-ink hover:bg-gray-50 transition-colors">Close</button>
@@ -172,7 +196,10 @@ export class AdminApplicationsComponent implements OnInit {
   admin = inject(AdminService);
 
   ngOnInit() {
-    this.admin.hydrateFromStorage();
+    this.admin.loadStaffApplications().subscribe();
+  }
+
+  refresh() {
     this.admin.loadStaffApplications().subscribe();
   }
   
@@ -183,9 +210,10 @@ export class AdminApplicationsComponent implements OnInit {
   view = signal<any>(null);
 
   documentsVerified = false;
+  reviewerNote = '';
   rawStatuses = ["Pending", "Under Review", "Approved", "Rejected"];
   statuses = ["All statuses", ...this.rawStatuses];
-  categories = ["All categories", 'Earbuds', 'Power Banks', 'Wireless Chargers', 'Car Chargers', 'Home Chargers', 'Cables', 'Accessories'];
+  categories = ["All categories", 'Corporate Distributor', 'Earbuds', 'Power Banks', 'Wireless Chargers', 'Car Chargers', 'Home Chargers', 'Cables', 'Accessories'];
 
   getTone(status: string) { return statusTone(status); }
 
@@ -222,17 +250,27 @@ export class AdminApplicationsComponent implements OnInit {
   });
 
   viewDetail(app: any) {
-    // Create a copy so we can edit the note without immediate side-effects
+    // Create a copy so we edit reviewer note independently from submitted application text
     this.documentsVerified = false;
+    this.reviewerNote = app.reviewReason || '';
     this.admin.applicationError.set(null);
     this.view.set({ ...app });
   }
 
   setStatus(id: string, status: string) {
-    this.admin.setApplicationStatus(id, status, this.view()?.note, this.documentsVerified).subscribe(result => {
+    const activeModal = this.view()?.id === id;
+    const note = activeModal ? this.reviewerNote : `Application marked ${status} by staff`;
+    const docsVerified = activeModal ? this.documentsVerified : false;
+    this.admin.setApplicationStatus(id, status, note, docsVerified).subscribe(result => {
       if (result && this.view()?.id === id) {
-        const displayed = ({ APPROVED: 'Approved', REJECTED: 'Rejected', UNDER_REVIEW: 'Under Review' } as Record<string,string>)[result.state] || 'Pending';
-        this.view.update((view: any) => ({ ...view, status: displayed, version: result.version }));
+        const stateMap: Record<string, string> = {
+          RESOLVED: 'Approved',
+          CLOSED: 'Rejected',
+          IN_PROGRESS: 'Under Review',
+          ASSIGNED: 'Under Review'
+        };
+        const displayed = stateMap[result.state] || distributorDisplayState(result.state);
+        this.view.update((view: any) => ({ ...view, status: displayed, reviewReason: note, version: result.version }));
       }
     });
   }

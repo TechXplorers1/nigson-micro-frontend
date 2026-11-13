@@ -1,6 +1,6 @@
 import { Injectable, inject, signal } from "@angular/core";
 import { HttpClient, HttpParams } from "@angular/common/http";
-import { Observable, of, tap, catchError, map } from "rxjs";
+import { Observable, of, tap, catchError, map, throwError } from "rxjs";
 
 /**
  * Backend Engagement Review (API-097 - TASK-52, TASK-55)
@@ -79,7 +79,7 @@ export class ReviewService {
     return this.http.post<any>("/api/v1/reviews", payload, { headers }).pipe(
       catchError(err => {
         console.error("[ReviewService] submitReview failed:", err);
-        return of(null);
+        return throwError(() => err);
       })
     );
   }

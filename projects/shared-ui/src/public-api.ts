@@ -26,6 +26,7 @@ export * from './lib/shop.service';
 export * from './lib/cms.service';
 export * from './lib/catalog.service';
 export * from './lib/admin/admin.service';
+export * from './lib/admin/distributor-workflow';
 export * from './lib/admin-ui/admin-heading.component';
 export * from './lib/admin-ui/stat-card.component';
 export * from './lib/admin-ui/badge.component';

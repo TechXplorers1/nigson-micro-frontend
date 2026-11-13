@@ -4,7 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { AdminService, CatalogService, extractSku, resolveCategoryFromSku } from 'shared-ui';
+import { AdminService, CatalogService } from 'shared-ui';
 
 export interface CustomSpec {
   key: string;

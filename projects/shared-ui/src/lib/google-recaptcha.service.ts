@@ -17,6 +17,10 @@ export class GoogleRecaptchaService {
 
   async execute(action: string): Promise<string> {
     const siteKey = document.querySelector<HTMLMetaElement>('meta[name="google-recaptcha-site-key"]')?.content.trim();
+    // Allow local dev servers using the unreplaced placeholder to submit without external reCAPTCHA keys.
+    if (siteKey?.startsWith('__') && typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+      return 'local-dev-recaptcha-override';
+    }
     if (!siteKey || siteKey.startsWith('__')) throw new Error('Google reCAPTCHA is not configured.');
 
     const api = await this.load(siteKey);

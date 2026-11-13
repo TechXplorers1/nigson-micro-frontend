@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, computed, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AdminService, AdminHeadingComponent, StatCardComponent } from 'shared-ui';
 import { LucideTrendingUp, LucidePackage, LucideUsers, LucideShoppingCart, LucideClipboardList, LucideBuilding2, LucideBoxes, LucideMail } from '@lucide/angular';
@@ -45,17 +45,23 @@ import { RouterLink } from '@angular/router';
 
     <!-- Charts Section -->
     <div class="mt-8 grid gap-6 lg:grid-cols-2">
-      <!-- Sales Chart Mock -->
+      <!-- Sales Trend (Last 7 Days) -->
       <div class="rounded-2xl border border-hairline bg-white p-6 shadow-sm">
         <h3 class="mb-6 font-semibold">Sales Trend (Last 7 Days)</h3>
         <div class="flex h-48 items-end justify-between gap-2">
-          <div *ngFor="let day of [40, 65, 30, 80, 50, 95, 60]" class="group relative flex w-full flex-col items-center justify-end">
-            <div class="w-full rounded-t-md bg-brand transition-all hover:opacity-80" [style.height.%]="day"></div>
+          <div *ngFor="let day of weeklySalesTrend()"
+               [title]="day.label + ': ₦' + (day.total | number:'1.0-0') + ' (' + day.count + ' orders)'"
+               class="group relative flex h-full w-full flex-col items-center justify-end">
+            <div class="w-full rounded-t-md bg-brand transition-all hover:opacity-80"
+                 [style.height.%]="day.pct"></div>
           </div>
         </div>
         <div class="mt-2 flex justify-between text-xs text-muted-ink">
-          <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+          <span *ngFor="let day of weeklySalesTrend()">{{ day.label }}</span>
         </div>
+        <p *ngIf="!hasWeeklySales()" class="mt-3 text-xs text-muted-ink">
+          No completed order sales recorded in the last 7 days.
+        </p>
       </div>
 
       <!-- Inventory Status -->
@@ -96,6 +102,44 @@ export class AnalyticsComponent implements OnInit {
     },error:()=>{}});
     this.admin.loadEngagementReport().subscribe({error:()=>{}});
   }
+
+  readonly weeklySalesTrend = computed(() => {
+    const orders = this.liveOrders();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const buckets: { key: string; label: string; total: number; count: number; pct: number }[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      buckets.push({
+        key,
+        label: d.toLocaleDateString('en-US', { weekday: 'short' }),
+        total: 0,
+        count: 0,
+        pct: 0,
+      });
+    }
+    const byKey = new Map(buckets.map((b) => [b.key, b]));
+    for (const o of orders) {
+      if (!o.date) continue;
+      const parsed = new Date(o.date);
+      if (Number.isNaN(parsed.getTime())) continue;
+      const key = `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}-${String(parsed.getDate()).padStart(2, '0')}`;
+      const bucket = byKey.get(key);
+      if (bucket) {
+        bucket.total += o.total || 0;
+        bucket.count += 1;
+      }
+    }
+    const maxTotal = Math.max(...buckets.map((b) => b.total), 0);
+    for (const bucket of buckets) {
+      bucket.pct = maxTotal > 0 ? Math.round((bucket.total / maxTotal) * 100) : 0;
+    }
+    return buckets;
+  });
+
+  readonly hasWeeklySales = computed(() => this.weeklySalesTrend().some((b) => b.total > 0));
 
   get liveOrders() {
     return () => this.admin.orders().filter((o) => o.status !== "Cancelled");

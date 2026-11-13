@@ -1,14 +1,14 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AdminService, AdminHeadingComponent, BadgeComponent } from 'shared-ui';
-import { LucideShieldCheck, LucidePencil } from '@lucide/angular';
+import { LucideShieldCheck } from '@lucide/angular';
 
 @Component({
   selector: 'app-admin-roles',
   standalone: true,
   imports: [
     CommonModule, AdminHeadingComponent, BadgeComponent,
-    LucideShieldCheck, LucidePencil
+    LucideShieldCheck
   ],
   template: `
     <lib-admin-heading title="Roles & Permissions" subtitle="Review the fixed staff roles. Assign roles to existing accounts on Admin Users."></lib-admin-heading>

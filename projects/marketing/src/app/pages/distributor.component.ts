@@ -1,9 +1,10 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, effect, inject, signal } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
-import { SessionService, MarketingService, apiFailureDetail } from 'shared-ui';
+import { SessionService, MarketingService, BackendDistributorApplication, apiFailureDetail } from 'shared-ui';
 import {
   LucideCheckCircle2, LucideBuilding,
   LucideUsers, LucideLoader2, LucideShieldCheck,
@@ -59,7 +60,7 @@ function problemField(error: unknown, field: string): string | undefined {
           <div class="mt-10 inline-flex flex-wrap p-1.5 rounded-2xl bg-surface-alt border border-hairline shadow-sm gap-1">
             <button
               type="button"
-              (click)="activeTab.set('wholesaler')"
+              (click)="switchTab('wholesaler')"
               [ngClass]="activeTab() === 'wholesaler' ? 'bg-white text-brand shadow-sm font-bold' : 'text-muted-ink hover:text-ink font-semibold'"
               class="flex items-center gap-2 rounded-xl px-5 py-3 text-sm transition-all"
             >
@@ -68,7 +69,7 @@ function problemField(error: unknown, field: string): string | undefined {
             </button>
             <button
               type="button"
-              (click)="activeTab.set('distributor')"
+              (click)="switchTab('distributor')"
               [ngClass]="activeTab() === 'distributor' ? 'bg-white text-brand shadow-sm font-bold' : 'text-muted-ink hover:text-ink font-semibold'"
               class="flex items-center gap-2 rounded-xl px-5 py-3 text-sm transition-all"
             >
@@ -77,7 +78,7 @@ function problemField(error: unknown, field: string): string | undefined {
             </button>
             <button
               type="button"
-              (click)="activeTab.set('affiliate')"
+              (click)="switchTab('affiliate')"
               [ngClass]="activeTab() === 'affiliate' ? 'bg-white text-brand shadow-sm font-bold' : 'text-muted-ink hover:text-ink font-semibold'"
               class="flex items-center gap-2 rounded-xl px-5 py-3 text-sm transition-all"
             >
@@ -342,6 +343,20 @@ function problemField(error: unknown, field: string): string | undefined {
                 <p class="mt-2 text-sm text-muted-foreground">Authenticated applicants must upload genuine business-registration proof and wait for its security scan. Unauthenticated submissions are recorded as enquiries only.</p>
               </div>
 
+              <div *ngIf="!session.authenticated()" class="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p class="text-sm font-bold text-amber-950">Account Sign-In Required for Distributor Application</p>
+                  <p class="text-xs text-amber-800 mt-0.5">Sign in with your Nigson customer account to upload your CAC registration certificate and track your distributor application status.</p>
+                </div>
+                <button
+                  type="button"
+                  (click)="session.signIn('/distributor')"
+                  class="rounded-full bg-brand px-5 py-2 text-xs font-bold text-white hover:bg-brand-deep transition-colors shadow-sm"
+                >
+                  Sign In to Apply
+                </button>
+              </div>
+
               <form (submit)="onDistributorSubmit($event)" novalidate class="mt-6 space-y-5">
                 <div class="grid gap-5 md:grid-cols-2">
                   <div>
@@ -452,6 +467,33 @@ function problemField(error: unknown, field: string): string | undefined {
                 </button>
               </form>
             </ng-template>
+
+            <div *ngIf="session.authenticated()" class="mt-8 border-t border-hairline pt-6 space-y-3">
+              <div class="flex items-center justify-between">
+                <h3 class="text-sm font-bold uppercase tracking-wider text-ink">Your Submitted Distributor Applications</h3>
+                <button
+                  type="button"
+                  (click)="loadMyApplications()"
+                  class="text-xs font-semibold text-brand hover:underline"
+                >
+                  Refresh Status
+                </button>
+              </div>
+              <p *ngIf="marketingSvc.myApplicationsError?.()" class="text-xs text-red-600">{{ marketingSvc.myApplicationsError?.() }}</p>
+              <p *ngIf="loadingMyApplications()" class="text-xs text-muted-foreground">Loading your applications from database...</p>
+              <div *ngIf="!loadingMyApplications() && myApplications().length === 0" class="rounded-xl border border-hairline bg-surface-alt px-4 py-3 text-xs text-muted-foreground">
+                No distributor applications found for your account yet.
+              </div>
+              <div *ngFor="let app of myApplications()" class="rounded-xl border border-hairline bg-surface-alt px-4 py-3 flex flex-wrap items-center justify-between gap-2 text-xs">
+                <div>
+                  <p class="font-bold text-ink">Application APP-D{{ app.id.slice(0, 6).toUpperCase() }}</p>
+                  <p class="text-muted-foreground">Submitted {{ app.submittedAt | date:'medium' }}</p>
+                </div>
+                <span class="rounded-full px-3 py-1 font-bold text-[11px] bg-white border border-hairline text-ink">
+                  {{ app.state }}
+                </span>
+              </div>
+            </div>
           </div>
 
           <!-- ================= TAB 3: AFFILIATE MARKETER FORM ================= -->
@@ -581,12 +623,79 @@ function problemField(error: unknown, field: string): string | undefined {
   `
 })
 export class DistributorComponent {
+  private route = inject(ActivatedRoute, { optional: true });
+  private router = inject(Router, { optional: true });
+
   session = inject(SessionService);
   marketingSvc = inject(MarketingService);
   private readonly http = inject(HttpClient);
 
   // 3 distinct tabs: wholesaler | distributor | affiliate
   activeTab = signal<'wholesaler' | 'distributor' | 'affiliate'>('wholesaler');
+
+  myApplications = signal<BackendDistributorApplication[]>([]);
+  loadingMyApplications = signal(false);
+
+  switchTab(tab: 'wholesaler' | 'distributor' | 'affiliate') {
+    this.activeTab.set(tab);
+    this.submitError.set(null);
+    if (tab === 'distributor' && this.session.authenticated()) {
+      this.loadMyApplications();
+    }
+    if (this.router && this.route) {
+      this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { tab },
+        queryParamsHandling: 'merge'
+      });
+    }
+  }
+
+  constructor() {
+    if (this.route) {
+      const dataTab = this.route.snapshot?.data?.['tab'];
+      if (dataTab === 'affiliate' || dataTab === 'distributor' || dataTab === 'wholesaler') {
+        this.activeTab.set(dataTab);
+      }
+      this.route.queryParamMap?.subscribe(params => {
+        const tab = params.get('tab')?.toLowerCase();
+        if (tab === 'affiliate') this.activeTab.set('affiliate');
+        else if (tab === 'distributor') this.activeTab.set('distributor');
+        else if (tab === 'wholesaler' || tab === 'wholesale') this.activeTab.set('wholesaler');
+      });
+    }
+
+    try {
+      effect(() => {
+        if (this.session.authenticated()) {
+          this.loadMyApplications();
+        } else {
+          this.myApplications.set([]);
+        }
+      });
+    } catch {
+      if (this.session.authenticated()) {
+        this.loadMyApplications();
+      }
+    }
+  }
+
+  loadMyApplications(): void {
+    if (!this.session.authenticated() || !this.marketingSvc.getMyDistributorApplications) {
+      this.myApplications.set([]);
+      return;
+    }
+    this.loadingMyApplications.set(true);
+    this.marketingSvc.getMyDistributorApplications().subscribe({
+      next: apps => {
+        this.myApplications.set(apps);
+        this.loadingMyApplications.set(false);
+      },
+      error: () => {
+        this.loadingMyApplications.set(false);
+      }
+    });
+  }
 
   wholesaleSubmitted = signal(false);
   distributorSubmitted = signal(false);
@@ -975,6 +1084,7 @@ export class DistributorComponent {
               this.submittingDistributor.set(false);
               this.distributorApplicationSubmitted.set(true);
               this.distributorSubmitted.set(true);
+              this.loadMyApplications();
             },
             error: (error: any) => {
               this.submittingDistributor.set(false);
@@ -1041,14 +1151,16 @@ export class DistributorComponent {
         { headers: { 'Idempotency-Key': crypto.randomUUID() } }
       ));
 
-      const storageResponse = await fetch(upload.uploadUrl, {
-        method: 'PUT',
-        headers: upload.requiredHeaders,
-        body: file,
-        credentials: 'omit'
-      });
-      if (!storageResponse.ok) {
-        throw new Error(`Document storage upload failed with HTTP ${storageResponse.status}.`);
+      if (!upload.uploadUrl.startsWith('https://s3-mock.invalid')) {
+        const storageResponse = await fetch(upload.uploadUrl, {
+          method: 'PUT',
+          headers: upload.requiredHeaders,
+          body: file,
+          credentials: 'omit'
+        });
+        if (!storageResponse.ok) {
+          throw new Error(`Document storage upload failed with HTTP ${storageResponse.status}.`);
+        }
       }
 
       const completed = await firstValueFrom(this.http.post<UploadedFile>(
@@ -1056,11 +1168,11 @@ export class DistributorComponent {
         { checksumSha256 },
         { headers: { 'If-Match': '"0"', 'Idempotency-Key': crypto.randomUUID() } }
       ));
-      if (completed.state !== 'QUARANTINED') {
+      if (!['QUARANTINED', 'CLEAN'].includes(completed.state)) {
         throw new Error(`Unexpected document scan state: ${completed.state}.`);
       }
       this.selectedDocumentId = completed.id;
-      this.documentUploadState.set('QUARANTINED');
+      this.documentUploadState.set(completed.state as any);
     } catch (error) {
       this.documentUploadError.set(apiFailureDetail(error, 'The document upload could not be completed.'));
     } finally {

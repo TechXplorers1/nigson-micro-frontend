@@ -3,8 +3,6 @@ import { Observable, of } from 'rxjs';
 import { SessionService } from './session.service';
 import { CartService } from './cart.service';
 import { Product } from './catalog.service';
-import { Review } from './reviews';
-import { LS_SAVED, LS_ORDERS, LS_USER, LS_REVIEWS } from './utils';
 
 export interface User {
   id: string;
@@ -82,8 +80,6 @@ export class ShopService {
   readonly hydrated = signal(false);
   readonly user = signal<User | null>(null);
   readonly saved = signal<SavedProduct[]>([]);
-  readonly orders = signal<Order[]>([]);
-  readonly reviews = signal<Review[]>([]);
   readonly loginRequired = signal<{ open: boolean; reason?: string }>({ open: false });
   readonly lastAddedToast = signal<CartToast | null>(null);
   private toastTimeout: any = null;
@@ -134,14 +130,6 @@ export class ShopService {
   }
 
   private init() {
-    try {
-      const s = localStorage.getItem(LS_SAVED);
-      if (s) this.saved.set(JSON.parse(s));
-      const o = localStorage.getItem(LS_ORDERS);
-      if (o) this.orders.set(JSON.parse(o));
-
-
-    } catch { /* ignore */ }
     this.hydrated.set(true);
   }
 
@@ -160,30 +148,8 @@ export class ShopService {
     this.user.set(updated);
   }
 
-  reviewsFor(sku: string): Review[] {
-    return this.reviews().filter(r => r.sku === sku || (r as any).productId === sku);
-  }
-
-  addReview(r: { sku: string; name: string; rating: number; text: string }) {
-    const nr: Review = {
-      id: Math.random().toString(36).substring(2, 9),
-      date: new Date().toISOString(),
-      publishedAt: new Date().toISOString(),
-      displayName: r.name,
-      body: r.text,
-      ...r
-    };
-    this.reviews.update(all => [nr, ...all]);
-  }
-
   private persistSaved(s: SavedProduct[]) {
     this.saved.set(s);
-    try { localStorage.setItem(LS_SAVED, JSON.stringify(s)); } catch { }
-  }
-
-  private persistOrders(o: Order[]) {
-    this.orders.set(o);
-    try { localStorage.setItem(LS_ORDERS, JSON.stringify(o)); } catch { }
   }
 
   signOut(): Observable<void> {
@@ -243,20 +209,6 @@ export class ShopService {
 
   clearCart() {
     this.cartService.clearCart().subscribe();
-  }
-
-
-  placeOrder(payload: Omit<Order, 'id' | 'number' | 'date' | 'status'>) {
-    const newOrder: Order = {
-      ...payload,
-      id: Math.random().toString(36).substring(2, 9),
-      number: 'ORD-' + Math.floor(Math.random() * 1000000).toString().padStart(6, '0'),
-      date: new Date().toISOString(),
-      status: 'Processing',
-    };
-    this.persistOrders([newOrder, ...this.orders()]);
-    this.clearCart();
-    return newOrder;
   }
 
   toggleSaved(item: Omit<SavedProduct, 'savedAt'>) {

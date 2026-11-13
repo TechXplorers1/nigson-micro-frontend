@@ -7,7 +7,6 @@ import {
   LucideFileText, LucideShieldCheck
 } from '@lucide/angular';
 import { CatalogService, ShopService, ReviewService, QtyStepperComponent, relativeDate } from 'shared-ui';
-import { WriteReviewComponent } from './write-review.component';
 import { ProductCardComponent } from './product-card.component';
 
 @Component({
@@ -403,12 +402,7 @@ export class ProductDetailComponent implements OnInit {
     return [fallback];
   });
 
-  reviews = computed(() => {
-    const backend = this.reviewSvc.reviews();
-    if (backend && backend.length > 0) return backend as any[];
-    const p = this.product();
-    return p ? this.shop.reviewsFor(p.sku) : [];
-  });
+  reviews = computed(() => this.reviewSvc.reviews() as any[]);
 
   rating = computed(() => {
     return this.reviewSvc.computeRating(this.reviews());

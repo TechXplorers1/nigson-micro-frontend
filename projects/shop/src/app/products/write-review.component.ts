@@ -1,7 +1,7 @@
 import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ShopService } from 'shared-ui';
+import { ShopService, ReviewService, SessionService } from 'shared-ui';
 import { LucideStar } from '@lucide/angular';
 
 @Component({
@@ -93,8 +93,12 @@ import { LucideStar } from '@lucide/angular';
 })
 export class WriteReviewComponent {
   shop = inject(ShopService);
+  private reviewSvc = inject(ReviewService);
+  private session = inject(SessionService);
 
   @Input() sku!: string;
+  @Input() productId?: string;
+  @Input() orderLineId?: string;
   @Output() close = new EventEmitter<void>();
 
   rating = 5;
@@ -108,16 +112,41 @@ export class WriteReviewComponent {
   submit(e: Event) {
     e.preventDefault();
     this.error = '';
-    
+
     if (!this.name.trim() || !this.text.trim()) {
       this.error = 'Please enter your name and review.';
       return;
     }
-    
+
+    if (!this.session.authenticated()) {
+      this.shop.openLoginRequired('Sign in to submit a verified review.');
+      return;
+    }
+
+    const kind: 'PRODUCT' | 'TESTIMONIAL' = this.productId ? 'PRODUCT' : 'TESTIMONIAL';
+    if (kind === 'PRODUCT' && !this.orderLineId) {
+      this.error = 'A verified purchase order is required to review this product.';
+      return;
+    }
+
     this.submitting = true;
-    this.shop.addReview({ sku: this.sku, name: this.name.trim(), rating: this.rating, text: this.text.trim() });
-    this.submitting = false;
-    this.done = true;
-    setTimeout(() => this.close.emit(), 1400);
+    this.reviewSvc.submitReview({
+      kind,
+      productId: kind === 'PRODUCT' ? this.productId : undefined,
+      orderLineId: kind === 'PRODUCT' ? this.orderLineId : undefined,
+      rating: this.rating,
+      title: this.name.trim(),
+      body: this.text.trim()
+    }).subscribe({
+      next: () => {
+        this.submitting = false;
+        this.done = true;
+        setTimeout(() => this.close.emit(), 1400);
+      },
+      error: (err) => {
+        this.submitting = false;
+        this.error = err?.error?.detail || err?.error?.message || 'Unable to submit review right now.';
+      }
+    });
   }
 }

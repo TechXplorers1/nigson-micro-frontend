@@ -86,32 +86,7 @@ export class BlogDetailComponent implements OnInit {
     this.cms.fetchContent('BLOG', slug).subscribe({
       next: (data) => {
         this.loading.set(false);
-        if (data) {
-          this.article.set(data);
-        } else {
-          // Provide readable default content if offline or mock
-          this.article.set({
-            id: 'fallback',
-            slug: slug,
-            type: 'BLOG',
-            locale: 'en-NG',
-            revision: 1,
-            title: slug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
-            metadata: {
-              metaTitle: slug,
-              metaDescription: 'Comprehensive guide and overview for commercial technology operations in Nigeria.'
-            },
-            body: {
-              schemaVersion: 1,
-              blocks: [
-                { type: 'heading', text: 'Operational Best Practices in Nigeria' },
-                { type: 'paragraph', text: 'Standard operating procedures require high-specification surge suppressors, automated phase balancers, and dedicated earthing networks for all industrial-grade installations across Nigeria.' },
-                { type: 'paragraph', text: 'For inquiries regarding commercial supply agreements or authorized distributor allocations, please contact our support team.' }
-              ]
-            },
-            publishedAt: new Date().toISOString()
-          });
-        }
+        this.article.set(data ?? null);
       },
       error: () => {
         this.loading.set(false);

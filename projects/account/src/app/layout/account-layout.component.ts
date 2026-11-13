@@ -57,8 +57,8 @@ import {
                 class="inline-flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-colors text-ink hover:bg-surface-alt"
               >
                 <svg lucidePackage class="h-4 w-4"></svg> My Orders
-                <span *ngIf="orderSvc.totalElements() || shop.orders().length" class="ml-auto rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-bold text-brand">
-                  {{ orderSvc.totalElements() || shop.orders().length }}
+                <span *ngIf="orderSvc.totalElements()" class="ml-auto rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-bold text-brand">
+                  {{ orderSvc.totalElements() }}
                 </span>
               </a>
               <!-- Addresses (TASK-49) -->

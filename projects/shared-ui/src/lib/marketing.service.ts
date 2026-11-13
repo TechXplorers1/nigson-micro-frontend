@@ -5,6 +5,23 @@ import { Observable, of, from, tap, catchError, map, switchMap, finalize } from 
 import { SessionService } from "./session.service";
 import { GoogleRecaptchaService } from "./google-recaptcha.service";
 
+/** Normalize phone input to strict E.164 (+[1-9][0-9]{7,14}). Returns null if empty, '' if invalid. */
+function normalizeInternationalPhone(rawPhone?: string): string | null {
+  if (!rawPhone || !rawPhone.trim()) return null;
+  let cleaned = rawPhone.trim().replace(/[^0-9+]/g, '');
+  if (/^0\d{9,10}$/.test(cleaned)) {
+    cleaned = '+234' + cleaned.slice(1);
+  } else if (!cleaned.startsWith('+') && cleaned.length >= 8 && cleaned.length <= 15) {
+    const noZero = cleaned.replace(/^0+/, '');
+    cleaned = noZero.length >= 8 ? '+' + noZero : '';
+  }
+  return /^\+[1-9][0-9]{7,14}$/.test(cleaned) ? cleaned : '';
+}
+
+function sanitizeSingleLine(value: string | undefined, max: number): string {
+  return (value || '').replace(/[\u0000-\u001F\u007F]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max).trim();
+}
+
 export interface EnquiryResult {
   success: boolean;
   status: number;
@@ -42,10 +59,19 @@ export interface DistributorApplicationPayload {
   businessReference?: string;
 }
 
+export type DistributorApplicationState =
+  | "SUBMITTED"
+  | "UNDER_REVIEW"
+  | "ACTIVATION_PENDING"
+  | "APPROVED"
+  | "REJECTED"
+  | "SUSPENSION_PENDING"
+  | "SUSPENDED";
+
 export interface BackendDistributorApplication {
   id: string;
-  state: "SUBMITTED" | "UNDER_REVIEW" | "APPROVED" | "REJECTED";
-  organizationId?: string;
+  state: DistributorApplicationState | string;
+  organizationId?: string | null;
   submittedAt: string;
   version: number;
 }
@@ -72,12 +98,22 @@ export class MarketingService {
   readonly submittingEnquiry = signal(false);
   readonly submittingDistributor = signal(false);
   readonly subscribingNewsletter = signal(false);
+  readonly myApplicationsError = signal<string | null>(null);
 
   readonly careers = signal<CareerOpportunity[]>([]);
   readonly loadingCareers = signal(false);
 
   /** TASK-56: Submit contact, distributor, or partner enquiry (POST /api/v1/enquiries) */
   submitEnquiry(payload: EnquiryPayload): Observable<EnquiryResult> {
+    const normalizedPhone = normalizeInternationalPhone(payload.phone);
+    if (normalizedPhone === '') {
+      return of({
+        success: false,
+        status: 400,
+        error: 'Enter a valid phone number with 8-15 digits (e.g. +2348012345678 or 08012345678).'
+      });
+    }
+
     this.submittingEnquiry.set(true);
     const idempotencyKey = crypto.randomUUID();
     // Backend LeadValues.validate requires type to be CONTACT or COMPLAINT for public intake,
@@ -88,20 +124,15 @@ export class MarketingService {
       switchMap(token => {
         const body: Record<string, any> = {
           type: intakeType,
-          name: (payload.name || '').trim().slice(0, 160),
+          name: sanitizeSingleLine(payload.name, 160),
           email: (payload.email || '').trim().toLowerCase().slice(0, 254),
-          subject: (payload.subject || 'Commercial Partner Enquiry').trim().slice(0, 200),
+          subject: sanitizeSingleLine(payload.subject || 'Commercial Partner Enquiry', 200),
           message: (payload.message || '').trim(),
           antiSpamToken: token
         };
 
-        if (payload.phone) {
-          const cleaned = payload.phone.replace(/[^0-9+]/g, '');
-          if (cleaned.startsWith('+') && cleaned.length >= 8 && cleaned.length <= 16) {
-            body['phone'] = cleaned;
-          } else if (cleaned.length >= 8 && cleaned.length <= 15) {
-            body['phone'] = '+' + cleaned.replace(/^\+/, '');
-          }
+        if (normalizedPhone) {
+          body['phone'] = normalizedPhone;
         }
 
         const headers = new HttpHeaders({
@@ -190,14 +221,17 @@ export class MarketingService {
   }
 
   /** TASK-60: Submit distributor application (POST /api/v1/distributor-applications) */
-  submitDistributorApplication(payload: DistributorApplicationPayload, operationKey?: string): Observable<any> {
+  submitDistributorApplication(payload: DistributorApplicationPayload, operationKey?: string): Observable<BackendDistributorApplication> {
     this.submittingDistributor.set(true);
-    const body = {
-      organizationName: (payload.organizationName || '').trim().slice(0, 200),
+    const cleanedRef = sanitizeSingleLine(payload.businessReference, 100);
+    const body: Record<string, any> = {
+      organizationName: sanitizeSingleLine(payload.organizationName, 200),
       countryCode: (payload.countryCode || "NG").trim().slice(0, 2).toUpperCase(),
-      documentIds: payload.documentIds || [],
-      businessReference: payload.businessReference ? payload.businessReference.trim().slice(0, 100) : undefined
+      documentIds: payload.documentIds || []
     };
+    if (cleanedRef) {
+      body['businessReference'] = cleanedRef;
+    }
 
     const headers: Record<string, string> = {
       'Idempotency-Key': operationKey || crypto.randomUUID()
@@ -210,11 +244,16 @@ export class MarketingService {
 
   /** TASK-60: Get my distributor applications (GET /api/v1/me/distributor-applications) */
   getMyDistributorApplications(): Observable<BackendDistributorApplication[]> {
-    if (!this.session.authenticated()) return of([]);
-    return this.http.get<BackendDistributorApplication[]>("/api/v1/me/distributor-applications").pipe(
+    if (!this.session.authenticated()) {
+      this.myApplicationsError.set(null);
+      return of([]);
+    }
+    this.myApplicationsError.set(null);
+    return this.http.get<BackendDistributorApplication[]>("/api/v1/me/distributor-applications", { withCredentials: true }).pipe(
       map(res => res ?? []),
       catchError(err => {
         console.warn("[MarketingService] getMyDistributorApplications failed:", err);
+        this.myApplicationsError.set(err?.error?.detail || err?.error?.title || 'Unable to load your distributor applications from the server.');
         return of([]);
       })
     );
