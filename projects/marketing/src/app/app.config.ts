@@ -1,6 +1,6 @@
 import { apiErrorInterceptor } from 'shared-ui';
 import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
-import { provideRouter } from '@angular/router';
+import { provideRouter, withInMemoryScrolling } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { routes } from './app.routes';
 import { csrfInterceptor, idempotencyInterceptor, ifMatchInterceptor } from 'shared-ui';
@@ -8,7 +8,7 @@ import { csrfInterceptor, idempotencyInterceptor, ifMatchInterceptor } from 'sha
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
-    provideRouter(routes),
+    provideRouter(routes, withInMemoryScrolling({ anchorScrolling: 'enabled' })),
     provideHttpClient(
       withInterceptors([apiErrorInterceptor, csrfInterceptor, idempotencyInterceptor, ifMatchInterceptor])
     ),

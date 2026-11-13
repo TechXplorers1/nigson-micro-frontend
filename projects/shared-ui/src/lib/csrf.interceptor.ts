@@ -5,10 +5,12 @@ import { SessionService } from './session.service';
 const MUTATION_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 /**
- * CSRF Interceptor (TASK-03)
+ * CSRF & Session Credentials Interceptor (TASK-03)
  *
- * Attaches the CSRF token obtained from GET /bff/session onto every
- * state-mutating request (POST, PUT, PATCH, DELETE) to the Commerce BFF.
+ * 1. Attaches withCredentials: true to all Nigson BFF and API endpoints so
+ *    the browser sends the authenticated session cookie.
+ * 2. Attaches the CSRF token obtained from GET /bff/session onto every
+ *    state-mutating request (POST, PUT, PATCH, DELETE) to the Commerce BFF.
  *
  * Excludes Keycloak identity requests.
  */
@@ -24,13 +26,25 @@ export const csrfInterceptor: HttpInterceptorFn = (req, next) => {
     return next(req);
   }
 
-  const token = session.csrfToken();
-  if (!token) {
-    return next(req);
+  const isBffOrApi =
+    req.url.startsWith('/api/') ||
+    req.url.startsWith('/bff/') ||
+    req.url.includes('localhost:4200/api/') ||
+    req.url.includes('localhost:4200/bff/');
+
+  const shouldWithCreds = isBffOrApi || req.withCredentials;
+
+  let headers = req.headers;
+  if (MUTATION_METHODS.has(req.method)) {
+    const token = session.csrfToken();
+    if (token && !headers.has('X-CSRF-TOKEN')) {
+      headers = headers.set('X-CSRF-TOKEN', token);
+    }
   }
 
   const cloned = req.clone({
-    headers: req.headers.set('X-CSRF-TOKEN', token),
+    headers,
+    withCredentials: shouldWithCreds
   });
 
   return next(cloned);

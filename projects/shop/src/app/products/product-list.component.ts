@@ -119,13 +119,24 @@ export class ProductListComponent implements OnInit {
   private searchSubject = new Subject<string>();
 
   ngOnInit() {
-    // Load categories first, then products
-    this.catalog.loadCategories().subscribe(() => {
-      const params = this.route.snapshot.queryParams;
-      const categoryId = params['categoryId'] ?? null;
-      this.activeCategory.set(categoryId);
-      this.loadProducts();
+    const params = this.route.snapshot.queryParams;
+    const initialCategory = params['categoryId'] || params['category'] || null;
+    this.activeCategory.set(initialCategory);
+
+    this.catalog.loadCategories().subscribe(cats => {
+      if (initialCategory && !/^[0-9a-f-]{36}$/i.test(initialCategory)) {
+        const found = cats.find(c =>
+          c.name.toLowerCase() === initialCategory.toLowerCase() ||
+          c.slug?.toLowerCase() === initialCategory.toLowerCase()
+        );
+        if (found) {
+          this.activeCategory.set(found.id);
+          this.loadProducts(0);
+        }
+      }
     });
+
+    this.loadProducts(0);
 
     // Debounced search
     this.searchSubject.pipe(
@@ -156,9 +167,12 @@ export class ProductListComponent implements OnInit {
   }
 
   private loadProducts(page = 0) {
+    const activeCat = this.activeCategory();
+    const categoryUuid = (activeCat && /^[0-9a-f-]{36}$/i.test(activeCat)) ? activeCat : undefined;
+
     this.catalog.loadProducts({
       q: this.searchQuery() || undefined,
-      categoryId: this.activeCategory() ?? undefined,
+      categoryId: categoryUuid,
       page,
       size: 20,
     }).subscribe();

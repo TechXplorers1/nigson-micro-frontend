@@ -9,10 +9,10 @@
         </h1>
         <p class="mt-5 max-w-lg text-sm leading-6 text-muted-foreground sm:text-lg sm:leading-7">{{hero().t('body')}}</p>
         <div class="mt-7 flex flex-wrap gap-3">
-          <a [routerLink]="hero().t('btn1Link') || '/products'" class="inline-flex h-10 items-center justify-center rounded-md bg-brand px-6 text-xs sm:text-sm font-medium text-brand-foreground shadow transition-colors hover:bg-brand/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+          <a [routerLink]="linkRoute(hero().t('btn1Link'), '/products')" [fragment]="linkFragment(hero().t('btn1Link'), '/products')" class="inline-flex h-10 items-center justify-center rounded-md bg-brand px-6 text-xs sm:text-sm font-medium text-brand-foreground shadow transition-colors hover:bg-brand/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
             {{hero().t('btn1Label') || 'Shop Now'}} <svg lucideArrowRight class="ml-2 h-4 w-4"></svg>
           </a>
-          <a [routerLink]="hero().t('btn2Link') || '/products'" class="inline-flex h-11 items-center justify-center rounded-md border border-input bg-transparent px-8 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+          <a [routerLink]="linkRoute(hero().t('btn2Link'), '/products')" [fragment]="linkFragment(hero().t('btn2Link'), '/products')" class="inline-flex h-11 items-center justify-center rounded-md border border-input bg-transparent px-8 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
             {{hero().t('btn2Label') || 'Explore Products'}} <svg lucideArrowRight class="ml-2 h-4 w-4"></svg>
           </a>
         </div>
@@ -29,7 +29,7 @@
       <p class="display-type mb-3 text-[10px] font-bold uppercase text-primary">New Arrival</p>
       <h2 class="display-type text-balance text-2xl font-bold leading-[1.05] sm:text-6xl lg:text-7xl">MADE FOR EVERY DAY.</h2>
       <p class="mx-auto mt-4 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-lg sm:leading-7">{{newArrivals().t('subtitle')}}</p>
-      <a [routerLink]="newArrivals().t('btnLink') || '/products'" class="display-type mt-8 inline-flex items-center gap-2 text-sm font-semibold text-primary">
+      <a [routerLink]="linkRoute(newArrivals().t('btnLink'), '/products')" [fragment]="linkFragment(newArrivals().t('btnLink'), '/products')" class="display-type mt-8 inline-flex items-center gap-2 text-sm font-semibold text-primary">
         {{newArrivals().t('btnLabel') || 'Explore New Arrivals'}} <svg lucideArrowRight class="h-4 w-4"></svg>
       </a>
     </div>
@@ -64,7 +64,7 @@
           <div class="absolute inset-x-0 bottom-0 flex flex-col items-center p-6 text-center text-primary-foreground sm:p-12">
             <h2 class="display-type text-balance text-xl font-bold leading-[1.05] sm:text-4xl lg:text-5xl">{{p.title}}</h2>
             <p class="mt-2 max-w-sm text-xs leading-5 text-primary-foreground/80 sm:text-base sm:leading-7">{{p.text}}</p>
-            <a [routerLink]="p.btnLink" class="mt-4 inline-flex h-10 sm:h-12 items-center gap-2 rounded-full bg-background px-5 sm:px-7 text-xs sm:text-sm font-medium tracking-wide text-foreground transition-colors hover:bg-primary hover:text-primary-foreground">{{p.btnLabel}} <svg lucideArrowRight class="h-3 w-3 sm:h-4 sm:w-4"></svg></a>
+            <a [routerLink]="linkRoute(p.btnLink, '#best-sellers')" [fragment]="linkFragment(p.btnLink, '#best-sellers')" class="mt-4 inline-flex h-10 sm:h-12 items-center gap-2 rounded-full bg-background px-5 sm:px-7 text-xs sm:text-sm font-medium tracking-wide text-foreground transition-colors hover:bg-primary hover:text-primary-foreground">{{p.btnLabel}} <svg lucideArrowRight class="h-3 w-3 sm:h-4 sm:w-4"></svg></a>
           </div>
         </article>
       </section>
@@ -105,10 +105,10 @@
           <h2 class="display-type text-balance text-3xl font-bold leading-[1.03] sm:text-7xl text-white">{{wholesale().t('heading')}}</h2>
           <p class="mt-4 max-w-lg text-sm leading-6 text-primary-foreground/65 sm:text-lg sm:leading-7">{{wholesale().t('body')}}</p>
           <div class="mt-6 flex flex-wrap gap-3">
-            <a [routerLink]="wholesale().t('btn1Link') || '/distributor'" class="inline-flex h-10 items-center justify-center rounded-md border border-input bg-background px-6 text-xs sm:text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground">
+            <a [routerLink]="linkRoute(wholesale().t('btn1Link'), '/distributor')" [fragment]="linkFragment(wholesale().t('btn1Link'), '/distributor')" class="inline-flex h-10 items-center justify-center rounded-md border border-input bg-background px-6 text-xs sm:text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground">
               {{wholesale().t('btn1Label') || 'Shop Wholesale'}} <svg lucideArrowRight class="ml-2 h-4 w-4"></svg>
             </a>
-            <a *ngIf="wholesale().t('btn2Label')" [routerLink]="wholesale().t('btn2Link') || '/quote'" class="inline-flex h-10 items-center justify-center rounded-md border border-white/30 px-6 text-xs sm:text-sm font-medium text-white transition-colors hover:bg-white/10">
+            <a *ngIf="wholesale().t('btn2Label')" [routerLink]="linkRoute(wholesale().t('btn2Link'), '/quote')" [fragment]="linkFragment(wholesale().t('btn2Link'), '/quote')" class="inline-flex h-10 items-center justify-center rounded-md border border-white/30 px-6 text-xs sm:text-sm font-medium text-white transition-colors hover:bg-white/10">
               {{wholesale().t('btn2Label')}}
             </a>
           </div>
@@ -135,7 +135,7 @@
           <ul *ngIf="distBenefits().length" class="mt-4 flex flex-wrap gap-2">
             <li *ngFor="let b of distBenefits()" class="rounded-full border border-border px-2 py-0.5 text-[10px] sm:text-xs font-medium text-muted-foreground">{{b.title}}</li>
           </ul>
-          <a [routerLink]="distCta().t('btnLink') || '/distributor'" class="mt-7 inline-flex h-10 items-center justify-center rounded-md bg-brand px-6 text-xs sm:text-sm font-medium text-brand-foreground shadow transition-colors hover:bg-brand/90">
+          <a [routerLink]="linkRoute(distCta().t('btnLink'), '/distributor')" [fragment]="linkFragment(distCta().t('btnLink'), '/distributor')" class="mt-7 inline-flex h-10 items-center justify-center rounded-md bg-brand px-6 text-xs sm:text-sm font-medium text-brand-foreground shadow transition-colors hover:bg-brand/90">
             {{distCta().t('btnLabel') || 'BECOME A PARTNER'}} <svg lucideArrowRight class="ml-2 h-4 w-4"></svg>
           </a>
         </div>
@@ -194,7 +194,7 @@
     <p class="display-type mb-3 text-[10px] font-bold uppercase text-primary">{{seo().t('eyebrow')}}</p>
     <h2 class="display-type mx-auto max-w-5xl text-balance text-3xl font-bold leading-[1.02] sm:text-7xl lg:text-8xl">{{seo().t('heading')}}</h2>
     <p class="mx-auto mt-4 max-w-xl text-sm leading-6 text-muted-foreground">{{seo().t('body')}}</p>
-    <a [routerLink]="seo().t('btnLink') || '/products'" class="mt-7 inline-flex h-10 items-center justify-center rounded-md bg-brand px-6 text-xs sm:text-sm font-medium text-brand-foreground shadow transition-colors hover:bg-brand/90">
+    <a [routerLink]="linkRoute(seo().t('btnLink'), '/products')" [fragment]="linkFragment(seo().t('btnLink'), '/products')" class="mt-7 inline-flex h-10 items-center justify-center rounded-md bg-brand px-6 text-xs sm:text-sm font-medium text-brand-foreground shadow transition-colors hover:bg-brand/90">
       {{seo().t('btnLabel') || 'Shop Nigson'}} <svg lucideArrowRight class="ml-2 h-4 w-4"></svg>
     </a>
   </section>

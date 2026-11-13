@@ -193,6 +193,25 @@ export interface ProductFilters {
  * Price display: backend returns kobo (NGN × 100). Use formatPrice() which
  * divides by 100 before display (TASK-20).
  */
+export const PRODUCT_SKU_MAP: Record<string, { sku: string; skuId: string; priceMinorUnits: number; image: string }> = {
+  '11111111-2222-3333-4444-555555555501': { sku: 'NG-EB-01', skuId: '11111111-2222-3333-4444-555555555511', priceMinorUnits: 2500000, image: '/assets/cat-earbuds.jpg' },
+  '22222222-2222-3333-4444-555555555502': { sku: 'NG-PB-01', skuId: '22222222-2222-3333-4444-555555555512', priceMinorUnits: 3500000, image: '/assets/nigson-power.jpg' },
+  '33333333-2222-3333-4444-555555555503': { sku: 'NG-CH-01', skuId: '33333333-2222-3333-4444-555555555513', priceMinorUnits: 1850000, image: '/assets/cat-charger.jpg' },
+  '44444444-2222-3333-4444-555555555504': { sku: 'NG-CB-01', skuId: '44444444-2222-3333-4444-555555555514', priceMinorUnits: 550000, image: '/assets/cat-cable.jpg' },
+  '55555555-2222-3333-4444-555555555505': { sku: 'NG-CC-01', skuId: '55555555-2222-3333-4444-555555555515', priceMinorUnits: 1500000, image: '/assets/shopcat/car-chargers.jpg' },
+  '66666666-2222-3333-4444-555555555506': { sku: 'NG-SP-01', skuId: '66666666-2222-3333-4444-555555555516', priceMinorUnits: 1950000, image: '/assets/cat-powerbank.jpg' },
+  '34c745d2-b6ad-4dab-8eda-4c295687b0c5': { sku: 'NG-GAN-100', skuId: '4eff5dd2-44ed-49fd-a715-5d3f5176f5ee', priceMinorUnits: 2800000, image: '/assets/cat-charger.jpg' },
+  '3d84c1ea-b96c-45af-a665-1ef8c8cdc9dc': { sku: 'PQ28', skuId: '4886036e-574a-4bc3-aaaa-ee82af43cf1b', priceMinorUnits: 2400000, image: '/assets/cat-powerbank.jpg' }
+};
+
+export const DEFAULT_CATEGORIES: Category[] = [
+  { id: '10000000-0000-0000-0000-000000000001', name: 'Earbuds', slug: 'earbuds', imageUrl: '/assets/cat-earbuds.jpg' },
+  { id: '10000000-0000-0000-0000-000000000002', name: 'Power Banks', slug: 'power-banks', imageUrl: '/assets/cat-powerbank.jpg' },
+  { id: '11111111-2222-3333-4444-555555555503', name: 'Cables', slug: 'cables', imageUrl: '/assets/cat-cable.jpg' },
+  { id: '11111111-2222-3333-4444-555555555504', name: 'Chargers', slug: 'chargers', imageUrl: '/assets/cat-charger.jpg' },
+  { id: '11111111-2222-3333-4444-555555555505', name: 'Extension Sockets', slug: 'extension-sockets', imageUrl: '/assets/cat-powerbank.jpg' }
+];
+
 @Injectable({ providedIn: 'root' })
 export class CatalogService {
   private http = inject(HttpClient);
@@ -222,7 +241,7 @@ export class CatalogService {
   // ─── Reactive state ──────────────────────────────────────────────────────
 
   readonly products = signal<Product[]>([]);
-  readonly categories = signal<Category[]>([]);
+  readonly categories = signal<Category[]>(DEFAULT_CATEGORIES);
   readonly brands = signal<Brand[]>([]);
   readonly loading = signal(false);
   readonly totalElements = signal(0);

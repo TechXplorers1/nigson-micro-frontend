@@ -38,6 +38,18 @@ export class HomeComponent implements OnInit, OnDestroy {
   private sections = this.cms.getPageSections('home');
 
   // ── section getters ──────────────────────────────────────────────────────
+  linkRoute(value: string | null | undefined, fallback = '/products'): string {
+    const target = value?.trim() || fallback;
+    const hash = target.indexOf('#');
+    return hash === 0 ? '/' : hash > 0 ? target.slice(0, hash) : target;
+  }
+
+  linkFragment(value: string | null | undefined, fallback = '/products'): string | null {
+    const target = value?.trim() || fallback;
+    const hash = target.indexOf('#');
+    return hash < 0 ? null : target.slice(hash + 1);
+  }
+
   hero             = computed(() => this.sections.get('hero'));
   newArrivals      = computed(() => this.sections.get('newArrivals'));
   categoryShowcase = computed(() => this.sections.get('categoryShowcase'));
@@ -132,6 +144,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   go(d: number) { this.pos += d; this.startInterval(); }
 
   onPointerDown(e: PointerEvent) {
+    if ((e.target as Element | null)?.closest('a, button, [role="button"]')) return;
     this.startX = e.clientX;
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
   }

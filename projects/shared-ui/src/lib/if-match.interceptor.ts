@@ -32,37 +32,52 @@ export const ifMatchInterceptor: HttpInterceptorFn = (req, next) => {
     return next(req);
   }
 
-      // --- Request side: attach or normalize If-Match for mutations ---
-      if (VERSIONED_METHODS.has(req.method)) {
-        const existing = req.headers.get('If-Match');
-        if (existing) {
-          req = req.clone({ headers: req.headers.set('If-Match', quoteEtag(existing)) });
-        } else {
-          const cached = etagCache.get(urlPath(req.url));
-          if (cached) {
-            req = req.clone({ headers: req.headers.set('If-Match', quoteEtag(cached)) });
+  // --- Request side: attach or normalize If-Match for mutations ---
+  if (VERSIONED_METHODS.has(req.method)) {
+    const existing = req.headers.get('If-Match');
+    if (existing) {
+      req = req.clone({ headers: req.headers.set('If-Match', quoteEtag(existing)) });
+    } else {
+      const cached = etagCache.get(urlPath(req.url));
+      if (cached) {
+        req = req.clone({ headers: req.headers.set('If-Match', quoteEtag(cached)) });
+      }
+    }
+  }
+
+  return next(req).pipe(
+    tap(event => {
+      // --- Response side: cache ETag from GET / HEAD responses ---
+      if (event instanceof HttpResponse) {
+        const etag = event.headers.get('ETag');
+        if (etag) {
+          const quoted = etag.startsWith('"') ? etag : `"${etag}"`;
+          etagCache.set(urlPath(event.url ?? req.url), quoted);
+        }
+        if (Array.isArray(event.body)) {
+          const basePath = urlPath(event.url ?? req.url);
+          for (const item of event.body) {
+            if (item && typeof item === 'object' && item.id && (typeof item.version === 'number' || typeof item.version === 'string')) {
+              const v = String(item.version);
+              etagCache.set(`${basePath}/${item.id}`, v.startsWith('"') ? v : `"${v}"`);
+            }
+          }
+        } else if (event.body && typeof event.body === 'object') {
+          const body = event.body as Record<string, unknown>;
+          if (typeof body['version'] === 'number' || typeof body['version'] === 'string') {
+            const v = String(body['version']);
+            const quoted = v.startsWith('"') ? v : `"${v}"`;
+            etagCache.set(urlPath(event.url ?? req.url), quoted);
+            if (body['id']) {
+              etagCache.set(`${urlPath(event.url ?? req.url)}/${body['id']}`, quoted);
+            }
           }
         }
       }
+    })
+  );
+};
 
-      return next(req).pipe(
-        tap(event => {
-          // --- Response side: cache ETag from GET / HEAD responses ---
-          if (event instanceof HttpResponse) {
-            const etag = event.headers.get('ETag');
-            if (etag) {
-              etagCache.set(urlPath(event.url ?? req.url), quoteEtag(etag));
-            } else if (event.body && typeof event.body === 'object') {
-              const body = event.body as Record<string, unknown>;
-              if (typeof body['version'] === 'number' || typeof body['version'] === 'string') {
-                etagCache.set(urlPath(event.url ?? req.url), quoteEtag(String(body['version'])));
-              }
-            }
-          }
-        })
-      );
-    };
-
-    export function clearEtag(url: string): void {
-      etagCache.delete(urlPath(url));
-    }
+export function clearEtag(url: string): void {
+  etagCache.delete(urlPath(url));
+}

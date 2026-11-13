@@ -373,7 +373,8 @@ export class AddressesComponent implements OnInit {
     const id = this.editingId();
 
     if (id) {
-      this.accountSvc.updateAddress(id, this.formData).subscribe({
+      const current = this.accountSvc.addresses().find(a => a.id === id);
+      this.accountSvc.updateAddress(id, this.formData, current?.version).subscribe({
         next: (updated) => {
           this.saving.set(false);
           if (updated) {
@@ -407,6 +408,6 @@ export class AddressesComponent implements OnInit {
 
   deleteAddress(addr: AddressDTO) {
     if (!confirm(`Delete address "${addr.label || addr.line1}"?`)) return;
-    this.accountSvc.deleteAddress(addr.id).subscribe();
+    this.accountSvc.deleteAddress(addr.id, addr.version).subscribe();
   }
 }

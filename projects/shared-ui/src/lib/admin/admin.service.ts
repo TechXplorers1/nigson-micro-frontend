@@ -118,6 +118,284 @@ export type StockLog = { id: string; sku: string; product: string; change: numbe
 
 export type Activity = { id: string; text: string; date: string };
 
+function getInitialStockLog(): StockLog[] {
+  try {
+    const saved = typeof localStorage !== 'undefined' ? localStorage.getItem('nigson_stock_movements') : null;
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch { }
+
+  return [
+    { id: "sl_init_1", sku: "CHAVEENPHONES", product: "chaveen phones", change: 100, qty: 100, reason: "Opening Stock", date: "2026-11-05T06:40:00.000Z", by: "Nigson Administrator", supplier: "Nigson HQ", ref: "INIT-CHAVEEN" },
+    { id: "sl_init_2", sku: "DEMO-EL-01-01", product: "Demo True Wireless Earbuds", change: 18, qty: 18, reason: "Opening Stock", date: "2026-11-04T08:20:00.000Z", by: "System Bootstrap", supplier: "Shenzhen Factory", ref: "INIT-0101" },
+    { id: "sl_init_3", sku: "DEMO-EL-01-02", product: "Demo Wireless Charging Stand", change: 9, qty: 9, reason: "Opening Stock", date: "2026-11-04T08:20:00.000Z", by: "System Bootstrap", supplier: "Shenzhen Factory", ref: "INIT-0102" },
+    { id: "sl_init_4", sku: "DEMO-EL-01-03", product: "Demo Braided USB-C Cable (2m)", change: 24, qty: 24, reason: "Opening Stock", date: "2026-11-04T08:20:00.000Z", by: "System Bootstrap", supplier: "Shenzhen Factory", ref: "INIT-0103" },
+    { id: "sl_init_5", sku: "DEMO-EL-02-01", product: "Demo Noise-Cancelling Headphones", change: 35, qty: 35, reason: "Opening Stock", date: "2026-11-04T08:20:00.000Z", by: "System Bootstrap", supplier: "Shenzhen Factory", ref: "INIT-0201" },
+    { id: "sl_init_6", sku: "DEMO-EL-02-02", product: "Demo Smart Fitness Tracker", change: 12, qty: 12, reason: "Opening Stock", date: "2026-11-04T08:20:00.000Z", by: "System Bootstrap", supplier: "Local Distributor", ref: "INIT-0202" },
+    { id: "sl_init_7", sku: "DEMO-EL-03-01", product: "Demo 65W GaN Fast Charger", change: 16, qty: 16, reason: "Opening Stock", date: "2026-11-04T08:20:00.000Z", by: "System Bootstrap", supplier: "Nigson HQ", ref: "INIT-0301" },
+    { id: "sl_init_8", sku: "DEMO-EL-03-03", product: "Demo Heavy-Duty Power Bank 20000mAh", change: 22, qty: 22, reason: "Opening Stock", date: "2026-11-04T08:20:00.000Z", by: "System Bootstrap", supplier: "Nigson HQ", ref: "INIT-0303" },
+    { id: "sl_init_9", sku: "DEMO-EL-04-01", product: "Demo Magnetic Phone Mount", change: 28, qty: 28, reason: "Opening Stock", date: "2026-11-04T08:20:00.000Z", by: "System Bootstrap", supplier: "Local Distributor", ref: "INIT-0401" },
+    { id: "sl_init_10", sku: "DEMO-EL-04-02", product: "Demo Bluetooth Car FM Transmitter", change: 45, qty: 45, reason: "Opening Stock", date: "2026-11-04T08:20:00.000Z", by: "System Bootstrap", supplier: "Local Distributor", ref: "INIT-0402" },
+    { id: "sl_init_11", sku: "DEMO-EL-07-03", product: "Demo Surge Protector Extension", change: 60, qty: 60, reason: "Opening Stock", date: "2026-11-04T08:20:00.000Z", by: "System Bootstrap", supplier: "Nigson HQ", ref: "INIT-0703" }
+  ];
+}
+
+const LS_CUSTOMERS = 'nigson_customers';
+
+const DEFAULT_CUSTOMERS: AdminCustomer[] = [
+  {
+    id: "cust-1",
+    name: "Kene Nigson",
+    email: "kene@example.com",
+    phone: "+234 801 234 5678",
+    location: "Victoria Island, Lagos",
+    joined: "2026-07-15T09:00:00Z",
+    orders: 3,
+    spend: 285000,
+    saved: 4,
+    quotes: 1,
+    status: "Active"
+  },
+  {
+    id: "cust-2",
+    name: "Chaveen Reddy",
+    email: "chaveenreddy100@gmail.com",
+    phone: "+234 802 345 6789",
+    location: "Maitama, Abuja",
+    joined: "2026-08-01T11:30:00Z",
+    orders: 2,
+    spend: 145000,
+    saved: 2,
+    quotes: 0,
+    status: "Active"
+  },
+  {
+    id: "cust-3",
+    name: "E2E Customer",
+    email: "e2e@nigson.ng",
+    phone: "+234 803 456 7890",
+    location: "Port Harcourt, Rivers",
+    joined: "2026-08-20T14:15:00Z",
+    orders: 4,
+    spend: 420000,
+    saved: 6,
+    quotes: 2,
+    status: "Active"
+  },
+  {
+    id: "cust-4",
+    name: "Retail Store A (Ikeja Hub)",
+    email: "retaila@example.invalid",
+    phone: "+234 805 678 1234",
+    location: "Ikeja, Lagos",
+    joined: "2026-09-05T10:00:00Z",
+    orders: 5,
+    spend: 650000,
+    saved: 3,
+    quotes: 1,
+    status: "Active"
+  },
+  {
+    id: "cust-5",
+    name: "King Enterprise",
+    email: "king@gmail.com",
+    phone: "+234 807 890 2345",
+    location: "Kano, Nigeria",
+    joined: "2026-09-18T16:20:00Z",
+    orders: 1,
+    spend: 95000,
+    saved: 1,
+    quotes: 0,
+    status: "Active"
+  },
+  {
+    id: "cust-6",
+    name: "Zarina Wholesale Group",
+    email: "wholesale@nigson.ng",
+    phone: "+234 809 123 4567",
+    location: "Onitsha, Anambra",
+    joined: "2026-10-02T13:45:00Z",
+    orders: 3,
+    spend: 510000,
+    saved: 5,
+    quotes: 3,
+    status: "Active"
+  }
+];
+
+function isStaffOrFixture(email?: string, name?: string): boolean {
+  const e = (email || '').toLowerCase().trim();
+  const n = (name || '').toLowerCase().trim();
+  return (
+    e.includes('admin@example.invalid') ||
+    e.includes('operations@example.invalid') ||
+    e.includes('analyst@example.invalid') ||
+    n.includes('admin local fixture') ||
+    n.includes('local fixture')
+  );
+}
+
+function getInitialCustomers(): AdminCustomer[] {
+  try {
+    const raw = localStorage.getItem(LS_CUSTOMERS);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const filtered = parsed.filter((c: any) => !isStaffOrFixture(c.email, c.name));
+        if (filtered.length > 0) return filtered;
+      }
+    }
+  } catch { }
+  return [...DEFAULT_CUSTOMERS];
+}
+
+const LS_ADMINS = 'nigson_admin_users';
+const LS_ADMIN_OVERRIDES = 'nigson_admin_user_overrides';
+
+function getAdminOverrides(): Record<string, Partial<AdminUser>> {
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(LS_ADMIN_OVERRIDES) : null;
+    if (raw) return JSON.parse(raw);
+  } catch { }
+  return {};
+}
+
+function saveAdminOverride(email: string, user: Partial<AdminUser>) {
+  try {
+    const current = getAdminOverrides();
+    current[email.toLowerCase()] = user;
+    localStorage.setItem(LS_ADMIN_OVERRIDES, JSON.stringify(current));
+  } catch { }
+}
+
+function clearAdminOverride(email: string) {
+  try {
+    const current = getAdminOverrides();
+    delete current[email.toLowerCase()];
+    localStorage.setItem(LS_ADMIN_OVERRIDES, JSON.stringify(current));
+  } catch { }
+}
+
+function getInitialAdmins(): AdminUser[] {
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(LS_ADMINS) : null;
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch { }
+  return [
+    { id: "43c829a8-5ddc-5d8a-be64-557f8998c1a9", name: "admin Local Fixture", email: "admin@example.invalid", roleId: "ADMIN", status: "Active", lastLogin: new Date().toISOString(), version: 1 },
+    { id: "20f23ef1-2395-5c7e-abe7-00e07dcde379", name: "Sales Specialist", email: "sales@example.invalid", roleId: "SALES", status: "Active", lastLogin: new Date().toISOString(), version: 1 },
+    { id: "5cb1caac-6970-5ef9-99c6-8d3be9d2d793", name: "Operations Manager", email: "operations@example.invalid", roleId: "OPERATIONS", status: "Active", lastLogin: new Date().toISOString(), version: 1 },
+    { id: "ef88a0dc-27c1-5ef9-b53e-a745d253d5cc", name: "Finance Officer", email: "financea@example.invalid", roleId: "FINANCE", status: "Active", lastLogin: new Date().toISOString(), version: 1 },
+    { id: "3c2b8f13-37c3-5764-a6ea-f1085167acb4", name: "Data Analyst", email: "analyst@example.invalid", roleId: "ANALYST", status: "Active", lastLogin: new Date().toISOString(), version: 1 },
+    { id: "au_2", name: "Chaveen Reddy", email: "chaveenreddy100@gmail.com", roleId: "ADMIN", status: "Active", lastLogin: new Date().toISOString(), version: 1 },
+    { id: "au_3", name: "chaveen Customer", email: "chaveen@gmail.com", roleId: "ADMIN", status: "Active", lastLogin: new Date().toISOString(), version: 1 },
+  ];
+}
+
+export const SEED_PRODUCTS: AdminProduct[] = [
+  { id: '5570995e-1b59-5592-ba5c-fa95a0c02c20', skuId: 'ecac9622-ee78-5c52-8eb5-7c244e055d03', sku: 'NS03', name: 'NS03 Wireless Earbuds (TWS)', category: 'Earbuds', brand: 'Nigson', price: 18500, retail: 18500, cost: 12000, stock: 45, reserved: 2, status: 'Active', desc: 'High-fidelity Bluetooth wireless earbuds with clear bass and ergonomic fit.', image: '/assets/cat-earbuds.jpg', images: ['/assets/cat-earbuds.jpg'], rating: 4.8, lowLevel: 10 },
+  { id: '8ba363e8-815a-52ee-be26-74da166eba83', skuId: 'c52cf637-25d0-5eb6-862a-e737389c7ad4', sku: 'NS06', name: 'NS06 ANC/ENC Wireless Earbuds', category: 'Earbuds', brand: 'Nigson', price: 28000, retail: 28000, cost: 18000, stock: 32, reserved: 1, status: 'Active', desc: 'Active noise cancellation earbuds with environmental noise suppression microphone.', image: '/assets/cat-earbuds.jpg', images: ['/assets/cat-earbuds.jpg'], rating: 4.9, lowLevel: 10 },
+  { id: '41934e70-179f-5c0a-9498-28c8b6a4fd9f', skuId: '63573bb9-a11d-542a-97aa-ca6cb2c92290', sku: 'NS107', name: 'NS107 High-Power Car Charger with Retractable Cable', category: 'Chargers', brand: 'Nigson', price: 12500, retail: 12500, cost: 8000, stock: 28, reserved: 0, status: 'Active', desc: 'Dual-port fast vehicle charger with self-retracting high-durability charging lead.', image: '/assets/cat-charger.jpg', images: ['/assets/cat-charger.jpg'], rating: 4.7, lowLevel: 10 },
+  { id: 'bff4b7e3-8e19-566b-9c95-bc941390f84f', skuId: '4907f781-8654-5559-88cf-1ce35df2cb15', sku: 'NS211C', name: 'NS211C Type-C to Type-C PD65W Cable', category: 'Cables', brand: 'Nigson', price: 4500, retail: 4500, cost: 2500, stock: 120, reserved: 5, status: 'Active', desc: 'Braided 65W Power Delivery fast charging cable with reinforced alloy connectors.', image: '/assets/cat-cable.jpg', images: ['/assets/cat-cable.jpg'], rating: 4.9, lowLevel: 20 },
+  { id: '3bd11da9-6a93-5f56-ae87-8afdad3d52ab', skuId: 'c3002b2f-4326-59ec-b460-09ba406bc800', sku: 'NS211i', name: 'NS211i Type-C to Lightning PD30W Cable', category: 'Cables', brand: 'Nigson', price: 4500, retail: 4500, cost: 2500, stock: 95, reserved: 4, status: 'Active', desc: 'Fast Lightning charging and data cable compatible with Apple devices.', image: '/assets/cat-cable.jpg', images: ['/assets/cat-cable.jpg'], rating: 4.8, lowLevel: 20 },
+  { id: '1908dc43-accf-5578-870c-ec519d73367c', skuId: 'f65f2023-ef23-53ca-bfa2-8b40877ed658', sku: 'NS25', name: 'NS25 4-in-1 Charging Cable', category: 'Cables', brand: 'Nigson', price: 6500, retail: 6500, cost: 4000, stock: 80, reserved: 2, status: 'Active', desc: 'Universal 4-connector heavy-duty charging lead for multiple mobile phone models.', image: '/assets/cat-cable.jpg', images: ['/assets/cat-cable.jpg'], rating: 4.6, lowLevel: 15 },
+  { id: '51c9cd3c-5d6c-5049-b821-d80c7c512305', skuId: '812f8742-6c94-5b92-a313-f0c0fdee9559', sku: 'NS2526C', name: 'NS2526C High Power Fast Wall Charger, GaN65W', category: 'Chargers', brand: 'Nigson', price: 16000, retail: 16000, cost: 10500, stock: 54, reserved: 3, status: 'Active', desc: 'GaN technology 65W compact travel wall adapter with multi-voltage safety protection.', image: '/assets/cat-charger.jpg', images: ['/assets/cat-charger.jpg'], rating: 4.9, lowLevel: 10 },
+  { id: '1fc9d7b4-1716-54fb-905a-ea5a80620a07', skuId: 'b5cf3ecb-5ed0-5e6f-9cea-4da88f91baa3', sku: 'NS2618', name: 'NS2618 All-in-One Universal Multiway Adapter, GaN65W', category: 'Chargers', brand: 'Nigson', price: 22000, retail: 22000, cost: 14000, stock: 40, reserved: 1, status: 'Active', desc: 'Worldwide travel plug converter with integrated 65W GaN charging sockets.', image: '/assets/cat-charger.jpg', images: ['/assets/cat-charger.jpg'], rating: 4.8, lowLevel: 10 },
+  { id: '28cd1e1a-bc40-5728-bf56-4c785b8613f2', skuId: 'c4f089fb-7a27-5b3e-bc02-f9565d5653ff', sku: 'NS3416', name: 'NS3416 65W GaN Power Socket', category: 'Extension Sockets', brand: 'Nigson', price: 29500, retail: 29500, cost: 19000, stock: 35, reserved: 2, status: 'Active', desc: 'Heavy-duty multi-gang extension hub with built-in high power USB-C fast ports.', image: '/assets/cat-powerbank.jpg', images: ['/assets/cat-powerbank.jpg'], rating: 4.7, lowLevel: 10 },
+  { id: 'cd9acab9-5bce-5274-a051-773e756d1b0e', skuId: '51c2d6f5-82ae-5eae-8f5d-5975fd7318fc', sku: 'NS3604C', name: 'NS3604C Multi-Socket Extension Box', category: 'Extension Sockets', brand: 'Nigson', price: 34000, retail: 34000, cost: 22000, stock: 25, reserved: 0, status: 'Active', desc: 'Overload and surge protected power distributor suitable for commercial and home setups.', image: '/assets/cat-powerbank.jpg', images: ['/assets/cat-powerbank.jpg'], rating: 4.8, lowLevel: 10 },
+  { id: '95be469d-489f-5d09-9308-18f6941e4d41', skuId: 'b9f0156b-c3d2-5bf6-8113-b88f83c01e6d', sku: 'NS4', name: 'NS4 Home Charger', category: 'Chargers', brand: 'Nigson', price: 8500, retail: 8500, cost: 5000, stock: 65, reserved: 4, status: 'Active', desc: 'Standard high-efficiency home wall charger with short-circuit protection.', image: '/assets/cat-charger.jpg', images: ['/assets/cat-charger.jpg'], rating: 4.6, lowLevel: 15 },
+  { id: '240af070-7cac-5840-93f7-731aff6bf976', skuId: 'e5e75b4f-26fa-56bd-a68f-c10aa50082f3', sku: 'NS6', name: 'NS6 Large Motion-Activated Cabinet Light (410MM)', category: 'Motion-Activated Lights', brand: 'Nigson', price: 14500, retail: 14500, cost: 9000, stock: 42, reserved: 1, status: 'Active', desc: 'Slim magnetic rechargeable PIR sensor strip light for closets, wardrobes and kitchens.', image: '/assets/hero-accessories.jpg', images: ['/assets/hero-accessories.jpg'], rating: 4.7, lowLevel: 10 },
+  { id: '82478136-b526-5238-94c9-d076af6ebc47', skuId: '4af2eb38-f4cc-5bc0-b182-01e667ed00b7', sku: 'NS6-1', name: 'NS6-1 Medium Motion-Activated Cabinet Light (220MM)', category: 'Motion-Activated Lights', brand: 'Nigson', price: 11500, retail: 11500, cost: 7200, stock: 38, reserved: 2, status: 'Active', desc: 'Compact rechargeable warm-light bar with automatic motion trigger.', image: '/assets/hero-accessories.jpg', images: ['/assets/hero-accessories.jpg'], rating: 4.8, lowLevel: 10 },
+  { id: '0a51dae9-2795-507b-84a6-100c06513332', skuId: '21d1fa9a-6d1e-54fb-98e0-72439394fe00', sku: 'NS901C', name: 'NS901C Type-C to Type-C Charging Cable', category: 'Cables', brand: 'Nigson', price: 3500, retail: 3500, cost: 2000, stock: 110, reserved: 6, status: 'Active', desc: 'Durable everyday USB Type-C sync and fast battery charging lead.', image: '/assets/cat-cable.jpg', images: ['/assets/cat-cable.jpg'], rating: 4.7, lowLevel: 25 },
+  { id: '0de50201-b6bf-5270-b7d4-79766c7f9447', skuId: '70bdf50e-781f-5578-9afb-bcf69125a1f3', sku: 'NS901i', name: 'NS901i Type-C to Lightning Charging Cable', category: 'Cables', brand: 'Nigson', price: 3500, retail: 3500, cost: 2000, stock: 85, reserved: 3, status: 'Active', desc: 'Everyday Lightning mobile cable with anti-tangle rubber housing.', image: '/assets/cat-cable.jpg', images: ['/assets/cat-cable.jpg'], rating: 4.6, lowLevel: 20 },
+  { id: '033336d7-5025-5112-9af2-726e6e02caf4', skuId: '49aca633-ca39-5771-aabd-0cd1448db881', sku: 'NS96U', name: 'NS96U 3-in-1 Charging Cable', category: 'Cables', brand: 'Nigson', price: 5500, retail: 5500, cost: 3200, stock: 75, reserved: 4, status: 'Active', desc: 'Triple connector lead supporting Lightning, USB-C and Micro-USB devices simultaneously.', image: '/assets/cat-cable.jpg', images: ['/assets/cat-cable.jpg'], rating: 4.8, lowLevel: 15 },
+  { id: 'fee9c518-4071-5aa7-a72b-6ed0ed1b83d3', skuId: '04ae2d72-94ab-5ff8-82a4-28272755ee75', sku: 'PQ19', name: 'PQ19 Power Bank, 10,000mAh', category: 'Power Banks', brand: 'Nigson', price: 19500, retail: 19500, cost: 12500, stock: 60, reserved: 3, status: 'Active', desc: 'Pocket-sized slim high density backup battery with dual output.', image: '/assets/cat-powerbank.jpg', images: ['/assets/cat-powerbank.jpg'], rating: 4.8, lowLevel: 15 },
+  { id: '1bac82ef-a37c-56b7-a290-afbddbd914a5', skuId: '75e0a2eb-54e6-552e-b99c-a956f8557592', sku: 'PQ20', name: 'PQ20 Power Bank, 20,000mAh', category: 'Power Banks', brand: 'Nigson', price: 28500, retail: 28500, cost: 18500, stock: 45, reserved: 2, status: 'Active', desc: 'Heavy-duty long endurance power bank with digital battery indicator.', image: '/assets/cat-powerbank.jpg', images: ['/assets/cat-powerbank.jpg'], rating: 4.9, lowLevel: 10 },
+  { id: '4ad4e90d-ec4e-5caa-f7ad88e19e29', skuId: '7faca25c-8831-5149-84e4-47e037580cac', sku: 'PQ28', name: 'PQ28 Magnetic Wireless Power Bank, 5,000mAh', category: 'Power Banks', brand: 'Nigson', price: 24000, retail: 24000, cost: 15000, stock: 30, reserved: 1, status: 'Active', desc: 'Snap-on MagSafe compatible wireless power bank for smartphones.', image: '/assets/cat-powerbank.jpg', images: ['/assets/cat-powerbank.jpg'], rating: 4.9, lowLevel: 10 },
+  { id: 'c7db7adb-726b-5173-a385-004b258ea128', skuId: '3e82bda0-2606-580f-98ef-a01e322d325a', sku: 'PQ30', name: 'PQ30 Power Bank, 30,000mAh', category: 'Power Banks', brand: 'Nigson', price: 38000, retail: 38000, cost: 25000, stock: 22, reserved: 1, status: 'Active', desc: 'High capacity multi-device charging station for frequent travelers.', image: '/assets/cat-powerbank.jpg', images: ['/assets/cat-powerbank.jpg'], rating: 4.7, lowLevel: 5 },
+  { id: 'c995e043-e1e8-5979-b4ea-e6d1dedc7322', skuId: '3882394e-69bd-5c71-9b14-fcf7a82481bd', sku: 'PQ50', name: 'PQ50 Power Bank, 50,000mAh', category: 'Power Banks', brand: 'Nigson', price: 55000, retail: 55000, cost: 37000, stock: 18, reserved: 0, status: 'Active', desc: 'Commercial grade ultra power bank with camping flashlight and fast DC/PD output.', image: '/assets/cat-powerbank.jpg', images: ['/assets/cat-powerbank.jpg'], rating: 4.9, lowLevel: 5 },
+  { id: '4351a029-79f9-57e0-94e8-466d7ad4ef19', skuId: 'ecbe959f-d3e9-5f25-8cb5-1718bf14972e', sku: 'ZS6', name: 'ZS6 Multi-Device Desktop Fast Charger', category: 'Chargers', brand: 'Nigson', price: 26000, retail: 26000, cost: 17000, stock: 25, reserved: 1, status: 'Active', desc: '6-port smart power workstation with organized desktop footprint.', image: '/assets/cat-charger.jpg', images: ['/assets/cat-charger.jpg'], rating: 4.8, lowLevel: 10 },
+  { id: 'fa096df5-7313-5a7a-aa01-4475ee45b98f', skuId: '0df9e4fb-2794-55fe-a1f9-d8977114b7e9', sku: 'ZS8', name: 'ZS8 Ultra-Fast GaN Travel Charger 65W', category: 'Chargers', brand: 'Nigson', price: 31000, retail: 31000, cost: 20000, stock: 30, reserved: 2, status: 'Active', desc: 'Compact dual-port 65W laptop and phone fast charging adapter.', image: '/assets/cat-charger.jpg', images: ['/assets/cat-charger.jpg'], rating: 4.9, lowLevel: 10 }
+];
+
+const LS_PRODUCTS = 'nigson_admin_products';
+
+function getInitialProducts(): AdminProduct[] {
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(LS_PRODUCTS) : null;
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const existingIds = new Set(parsed.map((p: any) => p.sku || p.id));
+        const missing = SEED_PRODUCTS.filter(s => !existingIds.has(s.sku) && !existingIds.has(s.id));
+        return [...parsed, ...missing];
+      }
+    }
+  } catch { }
+  return [...SEED_PRODUCTS];
+}
+
+export const SEED_ORDERS: AdminOrder[] = [
+  {
+    id: "ord_101",
+    number: "ORD-NG-10021",
+    date: new Date(Date.now() - 3600000 * 4).toISOString(),
+    customer: { name: "Adewale Adeleke", email: "adewale@gmail.com", phone: "+234 803 123 4567", address: "Victoria Island, Lagos" },
+    items: [{ sku: "NS03", name: "NS03 Wireless Earbuds (TWS)", qty: 2, price: 18500 }],
+    total: 37000,
+    paymentStatus: "Paid",
+    status: "Processing",
+    delivery: "Express Delivery",
+    timeline: [{ label: "Placed", date: new Date(Date.now() - 3600000 * 4).toISOString() }]
+  },
+  {
+    id: "ord_102",
+    number: "ORD-NG-10022",
+    date: new Date(Date.now() - 3600000 * 24).toISOString(),
+    customer: { name: "Folake Bakare", email: "folake@gmail.com", phone: "+234 802 345 6789", address: "Maitama, Abuja" },
+    items: [{ sku: "PQ20", name: "PQ20 Power Bank, 20,000mAh", qty: 1, price: 28500 }],
+    total: 28500,
+    paymentStatus: "Paid",
+    status: "Shipped",
+    delivery: "Standard Delivery",
+    timeline: [{ label: "Placed", date: new Date(Date.now() - 3600000 * 24).toISOString() }]
+  },
+  {
+    id: "ord_103",
+    number: "ORD-NG-10023",
+    date: new Date(Date.now() - 3600000 * 48).toISOString(),
+    customer: { name: "Emeka Okafor", email: "emeka.okafor@gmail.com", phone: "+234 809 987 6543", address: "Alaba Int'l Market, Lagos" },
+    items: [{ sku: "NS2526C", name: "NS2526C High Power Fast Wall Charger, GaN65W", qty: 5, price: 16000 }],
+    total: 80000,
+    paymentStatus: "Paid",
+    status: "Delivered",
+    delivery: "Standard Delivery",
+    timeline: [{ label: "Delivered", date: new Date(Date.now() - 3600000 * 12).toISOString() }]
+  }
+];
+
+const LS_ORDERS = 'nigson_admin_orders';
+
+function getInitialOrders(): AdminOrder[] {
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(LS_ORDERS) : null;
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch { }
+  return [...SEED_ORDERS];
+}
+
+const ALL_SECTIONS: SectionKey[] = ["dashboard", "pages", "products", "reviews", "distributors", "quotes", "inquiries", "inventory", "orders", "customers", "analytics", "blog", "admins", "roles"];
+
 @Injectable({ providedIn: 'root' })
 export class AdminService {
   readonly session = inject(SessionService);
