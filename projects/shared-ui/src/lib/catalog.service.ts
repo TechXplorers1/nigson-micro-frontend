@@ -216,7 +216,7 @@ export class CatalogService {
           }
         }
       }
-    } catch {}
+    } catch { }
   }
 
   // ─── Reactive state ──────────────────────────────────────────────────────
@@ -316,7 +316,7 @@ export class CatalogService {
     }
   }
 
-  getProductOverride(_idOrSku:string):Partial<Product>|null{return null;}
+  getProductOverride(_idOrSku: string): Partial<Product> | null { return null; }
 
   // ─── Products ─────────────────────────────────────────────────────────────
 
@@ -401,6 +401,8 @@ export class CatalogService {
     const override = this.getProductOverride(item.id) || (sku?.code ? this.getProductOverride(sku.code) : null);
     const assetImages: string[] = (detail?.assets ?? []).map((a: any) => this.resolveImageUrl(a.url)).filter(Boolean);
     const primaryImage = item.imageUrl ? this.resolveImageUrl(item.imageUrl) : this.FALLBACK_IMG;
+    const specs = detail?.specifications || {};
+    const priceFromSpecs = specs['starting_price'] ? Number(specs['starting_price']) : undefined;
     const product: Product = {
       id: item.id,
       sku: sku?.code || '',
@@ -415,7 +417,9 @@ export class CatalogService {
       images: assetImages.length ? assetImages : [primaryImage],
       publicationStatus: item.available ? 'PUBLISHED' : 'UNAVAILABLE',
       brand: detail?.brand?.name || item.brandName || '',
-      tags: []
+      tags: [],
+      price: priceFromSpecs,
+      priceMinorUnits: priceFromSpecs ? priceFromSpecs * 100 : undefined
     };
     return override ? { ...product, ...override } : product;
   }
@@ -482,6 +486,10 @@ export class CatalogService {
           mergedImages.push(this.FALLBACK_IMG);
         }
 
+        const specs = raw.specifications || {};
+        const priceFromSpecs = specs['starting_price'] ? Number(specs['starting_price']) : undefined;
+        const finalPriceMinor = (priceFromSpecs && !isNaN(priceFromSpecs) && priceFromSpecs > 0) ? priceFromSpecs * 100 : priceMinor;
+
         const p: Product = {
           id: raw.id,
           sku: override?.sku || sku,
@@ -500,11 +508,28 @@ export class CatalogService {
           ...override,
           specifications: {
             ...(raw.specifications || {}),
+            ...specs,
             ...(override?.specifications || {})
           },
+          overview: specs['overview'] || override?.overview,
+          highlights: specs['highlights'] || override?.highlights,
+          features: specs['features'] || override?.features,
+          cartonSpecs: specs['carton_specs'] || specs['cartonSpecs'] || override?.cartonSpecs,
+          packaging: specs['packaging'] || override?.packaging,
+          warehouseStatus: specs['warehouse_status'] || specs['warehouseStatus'] || override?.warehouseStatus,
+          dispatchTurnaround: specs['dispatch_turnaround'] || specs['dispatchTurnaround'] || override?.dispatchTurnaround,
+          nationwideShipping: specs['nationwide_shipping'] || specs['nationwideShipping'] || override?.nationwideShipping,
+          minWholesaleOrder: specs['min_wholesale_order'] || specs['minWholesaleOrder'] || override?.minWholesaleOrder,
+          priceSubtitle: specs['price_subtitle'] || specs['priceSubtitle'] || override?.priceSubtitle,
+          retail: priceFromSpecs ?? (finalPriceMinor ? finalPriceMinor / 100 : undefined),
+          retailPrice: priceFromSpecs ?? (finalPriceMinor ? finalPriceMinor / 100 : undefined),
+          wholesale: specs['wholesale_rate'] ? Number(specs['wholesale_rate']) : (priceFromSpecs ? Math.round(priceFromSpecs * 0.85) : undefined),
+          wholesalePrice: specs['wholesale_rate'] ? Number(specs['wholesale_rate']) : (priceFromSpecs ? Math.round(priceFromSpecs * 0.85) : undefined),
+          distributor: specs['distributor_rate'] ? Number(specs['distributor_rate']) : (priceFromSpecs ? Math.round(priceFromSpecs * 0.70) : undefined),
+          distributorPrice: specs['distributor_rate'] ? Number(specs['distributor_rate']) : (priceFromSpecs ? Math.round(priceFromSpecs * 0.70) : undefined),
           images: mergedImages,
-          priceMinorUnits: priceMinor,
-          price: priceMinor == null ? undefined : priceMinor / 100
+          priceMinorUnits: finalPriceMinor,
+          price: finalPriceMinor == null ? undefined : finalPriceMinor / 100
         };
         const finalP = this.enrichWithCategories([p])[0];
         this.syncWithCart([finalP]);
@@ -584,91 +609,91 @@ export class CatalogService {
         priceMinorUnits: Math.round(Number(res.unitAmount) * 100),
         currency: res.currency
       })),
-  tap(res => this.priceCache.set(key, res))
+      tap(res => this.priceCache.set(key, res))
     );
   }
 
 
-/**
- * TASK-20: Format price from NGN minor units (kobo) to display string.
- * Backend always returns kobo — divide by 100 before showing.
- *
- * Examples:
- *   formatPrice(2850000) → '₦28,500.00'
- *   formatPrice(450000)  → '₦4,500.00'
- */
-formatPrice(minorUnits: number): string {
-  const naira = minorUnits / 100;
-  return '₦' + naira.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
+  /**
+   * TASK-20: Format price from NGN minor units (kobo) to display string.
+   * Backend always returns kobo — divide by 100 before showing.
+   *
+   * Examples:
+   *   formatPrice(2850000) → '₦28,500.00'
+   *   formatPrice(450000)  → '₦4,500.00'
+   */
+  formatPrice(minorUnits: number): string {
+    const naira = minorUnits / 100;
+    return '₦' + naira.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
 
-/** Format price from whole Naira (legacy local data) — for transition period only */
-formatPriceNaira(naira: number): string {
-  return '₦' + naira.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
+  /** Format price from whole Naira (legacy local data) — for transition period only */
+  formatPriceNaira(naira: number): string {
+    return '₦' + naira.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
 
-// ─── Image helpers ────────────────────────────────────────────────────────
+  // ─── Image helpers ────────────────────────────────────────────────────────
 
-imageFor(categoryName: string | undefined | null): string {
-  if (!categoryName) return this.FALLBACK_IMG;
-  return this.CAT_IMG[categoryName] ?? this.FALLBACK_IMG;
-}
+  imageFor(categoryName: string | undefined | null): string {
+    if (!categoryName) return this.FALLBACK_IMG;
+    return this.CAT_IMG[categoryName] ?? this.FALLBACK_IMG;
+  }
 
-primaryImage(product: Product): string {
-  return product.images?.[0] ?? this.imageFor(product.categoryName ?? '');
-}
+  primaryImage(product: Product): string {
+    return product.images?.[0] ?? this.imageFor(product.categoryName ?? '');
+  }
 
   // ─── Helpers ─────────────────────────────────────────────────────────────
 
   /** Enrich products with resolved category name from loaded categories signal */
   private enrichWithCategories(products: Product[]): Product[] {
-  const cats = this.categories();
-  if (!cats.length) return products;
-  const catMap = new Map(cats.map(c => [c.id, c.name]));
-  return products.map(p => ({
-    ...p,
-    categoryName: catMap.get(p.categoryId) ?? p.categoryName
-  }));
-}
+    const cats = this.categories();
+    if (!cats.length) return products;
+    const catMap = new Map(cats.map(c => [c.id, c.name]));
+    return products.map(p => ({
+      ...p,
+      categoryName: catMap.get(p.categoryId) ?? p.categoryName
+    }));
+  }
 
-/** TASK-27: Is product a "deal"? Driven by backend campaigns, not hardcoded SKUs */
-isDeal(p: Product): boolean {
-  return p.tags?.includes('deal') ?? false;
-}
+  /** TASK-27: Is product a "deal"? Driven by backend campaigns, not hardcoded SKUs */
+  isDeal(p: Product): boolean {
+    return p.tags?.includes('deal') ?? false;
+  }
 
-/** TASK-27: Is product a new arrival? Based on createdAt date (last 30 days) */
-isNewArrival(p: Product): boolean {
-  if (!p.createdAt) return false;
-  const days = (Date.now() - new Date(p.createdAt).getTime()) / 86400000;
-  return days <= 30;
-}
+  /** TASK-27: Is product a new arrival? Based on createdAt date (last 30 days) */
+  isNewArrival(p: Product): boolean {
+    if (!p.createdAt) return false;
+    const days = (Date.now() - new Date(p.createdAt).getTime()) / 86400000;
+    return days <= 30;
+  }
 
-// ─── Legacy hash (kept for non-rating use cases during transition) ─────────
-hash(s: string): number {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-  return h;
-}
+  // ─── Legacy hash (kept for non-rating use cases during transition) ─────────
+  hash(s: string): number {
+    let h = 0;
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+    return h;
+  }
 
   // ─── TASK-84: Market Validation (API-029) ──────────────────────────────────
   readonly marketActive = signal<boolean>(true);
   readonly marketCurrency = signal<string>('NGN');
 
-/** Validate that the NG (Nigeria) market policy is active from GET /api/v1/markets */
-validateMarket(): Observable < boolean > {
-  return this.http.get<any[]>('/api/v1/markets').pipe(
-    map(markets => {
-      const ng = (markets || []).find(m => m.code === 'NG' || m.currency === 'NGN');
-      const active = !!ng;
-      this.marketActive.set(active);
-      if (ng?.currency) this.marketCurrency.set(ng.currency);
-      return active;
-    }),
-    catchError(() => {
-      // Fallback gracefully in development / test environments
-      this.marketActive.set(true);
-      return of(true);
-    })
-  );
-}
+  /** Validate that the NG (Nigeria) market policy is active from GET /api/v1/markets */
+  validateMarket(): Observable<boolean> {
+    return this.http.get<any[]>('/api/v1/markets').pipe(
+      map(markets => {
+        const ng = (markets || []).find(m => m.code === 'NG' || m.currency === 'NGN');
+        const active = !!ng;
+        this.marketActive.set(active);
+        if (ng?.currency) this.marketCurrency.set(ng.currency);
+        return active;
+      }),
+      catchError(() => {
+        // Fallback gracefully in development / test environments
+        this.marketActive.set(true);
+        return of(true);
+      })
+    );
+  }
 }

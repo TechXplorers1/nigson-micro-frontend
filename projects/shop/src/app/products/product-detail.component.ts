@@ -107,7 +107,6 @@ import { ProductCardComponent } from './product-card.component';
             <div class="mt-6">
               <p class="text-[11px] uppercase tracking-widest text-muted-foreground">Starting From</p>
               <p class="mt-1 text-3xl md:text-4xl font-bold text-[#D62828] leading-tight">{{ displayPrice() > 0 ? catalog.formatPrice(displayPrice()) : 'Contact for price' }}</p>
-              <p class="mt-2 text-sm text-muted-foreground">Wholesale pricing available for distributors.</p>
               <p class="mt-2 text-sm text-muted-foreground">{{ product()?.priceSubtitle || 'Wholesale pricing available for distributors.' }}</p>
             </div>
 
@@ -154,19 +153,15 @@ import { ProductCardComponent } from './product-card.component';
           <div class="py-8">
             <div *ngIf="activeTab() === 'description'" class="space-y-4 max-w-4xl animate-fade-in text-ink/80 leading-relaxed">
               <p class="text-lg font-semibold text-ink">{{ product()?.name }} Overview</p>
-              <p>{{ product()?.description }}</p>
-              <p>
+              <p *ngIf="product()?.description">{{ product()?.description }}</p>
+              <p *ngIf="product()?.overview">{{ product()?.overview }}</p>
+              <p *ngIf="!product()?.overview && !product()?.description">
                 Engineered to meet the highest standards of durability and performance across Nigerian markets.
                 Suitable for both wholesale commercial resale and direct consumer use.
               </p>
-              <p>{{ product()?.overview || 'Engineered to meet the highest standards of durability and performance across Nigerian markets. Suitable for both wholesale commercial resale and direct consumer use.' }}</p>
               <div class="mt-6 rounded-2xl bg-surface-alt p-6 border border-hairline">
                 <p class="font-bold text-ink mb-3">Key Highlights:</p>
                 <ul class="grid sm:grid-cols-2 gap-2 text-sm text-ink/80">
-                  <li class="flex items-center gap-2"><span class="text-brand font-bold">✓</span> Wholesale & retail pricing tier</li>
-                  <li class="flex items-center gap-2"><span class="text-brand font-bold">✓</span> Fast dispatch from central Lagos hub</li>
-                  <li class="flex items-center gap-2"><span class="text-brand font-bold">✓</span> 12-month standard Nigson warranty</li>
-                  <li class="flex items-center gap-2"><span class="text-brand font-bold">✓</span> Bulk order distributor volume discounts</li>
                   <li *ngFor="let h of highlightsList()" class="flex items-center gap-2">
                     <span class="text-brand font-bold">✓</span> {{ h }}
                   </li>
@@ -186,43 +181,32 @@ import { ProductCardComponent } from './product-card.component';
                       <td class="px-6 py-4 font-bold text-ink">Category</td>
                       <td class="px-6 py-4 text-ink/80">{{ product()?.categoryName }}</td>
                     </tr>
-                    <tr class="bg-surface-alt/50">
                     <tr class="bg-surface-alt/50" *ngIf="specValue('warranty')">
                       <td class="px-6 py-4 font-bold text-ink">Warranty</td>
-                      <td class="px-6 py-4 text-ink/80">12 Months Standard Manufacturer Warranty</td>
                       <td class="px-6 py-4 text-ink/80">{{ specValue('warranty') }}</td>
                     </tr>
-                    <tr>
+                    <tr *ngIf="specValue('build_material') || specValue('buildMaterial')">
                       <td class="px-6 py-4 font-bold text-ink">Build Material</td>
-                      <td class="px-6 py-4 text-ink/80">Premium Grade Fire-Retardant Polymer & Alloy</td>
-                    <tr *ngIf="specValue('connectors')">
+                      <td class="px-6 py-4 text-ink/80">{{ specValue('build_material') || specValue('buildMaterial') }}</td>
+                    </tr>
+                    <tr class="bg-surface-alt/50" *ngIf="specValue('connectors')">
                       <td class="px-6 py-4 font-bold text-ink">Connectors</td>
                       <td class="px-6 py-4 text-ink/80">{{ specValue('connectors') }}</td>
                     </tr>
-                    <tr class="bg-surface-alt/50">
-                    <tr class="bg-surface-alt/50" *ngIf="specValue('power_rating') || specValue('powerRating')">
+                    <tr *ngIf="specValue('power_rating') || specValue('powerRating')">
                       <td class="px-6 py-4 font-bold text-ink">Power Rating</td>
                       <td class="px-6 py-4 text-ink/80">{{ specValue('power_rating') || specValue('powerRating') }}</td>
                     </tr>
-                    <tr *ngIf="specValue('compatibility')">
+                    <tr class="bg-surface-alt/50" *ngIf="specValue('compatibility')">
                       <td class="px-6 py-4 font-bold text-ink">Compatibility</td>
-                      <td class="px-6 py-4 text-ink/80">Universal iOS / Android / USB-C Standards Compliant</td>
                       <td class="px-6 py-4 text-ink/80">{{ specValue('compatibility') }}</td>
-                    </tr>
-                    <tr>
-                    <tr class="bg-surface-alt/50" *ngIf="specValue('buildMaterial')">
-                      <td class="px-6 py-4 font-bold text-ink">Build Material</td>
-                      <td class="px-6 py-4 text-ink/80">{{ specValue('buildMaterial') }}</td>
                     </tr>
                     <tr *ngIf="specValue('certification')">
                       <td class="px-6 py-4 font-bold text-ink">Certification</td>
-                      <td class="px-6 py-4 text-ink/80">CE / RoHS / FCC Quality Verified</td>
                       <td class="px-6 py-4 text-ink/80">{{ specValue('certification') }}</td>
                     </tr>
-                    <tr class="bg-surface-alt/50">
                     <tr class="bg-surface-alt/50" *ngIf="specValue('importer')">
                       <td class="px-6 py-4 font-bold text-ink">Importer & Distributor</td>
-                      <td class="px-6 py-4 text-ink/80">Nigson Group Ltd, Lagos Nigeria</td>
                       <td class="px-6 py-4 text-ink/80">{{ specValue('importer') }}</td>
                     </tr>
                     <tr *ngFor="let s of extraSpecs(); let even = even" [class.bg-surface-alt]="even">
@@ -240,18 +224,12 @@ import { ProductCardComponent } from './product-card.component';
                 <div class="rounded-2xl border border-hairline p-5 bg-white">
                   <p class="text-xs uppercase font-bold text-brand tracking-widest">Retail Box Contents</p>
                   <ul class="mt-3 space-y-1.5 text-sm">
-                    <li>• 1x {{ product()?.name }} unit</li>
-                    <li>• 1x User Manual & Setup Guide</li>
-                    <li>• 1x Nigson Warranty Card</li>
                     <li *ngFor="let item of packagingContentsList()">• {{ item }}</li>
                   </ul>
                 </div>
                 <div class="rounded-2xl border border-hairline p-5 bg-white">
                   <p class="text-xs uppercase font-bold text-brand tracking-widest">Master Carton Specs</p>
                   <ul class="mt-3 space-y-1.5 text-sm">
-                    <li>• Carton Quantity: 40 Units / Box</li>
-                    <li>• Gross Weight: ~ 0.45 kg per unit box</li>
-                    <li>• Barcode: Individually Labelled for Resale</li>
                     <li *ngFor="let spec of cartonSpecsList()">• {{ spec }}</li>
                   </ul>
                 </div>
@@ -264,24 +242,20 @@ import { ProductCardComponent } from './product-card.component';
                 <div class="flex items-center justify-between border-b border-hairline pb-3">
                   <span class="text-sm font-bold text-ink">Central Lagos Warehouse Status</span>
                   <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 text-emerald-700 px-3 py-1 text-xs font-bold">
-                    <span class="h-2 w-2 rounded-full bg-emerald-600 animate-pulse"></span> In Stock & Ready to Ship
                     <span class="h-2 w-2 rounded-full bg-emerald-600 animate-pulse"></span>
                     {{ product()?.warehouseStatus || 'In Stock & Ready to Ship' }}
                   </span>
                 </div>
                 <div class="flex items-center justify-between border-b border-hairline pb-3">
                   <span class="text-sm font-bold text-ink">Dispatch Turnaround</span>
-                  <span class="text-sm text-ink/80 font-medium">Dispatched within 24 Hours</span>
                   <span class="text-sm text-ink/80 font-medium">{{ product()?.dispatchTurnaround || 'Dispatched within 24 Hours' }}</span>
                 </div>
                 <div class="flex items-center justify-between border-b border-hairline pb-3">
                   <span class="text-sm font-bold text-ink">Nationwide Shipping</span>
-                  <span class="text-sm text-ink/80 font-medium">2 - 4 Business Days across Nigeria</span>
                   <span class="text-sm text-ink/80 font-medium">{{ product()?.nationwideShipping || '2 - 4 Business Days across Nigeria' }}</span>
                 </div>
                 <div class="flex items-center justify-between pt-1">
                   <span class="text-sm font-bold text-ink">Minimum Wholesale Order</span>
-                  <span class="text-sm text-brand font-bold">10 Units</span>
                   <span class="text-sm text-brand font-bold">{{ product()?.minWholesaleOrder || '10 Units' }}</span>
                 </div>
               </div>
@@ -494,7 +468,15 @@ export class ProductDetailComponent implements OnInit {
   extraSpecs = computed((): Array<{ key: string, value: string }> => {
     const p = this.product();
     if (!p?.specifications) return [];
-    const known = new Set(['warranty', 'connectors', 'power_rating', 'powerRating', 'compatibility', 'buildMaterial', 'certification', 'importer']);
+    const known = new Set([
+      'warranty', 'connectors', 'power_rating', 'powerRating',
+      'compatibility', 'build_material', 'buildMaterial',
+      'certification', 'importer', 'packaging', 'carton_specs', 'cartonSpecs',
+      'warehouse_status', 'warehouseStatus', 'dispatch_turnaround', 'dispatchTurnaround',
+      'nationwide_shipping', 'nationwideShipping', 'min_wholesale_order', 'minWholesaleOrder',
+      'features', 'overview', 'highlights', 'price_subtitle', 'priceSubtitle',
+      'starting_price', 'wholesale_rate', 'distributor_rate'
+    ]);
     const list: Array<{ key: string, value: string }> = [];
     for (const [k, v] of Object.entries(p.specifications)) {
       if (!known.has(k) && v != null && String(v).trim()) {
