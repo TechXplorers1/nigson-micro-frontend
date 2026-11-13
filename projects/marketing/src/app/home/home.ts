@@ -44,10 +44,10 @@ export class HomeComponent implements OnInit, OnDestroy {
     return hash === 0 ? '/' : hash > 0 ? target.slice(0, hash) : target;
   }
 
-  linkFragment(value: string | null | undefined, fallback = '/products'): string | null {
+  linkFragment(value: string | null | undefined, fallback = '/products'): string | undefined {
     const target = value?.trim() || fallback;
     const hash = target.indexOf('#');
-    return hash < 0 ? null : target.slice(hash + 1);
+    return hash < 0 ? undefined : target.slice(hash + 1);
   }
 
   hero             = computed(() => this.sections.get('hero'));
