@@ -1,3 +1,5 @@
+const blogMarket = "/assets/blog-market.jpg";
+
 export type BlogSection = {
   heading?: string;
   paragraphs?: string[];

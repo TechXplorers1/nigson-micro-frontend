@@ -740,7 +740,6 @@ export class AdminService {
     this.updateLead(id, row?.version, state, 'Quote request status updated by staff').pipe(switchMap(() => this.loadStaffQuotes()), catchError(error => this.fail('Quote request update', error))).subscribe({ error: () => { } });
   }
   loadStaffInquiries(): Observable<AdminInquiry[]> {
-<<<<<<< HEAD
     return this.table(
       'Contact inquiries',
       this.rows('/api/v1/staff/leads?type=CONTACT').pipe(
@@ -762,9 +761,6 @@ export class AdminService {
       ),
       this.inquiries
     );
-=======
-    return this.table('Contact inquiries', this.rows('/api/v1/staff/leads?type=CONTACT').pipe(map(rows => rows.map(row => ({ id: row.id, name: row.name, email: row.email, phone: row.phone || '', subject: row.subject, message: row.message, date: row.createdAt, version: row.version, status: ({ NEW: 'New', ASSIGNED: 'In Progress', IN_PROGRESS: 'In Progress', RESOLVED: 'Resolved', CLOSED: 'Resolved' } as any)[row.state] })))), this.inquiries);
->>>>>>> 8bbce9b8334a2e31e992df2d59f149f62b494102
   }
   setInquiryStatus(id: string, status: string): void {
     const row = this.inquiries().find(row => row.id === id);
@@ -829,7 +825,6 @@ export class AdminService {
   }
   loadStaffApplications(): Observable<AdminApplication[]> {
     this.applicationError.set(null);
-<<<<<<< HEAD
     this.loadingApplications.set(true);
     let distError: string | null = null;
     let leadError: string | null = null;
@@ -897,16 +892,12 @@ export class AdminService {
       }),
       finalize(() => this.loadingApplications.set(false))
     );
-=======
-    return this.table('Distributor applications', this.rows('/api/v1/staff/distributor-applications').pipe(switchMap(rows => rows.length ? forkJoin(rows.map(row => this.http.get<any>(`/api/v1/staff/distributor-applications/${row.id}`).pipe(map(detail => ({ ...row, ...detail }))))) : of([])), map(rows => rows.map(row => ({ id: row.id, number: row.id.slice(0, 8), type: 'Distributor' as const, businessName: row.organizationName || '', contactPerson: row.contactName || '', email: row.email || '', phone: row.phone || '', location: row.countryCode || '', category: '', date: row.submittedAt, status: distributorDisplayState(row.state), note: row.reviewReason || '', version: row.version })))), this.applications).pipe(tap(() => this.applicationError.set(this.errors()['Distributor applications'] || null)));
->>>>>>> 8bbce9b8334a2e31e992df2d59f149f62b494102
   }
   setApplicationStatus(id: string, status: string, note?: string, documentsVerified = false): Observable<any> {
     return defer(() => {
       this.applicationError.set(null);
       const row = this.applications().find(row => row.id === id);
       if (row?.version == null) throw new Error('Reload the current distributor application before deciding.');
-<<<<<<< HEAD
       if (row.source === 'lead') {
         const stateMap: Record<string, string> = { Pending: 'NEW', 'Under Review': 'IN_PROGRESS', Approved: 'RESOLVED', Rejected: 'CLOSED' };
         const targetState = stateMap[status];
@@ -919,11 +910,6 @@ export class AdminService {
       const {action, body} = distributorCommand(status,note?.trim() || 'Distributor application reviewed by staff',documentsVerified,this.distributorMarket()?.id);
       return this.http.post<any>(`/api/v1/staff/distributor-applications/${id}/${action}`,body,{headers:this.headers(row.version)}).pipe(switchMap(result => this.loadStaffApplications().pipe(map(() => result))));
     }).pipe(catchError(error => {this.applicationError.set(this.message(error));return this.fail('Distributor decision',error);}));
-=======
-      const { action, body } = distributorCommand(status, note?.trim() || 'Distributor application reviewed by staff', documentsVerified, this.distributorMarket()?.id);
-      return this.http.post<any>(`/api/v1/staff/distributor-applications/${id}/${action}`, body, { headers: this.headers(row.version) }).pipe(switchMap(result => this.loadStaffApplications().pipe(map(() => result))));
-    }).pipe(catchError(error => { this.applicationError.set(this.message(error)); return this.fail('Distributor decision', error); }));
->>>>>>> 8bbce9b8334a2e31e992df2d59f149f62b494102
   }
   loadStaffReviews(): Observable<AdminReview[]> {
     return this.table('Reviews', this.rows('/api/v1/staff/reviews').pipe(map(rows => rows.map(row => ({ id: row.id, sku: '', product: row.productId || '', author: row.authorName || row.author || 'Customer', rating: row.rating, text: row.text || row.body, date: row.createdAt, status: row.state === 'PUBLISHED' ? 'Published' as const : 'Hidden' as const, version: row.version, state: row.state })))), this.reviews);
