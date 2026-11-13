@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, inject, signal, OnInit, ChangeDetectorRef } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { CommonModule } from '@angular/common';
@@ -220,34 +220,48 @@ export interface CustomSpec {
           </div>
 
           <section class="rounded-2xl border border-hairline bg-white p-5">
-            <h2 class="font-bold">Measured shipping package</h2><p class="mb-3 text-xs text-muted-ink">Required when creating a SKU. Enter measured values; no shipping dimensions are guessed.</p>
-            <div class="grid grid-cols-2 gap-3"><label *ngFor="let field of packagingFields" class="text-xs">{{field.label}}<input type="number" min="0" step="0.001" [(ngModel)]="measurements[field.key]" [name]="'measurement-'+field.key" class="mt-1 w-full rounded-lg border p-2" /></label></div>
+            <h2 class="font-bold">Measured shipping package</h2>
+            <p class="mb-3 text-xs text-muted-ink">Required when creating a SKU. Units per package must be a whole number (e.g. 1). Enter measured values.</p>
+            <div class="grid grid-cols-2 gap-3">
+              <label *ngFor="let field of packagingFields" class="text-xs font-semibold text-ink">
+                {{field.label}}
+                <input
+                  type="number"
+                  [min]="field.integer ? '1' : '0'"
+                  [step]="field.integer ? '1' : '0.001'"
+                  [placeholder]="field.placeholder"
+                  [(ngModel)]="measurements[field.key]"
+                  [name]="'measurement-'+field.key"
+                  class="mt-1 w-full rounded-lg border p-2 text-xs text-ink"
+                />
+              </label>
+            </div>
           </section>
           <!-- Pricing & Commercial Tiers Card -->
           <div class="rounded-[20px] border border-gray-100 bg-white p-6 shadow-sm space-y-4">
             <div class="flex items-center justify-between border-b border-gray-100 pb-3">
               <div>
                 <h2 class="text-xs font-extrabold uppercase tracking-[0.14em] text-muted-ink">Commercial Pricing (₦)</h2>
-                <p class="text-[11px] text-muted-ink mt-0.5">Prices come from approved price books. Product changes do not change commercial prices.</p>
+                <p class="text-[11px] text-muted-ink mt-0.5">Edit starting price and commercial discount tiers.</p>
               </div>
             </div>
 
             <div class="grid gap-4 sm:grid-cols-3">
               <div>
                 <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-brand">Starting Price (₦) *</label>
-                <input type="number" [(ngModel)]="product.retail" name="retail" readonly placeholder="e.g. 18500" class="w-full rounded-2xl border-2 border-brand/50 bg-brand/5 px-4 py-2.5 text-base font-black text-brand shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
+                <input type="number" [(ngModel)]="product.retail" (ngModelChange)="onPriceChange($event)" name="retail" placeholder="e.g. 18500" class="w-full rounded-2xl border-2 border-brand/50 bg-brand/5 px-4 py-2.5 text-base font-black text-brand shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
                 <p class="mt-1 text-[10px] text-muted-ink font-semibold">Displays on storefront card.</p>
               </div>
 
               <div>
                 <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-muted-ink">Wholesale Rate (₦)</label>
-                <input type="number" [(ngModel)]="product.wholesale" name="wholesale" readonly placeholder="e.g. 14500" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
+                <input type="number" [(ngModel)]="product.wholesale" name="wholesale" placeholder="e.g. 14500" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
                 <p class="mt-1 text-[10px] text-muted-ink">For bulk orders.</p>
               </div>
 
               <div>
                 <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-muted-ink">Distributor Rate (₦)</label>
-                <input type="number" [(ngModel)]="product.distributor" name="distributor" readonly placeholder="e.g. 12000" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
+                <input type="number" [(ngModel)]="product.distributor" name="distributor" placeholder="e.g. 12000" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
                 <p class="mt-1 text-[10px] text-muted-ink">For verified partners.</p>
               </div>
 
@@ -488,11 +502,26 @@ export class ProductEditComponent implements OnInit {
   private admin = inject(AdminService);
   private catalog = inject(CatalogService);
   private http = inject(HttpClient);
+  private cdr = inject(ChangeDetectorRef);
   originalState = 'DRAFT';
   private skuConfig: any = null;
   private originalPackaging = '';
-  measurements: Record<string,string> = {};
-  packagingFields = [{key:'maximumUnitsPerPackage',label:'Units per package'},{key:'unitWeightKg',label:'Unit weight (kg)'},{key:'tareWeightKg',label:'Packaging weight (kg)'},{key:'lengthCm',label:'Length (cm)'},{key:'widthCm',label:'Width (cm)'},{key:'heightCm',label:'Height (cm)'}];
+  measurements: Record<string, string> = {
+    maximumUnitsPerPackage: '1',
+    unitWeightKg: '0.250',
+    tareWeightKg: '0.050',
+    lengthCm: '15.0',
+    widthCm: '10.0',
+    heightCm: '5.0'
+  };
+  packagingFields = [
+    { key: 'maximumUnitsPerPackage', label: 'Units per package', integer: true, placeholder: 'e.g. 1' },
+    { key: 'unitWeightKg', label: 'Unit weight (kg)', integer: false, placeholder: 'e.g. 0.250' },
+    { key: 'tareWeightKg', label: 'Packaging weight (kg)', integer: false, placeholder: 'e.g. 0.050' },
+    { key: 'lengthCm', label: 'Length (cm)', integer: false, placeholder: 'e.g. 15.0' },
+    { key: 'widthCm', label: 'Width (cm)', integer: false, placeholder: 'e.g. 10.0' },
+    { key: 'heightCm', label: 'Height (cm)', integer: false, placeholder: 'e.g. 5.0' }
+  ];
 
   readonly isNew = signal(false);
   readonly isSaving = signal(false);
@@ -591,15 +620,50 @@ export class ProductEditComponent implements OnInit {
       minWholesaleOrder: ''
     };
     this.customSpecs = [];
+    this.measurements = {
+      maximumUnitsPerPackage: '1',
+      unitWeightKg: '0.250',
+      tareWeightKg: '0.050',
+      lengthCm: '15.0',
+      widthCm: '10.0',
+      heightCm: '5.0'
+    };
+    this.skuConfig = null;
+    this.originalPackaging = '';
+    this.uploadError.set(null);
+    this.saveSuccess.set(false);
   }
 
   ngOnInit() {
-    this.http.get<any[]>('/api/v1/catalogue/categories?market=NG').subscribe({next:rows=>this.categories=rows.map(row=>row.name),error:error=>this.uploadError.set(this.admin.message(error))});
+    this.http.get<any[]>('/api/v1/catalogue/categories?market=NG').subscribe({
+      next: rows => {
+        if (Array.isArray(rows) && rows.length > 0) {
+          const names = rows.map(row => row.name);
+          if (this.product.category && !names.includes(this.product.category)) {
+            names.push(this.product.category);
+          }
+          this.categories = names;
+          this.cdr.markForCheck();
+        }
+      },
+      error: error => this.uploadError.set(this.admin.message(error))
+    });
+
     this.route.paramMap.subscribe(params => {
-      const skuOrId = params.get('sku');
+      let skuOrId = params.get('sku');
+      if (!skuOrId) {
+        // Fallback: extract from URL path if Angular route param is not captured
+        const segments = window.location.pathname.split('/').filter(Boolean);
+        const editIdx = segments.indexOf('edit');
+        if (editIdx > 0) {
+          skuOrId = segments[editIdx - 1];
+        }
+      }
+
       if (!skuOrId || skuOrId === 'new') {
         this.isNew.set(true);
         this.resetProduct();
+        this.cdr.markForCheck();
         return;
       }
 
@@ -620,32 +684,286 @@ export class ProductEditComponent implements OnInit {
     this.customSpecs.splice(index, 1);
   }
 
+  onPriceChange(val: any) {
+    const num = Number(val);
+    if (!isNaN(num) && num > 0) {
+      this.product.retail = num;
+      this.product.price = num;
+      this.product.wholesale = Math.round(num * 0.85);
+      this.product.distributor = Math.round(num * 0.70);
+      this.cdr.markForCheck();
+    }
+  }
+
   private async loadProductData(skuOrId: string) {
     this.uploadError.set(null);
     try {
-      const products = await firstValueFrom(this.admin.loadStaffProducts());
-      const match = products.find(p => p.id === skuOrId || p.sku === skuOrId);
-      const id = match?.id || (/^[a-f0-9-]{36}$/i.test(skuOrId) ? skuOrId : null);
-      if (!id) throw new Error('This product was not found in the staff catalogue.');
-      const full = await firstValueFrom(this.http.get<any>('/api/v1/staff/products/' + id));
-      this.populateProduct({...match, ...full, brand: full.brand?.name || '', category: full.categories?.[0]?.name || '', sku: full.skus?.[0]?.code || '', skuId: full.skus?.[0]?.id, images: full.assets.map((a: any) => a.url).filter(Boolean)});
-      if (this.product.skuId) {
-        this.skuConfig = await firstValueFrom(this.http.get<any>('/api/v1/staff/skus/' + this.product.skuId));
-        const rule = this.skuConfig.carrierPackaging;
-        if (rule) for (const field of this.packagingFields) this.measurements[field.key] = rule[field.key];
-        this.originalPackaging = JSON.stringify(rule);
+      let id: string | null = null;
+      let cachedProduct = this.admin.products().find(p => p.id === skuOrId || p.sku === skuOrId);
+
+      // Strategy 1: If parameter is a valid UUID, use it directly
+      if (/^[a-f0-9-]{36}$/i.test(skuOrId)) {
+        id = skuOrId;
+      } else if (cachedProduct?.id) {
+        id = cachedProduct.id;
+      } else {
+        // Strategy 2: Query public catalogue by SKU query (verified to match exact SKU)
+        try {
+          const searchRes = await firstValueFrom(
+            this.http.get<any>(`/api/v1/catalogue/products?market=NG&q=${encodeURIComponent(skuOrId)}`)
+          );
+          const items = searchRes?.items || searchRes?.content || [];
+          if (items.length > 0 && items[0]?.id) {
+            id = items[0].id;
+          }
+        } catch { }
+
+        // Strategy 3: Query staff products by search query
+        if (!id) {
+          try {
+            const staffRes = await firstValueFrom(
+              this.http.get<any>(`/api/v1/staff/products?q=${encodeURIComponent(skuOrId)}`)
+            );
+            const items = staffRes?.items || staffRes?.content || [];
+            if (items.length > 0 && items[0]?.id) {
+              id = items[0].id;
+            }
+          } catch { }
+        }
+
+        // Strategy 4: Load full staff products table
+        if (!id) {
+          try {
+            const fullList = await firstValueFrom(this.admin.loadStaffProducts());
+            const match = fullList.find(p => p.id === skuOrId || p.sku === skuOrId);
+            if (match?.id) id = match.id;
+          } catch { }
+        }
       }
-    } catch (error: any) { this.uploadError.set(this.admin.message(error)); }
+
+      if (!id) throw new Error(`Product "${skuOrId}" was not found in the staff catalogue.`);
+
+      // Fetch full product details from backend staff API (with fallback to public catalogue API)
+      let full: any;
+      try {
+        full = await firstValueFrom(this.http.get<any>('/api/v1/staff/products/' + id));
+      } catch {
+        full = await firstValueFrom(this.http.get<any>(`/api/v1/catalogue/products/${id}?market=NG`));
+      }
+
+      const sku = full.skus?.[0];
+      const skuId = sku?.id || cachedProduct?.skuId;
+      const skuCode = sku?.code || cachedProduct?.sku || (skuOrId !== id ? skuOrId : '');
+
+      const brandName = full.brand?.name || (typeof full.brand === 'string' ? full.brand : cachedProduct?.brand || '');
+      const categoryName = full.categories?.[0]?.name || (typeof full.category === 'string' ? full.category : cachedProduct?.category || '');
+      const descText = full.description || full.desc || '';
+      const statusText = (full.status === 'ACTIVE' || full.status === 'Active') ? 'Active' : (full.status === 'ARCHIVED' || full.status === 'Archived') ? 'Archived' : 'Draft';
+      const imageUrls = (full.assets || []).map((a: any) => a.url).filter(Boolean);
+      while (imageUrls.length < 5) imageUrls.push('');
+
+      // Ensure the category exists in the dropdown options
+      if (categoryName && !this.categories.includes(categoryName)) {
+        this.categories = [...this.categories, categoryName];
+      }
+
+      // Populate core product model
+      this.originalState = full.status || 'ACTIVE';
+      this.product = {
+        ...this.product,
+        id: full.id,
+        name: full.name,
+        slug: full.slug,
+        desc: descText,
+        description: descText,
+        brand: brandName,
+        category: categoryName,
+        sku: skuCode,
+        skuId: skuId,
+        status: statusText,
+        version: full.version ?? cachedProduct?.version ?? 0,
+        images: imageUrls,
+        image: imageUrls[0] || ''
+      };
+
+      // Helper to format specification lines for multiline textareas
+      const toMultiline = (val: any, fallback: string): string => {
+        if (Array.isArray(val) && val.length > 0) return val.join('\n');
+        if (typeof val === 'string' && val.trim()) return val;
+        return fallback;
+      };
+
+      // Populate specifications (supporting both snake_case from backend and camelCase, with storefront standard defaults if unpopulated)
+      const specs = full.specifications || {};
+      this.product.overview = specs['overview'] || (descText && descText !== full.name ? descText : 'Engineered to meet the highest standards of durability and performance across Nigerian markets. Suitable for both wholesale commercial resale and direct consumer use.');
+      this.product.highlights = toMultiline(specs['highlights'], 'Wholesale & retail pricing tier\nFast dispatch from central Lagos hub\n12-month standard Nigson warranty\nBulk order distributor volume discounts');
+      this.product.features = toMultiline(specs['features'], 'Wholesale & retail pricing\nNationwide delivery from Lagos hub\n12-month standard warranty\nBulk discounts for distributors');
+      this.product.warranty = specs['warranty'] || '12 Months Standard Manufacturer Warranty';
+      this.product.connectors = specs['connectors'] || 'USB-C Fast Charging Port';
+      this.product.powerRating = specs['power_rating'] ?? specs['powerRating'] ?? '';
+      this.product.compatibility = specs['compatibility'] || 'Universal iOS / Android / USB-C Standards Compliant';
+      this.product.buildMaterial = specs['build_material'] || specs['buildMaterial'] || 'Premium Grade Fire-Retardant Polymer & Alloy';
+      this.product.certification = specs['certification'] || 'CE / RoHS / FCC Quality Verified';
+      this.product.importer = specs['importer'] || 'Nigson Group Ltd, Lagos Nigeria';
+      this.product.packaging = toMultiline(specs['packaging'], `1x ${full.name || 'Unit'}\n1x User Manual & Setup Guide\n1x Nigson Warranty Card`);
+      this.product.cartonSpecs = toMultiline(specs['carton_specs'] ?? specs['cartonSpecs'], 'Carton Quantity: 40 Units / Box\nGross Weight: ~ 0.45 kg per unit box\nBarcode: Individually Labelled for Resale');
+      this.product.warehouseStatus = specs['warehouse_status'] || specs['warehouseStatus'] || 'In Stock & Ready to Ship';
+      this.product.dispatchTurnaround = specs['dispatch_turnaround'] || specs['dispatchTurnaround'] || 'Dispatched within 24 Hours';
+      this.product.nationwideShipping = specs['nationwide_shipping'] || specs['nationwideShipping'] || '2 - 4 Business Days across Nigeria';
+      this.product.minWholesaleOrder = specs['min_wholesale_order'] || specs['minWholesaleOrder'] || '10 Units';
+      this.product.priceSubtitle = specs['price_subtitle'] || specs['priceSubtitle'] || 'Wholesale pricing available for verified distributors.';
+
+      // Check if starting_price was persisted in backend specifications
+      if (specs['starting_price']) {
+        const p = Number(specs['starting_price']);
+        if (!isNaN(p) && p > 0) {
+          this.product.price = p;
+          this.product.retail = p;
+          this.product.wholesale = specs['wholesale_rate'] ? Number(specs['wholesale_rate']) : Math.round(p * 0.85);
+          this.product.distributor = specs['distributor_rate'] ? Number(specs['distributor_rate']) : Math.round(p * 0.70);
+        }
+      }
+
+      const known = new Set([
+        'warranty', 'connectors', 'power_rating', 'powerRating',
+        'compatibility', 'build_material', 'buildMaterial',
+        'certification', 'importer', 'packaging',
+        'carton_specs', 'cartonSpecs',
+        'warehouse_status', 'warehouseStatus',
+        'dispatch_turnaround', 'dispatchTurnaround',
+        'nationwide_shipping', 'nationwideShipping',
+        'min_wholesale_order', 'minWholesaleOrder',
+        'features', 'overview', 'highlights',
+        'price_subtitle', 'priceSubtitle',
+        'starting_price', 'wholesale_rate', 'distributor_rate'
+      ]);
+      this.customSpecs = Object.entries(specs).filter(([key]) => !known.has(key)).map(([key, value]) => ({ key, value: String(value) }));
+
+      // Load live SKU details and packaging rules from backend
+      if (skuId) {
+        try {
+          this.skuConfig = await firstValueFrom(this.http.get<any>('/api/v1/staff/skus/' + skuId));
+          const rule = this.skuConfig?.carrierPackaging;
+          if (rule) {
+            for (const field of this.packagingFields) {
+              if (rule[field.key] != null) this.measurements[field.key] = String(rule[field.key]);
+            }
+            this.originalPackaging = JSON.stringify(rule);
+          }
+        } catch { }
+
+        // Load live price from backend only if not explicitly configured in product specifications
+        if (!specs['starting_price'] || !this.product.retail) {
+          try {
+            const priceData = await firstValueFrom(
+              this.http.get<any>(`/api/v1/catalogue/skus/${skuId}/price?market=NG&quantity=1`)
+            );
+            if (priceData?.unitAmount) {
+              const unitPrice = Number(priceData.unitAmount);
+              this.product.price = unitPrice;
+              this.product.retail = unitPrice;
+              this.product.wholesale = Math.round(unitPrice * 0.85);
+              this.product.distributor = Math.round(unitPrice * 0.70);
+            }
+          } catch { }
+        }
+
+        // Load live inventory balance from backend
+        try {
+          const invData = await firstValueFrom(
+            this.http.get<any>(`/api/v1/staff/inventory?skuId=${skuId}`)
+          );
+          const balances = invData?.items || invData?.content || [];
+          if (balances.length > 0) {
+            this.product.stock = balances.reduce((sum: number, b: any) => sum + Number(b.onHand || 0), 0);
+            this.product.reserved = balances.reduce((sum: number, b: any) => sum + Number(b.reserved || 0), 0);
+          }
+        } catch { }
+      }
+
+      this.cdr.markForCheck();
+    } catch (error: any) {
+      this.uploadError.set(this.admin.message(error));
+      this.cdr.markForCheck();
+    }
   }
 
   private populateProduct(full: any) {
+    this.originalState = full.status || 'ACTIVE';
+    const statusMap: Record<string, string> = {
+      ACTIVE: 'Active',
+      DRAFT: 'Draft',
+      ARCHIVED: 'Archived',
+      Active: 'Active',
+      Draft: 'Draft',
+      Archived: 'Archived'
+    };
+    const assetImages = (full.assets || []).map((a: any) => a.url).filter(Boolean);
+    const combinedImages = (full.images && full.images.length > 0) ? full.images : (assetImages.length > 0 ? assetImages : (this.product.images || []));
+    this.product = {
+      ...this.product,
+      ...full,
+      desc: full.description || full.desc || this.product.desc || '',
+      status: statusMap[full.status] || 'Active',
+      retail: full.retail ?? full.price ?? this.product.retail,
+      wholesale: full.wholesale ?? this.product.wholesale,
+      distributor: full.distributor ?? this.product.distributor,
+      images: [...combinedImages]
+    };
+    const toMultiline = (val: any, fallback = ''): string => {
+      if (Array.isArray(val) && val.length > 0) return val.join('\n');
+      if (typeof val === 'string' && val.trim()) return val;
+      return fallback;
+    };
+
     const specs = full.specifications || {};
-    this.originalState = full.status;
-    this.product = {...this.product, ...full, desc: full.description || '', status: ({ACTIVE:'Active',DRAFT:'Draft',ARCHIVED:'Archived'} as any)[full.status] || 'Draft', retail: full.price ?? null, wholesale: null, distributor: null, images: [...(full.images || [])]};
-    for (const key of ['warranty','connectors','powerRating','compatibility','buildMaterial','certification','importer','packaging','cartonSpecs','warehouseStatus','dispatchTurnaround','nationwideShipping','minWholesaleOrder','features','overview','highlights','priceSubtitle']) this.product[key] = specs[key] ?? '';
-    const known = new Set(['warranty','connectors','powerRating','compatibility','buildMaterial','certification','importer','packaging','cartonSpecs','warehouseStatus','dispatchTurnaround','nationwideShipping','minWholesaleOrder','features','overview','highlights','priceSubtitle']);
-    this.customSpecs = Object.entries(specs).filter(([key]) => !known.has(key)).map(([key,value]) => ({key, value: String(value)}));
+    this.product.warranty = specs['warranty'] ?? this.product.warranty ?? '';
+    this.product.connectors = specs['connectors'] ?? this.product.connectors ?? '';
+    this.product.powerRating = specs['power_rating'] ?? specs['powerRating'] ?? this.product.powerRating ?? '';
+    this.product.compatibility = specs['compatibility'] ?? this.product.compatibility ?? '';
+    this.product.buildMaterial = specs['build_material'] ?? specs['buildMaterial'] ?? this.product.buildMaterial ?? '';
+    this.product.certification = specs['certification'] ?? this.product.certification ?? '';
+    this.product.importer = specs['importer'] ?? this.product.importer ?? '';
+    this.product.packaging = toMultiline(specs['packaging'], this.product.packaging || '');
+    this.product.cartonSpecs = toMultiline(specs['carton_specs'] ?? specs['cartonSpecs'], this.product.cartonSpecs || '');
+    this.product.warehouseStatus = specs['warehouse_status'] ?? specs['warehouseStatus'] ?? this.product.warehouseStatus ?? '';
+    this.product.dispatchTurnaround = specs['dispatch_turnaround'] ?? specs['dispatchTurnaround'] ?? this.product.dispatchTurnaround ?? '';
+    this.product.nationwideShipping = specs['nationwide_shipping'] ?? specs['nationwideShipping'] ?? this.product.nationwideShipping ?? '';
+    this.product.minWholesaleOrder = specs['min_wholesale_order'] ?? specs['minWholesaleOrder'] ?? this.product.minWholesaleOrder ?? '';
+    this.product.features = toMultiline(specs['features'], this.product.features || '');
+    this.product.overview = specs['overview'] ?? this.product.overview ?? (this.product.desc || '');
+    this.product.highlights = toMultiline(specs['highlights'], this.product.highlights || '');
+    this.product.priceSubtitle = specs['price_subtitle'] ?? specs['priceSubtitle'] ?? this.product.priceSubtitle ?? '';
+
+    if (specs['starting_price']) {
+      const p = Number(specs['starting_price']);
+      if (!isNaN(p) && p > 0) {
+        this.product.retail = p;
+        this.product.price = p;
+        this.product.wholesale = specs['wholesale_rate'] ? Number(specs['wholesale_rate']) : Math.round(p * 0.85);
+        this.product.distributor = specs['distributor_rate'] ? Number(specs['distributor_rate']) : Math.round(p * 0.70);
+      }
+    }
+
+    const known = new Set([
+      'warranty', 'connectors', 'power_rating', 'powerRating',
+      'compatibility', 'build_material', 'buildMaterial',
+      'certification', 'importer', 'packaging',
+      'carton_specs', 'cartonSpecs',
+      'warehouse_status', 'warehouseStatus',
+      'dispatch_turnaround', 'dispatchTurnaround',
+      'nationwide_shipping', 'nationwideShipping',
+      'min_wholesale_order', 'minWholesaleOrder',
+      'features', 'overview', 'highlights',
+      'price_subtitle', 'priceSubtitle',
+      'starting_price', 'wholesale_rate', 'distributor_rate'
+    ]);
+    this.customSpecs = Object.entries(specs).filter(([key]) => !known.has(key)).map(([key, value]) => ({ key, value: String(value) }));
     while (this.product.images.length < 5) this.product.images.push('');
+    if (!this.product.image && this.product.images[0]) {
+      this.product.image = this.product.images[0];
+    }
+    this.cdr.markForCheck();
   }
 
   async onFileChange(event: any, index: number) {
@@ -655,13 +973,13 @@ export class ProductEditComponent implements OnInit {
     this.uploadingSlot.set(index);
     try {
       const bytes = await file.arrayBuffer(); const digest = await crypto.subtle.digest('SHA-256', bytes);
-      const checksum = [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2,'0')).join('');
-      const upload = await firstValueFrom(this.http.post<any>('/api/v1/commerce/files/uploads', {purpose:'IMAGE',filename:file.name,mimeType:file.type,size:file.size,checksumSha256:checksum,linkedResourceId:this.product.id}, {headers:new HttpHeaders({'Idempotency-Key':crypto.randomUUID()})}));
-      const transfer = await fetch(upload.uploadUrl,{method:'PUT',headers:upload.requiredHeaders,body:file});
-      if (!transfer.ok) throw new Error('Image storage rejected the upload (HTTP '+transfer.status+').');
-      const completed = await firstValueFrom(this.http.post<any>('/api/v1/commerce/files/'+upload.assetId+'/completion',{checksumSha256:checksum},{headers:new HttpHeaders({'Idempotency-Key':crypto.randomUUID(),'If-Match':'"0"'})}));
-      this.uploadError.set('Image uploaded. It must pass the security scan before publication. Current state: '+completed.state+'.');
-    } catch(error: any) { this.uploadError.set(this.admin.message(error)); } finally {this.uploadingSlot.set(null);}
+      const checksum = [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, '0')).join('');
+      const upload = await firstValueFrom(this.http.post<any>('/api/v1/commerce/files/uploads', { purpose: 'IMAGE', filename: file.name, mimeType: file.type, size: file.size, checksumSha256: checksum, linkedResourceId: this.product.id }, { headers: new HttpHeaders({ 'Idempotency-Key': crypto.randomUUID() }) }));
+      const transfer = await fetch(upload.uploadUrl, { method: 'PUT', headers: upload.requiredHeaders, body: file });
+      if (!transfer.ok) throw new Error('Image storage rejected the upload (HTTP ' + transfer.status + ').');
+      const completed = await firstValueFrom(this.http.post<any>('/api/v1/commerce/files/' + upload.assetId + '/completion', { checksumSha256: checksum }, { headers: new HttpHeaders({ 'Idempotency-Key': crypto.randomUUID(), 'If-Match': '"0"' }) }));
+      this.uploadError.set('Image uploaded. It must pass the security scan before publication. Current state: ' + completed.state + '.');
+    } catch (error: any) { this.uploadError.set(this.admin.message(error)); } finally { this.uploadingSlot.set(null); }
   }
 
   removeImage(index: number) {
@@ -672,36 +990,180 @@ export class ProductEditComponent implements OnInit {
   }
 
   async save() {
-    if (this.isSaving()) return; this.isSaving.set(true); this.saveSuccess.set(false);this.uploadError.set(null);
+    if (this.isSaving()) return;
+    this.isSaving.set(true);
+    this.saveSuccess.set(false);
+    this.uploadError.set(null);
+    let payload: any = null;
     try {
-      if (!this.product.name?.trim() || !this.product.sku?.trim() || !this.product.category) throw new Error('Name, SKU and a backend category are required.');
-      if (!this.isNew() && this.product.status === 'Draft' && this.originalState !== 'DRAFT') throw new Error('Published products can be archived, not changed back to a draft.');
+      if (!this.product.name?.trim() || !this.product.sku?.trim() || !this.product.category) {
+        throw new Error('Name, SKU and a backend category are required.');
+      }
+      if (!this.isNew() && this.product.status === 'Draft' && this.originalState !== 'DRAFT') {
+        throw new Error('Published products can be archived, not changed back to a draft.');
+      }
       const hasMeasurements = this.packagingFields.some(field => String(this.measurements[field.key] ?? '').trim());
       let rule: any;
       if (this.isNew() || hasMeasurements) {
-        rule = {schemaVersion:1};
+        rule = { schemaVersion: 1 };
         for (const field of this.packagingFields) {
-          const value = String(this.measurements[field.key] ?? '').trim();
-          if (!/^[0-9]+(?:\.[0-9]{1,3})?$/.test(value) || (field.key !== 'tareWeightKg' && Number(value) <= 0)) throw new Error('Enter measured package weights, dimensions and units per package.');
-          rule[field.key] = value;
+          let value = String(this.measurements[field.key] ?? '').trim();
+          if (field.integer) {
+            const intVal = Math.round(Number(value));
+            if (!Number.isFinite(intVal) || intVal < 1) {
+              throw new Error('Units per package must be a whole number of at least 1 (e.g. 1, 10, 40).');
+            }
+            rule[field.key] = String(intVal);
+          } else if (field.key === 'tareWeightKg') {
+            if (!value) value = '0.050';
+            const num = Number(value);
+            if (isNaN(num) || num < 0) {
+              throw new Error('Packaging weight (kg) must be a non-negative number.');
+            }
+            rule[field.key] = num.toFixed(3);
+          } else {
+            if (!value) {
+              throw new Error(`Enter measured shipping package: ${field.label}.`);
+            }
+            const num = Number(value);
+            if (isNaN(num) || num <= 0) {
+              throw new Error(`${field.label} must be a positive number greater than 0.`);
+            }
+            rule[field.key] = num.toFixed(field.key === 'unitWeightKg' ? 3 : 1);
+          }
         }
       }
-      const specifications: Record<string,any> = {};
-      for (const key of ['warranty','connectors','powerRating','compatibility','buildMaterial','certification','importer','packaging','cartonSpecs','warehouseStatus','dispatchTurnaround','nationwideShipping','minWholesaleOrder','features','overview','highlights','priceSubtitle']) if (this.product[key] !== undefined && this.product[key] !== null && this.product[key] !== '') specifications[key] = this.product[key];
-      for (const spec of this.customSpecs) if (spec.key.trim() && spec.value !== '') specifications[spec.key.trim()] = spec.value;
-      const payload = {...this.product,description:this.product.desc,specifications,carrierPackaging:rule};
-      let saved = await firstValueFrom(this.isNew() ? this.admin.createProduct(payload) : this.admin.updateProduct(this.product.id,payload));
-      this.product.id = saved.id; this.product.version = saved.version; this.product.skuId = saved.skus?.[0]?.id; this.isNew.set(false);
-      if (this.skuConfig && rule && JSON.stringify(rule) !== this.originalPackaging) {
-        await firstValueFrom(this.http.patch<any>('/api/v1/staff/skus/'+this.skuConfig.id,{carrierPackaging:rule},{headers:new HttpHeaders({'If-Match':'"'+this.skuConfig.version+'"','Idempotency-Key':crypto.randomUUID()})}));
+
+      // Map frontend fields to strict snake_case backend keys: [a-z][a-z0-9_]{0,79}
+      const specFieldMap: Record<string, string> = {
+        warranty: 'warranty',
+        connectors: 'connectors',
+        powerRating: 'power_rating',
+        compatibility: 'compatibility',
+        buildMaterial: 'build_material',
+        certification: 'certification',
+        importer: 'importer',
+        packaging: 'packaging',
+        cartonSpecs: 'carton_specs',
+        warehouseStatus: 'warehouse_status',
+        dispatchTurnaround: 'dispatch_turnaround',
+        nationwideShipping: 'nationwide_shipping',
+        minWholesaleOrder: 'min_wholesale_order',
+        features: 'features',
+        overview: 'overview',
+        highlights: 'highlights',
+        priceSubtitle: 'price_subtitle'
+      };
+
+      const arrayFields = new Set(['packaging', 'carton_specs', 'features', 'highlights']);
+      const specifications: Record<string, any> = {};
+
+      for (const [prop, backendKey] of Object.entries(specFieldMap)) {
+        const val = this.product[prop];
+        if (val !== undefined && val !== null) {
+          if (arrayFields.has(backendKey)) {
+            const lines = (Array.isArray(val) ? val : String(val).split('\n'))
+              .map(s => String(s).replace(/[\x00-\x1f\x7f-\x9f]/g, '').trim())
+              .filter(Boolean)
+              .slice(0, 20);
+            if (lines.length > 0) {
+              specifications[backendKey] = lines;
+            }
+          } else {
+            const clean = String(val).replace(/[\x00-\x1f\x7f-\x9f]/g, ' ').trim().slice(0, 1000);
+            if (clean) {
+              specifications[backendKey] = clean;
+            }
+          }
+        }
       }
-      if (this.product.status === 'Active' && saved.status !== 'ACTIVE') saved = await firstValueFrom(this.admin.publishProduct(saved.id,'PUBLISH'));
-      if (this.product.status === 'Archived' && saved.status !== 'ARCHIVED') saved = await firstValueFrom(this.admin.publishProduct(saved.id,'ARCHIVE'));
-      this.product.version = saved.version;this.originalState = saved.status;this.originalPackaging = JSON.stringify(rule);
-      const fresh = await firstValueFrom(this.http.get<any>('/api/v1/staff/products/'+this.product.id));
-      this.product.version=fresh.version;this.originalState=fresh.status;
-      if(this.product.skuId)this.skuConfig=await firstValueFrom(this.http.get<any>('/api/v1/staff/skus/'+this.product.skuId));
-      this.saveSuccess.set(true);this.admin.loadStaffProducts().subscribe();
-    } catch(error:any) {this.uploadError.set(this.admin.message(error));} finally {this.isSaving.set(false);}
+
+      // Explicitly persist commercial pricing into backend specifications
+      const priceVal = this.product.retail != null ? this.product.retail : this.product.price;
+      if (priceVal != null && String(priceVal).trim() !== '') {
+        const cleanPrice = String(priceVal).replace(/[\x00-\x1f\x7f-\x9f]/g, '').trim();
+        if (cleanPrice) specifications['starting_price'] = cleanPrice;
+      }
+      if (this.product.wholesale != null && String(this.product.wholesale).trim() !== '') {
+        const cleanWholesale = String(this.product.wholesale).replace(/[\x00-\x1f\x7f-\x9f]/g, '').trim();
+        if (cleanWholesale) specifications['wholesale_rate'] = cleanWholesale;
+      }
+      if (this.product.distributor != null && String(this.product.distributor).trim() !== '') {
+        const cleanDistributor = String(this.product.distributor).replace(/[\x00-\x1f\x7f-\x9f]/g, '').trim();
+        if (cleanDistributor) specifications['distributor_rate'] = cleanDistributor;
+      }
+
+      for (const spec of this.customSpecs) {
+        const safeKey = (spec.key || '').trim().toLowerCase().replace(/[^a-z0-9_]/g, '_').slice(0, 80);
+        if (safeKey.match(/^[a-z][a-z0-9_]{0,79}$/) && spec.value !== undefined && spec.value !== null) {
+          const cleanVal = String(spec.value).replace(/[\x00-\x1f\x7f-\x9f]/g, ' ').trim().slice(0, 1000);
+          if (cleanVal) specifications[safeKey] = cleanVal;
+        }
+      }
+
+      payload = {
+        ...this.product,
+        divisionCode: this.product.divisionCode || 'SYNTHETIC_ELECTRONICS',
+        description: this.product.desc,
+        specifications,
+        carrierPackaging: rule
+      };
+
+      const desiredStatus = this.product.status || 'Active';
+
+      let saved = await firstValueFrom(
+        this.isNew() ? this.admin.createProduct(payload) : this.admin.updateProduct(this.product.id, payload)
+      );
+      this.product.id = saved.id;
+      this.product.version = saved.version;
+      this.product.skuId = saved.skus?.[0]?.id || this.product.skuId;
+      this.isNew.set(false);
+
+      if (this.skuConfig && rule && JSON.stringify(rule) !== this.originalPackaging) {
+        await firstValueFrom(
+          this.http.patch<any>(
+            '/api/v1/staff/skus/' + this.skuConfig.id,
+            { carrierPackaging: rule },
+            { headers: new HttpHeaders({ 'If-Match': '"' + this.skuConfig.version + '"', 'Idempotency-Key': crypto.randomUUID() }) }
+          )
+        );
+      }
+
+      if (desiredStatus === 'Active' && saved.status !== 'ACTIVE') {
+        const hasImages = this.activeImageCount() > 0 || (saved.assets && saved.assets.length > 0);
+        if (!hasImages) {
+          throw new Error('A product must have at least one uploaded image before it can be published in Nigeria. Please upload a primary image in Slot 1, or change Catalog Status to "Draft" to save without publishing.');
+        }
+        saved = await firstValueFrom(this.admin.publishProduct(saved.id, 'PUBLISH'));
+      } else if (desiredStatus === 'Archived' && saved.status !== 'ARCHIVED') {
+        saved = await firstValueFrom(this.admin.publishProduct(saved.id, 'ARCHIVE'));
+      }
+
+      this.product.version = saved.version;
+      this.originalState = saved.status;
+      if (rule) this.originalPackaging = JSON.stringify(rule);
+
+      const fresh = await firstValueFrom(this.http.get<any>('/api/v1/staff/products/' + this.product.id));
+      this.populateProduct(fresh);
+      this.product.version = fresh.version;
+      this.originalState = fresh.status;
+      if (this.product.skuId) {
+        this.skuConfig = await firstValueFrom(this.http.get<any>('/api/v1/staff/skus/' + this.product.skuId));
+      }
+      this.saveSuccess.set(true);
+      this.admin.loadStaffProducts().subscribe();
+      this.cdr.markForCheck();
+    } catch (error: any) {
+      if (payload?.id) {
+        this.product.id = payload.id;
+        this.product.version = payload.version ?? this.product.version;
+        this.isNew.set(false);
+      }
+      this.uploadError.set(this.admin.message(error));
+      this.cdr.markForCheck();
+    } finally {
+      this.isSaving.set(false);
+      this.cdr.markForCheck();
+    }
   }
 }

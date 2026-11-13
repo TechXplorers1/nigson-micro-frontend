@@ -4,9 +4,9 @@ import { RouterModule, ActivatedRoute } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { catchError, of } from 'rxjs';
 import { CmsService, SessionService, ContentRevisionEdit, PageContent, SectionContent, SectionDef } from 'shared-ui';
-import { 
-  LucidePlus, LucidePencil, LucideGlobe, LucideSave, 
-  LucideEye, LucideEyeOff, LucideGripVertical, LucideCheckCircle2, LucideChevronRight, 
+import {
+  LucidePlus, LucidePencil, LucideGlobe, LucideSave,
+  LucideEye, LucideEyeOff, LucideGripVertical, LucideCheckCircle2, LucideChevronRight,
   LucideExternalLink, LucideRefreshCw, LucideHeading, LucideList, LucideArrowLeft
 } from '@lucide/angular';
 import { FormsModule } from '@angular/forms';
@@ -17,8 +17,8 @@ import { AdminBlogPost, parseMarkdownToSections } from './blog.component';
   standalone: true,
   imports: [
     CommonModule, FormsModule, RouterModule,
-    LucidePlus, LucidePencil, LucideGlobe, LucideSave, 
-    LucideEye, LucideEyeOff, LucideGripVertical, LucideCheckCircle2, LucideChevronRight, 
+    LucidePlus, LucidePencil, LucideGlobe, LucideSave,
+    LucideEye, LucideEyeOff, LucideGripVertical, LucideCheckCircle2, LucideChevronRight,
     LucideExternalLink, LucideRefreshCw, LucideHeading, LucideList, LucideArrowLeft
   ],
   template: `
@@ -26,13 +26,14 @@ import { AdminBlogPost, parseMarkdownToSections } from './blog.component';
     <div class="fixed inset-0 z-50 flex flex-col bg-[#f0f2f5] font-sans antialiased select-none">
       
       <!-- TOAST: PUBLISH SUCCESS -->
-      <div *ngIf="publishSuccess()" class="fixed top-20 right-6 z-50 flex items-center gap-3 rounded-xl bg-emerald-600 px-4 py-3 text-white shadow-2xl transition-all">
-        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-700">
+      <div *ngIf="publishSuccess()" class="fixed top-20 right-6 z-50 flex items-center gap-3 rounded-xl px-4 py-3 text-white shadow-2xl transition-all" [class.bg-emerald-600]="backendSynced()" [class.bg-amber-600]="!backendSynced()">
+        <div class="flex h-8 w-8 items-center justify-center rounded-lg" [class.bg-emerald-700]="backendSynced()" [class.bg-amber-700]="!backendSynced()">
           <svg lucideCheckCircle2 class="h-5 w-5"></svg>
         </div>
         <div>
-          <p class="text-xs font-bold leading-none">Published Successfully!</p>
-          <p class="text-[11px] text-emerald-100 mt-0.5">Edits are now live on {{ pageDef()?.name }} ({{ pageDef()?.path }}).</p>
+          <p class="text-xs font-bold leading-none">{{ backendSynced() ? 'Published to Database & Live!' : 'Published Locally in Browser' }}</p>
+          <p class="text-[11px] text-white/90 mt-0.5" *ngIf="backendSynced()">Edits are saved to PostgreSQL database & live on {{ pageDef()?.name }}.</p>
+          <p class="text-[11px] text-white/90 mt-0.5" *ngIf="!backendSynced()">Saved in local browser. Sign in via /auth/login for persistent database sync.</p>
         </div>
         <a [href]="pageDef()?.path" target="_blank" class="ml-2 rounded-md bg-white/20 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-white/30 transition-colors flex items-center gap-1">
           View Live <svg lucideExternalLink class="h-3 w-3"></svg>
@@ -485,9 +486,10 @@ export class VisualHomeEditorComponent implements OnInit, AfterViewInit {
 
   isPublishing = this.cms.isPublishing;
   publishSuccess = signal(false);
+  backendSynced = signal(false);
   saveSuccess = signal(false);
   toastMessage = signal<string | null>(null);
-  
+
   previewFrame = viewChild<ElementRef<HTMLIFrameElement>>('previewFrame');
 
   pageId = signal<string>('home');
@@ -511,7 +513,7 @@ export class VisualHomeEditorComponent implements OnInit, AfterViewInit {
   pub = computed(() => this.cms.published()[this.pageId()]);
 
   isDirty = computed(() => JSON.stringify(this.pub()?.sections) !== JSON.stringify(this.draft()?.sections));
-  
+
   validSectionIds = computed(() => new Set(this.pageDef()?.sections.map((s: SectionDef) => s.id) || []));
   activeSections = computed(() => (this.draft()?.sections || []).filter((s: SectionContent) => this.validSectionIds().has(s.id)));
 
@@ -631,7 +633,7 @@ export class VisualHomeEditorComponent implements OnInit, AfterViewInit {
   setField(secId: string, key: string, value: string) {
     this.cms.updateDraft(this.pageId(), (p: PageContent) => ({
       ...p,
-      sections: p.sections.map((s: SectionContent) => 
+      sections: p.sections.map((s: SectionContent) =>
         s.id === secId ? { ...s, fields: { ...s.fields, [key]: value } } : s
       )
     }));
@@ -657,7 +659,7 @@ export class VisualHomeEditorComponent implements OnInit, AfterViewInit {
   toggleVisible(secId: string) {
     this.cms.updateDraft(this.pageId(), (p: PageContent) => ({
       ...p,
-      sections: p.sections.map((s: SectionContent) => 
+      sections: p.sections.map((s: SectionContent) =>
         s.id === secId ? { ...s, visible: !s.visible } : s
       )
     }));
@@ -665,5 +667,5 @@ export class VisualHomeEditorComponent implements OnInit, AfterViewInit {
 
   handleSaveDraft(){this.isSaving.set(true);this.saveSuccess.set(false);this.cms.saveDraft(this.pageId()).subscribe({next:()=>{this.isSaving.set(false);this.saveSuccess.set(true);this.reloadPreview();},error:()=>this.isSaving.set(false)});}
 
-  handlePublish(){this.publishSuccess.set(false);this.cms.executePublishPipeline(this.pageId()).subscribe({next:()=>{this.publishSuccess.set(true);this.reloadPreview();},error:()=>this.publishSuccess.set(false)});}
+  handlePublish(){this.publishSuccess.set(false);this.backendSynced.set(false);this.cms.executePublishPipeline(this.pageId()).subscribe({next:()=>{this.backendSynced.set(true);this.publishSuccess.set(true);this.reloadPreview();},error:()=>{this.backendSynced.set(false);this.publishSuccess.set(false);}});}
 }

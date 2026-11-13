@@ -14,7 +14,9 @@ async function bootstrap() {
         console.warn(`[Shell] Remote micro-frontends still initializing (attempt ${attempt}/${maxRetries}). Retrying in 2s...`);
         await new Promise(r => setTimeout(r, 2000));
       } else {
-        console.error('[Shell] Failed to initialize federation after retries:', err);
+        console.warn('[Shell] Could not initialize all remote micro-frontends; booting with local fallbacks.');
+        await import('./bootstrap');
+        return;
       }
     }
   }

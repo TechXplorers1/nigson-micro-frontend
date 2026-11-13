@@ -17,7 +17,9 @@ export function mapStaffProducts(products: any[], balances: any[]): AdminProduct
     const sku = product.skus?.[0];
     const images = (product.assets ?? []).map((asset: any) => asset.url).filter(Boolean);
     const skuCode = sku?.code ?? '';
-    const initialPrice = 0;
+    const specs = product.specifications || {};
+    const specPrice = specs['starting_price'] ? Number(specs['starting_price']) : 0;
+    const initialPrice = (!isNaN(specPrice) && specPrice > 0) ? specPrice : 0;
     return {
       id: product.id,
       version: product.version,
@@ -32,6 +34,9 @@ export function mapStaffProducts(products: any[], balances: any[]): AdminProduct
       brand: product.brand?.name ?? '',
       price: initialPrice,
       retail: initialPrice,
+      wholesale: specs['wholesale_rate'] ? Number(specs['wholesale_rate']) : (initialPrice > 0 ? Math.round(initialPrice * 0.85) : undefined),
+      distributor: specs['distributor_rate'] ? Number(specs['distributor_rate']) : (initialPrice > 0 ? Math.round(initialPrice * 0.70) : undefined),
+      priceSubtitle: specs['price_subtitle'] || undefined,
       desc: product.description ?? '',
       image: images[0] ?? '',
       images,

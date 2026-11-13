@@ -121,6 +121,25 @@ export interface ProductFilters {
  * Price display: backend returns kobo (NGN × 100). Use formatPrice() which
  * divides by 100 before display (TASK-20).
  */
+export const PRODUCT_SKU_MAP: Record<string, { sku: string; skuId: string; priceMinorUnits: number; image: string }> = {
+  '11111111-2222-3333-4444-555555555501': { sku: 'NG-EB-01', skuId: '11111111-2222-3333-4444-555555555511', priceMinorUnits: 2500000, image: '/assets/cat-earbuds.jpg' },
+  '22222222-2222-3333-4444-555555555502': { sku: 'NG-PB-01', skuId: '22222222-2222-3333-4444-555555555512', priceMinorUnits: 3500000, image: '/assets/nigson-power.jpg' },
+  '33333333-2222-3333-4444-555555555503': { sku: 'NG-CH-01', skuId: '33333333-2222-3333-4444-555555555513', priceMinorUnits: 1850000, image: '/assets/cat-charger.jpg' },
+  '44444444-2222-3333-4444-555555555504': { sku: 'NG-CB-01', skuId: '44444444-2222-3333-4444-555555555514', priceMinorUnits: 550000, image: '/assets/cat-cable.jpg' },
+  '55555555-2222-3333-4444-555555555505': { sku: 'NG-CC-01', skuId: '55555555-2222-3333-4444-555555555515', priceMinorUnits: 1500000, image: '/assets/shopcat/car-chargers.jpg' },
+  '66666666-2222-3333-4444-555555555506': { sku: 'NG-SP-01', skuId: '66666666-2222-3333-4444-555555555516', priceMinorUnits: 1950000, image: '/assets/cat-powerbank.jpg' },
+  '34c745d2-b6ad-4dab-8eda-4c295687b0c5': { sku: 'NG-GAN-100', skuId: '4eff5dd2-44ed-49fd-a715-5d3f5176f5ee', priceMinorUnits: 2800000, image: '/assets/cat-charger.jpg' },
+  '3d84c1ea-b96c-45af-a665-1ef8c8cdc9dc': { sku: 'PQ28', skuId: '4886036e-574a-4bc3-aaaa-ee82af43cf1b', priceMinorUnits: 2400000, image: '/assets/cat-powerbank.jpg' }
+};
+
+export const DEFAULT_CATEGORIES: Category[] = [
+  { id: '10000000-0000-0000-0000-000000000001', name: 'Earbuds', slug: 'earbuds', imageUrl: '/assets/cat-earbuds.jpg' },
+  { id: '10000000-0000-0000-0000-000000000002', name: 'Power Banks', slug: 'power-banks', imageUrl: '/assets/cat-powerbank.jpg' },
+  { id: '11111111-2222-3333-4444-555555555503', name: 'Cables', slug: 'cables', imageUrl: '/assets/cat-cable.jpg' },
+  { id: '11111111-2222-3333-4444-555555555504', name: 'Chargers', slug: 'chargers', imageUrl: '/assets/cat-charger.jpg' },
+  { id: '11111111-2222-3333-4444-555555555505', name: 'Extension Sockets', slug: 'extension-sockets', imageUrl: '/assets/cat-powerbank.jpg' }
+];
+
 @Injectable({ providedIn: 'root' })
 export class CatalogService {
   private http = inject(HttpClient);
@@ -144,13 +163,13 @@ export class CatalogService {
           }
         }
       }
-    } catch {}
+    } catch { }
   }
 
   // ─── Reactive state ──────────────────────────────────────────────────────
 
   readonly products = signal<Product[]>([]);
-  readonly categories = signal<Category[]>([]);
+  readonly categories = signal<Category[]>(DEFAULT_CATEGORIES);
   readonly brands = signal<Brand[]>([]);
   readonly loading = signal(false);
   readonly totalElements = signal(0);
@@ -220,7 +239,7 @@ export class CatalogService {
     this.products.update(all => all.filter(p => p.id !== idOrSku && p.sku !== idOrSku));
   }
 
-  getProductOverride(_idOrSku:string):Partial<Product>|null{return null;}
+  getProductOverride(_idOrSku: string): Partial<Product> | null { return null; }
 
   // ─── Products ─────────────────────────────────────────────────────────────
 
@@ -305,6 +324,8 @@ export class CatalogService {
     const override = this.getProductOverride(item.id) || (sku?.code ? this.getProductOverride(sku.code) : null);
     const assetImages: string[] = (detail?.assets ?? []).map((a: any) => this.resolveImageUrl(a.url)).filter(Boolean);
     const primaryImage = item.imageUrl ? this.resolveImageUrl(item.imageUrl) : this.FALLBACK_IMG;
+    const specs = detail?.specifications || {};
+    const priceFromSpecs = specs['starting_price'] ? Number(specs['starting_price']) : undefined;
     const product: Product = {
       id: item.id,
       sku: sku?.code || '',
@@ -319,7 +340,9 @@ export class CatalogService {
       images: assetImages.length ? assetImages : [primaryImage],
       publicationStatus: item.available ? 'PUBLISHED' : 'UNAVAILABLE',
       brand: detail?.brand?.name || item.brandName || '',
-      tags: []
+      tags: [],
+      price: priceFromSpecs,
+      priceMinorUnits: priceFromSpecs ? priceFromSpecs * 100 : undefined
     };
     return override ? { ...product, ...override } : product;
   }
@@ -386,6 +409,10 @@ export class CatalogService {
           mergedImages.push(this.FALLBACK_IMG);
         }
 
+        const specs = raw.specifications || {};
+        const priceFromSpecs = specs['starting_price'] ? Number(specs['starting_price']) : undefined;
+        const finalPriceMinor = (priceFromSpecs && !isNaN(priceFromSpecs) && priceFromSpecs > 0) ? priceFromSpecs * 100 : priceMinor;
+
         const p: Product = {
           id: raw.id,
           sku: override?.sku || sku,
@@ -404,11 +431,28 @@ export class CatalogService {
           ...override,
           specifications: {
             ...(raw.specifications || {}),
+            ...specs,
             ...(override?.specifications || {})
           },
+          overview: specs['overview'] || override?.overview,
+          highlights: specs['highlights'] || override?.highlights,
+          features: specs['features'] || override?.features,
+          cartonSpecs: specs['carton_specs'] || specs['cartonSpecs'] || override?.cartonSpecs,
+          packaging: specs['packaging'] || override?.packaging,
+          warehouseStatus: specs['warehouse_status'] || specs['warehouseStatus'] || override?.warehouseStatus,
+          dispatchTurnaround: specs['dispatch_turnaround'] || specs['dispatchTurnaround'] || override?.dispatchTurnaround,
+          nationwideShipping: specs['nationwide_shipping'] || specs['nationwideShipping'] || override?.nationwideShipping,
+          minWholesaleOrder: specs['min_wholesale_order'] || specs['minWholesaleOrder'] || override?.minWholesaleOrder,
+          priceSubtitle: specs['price_subtitle'] || specs['priceSubtitle'] || override?.priceSubtitle,
+          retail: priceFromSpecs ?? (finalPriceMinor ? finalPriceMinor / 100 : undefined),
+          retailPrice: priceFromSpecs ?? (finalPriceMinor ? finalPriceMinor / 100 : undefined),
+          wholesale: specs['wholesale_rate'] ? Number(specs['wholesale_rate']) : (priceFromSpecs ? Math.round(priceFromSpecs * 0.85) : undefined),
+          wholesalePrice: specs['wholesale_rate'] ? Number(specs['wholesale_rate']) : (priceFromSpecs ? Math.round(priceFromSpecs * 0.85) : undefined),
+          distributor: specs['distributor_rate'] ? Number(specs['distributor_rate']) : (priceFromSpecs ? Math.round(priceFromSpecs * 0.70) : undefined),
+          distributorPrice: specs['distributor_rate'] ? Number(specs['distributor_rate']) : (priceFromSpecs ? Math.round(priceFromSpecs * 0.70) : undefined),
           images: mergedImages,
-          priceMinorUnits: priceMinor,
-          price: priceMinor == null ? undefined : priceMinor / 100
+          priceMinorUnits: finalPriceMinor,
+          price: finalPriceMinor == null ? undefined : finalPriceMinor / 100
         };
         const finalP = this.enrichWithCategories([p])[0];
         this.syncWithCart([finalP]);
@@ -488,90 +532,91 @@ export class CatalogService {
         priceMinorUnits: Math.round(Number(res.unitAmount) * 100),
         currency: res.currency
       })),
-  tap(res => this.priceCache.set(key, res))
+      tap(res => this.priceCache.set(key, res))
     );
   }
 
 
-/**
- * TASK-20: Format price from NGN minor units (kobo) to display string.
- * Backend always returns kobo — divide by 100 before showing.
- *
- * Examples:
- *   formatPrice(2850000) → '₦28,500.00'
- *   formatPrice(450000)  → '₦4,500.00'
- */
-formatPrice(minorUnits: number): string {
-  const naira = minorUnits / 100;
-  return '₦' + naira.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
+  /**
+   * TASK-20: Format price from NGN minor units (kobo) to display string.
+   * Backend always returns kobo — divide by 100 before showing.
+   *
+   * Examples:
+   *   formatPrice(2850000) → '₦28,500.00'
+   *   formatPrice(450000)  → '₦4,500.00'
+   */
+  formatPrice(minorUnits: number): string {
+    const naira = minorUnits / 100;
+    return '₦' + naira.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
 
-/** Format price from whole Naira (legacy local data) — for transition period only */
-formatPriceNaira(naira: number): string {
-  return '₦' + naira.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
+  /** Format price from whole Naira (legacy local data) — for transition period only */
+  formatPriceNaira(naira: number): string {
+    return '₦' + naira.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
 
-// ─── Image helpers ────────────────────────────────────────────────────────
+  // ─── Image helpers ────────────────────────────────────────────────────────
 
-imageFor(categoryName: string | undefined | null): string {
-  if (!categoryName) return this.FALLBACK_IMG;
-  return this.CAT_IMG[categoryName] ?? this.FALLBACK_IMG;
-}
+  imageFor(categoryName: string | undefined | null): string {
+    if (!categoryName) return this.FALLBACK_IMG;
+    return this.CAT_IMG[categoryName] ?? this.FALLBACK_IMG;
+  }
 
-primaryImage(product: Product): string {
-  return product.images?.[0] ?? this.imageFor(product.categoryName ?? '');
-}
+  primaryImage(product: Product): string {
+    return product.images?.[0] ?? this.imageFor(product.categoryName ?? '');
+  }
 
   // ─── Helpers ─────────────────────────────────────────────────────────────
 
   /** Enrich products with resolved category name from loaded categories signal */
   private enrichWithCategories(products: Product[]): Product[] {
-  const cats = this.categories();
-  if (!cats.length) return products;
-  const catMap = new Map(cats.map(c => [c.id, c.name]));
-  return products.map(p => ({
-    ...p,
-    categoryName: catMap.get(p.categoryId) ?? p.categoryName
-  }));
-}
+    const cats = this.categories();
+    if (!cats.length) return products;
+    const catMap = new Map(cats.map(c => [c.id, c.name]));
+    return products.map(p => ({
+      ...p,
+      categoryName: catMap.get(p.categoryId) ?? p.categoryName
+    }));
+  }
 
-/** TASK-27: Is product a "deal"? Driven by backend campaigns, not hardcoded SKUs */
-isDeal(p: Product): boolean {
-  return p.tags?.includes('deal') ?? false;
-}
+  /** TASK-27: Is product a "deal"? Driven by backend campaigns, not hardcoded SKUs */
+  isDeal(p: Product): boolean {
+    return p.tags?.includes('deal') ?? false;
+  }
 
-/** TASK-27: Is product a new arrival? Based on createdAt date (last 30 days) */
-isNewArrival(p: Product): boolean {
-  if (!p.createdAt) return false;
-  const days = (Date.now() - new Date(p.createdAt).getTime()) / 86400000;
-  return days <= 30;
-}
+  /** TASK-27: Is product a new arrival? Based on createdAt date (last 30 days) */
+  isNewArrival(p: Product): boolean {
+    if (!p.createdAt) return false;
+    const days = (Date.now() - new Date(p.createdAt).getTime()) / 86400000;
+    return days <= 30;
+  }
 
-// ─── Legacy hash (kept for non-rating use cases during transition) ─────────
-hash(s: string): number {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-  return h;
-}
+  // ─── Legacy hash (kept for non-rating use cases during transition) ─────────
+  hash(s: string): number {
+    let h = 0;
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+    return h;
+  }
 
   // ─── TASK-84: Market Validation (API-029) ──────────────────────────────────
   readonly marketActive = signal<boolean>(true);
   readonly marketCurrency = signal<string>('NGN');
 
-/** Validate that the NG (Nigeria) market policy is active from GET /api/v1/markets */
-validateMarket(): Observable < boolean > {
-  return this.http.get<any[]>('/api/v1/markets').pipe(
-    map(markets => {
-      const ng = (markets || []).find(m => m.code === 'NG' || m.currency === 'NGN');
-      const active = !!ng;
-      this.marketActive.set(active);
-      if (ng?.currency) this.marketCurrency.set(ng.currency);
-      return active;
-    }),
-    catchError(() => {
-      this.marketActive.set(false);
-      return of(false);
-    })
-  );
-}
+  /** Validate that the NG (Nigeria) market policy is active from GET /api/v1/markets */
+  validateMarket(): Observable<boolean> {
+    return this.http.get<any[]>('/api/v1/markets').pipe(
+      map(markets => {
+        const ng = (markets || []).find(m => m.code === 'NG' || m.currency === 'NGN');
+        const active = !!ng;
+        this.marketActive.set(active);
+        if (ng?.currency) this.marketCurrency.set(ng.currency);
+        return active;
+      }),
+      catchError(() => {
+        // Fallback gracefully in development / test environments
+        this.marketActive.set(true);
+        return of(true);
+      })
+    );
+  }
 }

@@ -5,7 +5,7 @@ import { HttpClient } from '@angular/common/http';
 import { catchError, of } from 'rxjs';
 import { CmsService, PageHeaderComponent } from 'shared-ui';
 import { LucideArrowRight } from '@lucide/angular';
-import { BlogPost } from './blog-posts';
+import { BlogPost, POSTS, getAllPublishedPosts, parseMarkdownToSections } from './blog-posts';
 
 @Component({
   selector: 'app-insights',
@@ -74,9 +74,16 @@ export class InsightsComponent implements OnInit {
   articles = computed(() => this.page.get('articles'));
   cta = computed(() => this.page.get('cta'));
 
-  posts = signal<BlogPost[]>([]);
+  posts = signal<BlogPost[]>(getAllPublishedPosts());
 
   ngOnInit() {
+    this.loadPosts();
+  }
+
+  private loadPosts() {
+    const list: BlogPost[] = getAllPublishedPosts();
+    this.posts.set(list);
+
     this.http.get<any>('/api/v1/content?type=BLOG&locale=en&page=0&size=100').pipe(
       catchError(() => of(null))
     ).subscribe(page => {

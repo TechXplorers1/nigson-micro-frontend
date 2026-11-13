@@ -73,10 +73,10 @@ import { RouterLink } from '@angular/router';
               </td>
               <td class="px-6 py-4 text-right">
                 <div class="flex items-center justify-end gap-1.5 transition-opacity">
-                  <button class="grid h-8 w-8 place-items-center rounded-full border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all shadow-sm" title="View">
+                  <a [routerLink]="['/products', p.id || p.sku]" target="_blank" class="grid h-8 w-8 place-items-center rounded-full border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all shadow-sm" title="View on store">
                     <svg lucideEye class="h-3.5 w-3.5"></svg>
-                  </button>
-                  <a [routerLink]="[p.sku || p.id, 'edit']" class="grid h-8 w-8 place-items-center rounded-full border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all shadow-sm" title="Edit">
+                  </a>
+                  <a [routerLink]="[p.id || p.sku, 'edit']" class="grid h-8 w-8 place-items-center rounded-full border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all shadow-sm" title="Edit">
                     <svg lucidePencil class="h-3.5 w-3.5"></svg>
                   </a>
                   <button (click)="deleteProduct(p)" class="grid h-8 w-8 place-items-center rounded-full border border-red-100 bg-red-50 text-red-500 hover:bg-red-100 hover:text-red-600 transition-all shadow-sm" title="Delete">

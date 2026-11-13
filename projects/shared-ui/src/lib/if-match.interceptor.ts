@@ -14,17 +14,34 @@ function urlPath(url: string): string {
   }
 }
 
+/**
+ * Ensures ETag is enclosed in strict double quotes as required by Spring Boot:
+ * ApiValues.version() checks: value.matches("\"(0|[1-9][0-9]{0,18})\"")
+ */
+function quoteEtag(val: string): string {
+  const trimmed = val.trim();
+  if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
+    return trimmed;
+  }
+  return `"${trimmed.replace(/^"+|"+$/g, '')}"`;
+}
+
 export const ifMatchInterceptor: HttpInterceptorFn = (req, next) => {
   // Do not attach to Keycloak
   if (req.url.includes(':8180') || req.url.includes('/realms/') || req.url.includes('/admin/realms/')) {
     return next(req);
   }
 
-  // --- Request side: attach If-Match for mutations ---
-  if (VERSIONED_METHODS.has(req.method) && !req.headers.has('If-Match')) {
-    const cached = etagCache.get(urlPath(req.url));
-    if (cached) {
-      req = req.clone({ headers: req.headers.set('If-Match', cached) });
+  // --- Request side: attach or normalize If-Match for mutations ---
+  if (VERSIONED_METHODS.has(req.method)) {
+    const existing = req.headers.get('If-Match');
+    if (existing) {
+      req = req.clone({ headers: req.headers.set('If-Match', quoteEtag(existing)) });
+    } else {
+      const cached = etagCache.get(urlPath(req.url));
+      if (cached) {
+        req = req.clone({ headers: req.headers.set('If-Match', quoteEtag(cached)) });
+      }
     }
   }
 
@@ -34,12 +51,26 @@ export const ifMatchInterceptor: HttpInterceptorFn = (req, next) => {
       if (event instanceof HttpResponse) {
         const etag = event.headers.get('ETag');
         if (etag) {
-          etagCache.set(urlPath(event.url ?? req.url), etag);
+          const quoted = etag.startsWith('"') ? etag : `"${etag}"`;
+          etagCache.set(urlPath(event.url ?? req.url), quoted);
         }
-        if (event.body && typeof event.body === 'object') {
+        if (Array.isArray(event.body)) {
+          const basePath = urlPath(event.url ?? req.url);
+          for (const item of event.body) {
+            if (item && typeof item === 'object' && item.id && (typeof item.version === 'number' || typeof item.version === 'string')) {
+              const v = String(item.version);
+              etagCache.set(`${basePath}/${item.id}`, v.startsWith('"') ? v : `"${v}"`);
+            }
+          }
+        } else if (event.body && typeof event.body === 'object') {
           const body = event.body as Record<string, unknown>;
           if (typeof body['version'] === 'number' || typeof body['version'] === 'string') {
-            etagCache.set(urlPath(event.url ?? req.url), String(body['version']));
+            const v = String(body['version']);
+            const quoted = v.startsWith('"') ? v : `"${v}"`;
+            etagCache.set(urlPath(event.url ?? req.url), quoted);
+            if (body['id']) {
+              etagCache.set(`${urlPath(event.url ?? req.url)}/${body['id']}`, quoted);
+            }
           }
         }
       }

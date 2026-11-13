@@ -154,6 +154,284 @@ export type StockLog = { id: string; sku: string; product: string; change: numbe
 
 export type Activity = { id: string; text: string; date: string };
 
+function getInitialStockLog(): StockLog[] {
+  try {
+    const saved = typeof localStorage !== 'undefined' ? localStorage.getItem('nigson_stock_movements') : null;
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch { }
+
+  return [
+    { id: "sl_init_1", sku: "CHAVEENPHONES", product: "chaveen phones", change: 100, qty: 100, reason: "Opening Stock", date: "2026-11-05T06:40:00.000Z", by: "Nigson Administrator", supplier: "Nigson HQ", ref: "INIT-CHAVEEN" },
+    { id: "sl_init_2", sku: "DEMO-EL-01-01", product: "Demo True Wireless Earbuds", change: 18, qty: 18, reason: "Opening Stock", date: "2026-11-04T08:20:00.000Z", by: "System Bootstrap", supplier: "Shenzhen Factory", ref: "INIT-0101" },
+    { id: "sl_init_3", sku: "DEMO-EL-01-02", product: "Demo Wireless Charging Stand", change: 9, qty: 9, reason: "Opening Stock", date: "2026-11-04T08:20:00.000Z", by: "System Bootstrap", supplier: "Shenzhen Factory", ref: "INIT-0102" },
+    { id: "sl_init_4", sku: "DEMO-EL-01-03", product: "Demo Braided USB-C Cable (2m)", change: 24, qty: 24, reason: "Opening Stock", date: "2026-11-04T08:20:00.000Z", by: "System Bootstrap", supplier: "Shenzhen Factory", ref: "INIT-0103" },
+    { id: "sl_init_5", sku: "DEMO-EL-02-01", product: "Demo Noise-Cancelling Headphones", change: 35, qty: 35, reason: "Opening Stock", date: "2026-11-04T08:20:00.000Z", by: "System Bootstrap", supplier: "Shenzhen Factory", ref: "INIT-0201" },
+    { id: "sl_init_6", sku: "DEMO-EL-02-02", product: "Demo Smart Fitness Tracker", change: 12, qty: 12, reason: "Opening Stock", date: "2026-11-04T08:20:00.000Z", by: "System Bootstrap", supplier: "Local Distributor", ref: "INIT-0202" },
+    { id: "sl_init_7", sku: "DEMO-EL-03-01", product: "Demo 65W GaN Fast Charger", change: 16, qty: 16, reason: "Opening Stock", date: "2026-11-04T08:20:00.000Z", by: "System Bootstrap", supplier: "Nigson HQ", ref: "INIT-0301" },
+    { id: "sl_init_8", sku: "DEMO-EL-03-03", product: "Demo Heavy-Duty Power Bank 20000mAh", change: 22, qty: 22, reason: "Opening Stock", date: "2026-11-04T08:20:00.000Z", by: "System Bootstrap", supplier: "Nigson HQ", ref: "INIT-0303" },
+    { id: "sl_init_9", sku: "DEMO-EL-04-01", product: "Demo Magnetic Phone Mount", change: 28, qty: 28, reason: "Opening Stock", date: "2026-11-04T08:20:00.000Z", by: "System Bootstrap", supplier: "Local Distributor", ref: "INIT-0401" },
+    { id: "sl_init_10", sku: "DEMO-EL-04-02", product: "Demo Bluetooth Car FM Transmitter", change: 45, qty: 45, reason: "Opening Stock", date: "2026-11-04T08:20:00.000Z", by: "System Bootstrap", supplier: "Local Distributor", ref: "INIT-0402" },
+    { id: "sl_init_11", sku: "DEMO-EL-07-03", product: "Demo Surge Protector Extension", change: 60, qty: 60, reason: "Opening Stock", date: "2026-11-04T08:20:00.000Z", by: "System Bootstrap", supplier: "Nigson HQ", ref: "INIT-0703" }
+  ];
+}
+
+const LS_CUSTOMERS = 'nigson_customers';
+
+const DEFAULT_CUSTOMERS: AdminCustomer[] = [
+  {
+    id: "cust-1",
+    name: "Kene Nigson",
+    email: "kene@example.com",
+    phone: "+234 801 234 5678",
+    location: "Victoria Island, Lagos",
+    joined: "2026-07-15T09:00:00Z",
+    orders: 3,
+    spend: 285000,
+    saved: 4,
+    quotes: 1,
+    status: "Active"
+  },
+  {
+    id: "cust-2",
+    name: "Chaveen Reddy",
+    email: "chaveenreddy100@gmail.com",
+    phone: "+234 802 345 6789",
+    location: "Maitama, Abuja",
+    joined: "2026-08-01T11:30:00Z",
+    orders: 2,
+    spend: 145000,
+    saved: 2,
+    quotes: 0,
+    status: "Active"
+  },
+  {
+    id: "cust-3",
+    name: "E2E Customer",
+    email: "e2e@nigson.ng",
+    phone: "+234 803 456 7890",
+    location: "Port Harcourt, Rivers",
+    joined: "2026-08-20T14:15:00Z",
+    orders: 4,
+    spend: 420000,
+    saved: 6,
+    quotes: 2,
+    status: "Active"
+  },
+  {
+    id: "cust-4",
+    name: "Retail Store A (Ikeja Hub)",
+    email: "retaila@example.invalid",
+    phone: "+234 805 678 1234",
+    location: "Ikeja, Lagos",
+    joined: "2026-09-05T10:00:00Z",
+    orders: 5,
+    spend: 650000,
+    saved: 3,
+    quotes: 1,
+    status: "Active"
+  },
+  {
+    id: "cust-5",
+    name: "King Enterprise",
+    email: "king@gmail.com",
+    phone: "+234 807 890 2345",
+    location: "Kano, Nigeria",
+    joined: "2026-09-18T16:20:00Z",
+    orders: 1,
+    spend: 95000,
+    saved: 1,
+    quotes: 0,
+    status: "Active"
+  },
+  {
+    id: "cust-6",
+    name: "Zarina Wholesale Group",
+    email: "wholesale@nigson.ng",
+    phone: "+234 809 123 4567",
+    location: "Onitsha, Anambra",
+    joined: "2026-10-02T13:45:00Z",
+    orders: 3,
+    spend: 510000,
+    saved: 5,
+    quotes: 3,
+    status: "Active"
+  }
+];
+
+function isStaffOrFixture(email?: string, name?: string): boolean {
+  const e = (email || '').toLowerCase().trim();
+  const n = (name || '').toLowerCase().trim();
+  return (
+    e.includes('admin@example.invalid') ||
+    e.includes('operations@example.invalid') ||
+    e.includes('analyst@example.invalid') ||
+    n.includes('admin local fixture') ||
+    n.includes('local fixture')
+  );
+}
+
+function getInitialCustomers(): AdminCustomer[] {
+  try {
+    const raw = localStorage.getItem(LS_CUSTOMERS);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const filtered = parsed.filter((c: any) => !isStaffOrFixture(c.email, c.name));
+        if (filtered.length > 0) return filtered;
+      }
+    }
+  } catch { }
+  return [...DEFAULT_CUSTOMERS];
+}
+
+const LS_ADMINS = 'nigson_admin_users';
+const LS_ADMIN_OVERRIDES = 'nigson_admin_user_overrides';
+
+function getAdminOverrides(): Record<string, Partial<AdminUser>> {
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(LS_ADMIN_OVERRIDES) : null;
+    if (raw) return JSON.parse(raw);
+  } catch { }
+  return {};
+}
+
+function saveAdminOverride(email: string, user: Partial<AdminUser>) {
+  try {
+    const current = getAdminOverrides();
+    current[email.toLowerCase()] = user;
+    localStorage.setItem(LS_ADMIN_OVERRIDES, JSON.stringify(current));
+  } catch { }
+}
+
+function clearAdminOverride(email: string) {
+  try {
+    const current = getAdminOverrides();
+    delete current[email.toLowerCase()];
+    localStorage.setItem(LS_ADMIN_OVERRIDES, JSON.stringify(current));
+  } catch { }
+}
+
+function getInitialAdmins(): AdminUser[] {
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(LS_ADMINS) : null;
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch { }
+  return [
+    { id: "43c829a8-5ddc-5d8a-be64-557f8998c1a9", name: "admin Local Fixture", email: "admin@example.invalid", roleId: "ADMIN", status: "Active", lastLogin: new Date().toISOString(), version: 1 },
+    { id: "20f23ef1-2395-5c7e-abe7-00e07dcde379", name: "Sales Specialist", email: "sales@example.invalid", roleId: "SALES", status: "Active", lastLogin: new Date().toISOString(), version: 1 },
+    { id: "5cb1caac-6970-5ef9-99c6-8d3be9d2d793", name: "Operations Manager", email: "operations@example.invalid", roleId: "OPERATIONS", status: "Active", lastLogin: new Date().toISOString(), version: 1 },
+    { id: "ef88a0dc-27c1-5ef9-b53e-a745d253d5cc", name: "Finance Officer", email: "financea@example.invalid", roleId: "FINANCE", status: "Active", lastLogin: new Date().toISOString(), version: 1 },
+    { id: "3c2b8f13-37c3-5764-a6ea-f1085167acb4", name: "Data Analyst", email: "analyst@example.invalid", roleId: "ANALYST", status: "Active", lastLogin: new Date().toISOString(), version: 1 },
+    { id: "au_2", name: "Chaveen Reddy", email: "chaveenreddy100@gmail.com", roleId: "ADMIN", status: "Active", lastLogin: new Date().toISOString(), version: 1 },
+    { id: "au_3", name: "chaveen Customer", email: "chaveen@gmail.com", roleId: "ADMIN", status: "Active", lastLogin: new Date().toISOString(), version: 1 },
+  ];
+}
+
+export const SEED_PRODUCTS: AdminProduct[] = [
+  { id: '5570995e-1b59-5592-ba5c-fa95a0c02c20', skuId: 'ecac9622-ee78-5c52-8eb5-7c244e055d03', sku: 'NS03', name: 'NS03 Wireless Earbuds (TWS)', category: 'Earbuds', brand: 'Nigson', price: 18500, retail: 18500, cost: 12000, stock: 45, reserved: 2, status: 'Active', desc: 'High-fidelity Bluetooth wireless earbuds with clear bass and ergonomic fit.', image: '/assets/cat-earbuds.jpg', images: ['/assets/cat-earbuds.jpg'], rating: 4.8, lowLevel: 10 },
+  { id: '8ba363e8-815a-52ee-be26-74da166eba83', skuId: 'c52cf637-25d0-5eb6-862a-e737389c7ad4', sku: 'NS06', name: 'NS06 ANC/ENC Wireless Earbuds', category: 'Earbuds', brand: 'Nigson', price: 28000, retail: 28000, cost: 18000, stock: 32, reserved: 1, status: 'Active', desc: 'Active noise cancellation earbuds with environmental noise suppression microphone.', image: '/assets/cat-earbuds.jpg', images: ['/assets/cat-earbuds.jpg'], rating: 4.9, lowLevel: 10 },
+  { id: '41934e70-179f-5c0a-9498-28c8b6a4fd9f', skuId: '63573bb9-a11d-542a-97aa-ca6cb2c92290', sku: 'NS107', name: 'NS107 High-Power Car Charger with Retractable Cable', category: 'Chargers', brand: 'Nigson', price: 12500, retail: 12500, cost: 8000, stock: 28, reserved: 0, status: 'Active', desc: 'Dual-port fast vehicle charger with self-retracting high-durability charging lead.', image: '/assets/cat-charger.jpg', images: ['/assets/cat-charger.jpg'], rating: 4.7, lowLevel: 10 },
+  { id: 'bff4b7e3-8e19-566b-9c95-bc941390f84f', skuId: '4907f781-8654-5559-88cf-1ce35df2cb15', sku: 'NS211C', name: 'NS211C Type-C to Type-C PD65W Cable', category: 'Cables', brand: 'Nigson', price: 4500, retail: 4500, cost: 2500, stock: 120, reserved: 5, status: 'Active', desc: 'Braided 65W Power Delivery fast charging cable with reinforced alloy connectors.', image: '/assets/cat-cable.jpg', images: ['/assets/cat-cable.jpg'], rating: 4.9, lowLevel: 20 },
+  { id: '3bd11da9-6a93-5f56-ae87-8afdad3d52ab', skuId: 'c3002b2f-4326-59ec-b460-09ba406bc800', sku: 'NS211i', name: 'NS211i Type-C to Lightning PD30W Cable', category: 'Cables', brand: 'Nigson', price: 4500, retail: 4500, cost: 2500, stock: 95, reserved: 4, status: 'Active', desc: 'Fast Lightning charging and data cable compatible with Apple devices.', image: '/assets/cat-cable.jpg', images: ['/assets/cat-cable.jpg'], rating: 4.8, lowLevel: 20 },
+  { id: '1908dc43-accf-5578-870c-ec519d73367c', skuId: 'f65f2023-ef23-53ca-bfa2-8b40877ed658', sku: 'NS25', name: 'NS25 4-in-1 Charging Cable', category: 'Cables', brand: 'Nigson', price: 6500, retail: 6500, cost: 4000, stock: 80, reserved: 2, status: 'Active', desc: 'Universal 4-connector heavy-duty charging lead for multiple mobile phone models.', image: '/assets/cat-cable.jpg', images: ['/assets/cat-cable.jpg'], rating: 4.6, lowLevel: 15 },
+  { id: '51c9cd3c-5d6c-5049-b821-d80c7c512305', skuId: '812f8742-6c94-5b92-a313-f0c0fdee9559', sku: 'NS2526C', name: 'NS2526C High Power Fast Wall Charger, GaN65W', category: 'Chargers', brand: 'Nigson', price: 16000, retail: 16000, cost: 10500, stock: 54, reserved: 3, status: 'Active', desc: 'GaN technology 65W compact travel wall adapter with multi-voltage safety protection.', image: '/assets/cat-charger.jpg', images: ['/assets/cat-charger.jpg'], rating: 4.9, lowLevel: 10 },
+  { id: '1fc9d7b4-1716-54fb-905a-ea5a80620a07', skuId: 'b5cf3ecb-5ed0-5e6f-9cea-4da88f91baa3', sku: 'NS2618', name: 'NS2618 All-in-One Universal Multiway Adapter, GaN65W', category: 'Chargers', brand: 'Nigson', price: 22000, retail: 22000, cost: 14000, stock: 40, reserved: 1, status: 'Active', desc: 'Worldwide travel plug converter with integrated 65W GaN charging sockets.', image: '/assets/cat-charger.jpg', images: ['/assets/cat-charger.jpg'], rating: 4.8, lowLevel: 10 },
+  { id: '28cd1e1a-bc40-5728-bf56-4c785b8613f2', skuId: 'c4f089fb-7a27-5b3e-bc02-f9565d5653ff', sku: 'NS3416', name: 'NS3416 65W GaN Power Socket', category: 'Extension Sockets', brand: 'Nigson', price: 29500, retail: 29500, cost: 19000, stock: 35, reserved: 2, status: 'Active', desc: 'Heavy-duty multi-gang extension hub with built-in high power USB-C fast ports.', image: '/assets/cat-powerbank.jpg', images: ['/assets/cat-powerbank.jpg'], rating: 4.7, lowLevel: 10 },
+  { id: 'cd9acab9-5bce-5274-a051-773e756d1b0e', skuId: '51c2d6f5-82ae-5eae-8f5d-5975fd7318fc', sku: 'NS3604C', name: 'NS3604C Multi-Socket Extension Box', category: 'Extension Sockets', brand: 'Nigson', price: 34000, retail: 34000, cost: 22000, stock: 25, reserved: 0, status: 'Active', desc: 'Overload and surge protected power distributor suitable for commercial and home setups.', image: '/assets/cat-powerbank.jpg', images: ['/assets/cat-powerbank.jpg'], rating: 4.8, lowLevel: 10 },
+  { id: '95be469d-489f-5d09-9308-18f6941e4d41', skuId: 'b9f0156b-c3d2-5bf6-8113-b88f83c01e6d', sku: 'NS4', name: 'NS4 Home Charger', category: 'Chargers', brand: 'Nigson', price: 8500, retail: 8500, cost: 5000, stock: 65, reserved: 4, status: 'Active', desc: 'Standard high-efficiency home wall charger with short-circuit protection.', image: '/assets/cat-charger.jpg', images: ['/assets/cat-charger.jpg'], rating: 4.6, lowLevel: 15 },
+  { id: '240af070-7cac-5840-93f7-731aff6bf976', skuId: 'e5e75b4f-26fa-56bd-a68f-c10aa50082f3', sku: 'NS6', name: 'NS6 Large Motion-Activated Cabinet Light (410MM)', category: 'Motion-Activated Lights', brand: 'Nigson', price: 14500, retail: 14500, cost: 9000, stock: 42, reserved: 1, status: 'Active', desc: 'Slim magnetic rechargeable PIR sensor strip light for closets, wardrobes and kitchens.', image: '/assets/hero-accessories.jpg', images: ['/assets/hero-accessories.jpg'], rating: 4.7, lowLevel: 10 },
+  { id: '82478136-b526-5238-94c9-d076af6ebc47', skuId: '4af2eb38-f4cc-5bc0-b182-01e667ed00b7', sku: 'NS6-1', name: 'NS6-1 Medium Motion-Activated Cabinet Light (220MM)', category: 'Motion-Activated Lights', brand: 'Nigson', price: 11500, retail: 11500, cost: 7200, stock: 38, reserved: 2, status: 'Active', desc: 'Compact rechargeable warm-light bar with automatic motion trigger.', image: '/assets/hero-accessories.jpg', images: ['/assets/hero-accessories.jpg'], rating: 4.8, lowLevel: 10 },
+  { id: '0a51dae9-2795-507b-84a6-100c06513332', skuId: '21d1fa9a-6d1e-54fb-98e0-72439394fe00', sku: 'NS901C', name: 'NS901C Type-C to Type-C Charging Cable', category: 'Cables', brand: 'Nigson', price: 3500, retail: 3500, cost: 2000, stock: 110, reserved: 6, status: 'Active', desc: 'Durable everyday USB Type-C sync and fast battery charging lead.', image: '/assets/cat-cable.jpg', images: ['/assets/cat-cable.jpg'], rating: 4.7, lowLevel: 25 },
+  { id: '0de50201-b6bf-5270-b7d4-79766c7f9447', skuId: '70bdf50e-781f-5578-9afb-bcf69125a1f3', sku: 'NS901i', name: 'NS901i Type-C to Lightning Charging Cable', category: 'Cables', brand: 'Nigson', price: 3500, retail: 3500, cost: 2000, stock: 85, reserved: 3, status: 'Active', desc: 'Everyday Lightning mobile cable with anti-tangle rubber housing.', image: '/assets/cat-cable.jpg', images: ['/assets/cat-cable.jpg'], rating: 4.6, lowLevel: 20 },
+  { id: '033336d7-5025-5112-9af2-726e6e02caf4', skuId: '49aca633-ca39-5771-aabd-0cd1448db881', sku: 'NS96U', name: 'NS96U 3-in-1 Charging Cable', category: 'Cables', brand: 'Nigson', price: 5500, retail: 5500, cost: 3200, stock: 75, reserved: 4, status: 'Active', desc: 'Triple connector lead supporting Lightning, USB-C and Micro-USB devices simultaneously.', image: '/assets/cat-cable.jpg', images: ['/assets/cat-cable.jpg'], rating: 4.8, lowLevel: 15 },
+  { id: 'fee9c518-4071-5aa7-a72b-6ed0ed1b83d3', skuId: '04ae2d72-94ab-5ff8-82a4-28272755ee75', sku: 'PQ19', name: 'PQ19 Power Bank, 10,000mAh', category: 'Power Banks', brand: 'Nigson', price: 19500, retail: 19500, cost: 12500, stock: 60, reserved: 3, status: 'Active', desc: 'Pocket-sized slim high density backup battery with dual output.', image: '/assets/cat-powerbank.jpg', images: ['/assets/cat-powerbank.jpg'], rating: 4.8, lowLevel: 15 },
+  { id: '1bac82ef-a37c-56b7-a290-afbddbd914a5', skuId: '75e0a2eb-54e6-552e-b99c-a956f8557592', sku: 'PQ20', name: 'PQ20 Power Bank, 20,000mAh', category: 'Power Banks', brand: 'Nigson', price: 28500, retail: 28500, cost: 18500, stock: 45, reserved: 2, status: 'Active', desc: 'Heavy-duty long endurance power bank with digital battery indicator.', image: '/assets/cat-powerbank.jpg', images: ['/assets/cat-powerbank.jpg'], rating: 4.9, lowLevel: 10 },
+  { id: '4ad4e90d-ec4e-5caa-f7ad88e19e29', skuId: '7faca25c-8831-5149-84e4-47e037580cac', sku: 'PQ28', name: 'PQ28 Magnetic Wireless Power Bank, 5,000mAh', category: 'Power Banks', brand: 'Nigson', price: 24000, retail: 24000, cost: 15000, stock: 30, reserved: 1, status: 'Active', desc: 'Snap-on MagSafe compatible wireless power bank for smartphones.', image: '/assets/cat-powerbank.jpg', images: ['/assets/cat-powerbank.jpg'], rating: 4.9, lowLevel: 10 },
+  { id: 'c7db7adb-726b-5173-a385-004b258ea128', skuId: '3e82bda0-2606-580f-98ef-a01e322d325a', sku: 'PQ30', name: 'PQ30 Power Bank, 30,000mAh', category: 'Power Banks', brand: 'Nigson', price: 38000, retail: 38000, cost: 25000, stock: 22, reserved: 1, status: 'Active', desc: 'High capacity multi-device charging station for frequent travelers.', image: '/assets/cat-powerbank.jpg', images: ['/assets/cat-powerbank.jpg'], rating: 4.7, lowLevel: 5 },
+  { id: 'c995e043-e1e8-5979-b4ea-e6d1dedc7322', skuId: '3882394e-69bd-5c71-9b14-fcf7a82481bd', sku: 'PQ50', name: 'PQ50 Power Bank, 50,000mAh', category: 'Power Banks', brand: 'Nigson', price: 55000, retail: 55000, cost: 37000, stock: 18, reserved: 0, status: 'Active', desc: 'Commercial grade ultra power bank with camping flashlight and fast DC/PD output.', image: '/assets/cat-powerbank.jpg', images: ['/assets/cat-powerbank.jpg'], rating: 4.9, lowLevel: 5 },
+  { id: '4351a029-79f9-57e0-94e8-466d7ad4ef19', skuId: 'ecbe959f-d3e9-5f25-8cb5-1718bf14972e', sku: 'ZS6', name: 'ZS6 Multi-Device Desktop Fast Charger', category: 'Chargers', brand: 'Nigson', price: 26000, retail: 26000, cost: 17000, stock: 25, reserved: 1, status: 'Active', desc: '6-port smart power workstation with organized desktop footprint.', image: '/assets/cat-charger.jpg', images: ['/assets/cat-charger.jpg'], rating: 4.8, lowLevel: 10 },
+  { id: 'fa096df5-7313-5a7a-aa01-4475ee45b98f', skuId: '0df9e4fb-2794-55fe-a1f9-d8977114b7e9', sku: 'ZS8', name: 'ZS8 Ultra-Fast GaN Travel Charger 65W', category: 'Chargers', brand: 'Nigson', price: 31000, retail: 31000, cost: 20000, stock: 30, reserved: 2, status: 'Active', desc: 'Compact dual-port 65W laptop and phone fast charging adapter.', image: '/assets/cat-charger.jpg', images: ['/assets/cat-charger.jpg'], rating: 4.9, lowLevel: 10 }
+];
+
+const LS_PRODUCTS = 'nigson_admin_products';
+
+function getInitialProducts(): AdminProduct[] {
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(LS_PRODUCTS) : null;
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const existingIds = new Set(parsed.map((p: any) => p.sku || p.id));
+        const missing = SEED_PRODUCTS.filter(s => !existingIds.has(s.sku) && !existingIds.has(s.id));
+        return [...parsed, ...missing];
+      }
+    }
+  } catch { }
+  return [...SEED_PRODUCTS];
+}
+
+export const SEED_ORDERS: AdminOrder[] = [
+  {
+    id: "ord_101",
+    number: "ORD-NG-10021",
+    date: new Date(Date.now() - 3600000 * 4).toISOString(),
+    customer: { name: "Adewale Adeleke", email: "adewale@gmail.com", phone: "+234 803 123 4567", address: "Victoria Island, Lagos" },
+    items: [{ sku: "NS03", name: "NS03 Wireless Earbuds (TWS)", qty: 2, price: 18500 }],
+    total: 37000,
+    paymentStatus: "Paid",
+    status: "Processing",
+    delivery: "Express Delivery",
+    timeline: [{ label: "Placed", date: new Date(Date.now() - 3600000 * 4).toISOString() }]
+  },
+  {
+    id: "ord_102",
+    number: "ORD-NG-10022",
+    date: new Date(Date.now() - 3600000 * 24).toISOString(),
+    customer: { name: "Folake Bakare", email: "folake@gmail.com", phone: "+234 802 345 6789", address: "Maitama, Abuja" },
+    items: [{ sku: "PQ20", name: "PQ20 Power Bank, 20,000mAh", qty: 1, price: 28500 }],
+    total: 28500,
+    paymentStatus: "Paid",
+    status: "Shipped",
+    delivery: "Standard Delivery",
+    timeline: [{ label: "Placed", date: new Date(Date.now() - 3600000 * 24).toISOString() }]
+  },
+  {
+    id: "ord_103",
+    number: "ORD-NG-10023",
+    date: new Date(Date.now() - 3600000 * 48).toISOString(),
+    customer: { name: "Emeka Okafor", email: "emeka.okafor@gmail.com", phone: "+234 809 987 6543", address: "Alaba Int'l Market, Lagos" },
+    items: [{ sku: "NS2526C", name: "NS2526C High Power Fast Wall Charger, GaN65W", qty: 5, price: 16000 }],
+    total: 80000,
+    paymentStatus: "Paid",
+    status: "Delivered",
+    delivery: "Standard Delivery",
+    timeline: [{ label: "Delivered", date: new Date(Date.now() - 3600000 * 12).toISOString() }]
+  }
+];
+
+const LS_ORDERS = 'nigson_admin_orders';
+
+function getInitialOrders(): AdminOrder[] {
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(LS_ORDERS) : null;
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch { }
+  return [...SEED_ORDERS];
+}
+
+const ALL_SECTIONS: SectionKey[] = ["dashboard", "pages", "products", "reviews", "distributors", "quotes", "inquiries", "inventory", "orders", "customers", "analytics", "blog", "admins", "roles"];
+
 @Injectable({ providedIn: 'root' })
 export class AdminService {
   readonly session = inject(SessionService);
@@ -175,7 +453,7 @@ export class AdminService {
   readonly orders = signal<AdminOrder[]>([]);
   readonly customers = signal<AdminCustomer[]>([]);
   readonly posts = signal<AdminPost[]>([]);
-  readonly stockLocations = signal<Array<{id:string;code:string;name:string}>>([]);
+  readonly stockLocations = signal<Array<{ id: string; code: string; name: string }>>([]);
   readonly stockLog = signal<StockLog[]>([]);
   readonly activity = signal<Activity[]>([]);
   readonly currentRole = computed(() => this.roles().find(r => this.session.roles().includes(r.id)) ?? null);
@@ -201,6 +479,9 @@ export class AdminService {
     if (error?.error?.code === 'MARKET_RULE_VIOLATION') {
       return 'The Nigeria market is not activated, so catalogue and pricing data are unavailable. Activate the market with approved tax, returns, price-book, delivery and provider configuration before editing products.';
     }
+    if (error?.error?.code === 'CATALOGUE_RULE_VIOLATION') {
+      return 'Cannot publish product: the product must have at least one uploaded product image before it can be published in Nigeria. Please upload a primary image in Slot 1, or change Catalog Status to "Draft" to save without publishing.';
+    }
     return error?.error?.detail || error?.message || 'The operation failed. Reload the current record and try again.';
   }
   private fail(key: string, error: any): Observable<never> { this.errors.update(all => ({ ...all, [key]: this.message(error) })); return throwError(() => error); }
@@ -211,11 +492,11 @@ export class AdminService {
     if (version !== undefined) headers = headers.set('If-Match', `"${version}"`);
     return headers;
   }
-  private rows(path:string,page=0):Observable<any[]> {
-    return this.http.get<any>(`${path}${path.includes('?')?'&':'?'}page=${page}&size=100`).pipe(switchMap(result=>{
-      const rows=result?.items??result?.content;
-      if(!Array.isArray(rows))throw new Error('The backend returned an invalid table response.');
-      return page+1<result.totalPages?this.rows(path,page+1).pipe(map(next=>[...rows,...next])):of(rows);
+  private rows(path: string, page = 0): Observable<any[]> {
+    return this.http.get<any>(`${path}${path.includes('?') ? '&' : '?'}page=${page}&size=100`).pipe(switchMap(result => {
+      const rows = result?.items ?? result?.content;
+      if (!Array.isArray(rows)) throw new Error('The backend returned an invalid table response.');
+      return page + 1 < result.totalPages ? this.rows(path, page + 1).pipe(map(next => [...rows, ...next])) : of(rows);
     }));
   }
   private table<T>(key: string, request: Observable<any[]>, target: WritableSignal<T[]>): Observable<T[]> {
@@ -224,31 +505,57 @@ export class AdminService {
   }
   loadInitialStaffData(): void {
     if (!this.session.authenticated() || !this.session.isStaff()) return;
-    this.http.get<any[]>('/api/v1/markets').subscribe({ next: rows => this.distributorMarket.set(rows.find(row => row.code === 'NG') ?? null), error: error => this.errors.update(all => ({...all, markets: this.message(error)})) });
+    this.http.get<any[]>('/api/v1/markets').subscribe({ next: rows => this.distributorMarket.set(rows.find(row => row.code === 'NG') ?? null), error: error => this.errors.update(all => ({ ...all, markets: this.message(error) })) });
     if (this.session.hasRole('CONTENT_EDITOR') && this.session.hasRole('OPERATIONS')) this.loadStaffProducts().subscribe();
-    if (this.session.hasRole('OPERATIONS')) { this.loadStaffOrders().subscribe(); this.loadStaffInventory().subscribe({error:()=>{}}); this.loadStockLocations().subscribe(); this.loadStockMovements().subscribe(); }
+    if (this.session.hasRole('OPERATIONS')) { this.loadStaffOrders().subscribe(); this.loadStaffInventory().subscribe({ error: () => { } }); this.loadStockLocations().subscribe(); this.loadStockMovements().subscribe(); }
     if (this.session.hasRole('SALES')) { this.loadStaffCustomers().subscribe(); this.loadStaffQuotes().subscribe(); this.loadStaffInquiries().subscribe(); this.loadStaffApplications().subscribe(); }
     if (this.session.hasRole('ADMIN')) this.loadStaffUsers().subscribe();
     if (this.session.hasRole('CONTENT_PUBLISHER')) this.loadStaffReviews().subscribe();
   }
   // Kept for existing view initialization; server state is the only source of records.
-  hydrateFromStorage(): void {}
+  hydrateFromStorage(): void { }
   addLocalApplication(_application: Partial<AdminApplication>): void { throw new Error('The application must be acknowledged by the backend before it appears in the admin portal.'); }
   addLocalInquiry(_inquiry: Partial<AdminInquiry>): void { throw new Error('The inquiry must be acknowledged by the backend before it appears in the admin portal.'); }
   addLocalQuote(_quote: Partial<AdminQuote>): void { throw new Error('The quote request must be acknowledged by the backend before it appears in the admin portal.'); }
-  persistProducts(): void {}
-  persistOrders(): void {}
-  persistApplications(): void {}
-  persistQuotes(): void {}
-  persistInquiries(): void {}
+  persistProducts(): void { }
+  persistOrders(): void { }
+  persistApplications(): void { }
+  persistQuotes(): void { }
+  persistInquiries(): void { }
 
   loadStaffProducts(): Observable<AdminProduct[]> {
     const request = forkJoin({ catalogue: this.rows('/api/v1/staff/products'), balances: this.rows('/api/v1/staff/inventory') }).pipe(
-      map(({catalogue, balances}) => mapStaffProducts(catalogue, balances)),
-      switchMap(products => products.length ? forkJoin(products.map(product => !product.skuId ? of(product) : this.http.get<any>(`/api/v1/catalogue/skus/${product.skuId}/price?market=NG&quantity=${product.packSize || '1'}`).pipe(
-        map(price => ({...product, price: Number(price.unitAmount), retail: Number(price.unitAmount)})),
-        catchError(error => of({...product, priceSubtitle: this.message(error)}))
-      ))) : of([]))
+      map(({ catalogue, balances }) => mapStaffProducts(catalogue, balances)),
+      switchMap(products => products.length ? forkJoin(products.map(product => {
+        const specs = product.specifications || {};
+        const specPrice = specs['starting_price'] ? Number(specs['starting_price']) : null;
+        const hasSpecPrice = specPrice != null && !isNaN(specPrice) && specPrice > 0;
+
+        if (!product.skuId) {
+          return of(product);
+        }
+
+        return this.http.get<any>(`/api/v1/catalogue/skus/${product.skuId}/price?market=NG&quantity=${product.packSize || '1'}`).pipe(
+          map(price => {
+            const fallbackPrice = Number(price.unitAmount);
+            const resolvedPrice = hasSpecPrice ? specPrice : fallbackPrice;
+            return {
+              ...product,
+              price: resolvedPrice,
+              retail: resolvedPrice,
+              wholesale: product.wholesale ?? (specs['wholesale_rate'] ? Number(specs['wholesale_rate']) : Math.round(resolvedPrice * 0.85)),
+              distributor: product.distributor ?? (specs['distributor_rate'] ? Number(specs['distributor_rate']) : Math.round(resolvedPrice * 0.70)),
+              priceSubtitle: product.priceSubtitle || specs['price_subtitle']
+            };
+          }),
+          catchError(error => of({
+            ...product,
+            price: hasSpecPrice ? specPrice : product.price,
+            retail: hasSpecPrice ? specPrice : product.retail,
+            priceSubtitle: product.priceSubtitle || specs['price_subtitle'] || this.message(error)
+          }))
+        );
+      })) : of([]))
     );
     return this.table('Products', request, this.products);
   }
@@ -256,13 +563,13 @@ export class AdminService {
     return this.rows('/api/v1/staff/inventory').pipe(tap(rows => this.products.update(products => applyInventory(products, rows))), catchError(error => this.fail('Inventory', error)));
   }
   loadStockLocations(): Observable<any[]> {
-    return this.table('Warehouses',this.http.get<any[]>('/api/v1/staff/stock-locations'),this.stockLocations);
+    return this.table('Warehouses', this.http.get<any[]>('/api/v1/staff/stock-locations'), this.stockLocations);
   }
   loadInventory(): Observable<any[]> { return this.loadStaffInventory(); }
   loadStockMovements(): Observable<StockLog[]> {
-    return this.table('Stock movements', this.rows('/api/v1/staff/inventory-movements').pipe(map(rows => rows.map(row => ({...row, qty: Math.abs(Number(row.change)), change: Number(row.change)})))), this.stockLog);
+    return this.table('Stock movements', this.rows('/api/v1/staff/inventory-movements').pipe(map(rows => rows.map(row => ({ ...row, qty: Math.abs(Number(row.change)), change: Number(row.change) })))), this.stockLog);
   }
-  postStockAdjustment(sku: string, change: number, reason: string, meta?: {supplier?: string; ref?: string; notes?: string; locationId?: string}): Observable<any> {
+  postStockAdjustment(sku: string, change: number, reason: string, meta?: { supplier?: string; ref?: string; notes?: string; locationId?: string }): Observable<any> {
     return defer(() => {
       this.clear('Stock adjustment');
       if (!Number.isFinite(change) || change === 0) throw new Error('Enter a non-zero stock adjustment.');
@@ -273,52 +580,114 @@ export class AdminService {
       if (explanation.length < 10 || explanation.length > 500) throw new Error('Provide a stock adjustment reason between 10 and 500 characters.');
       return this.rows(`/api/v1/staff/inventory?skuId=${skuId}`).pipe(switchMap(balances => {
         let balance = meta?.locationId ? balances.find(row => row.locationId === meta.locationId) : balances.length === 1 ? balances[0] : null;
-        if (!balance && meta?.locationId && this.stockLocations().some(row=>row.id===meta.locationId)) balance={locationId:meta.locationId,version:0};
+        if (!balance && meta?.locationId && this.stockLocations().some(row => row.id === meta.locationId)) balance = { locationId: meta.locationId, version: 0 };
         if (!balance) throw new Error('Choose an existing warehouse before adjusting stock.');
-        return this.http.post<any>('/api/v1/staff/stock-adjustments', {skuId, locationId: balance.locationId, delta: String(change), reason: explanation}, {headers: this.headers(balance.version)});
-      }), switchMap(result => this.loadStaffProducts().pipe(map(() => result))), tap(() => {this.log('Stock adjustment recorded'); this.loadStockMovements().subscribe();}));
+        return this.http.post<any>('/api/v1/staff/stock-adjustments', { skuId, locationId: balance.locationId, delta: String(change), reason: explanation }, { headers: this.headers(balance.version) });
+      }), switchMap(result => this.loadStaffProducts().pipe(map(() => result))), tap(() => { this.log('Stock adjustment recorded'); this.loadStockMovements().subscribe(); }));
     }).pipe(catchError(error => this.fail('Stock adjustment', error)));
   }
-  adjustStock(sku: string, change: number, reason: string, meta?: any): void { this.postStockAdjustment(sku, change, reason, meta).subscribe({error: () => {}}); }
+  adjustStock(sku: string, change: number, reason: string, meta?: any): void { this.postStockAdjustment(sku, change, reason, meta).subscribe({ error: () => { } }); }
 
   private productBody(payload: any, categories: any[], brands: any[]): any {
     const category = categories.find(row => row.id === payload.categoryId || row.name.toLowerCase() === (payload.category || payload.categoryName || '').toLowerCase());
-    const categoryIds = category ? [category.id] : payload.categoryIds || [];
+    const categoryIds = category ? [category.id] : (payload.categoryIds?.length ? payload.categoryIds : (categories[0]?.id ? [categories[0].id] : []));
     if (!categoryIds.length) throw new Error('Choose a category returned by the backend.');
     const brandName = (payload.brand || '').trim();
     const brand = brands.find(row => brandName ? row.name.toLowerCase() === brandName.toLowerCase() : row.id === payload.brandId);
-    if (brandName && !brand && !payload.brandId) throw new Error('Choose an existing brand or create it before saving.');
-    const specifications = Object.fromEntries(Object.entries(payload.specifications || {}).filter(([,value]) => value !== undefined && value !== null && value !== ''));
-    return {name: (payload.name || '').trim(), slug: payload.slug || (payload.name || '').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''), description: payload.description ?? payload.desc ?? '', brandId: brand?.id || null, divisionCode: null, categoryIds, specifications};
+    const brandId = brand?.id || payload.brandId || (brands[0]?.id ?? null);
+    const specifications = Object.fromEntries(Object.entries(payload.specifications || {}).filter(([, value]) => value !== undefined && value !== null && value !== ''));
+    // Clean and validate specifications according to strict backend rules
+    const cleanSpecs: Record<string, any> = {};
+    for (const [key, val] of Object.entries<any>(payload.specifications || {})) {
+      if (!/^[a-z][a-z0-9_]{0,79}$/.test(key)) continue;
+      if (val === undefined || val === null || val === '') continue;
+      if (typeof val === 'boolean') {
+        cleanSpecs[key] = val;
+      } else if (Array.isArray(val)) {
+        const cleanedItems = (val as any[])
+          .map((item: any) => String(item).replace(/[\x00-\x1f\x7f-\x9f]/g, '').trim())
+          .filter(Boolean)
+          .slice(0, 20);
+        if (cleanedItems.length > 0) {
+          cleanSpecs[key] = cleanedItems;
+        }
+      } else {
+        const cleanedStr = String(val).replace(/[\x00-\x1f\x7f-\x9f]/g, ' ').trim().slice(0, 1000);
+        if (cleanedStr) {
+          cleanSpecs[key] = cleanedStr;
+        }
+      }
+    }
+
+    const rawSlug = (payload.slug || payload.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    const slug = payload.id ? (rawSlug || 'product-' + Date.now()) : (rawSlug ? `${rawSlug}-${Date.now().toString(36)}` : 'product-' + Date.now());
+    const description = (payload.description ?? payload.desc ?? '').trim() || (payload.name || '').trim();
+
+    const body: any = {
+      name: (payload.name || '').trim(),
+      slug,
+      description,
+      brandId,
+      categoryIds,
+      specifications: cleanSpecs
+    };
+    if (payload.divisionCode && typeof payload.divisionCode === 'string') {
+      body.divisionCode = payload.divisionCode;
+    }
+    return body;
   }
   createProduct(payload: any): Observable<any> {
-    if(!payload.sku?.trim() || !payload.carrierPackaging) return throwError(()=>new Error('SKU and measured shipping package are required before creating a product.'));
-    return forkJoin({categories: this.http.get<any[]>('/api/v1/catalogue/categories?market=NG'), brands: this.http.get<any[]>('/api/v1/catalogue/brands')}).pipe(
-      switchMap(({categories, brands}) => this.http.post<any>('/api/v1/staff/products', this.productBody(payload, categories, brands), {headers: this.headers()})),
+    if (!payload.sku?.trim() || !payload.carrierPackaging) return throwError(() => new Error('SKU and measured shipping package are required before creating a product.'));
+    return forkJoin({ categories: this.http.get<any[]>('/api/v1/catalogue/categories?market=NG'), brands: this.http.get<any[]>('/api/v1/catalogue/brands') }).pipe(
+      switchMap(({ categories, brands }) => this.http.post<any>('/api/v1/staff/products', this.productBody(payload, categories, brands), { headers: this.headers() })),
       switchMap(product => {
+        payload.id = product.id;
+        payload.version = product.version;
         if (!payload.sku?.trim()) throw new Error('The product draft was created, but a SKU code is required. Reload drafts before retrying.');
-        const body = {code: payload.sku.trim(), variantName: payload.name.trim(), unit: 'unit', quantityScale: 0, packSize: '1', carrierPackaging: payload.carrierPackaging};
-        return this.http.post<any>(`/api/v1/staff/products/${product.id}/skus`, body, {headers: this.headers(product.version)}).pipe(
-          switchMap(() => this.http.get<any>(`/api/v1/staff/products/${product.id}`))
+        const body = { code: payload.sku.trim(), variantName: payload.name.trim(), unit: 'unit', quantityScale: 0, packSize: '1', carrierPackaging: payload.carrierPackaging };
+        return this.http.post<any>(`/api/v1/staff/products/${product.id}/skus`, body, { headers: this.headers(product.version) }).pipe(
+          switchMap(() => this.http.get<any>(`/api/v1/staff/products/${product.id}`)),
+          catchError(skuErr => {
+            (skuErr as any).createdProduct = product;
+            return throwError(() => skuErr);
+          })
         );
       }),
-      tap(() => {this.log('Product and SKU saved as a draft'); this.loadStaffProducts().subscribe();}),
+      tap(() => { this.log('Product and SKU saved as a draft'); this.loadStaffProducts().subscribe(); }),
       catchError(error => this.fail('Save product', error))
     );
   }
   updateProduct(id: string, payload: any): Observable<any> {
-    return forkJoin({current: this.http.get<any>(`/api/v1/staff/products/${id}`), categories: this.http.get<any[]>('/api/v1/catalogue/categories?market=NG'), brands: this.http.get<any[]>('/api/v1/catalogue/brands')}).pipe(
-      switchMap(({current, categories, brands}) => this.http.patch<any>(`/api/v1/staff/products/${id}`, this.productBody(payload, categories, brands), {headers: this.headers(payload.version ?? current.version)})),
-      tap(() => {this.log('Product changes saved'); this.loadStaffProducts().subscribe();}), catchError(error => this.fail('Save product', error))
+    return forkJoin({ current: this.http.get<any>(`/api/v1/staff/products/${id}`), categories: this.http.get<any[]>('/api/v1/catalogue/categories?market=NG'), brands: this.http.get<any[]>('/api/v1/catalogue/brands') }).pipe(
+      switchMap(({ current, categories, brands }) => this.http.patch<any>(`/api/v1/staff/products/${id}`, this.productBody(payload, categories, brands), { headers: this.headers(current.version) })),
+      tap(() => { this.log('Product changes saved'); this.loadStaffProducts().subscribe(); }), catchError(error => this.fail('Save product', error))
     );
   }
-  publishProduct(id: string, action: 'PUBLISH'|'ARCHIVE', reason = 'Catalogue publication updated by staff'): Observable<any> {
+  publishProduct(id: string, action: 'PUBLISH' | 'ARCHIVE', reason = 'Catalogue publication updated by staff'): Observable<any> {
     return this.http.get<any>(`/api/v1/staff/products/${id}`).pipe(
-      switchMap(product => action === 'ARCHIVE' ? of(product) : this.http.get<any[]>('/api/v1/markets').pipe(switchMap(markets => {
-        const market = markets.find(row => row.code === 'NG');if(!market)throw new Error('The Nigeria market is not configured.');
-        return this.http.put<any>(`/api/v1/staff/products/${id}/markets/${market.id}`,{eligible:true,reason:'Product published for the Nigeria market by staff'},{headers:this.headers(product.version)});
-      }))),
-      switchMap(product => this.http.post<any>(`/api/v1/staff/products/${id}/publication`,{action,reason},{headers:this.headers(product.version)})),tap(()=>this.loadStaffProducts().subscribe()),catchError(error=>this.fail('Product publication',error))
+      switchMap(product => {
+        if (action === 'ARCHIVE') return of(product);
+        return this.http.get<any[]>('/api/v1/markets').pipe(
+          switchMap(markets => {
+            const market = markets.find(row => row.code === 'NG');
+            if (!market) throw new Error('The Nigeria market is not configured.');
+            return this.http.put<any>(
+              `/api/v1/staff/products/${id}/markets/${market.id}`,
+              { eligible: true, reason: 'Product published for the Nigeria market by staff' },
+              { headers: this.headers(product.version) }
+            ).pipe(
+              switchMap(() => this.http.get<any>(`/api/v1/staff/products/${id}`))
+            );
+          })
+        );
+      }),
+      switchMap(currentProduct => this.http.post<any>(
+        `/api/v1/staff/products/${id}/publication`,
+        { action, reason },
+        { headers: this.headers(currentProduct.version) }
+      )),
+      tap(() => this.loadStaffProducts().subscribe()),
+      catchError(error => this.fail('Product publication', error))
     );
   }
   deleteProduct(idOrSku: string): Observable<boolean> {
@@ -326,49 +695,52 @@ export class AdminService {
     return this.publishProduct(id, 'ARCHIVE').pipe(map(() => true));
   }
   loadStaffUsers(): Observable<AdminUser[]> {
-    return this.table('Staff users', this.rows('/api/v1/staff/users').pipe(map(rows => rows.filter(row => row.roles.length).map(row => ({id: row.id, name: row.displayName, email: row.email || '', roleId: row.roles[0], roles: row.roles, status: 'Active' as const, version: row.version})))), this.admins);
+    return this.table('Staff users', this.rows('/api/v1/staff/users').pipe(map(rows => rows.filter(row => row.roles.length).map(row => ({ id: row.id, name: row.displayName, email: row.email || '', roleId: row.roles[0], roles: row.roles, status: 'Active' as const, version: row.version })))), this.admins);
   }
   updateUserRoles(userId: string, roles: string[], reason = 'Staff role assignment updated by administrator'): Observable<boolean> {
     return defer(() => {
       this.clear('Staff permissions');
       const current = this.admins().find(user => user.id === userId);
       if (!current || current.version == null) throw new Error('Reload the current staff record before changing roles.');
-      return this.http.put<any>(`/api/v1/staff/users/${userId}/roles`, {roles, reason}, {headers: this.headers(current.version)}).pipe(switchMap(() => this.loadStaffUsers()), map(() => true));
+      return this.http.put<any>(`/api/v1/staff/users/${userId}/roles`, { roles, reason }, { headers: this.headers(current.version) }).pipe(switchMap(() => this.loadStaffUsers()), map(() => true));
     }).pipe(catchError(error => this.fail('Staff permissions', error)));
   }
-  updateStaffUser(user:AdminUser,reason='Staff role assignment updated by administrator'):Observable<boolean>{return this.http.put<any>(`/api/v1/staff/users/${user.id}/roles`,{roles:user.status==='Disabled'?[]:user.roles||[user.roleId],reason},{headers:this.headers(user.version)}).pipe(switchMap(()=>this.loadStaffUsers()),map(()=>true),catchError(e=>this.fail('Staff permissions',e)));}
-  addStaffUser(user:AdminUser,_password?:string,reason='Existing customer assigned staff permissions'):Observable<boolean>{return this.rows(`/api/v1/staff/users?q=${encodeURIComponent(user.email)}`).pipe(switchMap(rows=>{const party=rows.find(row=>row.email?.toLowerCase()===user.email.toLowerCase());if(!party)throw new Error('Register this account through Sign up before assigning staff access.');return this.updateStaffUser({...user,id:party.id,version:party.version},reason);}),catchError(e=>this.fail('Assign staff roles',e)));}
+  updateStaffUser(user: AdminUser, reason = 'Staff role assignment updated by administrator'): Observable<boolean> { return this.http.put<any>(`/api/v1/staff/users/${user.id}/roles`, { roles: user.status === 'Disabled' ? [] : user.roles || [user.roleId], reason }, { headers: this.headers(user.version) }).pipe(switchMap(() => this.loadStaffUsers()), map(() => true), catchError(e => this.fail('Staff permissions', e))); }
+  addStaffUser(user: AdminUser, _password?: string, reason = 'Existing customer assigned staff permissions'): Observable<boolean> { return this.rows(`/api/v1/staff/users?q=${encodeURIComponent(user.email)}`).pipe(switchMap(rows => { const party = rows.find(row => row.email?.toLowerCase() === user.email.toLowerCase()); if (!party) throw new Error('Register this account through Sign up before assigning staff access.'); return this.updateStaffUser({ ...user, id: party.id, version: party.version }, reason); }), catchError(e => this.fail('Assign staff roles', e))); }
   deleteStaffUser(userId: string): Observable<boolean> { return this.updateUserRoles(userId, [], 'Staff access removed by administrator'); }
   loadStaffCustomers(): Observable<AdminCustomer[]> {
-    return this.table('Customers', this.rows('/api/v1/staff/customers').pipe(map(rows => rows.map(row => ({...row, email: row.email || '', phone: row.phone || '', location: '', saved: 0, status: row.status === 'ACTIVE' ? 'Active' as const : 'Suspended' as const})))), this.customers);
+    return this.table('Customers', this.rows('/api/v1/staff/customers').pipe(map(rows => rows.map(row => ({ ...row, email: row.email || '', phone: row.phone || '', location: '', saved: 0, status: row.status === 'ACTIVE' ? 'Active' as const : 'Suspended' as const })))), this.customers);
   }
-  updateCustomerStatus(_id: string, _status: 'Active'|'Suspended'): void { this.errors.update(all => ({...all, Customers: 'Customer account suspension is not available through this portal. Staff access is managed on Admin Users.'})); }
+  updateCustomerStatus(_id: string, _status: 'Active' | 'Suspended'): void { this.errors.update(all => ({ ...all, Customers: 'Customer account suspension is not available through this portal. Staff access is managed on Admin Users.' })); }
   saveCustomer(_customer: AdminCustomer): void { throw new Error('Customer profiles are managed by their account owners.'); }
   loadStaffOrders(): Observable<AdminOrder[]> {
-    return this.table('Orders', this.rows('/api/v1/staff/orders').pipe(map(rows => rows.map(order => ({id: order.id, number: order.orderNumber, date: order.createdAt, version: order.version, rawState: order.status,
-      customer: {name: order.address?.recipient || '', email: '', phone: order.address?.phone || '', address: [order.address?.line1, order.address?.city, order.address?.region].filter(Boolean).join(', ')},
-      items: (order.lines || []).map((line: any) => ({sku: line.skuCode, name: line.name, qty: Number(line.quantity), price: Number(line.unitAmount)})), total: Number(order.totals.grandTotal), paymentStatus: order.paymentStatus === 'PAID' ? 'Paid' as const : order.paymentStatus === 'REFUNDED' ? 'Refunded' as const : 'Pending' as const,
-      status: ({PENDING:'Pending',PAID:'Confirmed',PROCESSING:'Processing',SHIPPED:'Shipped',DELIVERED:'Delivered',CANCELLED:'Cancelled'} as any)[order.status] || order.status,
-      delivery: order.fulfillmentStatus, timeline: []})))), this.orders);
+    return this.table('Orders', this.rows('/api/v1/staff/orders').pipe(map(rows => rows.map(order => ({
+      id: order.id, number: order.orderNumber, date: order.createdAt, version: order.version, rawState: order.status,
+      customer: { name: order.address?.recipient || '', email: '', phone: order.address?.phone || '', address: [order.address?.line1, order.address?.city, order.address?.region].filter(Boolean).join(', ') },
+      items: (order.lines || []).map((line: any) => ({ sku: line.skuCode, name: line.name, qty: Number(line.quantity), price: Number(line.unitAmount) })), total: Number(order.totals.grandTotal), paymentStatus: order.paymentStatus === 'PAID' ? 'Paid' as const : order.paymentStatus === 'REFUNDED' ? 'Refunded' as const : 'Pending' as const,
+      status: ({ PENDING: 'Pending', PAID: 'Confirmed', PROCESSING: 'Processing', SHIPPED: 'Shipped', DELIVERED: 'Delivered', CANCELLED: 'Cancelled' } as any)[order.status] || order.status,
+      delivery: order.fulfillmentStatus, timeline: []
+    })))), this.orders);
   }
   setOrderStatus(id: string, status: string): void {
     const order = this.orders().find(row => row.id === id);
-    if (status !== 'Processing') { this.errors.update(all => ({...all, Orders: 'Shipping and delivery require a recorded shipment and stock allocation. They cannot be changed as a display status.'})); return; }
-    this.http.post(`/api/v1/staff/orders/${id}/processing`, {reason: 'Order released for processing by operations'}, {headers: this.headers(order?.version)}).pipe(switchMap(() => this.loadStaffOrders()), catchError(error => this.fail('Order processing', error))).subscribe({error: () => {}});
+    if (status !== 'Processing') { this.errors.update(all => ({ ...all, Orders: 'Shipping and delivery require a recorded shipment and stock allocation. They cannot be changed as a display status.' })); return; }
+    this.http.post(`/api/v1/staff/orders/${id}/processing`, { reason: 'Order released for processing by operations' }, { headers: this.headers(order?.version) }).pipe(switchMap(() => this.loadStaffOrders()), catchError(error => this.fail('Order processing', error))).subscribe({ error: () => { } });
   }
   loadStaffQuotes(): Observable<AdminQuote[]> {
     this.quoteLoadError.set(null);
-    return this.table('Quote requests', this.rows('/api/v1/staff/leads?type=QUOTE').pipe(map(rows => rows.map(row => ({id:row.id,number:'REQ-'+row.id.slice(0,8),customer:row.name,email:row.email,phone:row.phone || '',product:row.subject,sku:'',quantity:0,message:row.message,date:row.createdAt,version:row.version,status:({NEW:'Pending',ASSIGNED:'Under Review',IN_PROGRESS:'Under Review',RESOLVED:'Quoted',CLOSED:'Closed'} as any)[row.state]})))), this.quotes).pipe(tap(() => this.quoteLoadError.set(this.errors()['Quote requests'] || null)));
+    return this.table('Quote requests', this.rows('/api/v1/staff/leads?type=QUOTE').pipe(map(rows => rows.map(row => ({ id: row.id, number: 'REQ-' + row.id.slice(0, 8), customer: row.name, email: row.email, phone: row.phone || '', product: row.subject, sku: '', quantity: 0, message: row.message, date: row.createdAt, version: row.version, status: ({ NEW: 'Pending', ASSIGNED: 'Under Review', IN_PROGRESS: 'Under Review', RESOLVED: 'Quoted', CLOSED: 'Closed' } as any)[row.state] })))), this.quotes).pipe(tap(() => this.quoteLoadError.set(this.errors()['Quote requests'] || null)));
   }
   private updateLead(id: string, version: number | undefined, state: string, note: string): Observable<any> {
-    return defer(() => {if (version == null) throw new Error('Reload the current lead before saving.');return this.http.patch<any>(`/api/v1/staff/leads/${id}`, {state, note}, {headers: this.headers(version)});});
+    return defer(() => { if (version == null) throw new Error('Reload the current lead before saving.'); return this.http.patch<any>(`/api/v1/staff/leads/${id}`, { state, note }, { headers: this.headers(version) }); });
   }
   setQuoteStatus(id: string, status: string): void {
     const row = this.quotes().find(row => row.id === id);
-    const state = ({Pending:'NEW','Under Review':'IN_PROGRESS',Quoted:'RESOLVED',Closed:'CLOSED'} as any)[status];
-    this.updateLead(id,row?.version,state,'Quote request status updated by staff').pipe(switchMap(() => this.loadStaffQuotes()), catchError(error => this.fail('Quote request update',error))).subscribe({error: () => {}});
+    const state = ({ Pending: 'NEW', 'Under Review': 'IN_PROGRESS', Quoted: 'RESOLVED', Closed: 'CLOSED' } as any)[status];
+    this.updateLead(id, row?.version, state, 'Quote request status updated by staff').pipe(switchMap(() => this.loadStaffQuotes()), catchError(error => this.fail('Quote request update', error))).subscribe({ error: () => { } });
   }
   loadStaffInquiries(): Observable<AdminInquiry[]> {
+<<<<<<< HEAD
     return this.table(
       'Contact inquiries',
       this.rows('/api/v1/staff/leads?type=CONTACT').pipe(
@@ -390,10 +762,13 @@ export class AdminService {
       ),
       this.inquiries
     );
+=======
+    return this.table('Contact inquiries', this.rows('/api/v1/staff/leads?type=CONTACT').pipe(map(rows => rows.map(row => ({ id: row.id, name: row.name, email: row.email, phone: row.phone || '', subject: row.subject, message: row.message, date: row.createdAt, version: row.version, status: ({ NEW: 'New', ASSIGNED: 'In Progress', IN_PROGRESS: 'In Progress', RESOLVED: 'Resolved', CLOSED: 'Resolved' } as any)[row.state] })))), this.inquiries);
+>>>>>>> 8bbce9b8334a2e31e992df2d59f149f62b494102
   }
   setInquiryStatus(id: string, status: string): void {
     const row = this.inquiries().find(row => row.id === id);
-    this.updateLead(id,row?.version,status === 'Resolved' ? 'RESOLVED' : 'IN_PROGRESS','Contact inquiry updated by staff').pipe(switchMap(() => this.loadStaffInquiries()),catchError(error => this.fail('Inquiry update',error))).subscribe({error: () => {}});
+    this.updateLead(id, row?.version, status === 'Resolved' ? 'RESOLVED' : 'IN_PROGRESS', 'Contact inquiry updated by staff').pipe(switchMap(() => this.loadStaffInquiries()), catchError(error => this.fail('Inquiry update', error))).subscribe({ error: () => { } });
   }
   private parseLeadApplication(lead: any): AdminApplication {
     const msg = lead.message || '';
@@ -454,6 +829,7 @@ export class AdminService {
   }
   loadStaffApplications(): Observable<AdminApplication[]> {
     this.applicationError.set(null);
+<<<<<<< HEAD
     this.loadingApplications.set(true);
     let distError: string | null = null;
     let leadError: string | null = null;
@@ -521,12 +897,16 @@ export class AdminService {
       }),
       finalize(() => this.loadingApplications.set(false))
     );
+=======
+    return this.table('Distributor applications', this.rows('/api/v1/staff/distributor-applications').pipe(switchMap(rows => rows.length ? forkJoin(rows.map(row => this.http.get<any>(`/api/v1/staff/distributor-applications/${row.id}`).pipe(map(detail => ({ ...row, ...detail }))))) : of([])), map(rows => rows.map(row => ({ id: row.id, number: row.id.slice(0, 8), type: 'Distributor' as const, businessName: row.organizationName || '', contactPerson: row.contactName || '', email: row.email || '', phone: row.phone || '', location: row.countryCode || '', category: '', date: row.submittedAt, status: distributorDisplayState(row.state), note: row.reviewReason || '', version: row.version })))), this.applications).pipe(tap(() => this.applicationError.set(this.errors()['Distributor applications'] || null)));
+>>>>>>> 8bbce9b8334a2e31e992df2d59f149f62b494102
   }
   setApplicationStatus(id: string, status: string, note?: string, documentsVerified = false): Observable<any> {
     return defer(() => {
       this.applicationError.set(null);
       const row = this.applications().find(row => row.id === id);
       if (row?.version == null) throw new Error('Reload the current distributor application before deciding.');
+<<<<<<< HEAD
       if (row.source === 'lead') {
         const stateMap: Record<string, string> = { Pending: 'NEW', 'Under Review': 'IN_PROGRESS', Approved: 'RESOLVED', Rejected: 'CLOSED' };
         const targetState = stateMap[status];
@@ -539,13 +919,18 @@ export class AdminService {
       const {action, body} = distributorCommand(status,note?.trim() || 'Distributor application reviewed by staff',documentsVerified,this.distributorMarket()?.id);
       return this.http.post<any>(`/api/v1/staff/distributor-applications/${id}/${action}`,body,{headers:this.headers(row.version)}).pipe(switchMap(result => this.loadStaffApplications().pipe(map(() => result))));
     }).pipe(catchError(error => {this.applicationError.set(this.message(error));return this.fail('Distributor decision',error);}));
+=======
+      const { action, body } = distributorCommand(status, note?.trim() || 'Distributor application reviewed by staff', documentsVerified, this.distributorMarket()?.id);
+      return this.http.post<any>(`/api/v1/staff/distributor-applications/${id}/${action}`, body, { headers: this.headers(row.version) }).pipe(switchMap(result => this.loadStaffApplications().pipe(map(() => result))));
+    }).pipe(catchError(error => { this.applicationError.set(this.message(error)); return this.fail('Distributor decision', error); }));
+>>>>>>> 8bbce9b8334a2e31e992df2d59f149f62b494102
   }
   loadStaffReviews(): Observable<AdminReview[]> {
-    return this.table('Reviews',this.rows('/api/v1/staff/reviews').pipe(map(rows => rows.map(row => ({id:row.id,sku:'',product:row.productId || '',author:row.authorName || row.author || 'Customer',rating:row.rating,text:row.text || row.body,date:row.createdAt,status:row.state === 'PUBLISHED' ? 'Published' as const : 'Hidden' as const,version:row.version,state:row.state})))),this.reviews);
+    return this.table('Reviews', this.rows('/api/v1/staff/reviews').pipe(map(rows => rows.map(row => ({ id: row.id, sku: '', product: row.productId || '', author: row.authorName || row.author || 'Customer', rating: row.rating, text: row.text || row.body, date: row.createdAt, status: row.state === 'PUBLISHED' ? 'Published' as const : 'Hidden' as const, version: row.version, state: row.state })))), this.reviews);
   }
-  moderateReview(id: string, decision: 'PUBLISH'|'WITHDRAW'|'REJECT'): Observable<any> {
-    return defer(() => {const row=this.reviews().find(row=>row.id===id);if(row?.version==null)throw new Error('Reload the current review before moderating.');return this.http.post<any>(`/api/v1/staff/reviews/${id}/moderation`,{decision,reason:'Review moderated by content publisher'},{headers:this.headers(row.version)});}).pipe(switchMap(result=>this.loadStaffReviews().pipe(map(()=>result))),catchError(error=>this.fail('Review moderation',error)));
+  moderateReview(id: string, decision: 'PUBLISH' | 'WITHDRAW' | 'REJECT'): Observable<any> {
+    return defer(() => { const row = this.reviews().find(row => row.id === id); if (row?.version == null) throw new Error('Reload the current review before moderating.'); return this.http.post<any>(`/api/v1/staff/reviews/${id}/moderation`, { decision, reason: 'Review moderated by content publisher' }, { headers: this.headers(row.version) }); }).pipe(switchMap(result => this.loadStaffReviews().pipe(map(() => result))), catchError(error => this.fail('Review moderation', error)));
   }
-  loadCommerceReport(from?: string,to?: string): Observable<any> { return this.http.get('/api/v1/staff/reports/commerce',{params:{from:from||new Date(Date.now()-30*86400000).toISOString(),to:to||new Date().toISOString(),currency:'NGN'}}).pipe(catchError(error=>this.fail('Commerce report',error))); }
-  loadEngagementReport(from?: string,to?: string): Observable<any> { return this.http.get('/api/v1/staff/reports/engagement',{params:{from:from||new Date(Date.now()-30*86400000).toISOString(),to:to||new Date().toISOString()}}).pipe(catchError(error=>this.fail('Engagement report',error))); }
+  loadCommerceReport(from?: string, to?: string): Observable<any> { return this.http.get('/api/v1/staff/reports/commerce', { params: { from: from || new Date(Date.now() - 30 * 86400000).toISOString(), to: to || new Date().toISOString(), currency: 'NGN' } }).pipe(catchError(error => this.fail('Commerce report', error))); }
+  loadEngagementReport(from?: string, to?: string): Observable<any> { return this.http.get('/api/v1/staff/reports/engagement', { params: { from: from || new Date(Date.now() - 30 * 86400000).toISOString(), to: to || new Date().toISOString() } }).pipe(catchError(error => this.fail('Engagement report', error))); }
 }

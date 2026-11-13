@@ -103,7 +103,9 @@ export class ProductCardComponent implements OnInit {
 
     const loadPrice = (skuId: string | undefined) => {
       if (!skuId || skuId === this.p.id) {
-        this.priceLoading.set(false);
+        if (!this.p.priceMinorUnits && !this.p.price) {
+          this.priceLoading.set(false);
+        }
         return;
       }
       this.resolvedSkuId.set(skuId);
