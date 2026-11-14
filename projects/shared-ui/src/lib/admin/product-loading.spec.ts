@@ -9,7 +9,7 @@ function setup() {
  const service=Object.create(AdminService.prototype) as AdminService;
  const catalogue=new Subject<any>();
  const http={get:vi.fn((url:string)=>url.startsWith('/api/v1/staff/products')?catalogue:url.startsWith('/api/v1/staff/inventory')?of({items:[],totalPages:1}):of({unitAmount:'100'}))};
- Object.assign(service,{http,products:signal([]),errors:signal({})});
+ Object.assign(service,{session:{hasRole:()=>true},http,products:signal([]),errors:signal({})});
  return {service,http,catalogue};
 }
 describe('Admin product loading',()=>{
@@ -25,5 +25,22 @@ describe('Admin product loading',()=>{
   expect(service.products().find(p=>p.id==='active')?.price).toBe(100);
   service.loadStaffProducts().subscribe();
   expect(http.get.mock.calls.filter(([url])=>url.startsWith('/api/v1/staff/products'))).toHaveLength(2);
+ });
+});
+
+describe('Owner-scoped staff inventory reads',()=>{
+ it('loads Operations inventory without requesting Content Editor data',()=>{
+  const {service,http}=setup();Object.assign(service,{session:{hasRole:(role:string)=>role==='OPERATIONS'}});
+  http.get.mockImplementation((url:string)=>{
+   expect(url).toContain('/api/v1/staff/inventory');
+   return of({items:[{skuId:'actual-sku',onHand:'8',reserved:'2'}],totalPages:1});
+  });
+  service.loadStaffProducts().subscribe();expect(service.products()[0]).toMatchObject({skuId:'actual-sku',stock:8,reserved:2,status:'UNKNOWN'});
+  expect(http.get).toHaveBeenCalledTimes(1);
+ });
+ it('loads Content Editor products without requesting Operations stock',()=>{
+  const {service,http,catalogue}=setup();Object.assign(service,{session:{hasRole:(role:string)=>role==='CONTENT_EDITOR'}});
+  service.loadStaffProducts().subscribe();catalogue.next({items:[{id:'draft',status:'DRAFT',skus:[{id:'sku'}]}],totalPages:1});catalogue.complete();
+  expect(http.get.mock.calls.some(([url])=>url.includes('/staff/inventory'))).toBe(false);expect(service.products()).toHaveLength(1);
  });
 });

@@ -25,7 +25,7 @@ import { AdminService, AdminHeadingComponent, BadgeComponent } from 'shared-ui';
           <tbody class="divide-y divide-hairline">
             <tr *ngFor="let p of filteredProducts()" class="transition-colors hover:bg-surface-alt/30">
               <td class="px-6 py-4">
-                <p class="font-bold"><a [routerLink]="['/admin/inventory/products', p.sku, 'edit']" class="hover:text-brand hover:underline">{{ p.name }}</a></p>
+                <p class="font-bold"><a [routerLink]="admin.can('products') ? ['/admin/inventory/products', p.sku, 'edit'] : null" class="hover:text-brand hover:underline">{{ p.name }}</a></p>
                 <p class="text-xs text-muted-ink">{{ p.sku }}</p>
               </td>
               <td class="px-6 py-4 text-muted-ink">{{ p.category }}</td>

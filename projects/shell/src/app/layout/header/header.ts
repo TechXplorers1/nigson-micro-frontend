@@ -2,7 +2,7 @@ import { Component, HostListener, computed, signal, effect } from '@angular/core
 import { CommonModule } from '@angular/common';
 import { RouterLink, Router } from '@angular/router';
 import { LucideMenu, LucideX, LucideChevronRight, LucideShoppingBag, LucideUser, LucideUserRound, LucidePackage, LucideLogOut, LucideSearch } from '@lucide/angular';
-import { ShopService } from 'shared-ui';
+import { ShopService, SessionService } from 'shared-ui';
 import { NavSearchComponent } from './nav-search.component';
 
 @Component({
@@ -19,7 +19,7 @@ export class HeaderComponent {
   searchOpen = signal(false);
   scrolled = signal(false);
 
-  constructor(public shop: ShopService, private router: Router) {}
+  constructor(public shop: ShopService, private router: Router, public session: SessionService) {}
 
   @HostListener('window:scroll', [])
   onWindowScroll() {

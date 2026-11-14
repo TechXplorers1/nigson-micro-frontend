@@ -1,3 +1,5 @@
+import {CanActivateChildFn} from '@angular/router';
+import {canAccessSection, staffPathSection, staffLanding} from './staff-access';
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { map } from 'rxjs/operators';
@@ -63,4 +65,16 @@ export const staffGuard: CanActivateFn = (route, state) => {
   };
 
   return session.sessionLoaded() ? check() : session.loadSession().pipe(map(() => check()));
+};
+
+/** Runs for every staff child navigation, including direct links and reused layouts. */
+export const staffSectionGuard:CanActivateChildFn = (route,state) => {
+ const session=inject(SessionService),router=inject(Router);
+ const check=()=>{
+  if(!session.authenticated())return router.parseUrl('/auth/login?redirect='+encodeURIComponent(state.url));
+  const url=state.url.startsWith('/admin')?state.url:'/admin'+state.url;
+  const section=staffPathSection(url);
+  return section&&canAccessSection(session.roles(),section)?true:router.parseUrl(staffLanding(session.roles()));
+ };
+ return session.sessionLoaded()?check():session.loadSession().pipe(map(check));
 };

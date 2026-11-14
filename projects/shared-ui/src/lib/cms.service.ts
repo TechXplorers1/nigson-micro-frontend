@@ -815,6 +815,7 @@ export type SectionApi = {
 export class CmsService {
   private http=inject(HttpClient);
   private session=inject(SessionService);
+  readonly canPublish=computed(()=>this.session.hasRole('CONTENT_EDITOR')&&this.session.hasRole('CONTENT_PUBLISHER'));
   readonly isPublishing=signal(false);
   readonly error=signal('');
   readonly state=signal<CmsState>({published:defaultStore(),drafts:defaultStore()});
@@ -871,6 +872,7 @@ export class CmsService {
   fetchContent(type:string,slug:string):Observable<ContentDTO|null>{return this.http.get<ContentDTO>(`/api/v1/content/${type.toUpperCase()}/${encodeURIComponent(slug)}?locale=en`);}
   private step(revision:any,path:string,body:any):Observable<any>{return this.http.post<any>(`/api/v1/staff/content-revisions/${revision.id}/${path}`,body,{headers:this.headers(revision.version)});}
   publishContent(revision:any):Observable<any>{
+    if(!this.canPublish())return throwError(()=>new Error('Publishing requires both Content Editor and Content Publisher access in the current CMS workflow. Save a draft instead.'));
     let result=of(revision);
     if(revision.state==='DRAFT')result=result.pipe(switchMap(r=>this.step(r,'review',{reason:'Submitted from admin content editor'})));
     if(['DRAFT','REVIEW'].includes(revision.state))result=result.pipe(switchMap(r=>this.step(r,'approval',{approve:true,reason:'Approved from admin content editor'})));
@@ -878,6 +880,7 @@ export class CmsService {
   }
   withdrawContent(revision:any):Observable<any>{return this.step(revision,'publication',{action:'WITHDRAW',reason:'Withdrawn from admin content editor'});}
   executePublishPipeline(id:string,edit?:ContentRevisionEdit):Observable<boolean>{
+    if(!this.canPublish())return throwError(()=>new Error('Publishing requires Content Editor and Content Publisher access. Save a draft instead.'));
     this.isPublishing.set(true);return defer(()=>this.saveContent(this.type(id),id,this.edit(edit||this.pageEdit(id)))).pipe(switchMap(r=>this.publishContent(r)),tap(()=>{
       const next=clone(this.state());next.published[id]=clone(next.drafts[id]);next.published[id].status='Published';next.drafts[id].status='Published';this.state.set(next);
     }),map(()=>true),catchError(e=>{this.error.set(this.message(e));return throwError(()=>e);}),finalize(()=>this.isPublishing.set(false)));
@@ -892,6 +895,7 @@ export class CmsService {
   loadBlogs():Observable<any[]>{return this.loadStaffContent().pipe(map(rows=>rows.filter(r=>r.type==='BLOG').map(r=>this.blog(r))));}
   private blog(r:any){const extra=r.metadata?.structuredData||{};return {...extra,id:r.contentItemId,revision:r,title:r.title,slug:r.slug,status:r.state==='PUBLISHED'?'Published':'Draft',body:(r.body?.blocks||[]).filter((b:any)=>b.type==='TEXT').map((b:any)=>b.text).join('\n\n'),tag:extra.tag||'',author:extra.author||'',date:r.publishedAt||extra.date||'',excerpt:extra.excerpt||'',image:extra.image||''};}
   saveBlog(post:any):Observable<any>{
+    if(post.status==='Published'&&!this.canPublish())return throwError(()=>new Error('Publishing requires Content Editor and Content Publisher access. Save a draft instead.'));
     const edit={title:post.title,body:{schemaVersion:1,blocks:[{type:'TEXT',text:post.body||post.excerpt||post.title}]},metadata:{title:post.title.slice(0,70),description:(post.excerpt||post.title).slice(0,180),robots:'INDEX',canonicalUrl:null,alternates:[],structuredData:{tag:post.tag||'',author:post.author||'',excerpt:post.excerpt||'',image:post.image||'',date:post.date||''}}};
     return this.saveContent('BLOG',post.slug,edit).pipe(switchMap(r=>post.status==='Published'?this.publishContent(r):of(r)),map(r=>this.blog(r)));
   }

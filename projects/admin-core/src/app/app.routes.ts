@@ -1,3 +1,4 @@
+import {staffGuard, staffSectionGuard, adminGuard} from 'shared-ui';
 import { Routes } from '@angular/router';
 import { AdminLayoutComponent } from './layout/admin-layout.component';
 import { AdminDashboardComponent } from './dashboard/admin-dashboard.component';
@@ -12,11 +13,13 @@ export const routes: Routes = [
   {
     path: '',
     component: AdminLayoutComponent,
+    canActivate: [staffGuard],
+    canActivateChild: [staffSectionGuard],
     children: [
       { path: '', component: AdminDashboardComponent, pathMatch: 'full' },
       { path: 'analytics', component: AnalyticsComponent },
-      { path: 'users', component: AdminUsersComponent },
-      { path: 'roles', component: AdminRolesComponent },
+      { path: 'users', canActivate: [adminGuard], component: AdminUsersComponent },
+      { path: 'roles', canActivate: [adminGuard], component: AdminRolesComponent },
     ]
   }
 ];

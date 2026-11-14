@@ -248,7 +248,7 @@ export class AdminCustomersComponent implements OnInit {
 
   ngOnInit() {
     this.admin.loadStaffCustomers().subscribe();
-    this.admin.loadStaffOrders().subscribe();
+    if(this.admin.session.hasRole('OPERATIONS')) this.admin.loadStaffOrders().subscribe();
   }
 
   totalCustomers = computed(() => this.admin.customers().length);

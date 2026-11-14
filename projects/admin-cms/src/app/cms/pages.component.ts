@@ -55,7 +55,7 @@ import { LucideSearch, LucideFileText, LucideExternalLink, LucideGlobe, LucideCh
             <div *ngIf="!isDirty(p.id)" class="flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-emerald-600">
               <svg lucideCheckCircle2 class="h-3 w-3"></svg> Published
             </div>
-            <div *ngIf="isDirty(p.id)" class="flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-amber-700">
+            <div *ngIf="isDirty(p.id) && cms.canPublish()" class="flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-amber-700">
               <span class="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse"></span> Draft Changes
             </div>
           </div>

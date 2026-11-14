@@ -22,11 +22,11 @@ type Item = { to: string; label: string; icon: any; key: SectionKey; exact?: boo
     LucidePackagePlus, LucideSlidersHorizontal, LucideArrowLeftRight, LucideAlertTriangle, LucideXCircle
   ],
   template: `
-    <div *ngIf="!hydrated() || !user() || !isAdmin()" class="grid min-h-screen place-items-center bg-surface-alt text-sm text-muted-ink">
-      Checking admin access...
+    <div *ngIf="!hydrated() || !user() || !isStaff()" class="grid min-h-screen place-items-center bg-surface-alt text-sm text-muted-ink">
+      Checking staff access...
     </div>
 
-    <div *ngIf="hydrated() && user() && isAdmin()" class="flex h-screen overflow-hidden bg-surface-alt font-sans text-ink">
+    <div *ngIf="hydrated() && user() && isStaff()" class="flex h-screen overflow-hidden bg-surface-alt font-sans text-ink">
       <!-- Mobile Sidebar Backdrop -->
       <div 
         *ngIf="sidebarOpen()" 
@@ -41,7 +41,7 @@ type Item = { to: string; label: string; icon: any; key: SectionKey; exact?: boo
       >
         <div class="flex items-center border-b border-hairline px-6 py-4">
           <img src="/assets/logo.png" alt="Nigson" class="w-28 xl:w-32 h-auto object-contain -ml-2" />
-          <span class="ml-1 rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-brand">Admin</span>
+          <span class="ml-1 rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-brand">{{ session.isAdmin() ? 'Admin' : 'Staff Portal' }}</span>
         </div>
 
         <nav class="flex-1 overflow-y-auto px-3 py-4">
@@ -92,7 +92,7 @@ type Item = { to: string; label: string; icon: any; key: SectionKey; exact?: boo
             </span>
             <div class="min-w-0">
               <p class="truncate text-sm font-semibold text-ink">{{ user()?.fullName }}</p>
-              <p class="truncate text-[11px] text-muted-ink">{{ currentRole()?.name ?? "Admin" }}</p>
+              <p class="truncate text-[11px] text-muted-ink">{{ currentRole()?.name ?? "Staff" }}</p>
             </div>
           </div>
           <button (click)="handleLogout()" title="Log out" aria-label="Log out" class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-muted-ink transition-colors hover:bg-rose-50 hover:text-rose-600">
@@ -134,7 +134,7 @@ export class AdminLayoutComponent implements OnInit {
     if (this.session.authenticated()) {
       return {
         id: this.session.userId() || '',
-        fullName: this.session.fullName() || 'admin Local Fixture',
+        fullName: this.session.fullName() || 'Staff member',
         email: this.session.email() || '',
         roles: this.session.roles(),
         createdAt: new Date().toISOString()
@@ -142,8 +142,8 @@ export class AdminLayoutComponent implements OnInit {
     }
     return null;
   });
-  isAdmin = computed(() => {
-    return this.session.isAdmin();
+  isStaff = computed(() => {
+    return this.session.isStaff();
   });
   hydrated = computed(() => this.session.sessionLoaded() || this.shop.hydrated());
   sidebarOpen = signal(false);
@@ -164,7 +164,7 @@ export class AdminLayoutComponent implements OnInit {
       title: "Inventory Management",
       items: [
         { to: "/admin/inventory", label: "Inventory Overview", icon: null, key: "inventory" as SectionKey, exact: true },
-        { to: "/admin/inventory/products", label: "Products", icon: null, key: "inventory" as SectionKey },
+        { to: "/admin/inventory/products", label: "Products", icon: null, key: "products" as SectionKey },
         { to: "/admin/inventory/stock-in", label: "Stock In / Receive", icon: null, key: "inventory" as SectionKey },
         { to: "/admin/inventory/adjustment", label: "Stock Adjustment", icon: null, key: "inventory" as SectionKey },
         { to: "/admin/inventory/movements", label: "Stock Movements", icon: null, key: "inventory" as SectionKey },
@@ -198,10 +198,12 @@ export class AdminLayoutComponent implements OnInit {
   ];
 
   ngOnInit() {
+    const destination=this.session.consumeLoginReturn();
+    if(destination && destination!==this.router.url){this.router.navigateByUrl(destination);return;}
     if (this.session.sessionLoaded()) {
       if (!this.session.authenticated()) {
         this.router.navigate(['/auth/login'], { queryParams: { redirect: '/admin' } });
-      } else if (!this.isAdmin()) {
+      } else if (!this.isStaff()) {
         this.router.navigate(['/']);
       }
     }

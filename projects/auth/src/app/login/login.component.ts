@@ -1,3 +1,4 @@
+import {loginDestination, safeReturnPath} from 'shared-ui';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -43,16 +44,16 @@ export class LoginComponent implements OnInit {
     });
   }
 
-  private getReturnUrl(): string {
-    const raw = this.route.snapshot.queryParams['returnTo'] || this.route.snapshot.queryParams['redirect'] || '/account';
-    if (raw.startsWith('/checkout') || raw.startsWith('/cart')) return '/checkout';
-    if (raw.startsWith('/admin')) return '/admin';
-    return '/account';
+  private requestedReturn():string|undefined {
+    return safeReturnPath(this.route.snapshot.queryParams['returnTo'] || this.route.snapshot.queryParams['redirect']);
+  }
+  private getReturnUrl():string {
+    return this.session.consumeLoginReturn() ?? loginDestination(this.session.roles(),this.requestedReturn());
   }
 
 
   signIn(): void {
     this.redirecting.set(true);
-    this.session.signIn(this.getReturnUrl());
+    this.session.signIn(this.requestedReturn());
   }
 }

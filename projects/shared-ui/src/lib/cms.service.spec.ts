@@ -7,8 +7,9 @@ import {CmsService} from './cms.service';
 import {SessionService} from './session.service';
 function setup(){
  const http={get:vi.fn(()=>of({items:[],totalPages:1})),post:vi.fn()};
- const injector=Injector.create({providers:[{provide:HttpClient,useValue:http},{provide:SessionService,useValue:{}},{provide:CmsService,useFactory:()=>new CmsService()}]});
- return {service:injector.get(CmsService),http};
+ const session={hasRole:(_role:string)=>true};
+ const injector=Injector.create({providers:[{provide:HttpClient,useValue:http},{provide:SessionService,useValue:session},{provide:CmsService,useFactory:()=>new CmsService()}]});
+ return {service:injector.get(CmsService),http,session};
 }
 describe('Admin content persistence',()=>{
  it('uses each acknowledged revision version throughout publication',()=>{
@@ -33,4 +34,18 @@ describe('Admin content persistence',()=>{
   const {service,http}=setup();http.get.mockReturnValue(of({items:[{type:'HOME',slug:'home',locale:'en',contentItemId:'item',itemVersion:8}],totalPages:1}));http.post.mockReturnValue(of({id:'revision',version:0,state:'DRAFT'}));
   service.saveDraft('home').subscribe();expect(http.post.mock.calls[0][0]).toBe('/api/v1/staff/content/item/revisions');expect(http.post.mock.calls[0][2].headers['If-Match']).toBe('"8"');
  });
+});
+
+describe('CMS role-specific actions',()=>{
+ it('lets an editor save drafts but does not send a publication request',()=>{
+  const {service,http,session}=setup();session.hasRole=role=>role==='CONTENT_EDITOR';
+  const error=vi.fn();service.publishContent({id:'revision',state:'DRAFT',version:0}).subscribe({error});
+  expect(error).toHaveBeenCalled();expect(http.post).not.toHaveBeenCalled();expect(service.canPublish()).toBe(false);
+ });
+});
+
+it('rejects a full publish pipeline before creating a draft for an editor-only user',()=>{
+ const {service,http,session}=setup();session.hasRole=role=>role==='CONTENT_EDITOR';
+ const error=vi.fn();service.executePublishPipeline('home').subscribe({error});
+ expect(error).toHaveBeenCalled();expect(http.post).not.toHaveBeenCalled();
 });

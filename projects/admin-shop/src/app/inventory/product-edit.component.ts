@@ -210,10 +210,10 @@ export interface CustomSpec {
               <div>
                 <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-muted-ink">Catalog Status</label>
                 <select [(ngModel)]="product.status" name="status" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20 font-semibold">
-                  <option value="Active">Publish in Nigeria</option>
+                  <option [disabled]="!canPublishProduct" value="Active">Publish in Nigeria</option>
                   
                   <option value="Draft">Draft</option>
-                  <option value="Archived">Archived</option>
+                  <option [disabled]="!canPublishProduct" value="Archived">Archived</option>
                 </select>
               </div>
             </div>
@@ -456,7 +456,8 @@ export interface CustomSpec {
               <div class="border-t border-gray-100 pt-4 sm:col-span-2 grid gap-5 sm:grid-cols-2">
                 <div>
                   <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-muted-ink">Current Inventory Stock (Units) *</label>
-                  <input type="number" [(ngModel)]="product.stock" name="stock" readonly required placeholder="e.g. 100" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
+                  <span *ngIf="!canViewInventory" class="text-sm text-muted-ink">Requires Operations access</span>
+                  <input [hidden]="!canViewInventory" type="number" [(ngModel)]="product.stock" name="stock" readonly required placeholder="e.g. 100" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
                   <p class="mt-1 text-[10px] text-muted-ink">Tracked across warehouse balances.</p>
                 </div>
 
@@ -506,6 +507,8 @@ export class ProductEditComponent implements OnInit {
   private retailContext: RetailPriceContext | null = null;
   private originalRetail: string | null = null;
   readonly pricingNotice = signal('');
+  get canPublishProduct(): boolean { return this.admin.session.hasRole('CONTENT_PUBLISHER'); }
+  get canViewInventory(): boolean { return this.admin.session.hasRole('OPERATIONS'); }
   get canEditRetail(): boolean { return canEditRetailPrice(this.admin.session.roles()); }
   private async loadRetailPrice(skuId: string) {
     this.retailContext = null;
@@ -875,8 +878,8 @@ export class ProductEditComponent implements OnInit {
 
         await this.loadRetailPrice(skuId);
 
-        // Load live inventory balance from backend
-        try {
+        // Stock data belongs to Operations.
+        if(this.admin.session.hasRole('OPERATIONS')) try {
           const invData = await firstValueFrom(
             this.http.get<any>(`/api/v1/staff/inventory?skuId=${skuId}`)
           );
@@ -1100,6 +1103,8 @@ export class ProductEditComponent implements OnInit {
       };
 
       const desiredStatus = this.product.status || 'Active';
+      if(desiredStatus==='Archived' && this.originalState!=='ARCHIVED' && !this.canPublishProduct) throw new Error('Archiving requires Content Publisher access.');
+      if(desiredStatus==='Active' && this.originalState!=='ACTIVE' && !this.admin.session.hasRole('CONTENT_PUBLISHER')) throw new Error('Publishing requires Content Publisher access. Save this product as Draft.');
 
       let saved = await firstValueFrom(
         this.isNew() ? this.admin.createProduct(payload) : this.admin.updateProduct(this.product.id, payload)

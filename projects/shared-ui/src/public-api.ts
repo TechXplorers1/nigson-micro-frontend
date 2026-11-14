@@ -58,3 +58,5 @@ export * from './lib/marketing.service';
 export * from './lib/keycloak.service';
 
 export * from './lib/retail-pricing.service';
+
+export * from './lib/staff-access';
