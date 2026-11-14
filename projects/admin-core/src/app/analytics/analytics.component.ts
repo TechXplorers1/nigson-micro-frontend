@@ -15,36 +15,37 @@ import { RouterLink } from '@angular/router';
   template: `
     <lib-admin-heading title="Business Analytics" subtitle="Performance across catalogue, sales and lead generation"></lib-admin-heading>
 
+    <p *ngIf="reportError()" role="alert" class="mb-4 rounded-xl border border-red-200 bg-red-50 p-4">{{ reportError() }}</p>
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      <lib-stat-card label="Total sales" [value]="sales() | currency:'NGN':'symbol-narrow':'1.0-0'" [hint]="liveOrders().length + ' paid orders'" [icon]="true">
+      <lib-stat-card label="Total sales" [value]="reportSales() === null ? 'Unavailable' : (reportSales() | currency:'NGN':'symbol-narrow':'1.0-0')" [hint]="reportOrders() === null ? '' : reportOrders() + ' orders in report'" [icon]="true">
         <svg lucideTrendingUp class="h-5 w-5"></svg>
       </lib-stat-card>
-      <lib-stat-card label="Average Order Value" [value]="aov() | currency:'NGN':'symbol-narrow':'1.0-0'" [icon]="true">
+      <lib-stat-card label="Average Order Value" [value]="reportSales() === null ? 'Unavailable' : (aov() | currency:'NGN':'symbol-narrow':'1.0-0')" [icon]="true">
         <svg lucideShoppingCart class="h-5 w-5"></svg>
       </lib-stat-card>
-      <lib-stat-card label="Total Customers" [value]="admin.customers().length" [icon]="true">
+      <lib-stat-card label="Total Customers" [value]="reportCustomers() ?? 'Unavailable'" [icon]="true">
         <svg lucideUsers class="h-5 w-5"></svg>
       </lib-stat-card>
-      <lib-stat-card label="Active Products" [value]="admin.products().length" [icon]="true">
+      <lib-stat-card label="Products in report" [value]="reportProducts() ?? 'Unavailable'" [icon]="true">
         <svg lucidePackage class="h-5 w-5"></svg>
       </lib-stat-card>
 
-      <lib-stat-card label="Quote Requests" [value]="admin.quotes().length" [icon]="true">
+      <lib-stat-card *ngIf="admin.can('quotes')" label="Quote Requests" [value]="admin.quotes().length" [icon]="true">
         <svg lucideClipboardList class="h-5 w-5"></svg>
       </lib-stat-card>
-      <lib-stat-card label="Distributor Apps" [value]="admin.applications().length" [icon]="true">
+      <lib-stat-card *ngIf="admin.can('distributors')" label="Distributor Apps" [value]="admin.applications().length" [icon]="true">
         <svg lucideBuilding2 class="h-5 w-5"></svg>
       </lib-stat-card>
-      <lib-stat-card label="Contact Inquiries" [value]="admin.inquiries().length" [icon]="true">
+      <lib-stat-card *ngIf="admin.can('inquiries')" label="Contact Inquiries" [value]="admin.inquiries().length" [icon]="true">
         <svg lucideMail class="h-5 w-5"></svg>
       </lib-stat-card>
-      <lib-stat-card label="Total Units in Stock" [value]="inventory()" [icon]="true">
+      <lib-stat-card label="Total Units in Stock" [value]="reportStock() ?? 'Unavailable'" [icon]="true">
         <svg lucideBoxes class="h-5 w-5"></svg>
       </lib-stat-card>
     </div>
 
     <!-- Charts Section -->
-    <div class="mt-8 grid gap-6 lg:grid-cols-2">
+    <div *ngIf="admin.session.hasRole('OPERATIONS') && admin.session.hasRole('CONTENT_EDITOR')" class="mt-8 grid gap-6 lg:grid-cols-2">
       <!-- Sales Trend (Last 7 Days) -->
       <div class="rounded-2xl border border-hairline bg-white p-6 shadow-sm">
         <h3 class="mb-6 font-semibold">Sales Trend (Last 7 Days)</h3>
@@ -86,20 +87,25 @@ export class AnalyticsComponent implements OnInit {
   admin = inject(AdminService);
   Math = Math;
 
+  reportError = signal('');
+  reportProducts = signal<number | null>(null);
+  reportStock = signal<number | null>(null);
   reportSales = signal<number | null>(null);
   reportOrders = signal<number | null>(null);
   reportCustomers = signal<number | null>(null);
 
   ngOnInit() {
-    this.admin.loadStaffOrders().subscribe();
-    this.admin.loadStaffProducts().subscribe();
+    if(this.admin.session.hasRole('OPERATIONS')) this.admin.loadStaffOrders().subscribe();
+    if(this.admin.session.hasRole('CONTENT_EDITOR')) this.admin.loadStaffProducts().subscribe();
     this.admin.loadCommerceReport().subscribe({next:rep => {
       if (rep) {
+        this.reportProducts.set(rep.products?.length ?? 0);
+        this.reportStock.set((rep.stock ?? []).reduce((sum:number,row:any)=>sum+Number(row.onHand),0));
         if (rep.sales?.amount) this.reportSales.set(Number(rep.sales.amount));
         if (rep.orders !== undefined) this.reportOrders.set(rep.orders);
         if (rep.customers !== undefined) this.reportCustomers.set(rep.customers);
       }
-    },error:()=>{}});
+    },error:error=>{this.reportError.set(this.admin.message(error));}});
   }
 
   readonly weeklySalesTrend = computed(() => {

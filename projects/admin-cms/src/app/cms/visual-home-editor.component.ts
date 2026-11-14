@@ -95,7 +95,7 @@ import { AdminBlogPost, parseMarkdownToSections } from './blog.component';
             {{ isSaving() ? 'Saving...' : 'Save Draft' }}
           </button>
           
-          <button (click)="handlePublish()" [disabled]="isPublishing()" class="flex items-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all disabled:opacity-50">
+          <button *ngIf="cms.canPublish()" (click)="handlePublish()" [disabled]="isPublishing()" class="flex items-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all disabled:opacity-50">
             <svg lucideGlobe class="h-4 w-4" [class.animate-spin]="isPublishing()"></svg>
             {{ isPublishing() ? 'Publishing...' : 'Publish' }}
           </button>

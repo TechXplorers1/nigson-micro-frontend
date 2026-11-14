@@ -1,3 +1,4 @@
+import {safeReturnPath, loginDestination} from './staff-access';
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of, throwError } from 'rxjs';
@@ -49,7 +50,19 @@ export class SessionService {
   
 
   /** Start the Keycloak authorization-code flow through the Java BFF. */
-  signIn(returnUrl = '/account'): void {
+  consumeLoginReturn():string|null {
+    try {
+      const pending=sessionStorage.getItem('nigson_login_return');
+      if(pending===null)return null;
+      sessionStorage.removeItem('nigson_login_return');
+      return loginDestination(this.roles(),pending==='DEFAULT'?undefined:pending);
+    } catch { return null; }
+  }
+
+  signIn(returnUrl?: string): void {
+    const requested=safeReturnPath(returnUrl);
+    try { sessionStorage.setItem('nigson_login_return',requested??'DEFAULT'); } catch { }
+    returnUrl=requested??'/account';
     const target = ['/', '/account', '/shop', '/checkout', '/admin', '/distributor'].includes(returnUrl)
       ? returnUrl
       : returnUrl.startsWith('/distributor')

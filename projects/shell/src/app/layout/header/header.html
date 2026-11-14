@@ -40,8 +40,8 @@
       <!-- Account -->
       <ng-container *ngIf="shop.hydrated(); else loadingAccount">
         <ng-container *ngIf="shop.user(); else guestUser">
-          <ng-container *ngIf="shop.isAdmin(); else normalUser">
-            <a routerLink="/admin" class="hidden sm:inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground h-9 w-9" aria-label="Admin Dashboard" title="Admin Dashboard">
+          <ng-container *ngIf="session.isStaff(); else normalUser">
+            <a routerLink="/admin" class="hidden sm:inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground h-9 w-9" aria-label="Staff Portal" title="Staff Portal">
               <span class="grid h-7 w-7 place-items-center rounded-full text-white text-xs font-bold" [style.background]="avatarBg()">
                 {{ shop.initialsOf(shop.user()?.fullName) }}
               </span>
@@ -128,8 +128,8 @@
     <a routerLink="/distributor" (click)="open.set(false)" class="display-type flex items-center justify-between border-b border-border py-4 font-semibold">Become a Partner<svg lucideChevronRight class="h-4 w-4 text-primary"></svg></a>
 
     <ng-container *ngIf="shop.hydrated() && shop.user(); else mobileGuestUser">
-      <ng-container *ngIf="shop.isAdmin(); else mobileNormalUser">
-        <a routerLink="/admin" (click)="open.set(false)" class="display-type flex items-center justify-between border-b border-border py-4 font-semibold text-primary">Admin Dashboard<svg lucideChevronRight class="h-4 w-4 text-primary"></svg></a>
+      <ng-container *ngIf="session.isStaff(); else mobileNormalUser">
+        <a routerLink="/admin" (click)="open.set(false)" class="display-type flex items-center justify-between border-b border-border py-4 font-semibold text-primary">Staff Portal<svg lucideChevronRight class="h-4 w-4 text-primary"></svg></a>
       </ng-container>
       <ng-template #mobileNormalUser>
         <a routerLink="/account" (click)="open.set(false)" class="display-type flex items-center justify-between border-b border-border py-4 font-semibold text-primary">My Account<svg lucideChevronRight class="h-4 w-4 text-primary"></svg></a>

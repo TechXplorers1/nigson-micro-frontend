@@ -35,3 +35,24 @@ Configure the matching reCAPTCHA secret, allowed hostnames, database rate-limit 
 - Protected Experience paths are proxied to Experience for correct service ownership, but the browser does not send actor assertions. The current Java Commerce BFF has no relay for distributor applications, quote requests, lead queues, or career application administration, so those calls correctly receive an authorization error until the corresponding trusted BFF routes are implemented.
 
 `npm run build` builds the shell; `npm run build:all` builds the configured shell and remote applications. The AI Compose profile is optional. The assistant returns the service’s feature-disabled response until its conversation TTL/market, provider, policy and knowledge configuration are supplied. The Angular proxy is for local development only. Deployments must provide an equivalent same-origin reverse proxy for these Java paths and preserve the BFF session cookie and CSRF header. Use the backend API contracts and local guide for provider/security setup; no carrier, price, tax, sender, or identity configuration is supplied by the frontend.
+
+
+## Staff portal access
+
+All staff use the shell's /admin portal. The route entrance, layout, sidebar and child routes share the same owner-aligned section policy. The account menu exposes Staff Portal to recognized staff; a normal login without an explicit destination selects a role-specific landing page. Authorized deep links survive the BFF round trip through a validated, one-use navigation marker in sessionStorage (no credentials or role grants are stored).
+
+| Role | Available sections under current backend permissions |
+| --- | --- |
+| ADMIN | Dashboard and staff/role management; domain sections follow additional explicitly assigned roles |
+| SALES | Quotes, distributor applications, customers and enquiries |
+| OPERATIONS | Orders, stock inventory and adjustments |
+| FINANCE | Orders (existing backend recent-MFA policy still applies) |
+| CONTENT_EDITOR | Products, CMS drafts/pages and blog drafts |
+| CONTENT_PUBLISHER | Review moderation |
+| ANALYST | Commerce analytics report |
+
+Multiple roles combine their sections. Customers cannot enter the staff portal. User/role management remains ADMIN-only, and hidden links cannot be bypassed by entering a direct URL. Backend authorization is unchanged.
+
+Current API boundaries matter: catalogue reads require CONTENT_EDITOR; operational inventory can be viewed using its actual SKU identifiers without that grant. CMS draft reads require CONTENT_EDITOR, while publication also requires CONTENT_PUBLISHER. Publisher-only users therefore land on review moderation; give both content roles only when that combined authority is intended. FINANCE alone does not grant ANALYST reports. These requirements are reflected in page links, data loads and action controls rather than inferred or bypassed.
+
+Details and verification: [Staff portal access implementation](docs/2026-11-14-STAFF-PORTAL-ACCESS.md).

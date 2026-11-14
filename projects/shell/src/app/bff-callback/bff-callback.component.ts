@@ -1,3 +1,4 @@
+import {loginDestination} from 'shared-ui';
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute } from '@angular/router';
@@ -34,7 +35,7 @@ export class BffCallbackComponent implements OnInit {
 
   ngOnInit() {
     this.session.loadSession().subscribe(() => {
-      const returnUrl = this.route.snapshot.queryParams['redirect'] || '/';
+      const returnUrl = this.session.consumeLoginReturn() ?? loginDestination(this.session.roles(), this.route.snapshot.queryParams['redirect']);
       if (this.session.authenticated()) {
         this.router.navigateByUrl(returnUrl);
       } else {

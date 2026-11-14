@@ -1,3 +1,6 @@
+import {SectionKey, BackendRole, ROLE_PERMISSIONS, canAccessSection} from '../staff-access';
+export type {SectionKey, BackendRole} from '../staff-access';
+export {ROLE_PERMISSIONS} from '../staff-access';
 import { Injectable, computed, signal, inject, effect, untracked, WritableSignal } from '@angular/core';
 import { HttpClient, HttpContext, HttpHeaders } from '@angular/common/http';
 import { Observable, of, tap, map, catchError, forkJoin, switchMap, defer, throwError, finalize, shareReplay } from 'rxjs';
@@ -7,14 +10,9 @@ import { CatalogService } from '../catalog.service';
 import { applyInventory, mapStaffProducts } from './inventory-mapping';
 import { distributorCommand, distributorDisplayState } from './distributor-workflow';
 
-export type SectionKey =
-  | "dashboard" | "pages" | "products" | "reviews" | "distributors"
-  | "quotes" | "inquiries" | "inventory" | "orders" | "customers"
-  | "analytics" | "blog" | "admins" | "roles";
-
 export type AdminProduct = {
   id: string; version?: number; skuVersion?: number; packSize?: string; categoryIds?: string[]; slug?: string; brandId?: string; skuId?: string; name: string; sku: string; category: string; price: number;
-  desc: string; image: string; images?: string[]; status: "DRAFT" | "ACTIVE" | "ARCHIVED" | "Active" | "Draft" | "Out of Stock";
+  desc: string; image: string; images?: string[]; status: "DRAFT" | "ACTIVE" | "ARCHIVED" | "Active" | "Draft" | "Out of Stock" | "UNKNOWN";
   stock: number; reserved: number; rating: number;
   cost?: number; retail?: number; lowLevel?: number;
   brand?: string;
@@ -138,18 +136,6 @@ export type AdminUser = {
 };
 
 export type AdminRole = { id: string; name: string; permissions: SectionKey[] };
-
-export type BackendRole = 'ADMIN' | 'SALES' | 'OPERATIONS' | 'FINANCE' | 'CONTENT_EDITOR' | 'CONTENT_PUBLISHER' | 'ANALYST';
-
-export const ROLE_PERMISSIONS: Record<string, SectionKey[]> = {
-  ADMIN: ["dashboard", "pages", "products", "reviews", "distributors", "quotes", "inquiries", "inventory", "orders", "customers", "analytics", "blog", "admins", "roles"],
-  SALES: ["dashboard", "quotes", "distributors", "customers", "inquiries"],
-  OPERATIONS: ["dashboard", "orders", "inventory", "products"],
-  FINANCE: ["dashboard", "orders", "analytics"],
-  CONTENT_EDITOR: ["dashboard", "pages", "blog", "reviews"],
-  CONTENT_PUBLISHER: ["dashboard", "pages", "blog", "reviews"],
-  ANALYST: ["dashboard", "analytics"]
-};
 
 export type StockLog = { id: string; sku: string; product: string; change: number; qty?: number; reason: string; date: string; by: string; supplier?: string; ref?: string; notes?: string; };
 
@@ -474,7 +460,7 @@ export class AdminService {
     });
   }
 
-  can(section: SectionKey): boolean { return this.session.roles().some(role => ROLE_PERMISSIONS[role]?.includes(section)); }
+  can(section: SectionKey): boolean { return canAccessSection(this.session.roles(), section); }
   isSuper(): boolean { return this.session.isAdmin(); }
   log(text: string): void { this.activity.update(rows => [{ id: crypto.randomUUID(), text, date: new Date().toISOString() }, ...rows].slice(0, 40)); }
   message(error: any): string {
@@ -508,8 +494,8 @@ export class AdminService {
   loadInitialStaffData(): void {
     if (!this.session.authenticated() || !this.session.isStaff()) return;
     this.http.get<any[]>('/api/v1/markets').subscribe({ next: rows => this.distributorMarket.set(rows.find(row => row.code === 'NG') ?? null), error: error => this.errors.update(all => ({ ...all, markets: this.message(error) })) });
-    if (this.session.hasRole('CONTENT_EDITOR') && this.session.hasRole('OPERATIONS')) this.loadStaffProducts().subscribe();
-    if (this.session.hasRole('OPERATIONS')) { this.loadStaffOrders().subscribe(); this.loadStaffInventory().subscribe({ error: () => { } }); this.loadStockLocations().subscribe(); this.loadStockMovements().subscribe(); }
+    if (this.session.hasRole('CONTENT_EDITOR') || this.session.hasRole('OPERATIONS')) this.loadStaffProducts().subscribe();
+    if (this.session.hasRole('OPERATIONS')) { this.loadStaffOrders().subscribe(); this.loadStockLocations().subscribe(); this.loadStockMovements().subscribe(); }
     if (this.session.hasRole('SALES')) { this.loadStaffCustomers().subscribe(); this.loadStaffQuotes().subscribe(); this.loadStaffInquiries().subscribe(); this.loadStaffApplications().subscribe(); }
     if (this.session.hasRole('ADMIN')) this.loadStaffUsers().subscribe();
     if (this.session.hasRole('CONTENT_PUBLISHER')) this.loadStaffReviews().subscribe();
@@ -527,7 +513,8 @@ export class AdminService {
 
   loadStaffProducts(): Observable<AdminProduct[]> {
     if (this.productsRequest) return this.productsRequest;
-    const request = forkJoin({ catalogue: this.rows('/api/v1/staff/products'), balances: this.rows('/api/v1/staff/inventory') }).pipe(
+    if (!this.session.hasRole('CONTENT_EDITOR')) return this.loadOperationalProducts();
+    const request = forkJoin({ catalogue: this.rows('/api/v1/staff/products'), balances: this.session.hasRole('OPERATIONS') ? this.rows('/api/v1/staff/inventory') : of([]) }).pipe(
       map(({ catalogue, balances }) => mapStaffProducts(catalogue, balances)),
       switchMap(products => products.length ? forkJoin(products.map(product => {
         const specs = product.specifications || {};
@@ -565,6 +552,17 @@ export class AdminService {
       shareReplay({ bufferSize: 1, refCount: true })
     );
     return this.productsRequest;
+  }
+  private loadOperationalProducts():Observable<AdminProduct[]> {
+    if(!this.session.hasRole('OPERATIONS'))return of([]);
+    return this.table('Inventory',this.rows('/api/v1/staff/inventory').pipe(map(balances=>{
+      const ids=[...new Set<string>(balances.map(row=>row.skuId))];
+      return ids.map(skuId=>{
+        const known=this.products().find(product=>product.skuId===skuId);
+        const rows=balances.filter(row=>row.skuId===skuId);
+        return {id:skuId,skuId,sku:known?.sku??skuId,name:known?.name??('SKU '+skuId),category:known?.category??'',price:0,desc:'',image:known?.image??'',status:'UNKNOWN' as const,stock:rows.reduce((n,row)=>n+Number(row.onHand),0),reserved:rows.reduce((n,row)=>n+Number(row.reserved),0),rating:0};
+      });
+    })),this.products);
   }
   loadStaffInventory(): Observable<any[]> {
     return this.rows('/api/v1/staff/inventory').pipe(tap(rows => this.products.update(products => applyInventory(products, rows))), catchError(error => this.fail('Inventory', error)));
@@ -924,6 +922,6 @@ export class AdminService {
   moderateReview(id: string, decision: 'PUBLISH' | 'WITHDRAW' | 'REJECT'): Observable<any> {
     return defer(() => { const row = this.reviews().find(row => row.id === id); if (row?.version == null) throw new Error('Reload the current review before moderating.'); return this.http.post<any>(`/api/v1/staff/reviews/${id}/moderation`, { decision, reason: 'Review moderated by content publisher' }, { headers: this.headers(row.version) }); }).pipe(switchMap(result => this.loadStaffReviews().pipe(map(() => result))), catchError(error => this.fail('Review moderation', error)));
   }
-  loadCommerceReport(from?: string, to?: string): Observable<any> { return this.http.get('/api/v1/staff/reports/commerce', { params: { from: from || new Date(Date.now() - 30 * 86400000).toISOString(), to: to || new Date().toISOString(), currency: 'NGN' } }).pipe(catchError(error => this.fail('Commerce report', error))); }
+  loadCommerceReport(from?: string, to?: string): Observable<any> { return this.http.get('/api/v1/staff/reports/commerce', { context: new HttpContext().set(LOCAL_API_FAILURE_CODES,['422:FEATURE_DISABLED']), params: { from: from || new Date(Date.now() - 30 * 86400000).toISOString(), to: to || new Date().toISOString(), currency: 'NGN' } }).pipe(catchError(error => throwError(() => error))); }
   loadEngagementReport(from?: string, to?: string): Observable<any> { return this.http.get('/api/v1/staff/reports/engagement', { params: { from: from || new Date(Date.now() - 30 * 86400000).toISOString(), to: to || new Date().toISOString() } }).pipe(catchError(error => this.fail('Engagement report', error))); }
 }

@@ -1,7 +1,7 @@
 import { Routes, UrlSegment } from '@angular/router';
 import { loadRemoteModule } from '@angular-architects/native-federation';
 import { BffCallbackComponent } from './bff-callback/bff-callback.component';
-import { authGuard, adminGuard } from 'shared-ui';
+import { authGuard, adminGuard, staffGuard, staffSectionGuard } from 'shared-ui';
 
 export function shopMatcher(url: UrlSegment[]) {
   if (url.length === 0) return null;
@@ -36,7 +36,8 @@ export const routes: Routes = [
   // can call loadRemoteModule for other remotes via the federation orchestrator.
   {
     path: 'admin',
-    canActivate: [adminGuard],
+    canActivate: [staffGuard],
+    canActivateChild: [staffSectionGuard],
     loadComponent: () => Promise.resolve()
       .then(() => loadRemoteModule('admin-core', './AdminLayout'))
       .then(m => m.AdminLayoutComponent)
@@ -60,6 +61,7 @@ export const routes: Routes = [
       },
       {
         path: 'users',
+        canActivate: [adminGuard],
         loadComponent: () => Promise.resolve()
           .then(() => loadRemoteModule('admin-core', './Users'))
           .then(m => m.AdminUsersComponent)
@@ -67,6 +69,7 @@ export const routes: Routes = [
       },
       {
         path: 'roles',
+        canActivate: [adminGuard],
         loadComponent: () => Promise.resolve()
           .then(() => loadRemoteModule('admin-core', './Roles'))
           .then(m => m.AdminRolesComponent)

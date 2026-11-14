@@ -101,7 +101,7 @@ import { LucideEye } from '@lucide/angular';
 
         <div class="flex items-center gap-2">
           <p class="text-sm">Shipping and delivery update from recorded fulfillment operations.</p>
-          <button *ngIf="viewOrder.rawState === 'PAID'" (click)="admin.setOrderStatus(viewOrder.id, 'Processing')" class="rounded-xl bg-brand px-4 py-2 font-bold text-white">Release for processing</button>
+          <button *ngIf="viewOrder.rawState === 'PAID' && admin.session.hasRole('OPERATIONS')" (click)="admin.setOrderStatus(viewOrder.id, 'Processing')" class="rounded-xl bg-brand px-4 py-2 font-bold text-white">Release for processing</button>
         </div>
       </div>
     </div>

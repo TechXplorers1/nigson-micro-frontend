@@ -101,11 +101,11 @@ import {
               </a>
               <!-- Admin Portal Shortcut -->
               <a 
-                *ngIf="session.isAdmin() || shop.isAdmin()"
+                *ngIf="session.isStaff()"
                 routerLink="/admin" 
                 class="inline-flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-colors text-brand hover:bg-brand/10 border border-brand/30 my-1 shadow-sm"
               >
-                <svg lucideSettings class="h-4 w-4"></svg> Admin Dashboard →
+                <svg lucideSettings class="h-4 w-4"></svg> Staff Portal →
               </a>
               <!-- Divider + Logout -->
               <button
@@ -134,6 +134,8 @@ export class AccountLayoutComponent implements OnInit {
   router = inject(Router);
 
   ngOnInit() {
+    const destination=this.session.consumeLoginReturn();
+    if(destination && destination!==this.router.url){ this.router.navigateByUrl(destination); return; }
     if (!this.shop.user() && this.session.authenticated()) {
       this.shop.user.set({
         id: this.session.userId() || 'user',

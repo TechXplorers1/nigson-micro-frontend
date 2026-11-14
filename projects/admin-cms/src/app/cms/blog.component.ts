@@ -245,7 +245,7 @@ export function parseMarkdownToSections(markdown: string): BlogSection[] {
               <td class="px-6 py-4 whitespace-nowrap" (click)="$event.stopPropagation()">
                 <button
                   type="button"
-                  (click)="toggleStatus(p)"
+                  [disabled]="!cms.canPublish()" (click)="toggleStatus(p)"
                   class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-all hover:scale-105"
                   [ngClass]="p.status === 'Published' ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'"
                   [title]="'Click to toggle status (currently ' + p.status + ')'"
@@ -280,7 +280,7 @@ export function parseMarkdownToSections(markdown: string): BlogSection[] {
 
                   <!-- Delete button -->
                   <button
-                    (click)="delete(p.id)"
+                    [disabled]="!cms.canPublish()" (click)="delete(p.id)"
                     class="grid h-8 w-8 place-items-center rounded-lg text-muted-ink transition-colors hover:bg-rose-100 hover:text-rose-600"
                     title="Delete Post"
                   >
@@ -430,7 +430,7 @@ export function parseMarkdownToSections(markdown: string): BlogSection[] {
                   class="w-full rounded-xl border border-hairline bg-white px-3 py-2 text-sm font-semibold focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
                   [ngClass]="editingPost.status === 'Published' ? 'text-emerald-700' : 'text-amber-700'"
                 >
-                  <option value="Published">Published</option>
+                  <option *ngIf="cms.canPublish()" value="Published">Published</option>
                   <option value="Draft">Draft</option>
                 </select>
               </div>
@@ -717,7 +717,7 @@ export class AdminBlogComponent {
     this.editingPost.body = (this.editingPost.body || '') + snippet;
   }
 
-  savePost(){if(!this.editingPost.title.trim())return this.showToast('Enter an article title.');if(!this.editingPost.slug.trim())this.editingPost.slug=this.editingPost.title.toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');this.cms.saveBlog(this.editingPost).subscribe({next:()=>{this.load();this.closeModal();this.showToast('Article saved.');},error:e=>this.showToast(this.cms.message(e))});}
+  savePost(){if(!this.editingPost.title.trim())return this.showToast('Enter an article title.');if(!this.editingPost.slug.trim())this.editingPost.slug=this.editingPost.title.toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');this.cms.saveBlog({...this.editingPost,status:this.cms.canPublish()?this.editingPost.status:'Draft'}).subscribe({next:()=>{this.load();this.closeModal();this.showToast('Article saved.');},error:e=>this.showToast(this.cms.message(e))});}
 
   delete(id:string){const post=this.posts().find(p=>p.id===id) as any;if(!post)return;if(!post.revision||!['PUBLISHED','APPROVED'].includes(post.revision.state))return this.showToast('Draft revisions are retained for audit. Publish or edit this draft.');this.cms.withdrawContent(post.revision).subscribe({next:()=>{this.load();this.showToast('Article withdrawn from the public site.');},error:e=>this.showToast(this.cms.message(e))});}
 
