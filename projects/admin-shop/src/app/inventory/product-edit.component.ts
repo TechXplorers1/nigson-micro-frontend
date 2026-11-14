@@ -1094,7 +1094,12 @@ export class ProductEditComponent implements OnInit {
       }
 
       for (const spec of this.customSpecs) {
-        const safeKey = (spec.key || '').trim().toLowerCase().replace(/[^a-z0-9_]/g, '_').slice(0, 80);
+        const safeKey = (spec.key || '')
+          .trim()
+          .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+          .toLowerCase()
+          .replace(/[^a-z0-9_]/g, '_')
+          .slice(0, 80);
         if (safeKey.match(/^[a-z][a-z0-9_]{0,79}$/) && spec.value !== undefined && spec.value !== null) {
           const cleanVal = String(spec.value).replace(/[\x00-\x1f\x7f-\x9f]/g, ' ').trim().slice(0, 1000);
           if (cleanVal) specifications[safeKey] = cleanVal;

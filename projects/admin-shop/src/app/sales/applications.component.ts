@@ -182,7 +182,7 @@ import { LucideSearch, LucideCheck, LucideX, LucideInfo } from '@lucide/angular'
             </div>
             <div class="flex flex-wrap gap-2">
               <button *ngIf="view().status === 'Pending'" (click)="setStatus(view().id, 'Under Review')" class="rounded-full bg-amber-600 px-5 py-2 text-xs font-bold text-white hover:bg-amber-700 shadow-sm transition-colors">Mark Under Review</button>
-              <button (click)="setStatus(view().id, 'Approved')" class="rounded-full bg-emerald-600 px-5 py-2 text-xs font-bold text-white hover:bg-emerald-700 shadow-sm transition-colors">Approve</button>
+              <button *ngIf="view().type !== 'Distributor' || view().status === 'Under Review'" (click)="setStatus(view().id, 'Approved')" class="rounded-full bg-emerald-600 px-5 py-2 text-xs font-bold text-white hover:bg-emerald-700 shadow-sm transition-colors">Approve</button>
               <button (click)="setStatus(view().id, 'Rejected')" class="rounded-full bg-rose-600 px-5 py-2 text-xs font-bold text-white hover:bg-rose-700 shadow-sm transition-colors">Reject</button>
               <button (click)="view.set(null)" class="rounded-full border border-gray-200 bg-white px-5 py-2 text-xs font-semibold text-ink hover:bg-gray-50 transition-colors">Close</button>
             </div>
@@ -258,6 +258,12 @@ export class AdminApplicationsComponent implements OnInit {
   }
 
   setStatus(id: string, status: string) {
+    const app = this.admin.applications().find(a => a.id === id);
+    if (app?.type === 'Distributor' && status === 'Approved' && app.status === 'Pending') {
+      this.viewDetail(app);
+      this.admin.applicationError.set('Corporate distributor applications must be reviewed and verified ("Under Review") before final approval.');
+      return;
+    }
     const activeModal = this.view()?.id === id;
     const note = activeModal ? this.reviewerNote : `Application marked ${status} by staff`;
     const docsVerified = activeModal ? this.documentsVerified : false;
