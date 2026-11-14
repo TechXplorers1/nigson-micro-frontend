@@ -531,11 +531,9 @@ export class AdminService {
       map(({ catalogue, balances }) => mapStaffProducts(catalogue, balances)),
       switchMap(products => products.length ? forkJoin(products.map(product => {
         const specs = product.specifications || {};
-        const specPrice = specs['starting_price'] ? Number(specs['starting_price']) : null;
-        const hasSpecPrice = specPrice != null && !isNaN(specPrice) && specPrice > 0;
 
         if (!product.skuId || product.status !== 'ACTIVE') {
-          return of({ ...product, priceSubtitle: 'Retail price is available after publication.' });
+          return of({ ...product, price: 0, retail: undefined, priceSubtitle: 'Retail price is available after publication.' });
         }
 
         return this.http.get<any>(`/api/v1/catalogue/skus/${product.skuId}/price?market=NG&quantity=${product.packSize || '1'}`, {
@@ -543,20 +541,20 @@ export class AdminService {
         }).pipe(
           map(price => {
             const fallbackPrice = Number(price.unitAmount);
-            const resolvedPrice = hasSpecPrice ? specPrice : fallbackPrice;
+            const resolvedPrice = fallbackPrice;
             return {
               ...product,
               price: resolvedPrice,
               retail: resolvedPrice,
-              wholesale: product.wholesale ?? (specs['wholesale_rate'] ? Number(specs['wholesale_rate']) : Math.round(resolvedPrice * 0.85)),
-              distributor: product.distributor ?? (specs['distributor_rate'] ? Number(specs['distributor_rate']) : Math.round(resolvedPrice * 0.70)),
+              wholesale: undefined,
+              distributor: undefined,
               priceSubtitle: product.priceSubtitle || specs['price_subtitle']
             };
           }),
           catchError(error => of({
             ...product,
-            price: hasSpecPrice ? specPrice : product.price,
-            retail: hasSpecPrice ? specPrice : product.retail,
+            price: 0,
+            retail: undefined,
             priceSubtitle: error?.status === 404 ? 'No public retail price is available for this SKU.' : this.message(error)
           }))
         );

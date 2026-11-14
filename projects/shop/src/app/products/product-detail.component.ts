@@ -1,3 +1,5 @@
+import {toObservable, takeUntilDestroyed} from '@angular/core/rxjs-interop';
+import {switchMap, map, catchError, of} from 'rxjs';
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { CommonModule, Location } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -105,7 +107,7 @@ import { ProductCardComponent } from './product-card.component';
 
             <div class="mt-6">
               <p class="text-[11px] uppercase tracking-widest text-muted-foreground">Starting From</p>
-              <p class="mt-1 text-3xl md:text-4xl font-bold text-[#D62828] leading-tight">{{ displayPrice() > 0 ? catalog.formatPrice(displayPrice()) : 'Contact for price' }}</p>
+              <p class="mt-1 text-3xl md:text-4xl font-bold text-[#D62828] leading-tight">{{ commercePriceMinor() !== null ? catalog.formatPrice(displayPrice()) : 'Contact for price' }}</p>
               <p class="mt-2 text-sm text-muted-foreground">{{ product()?.priceSubtitle || 'Wholesale pricing available for distributors.' }}</p>
             </div>
 
@@ -123,7 +125,7 @@ import { ProductCardComponent } from './product-card.component';
 
             <div class="mt-8 flex flex-wrap gap-3">
               <!-- Qty Stepper / Cart Control -->
-              <ui-qty-stepper *ngIf="product()" [product]="productWithPrice()" [image]="gallery()[0]"></ui-qty-stepper>
+              <ui-qty-stepper *ngIf="productWithPrice()" [product]="productWithPrice()" [image]="gallery()[0]"></ui-qty-stepper>
 
               <a [routerLink]="['/quote']" title="Request a quote" aria-label="Request a quote" class="inline-flex items-center gap-2 rounded-full border border-ink text-ink px-6 py-3 text-sm font-semibold hover:bg-ink hover:text-white transition-colors">
                 <svg lucideFileText class="h-4 w-4"></svg> Request quote
@@ -383,17 +385,7 @@ export class ProductDetailComponent implements OnInit {
   });
 
   readonly commercePriceMinor = signal<number | null>(null);
-  displayPrice = computed(() => {
-    const overridePrice = this.product()?.priceMinorUnits;
-    if (overridePrice != null && overridePrice > 0) {
-      return overridePrice;
-    }
-    const nairaPrice = this.product()?.price;
-    if (nairaPrice != null && nairaPrice > 0) {
-      return Math.round(nairaPrice * 100);
-    }
-    return this.commercePriceMinor() ?? 0;
-  });
+  displayPrice = computed(() => this.commercePriceMinor() ?? 0);
 
   featuresList = computed((): string[] => {
     const p = this.product();
@@ -514,8 +506,16 @@ export class ProductDetailComponent implements OnInit {
   qtyInCart = computed((): number => {
     const p = this.product();
     if (!p) return 0;
-    return this.shop.cart().find(c => c.sku === p.sku || (c as any).skuId === p.id)?.qty ?? 0;
+    return this.shop.cart().find(c => c.sku === p.sku || (c as any).skuId === p.skuId)?.qty ?? 0;
   });
+
+  private readonly priceQuery = computed(() => ({ skuId: this.product()?.skuId, quantity: Math.max(1, this.qtyInCart()) }));
+  constructor() {
+    toObservable(this.priceQuery).pipe(
+      switchMap(query => query.skuId ? this.catalog.getPrice(query.skuId, query.quantity).pipe(map(price => price.priceMinorUnits), catchError(() => of(null))) : of(null)),
+      takeUntilDestroyed()
+    ).subscribe(price => this.commercePriceMinor.set(price));
+  }
 
   zoom = signal(1);
   index = signal(0);
@@ -535,7 +535,7 @@ export class ProductDetailComponent implements OnInit {
           next: p => {
             this.product.set(p);
             this.commercePriceMinor.set(null);
-            if (p?.skuId) this.catalog.getPrice(p.skuId).subscribe({ next: price => this.commercePriceMinor.set(price.priceMinorUnits), error: () => this.commercePriceMinor.set(null) });
+
             this.productLoading.set(false);
             if (p) this.reviewSvc.getProductReviews(p.id).subscribe();
           },

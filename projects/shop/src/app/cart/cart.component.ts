@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, Router } from '@angular/router';
 import { 
@@ -190,7 +190,8 @@ import { CartService, CatalogService, ShopService, SessionService, QtyStepperCom
     </div>
   `
 })
-export class CartComponent {
+export class CartComponent implements OnInit {
+  ngOnInit(): void { this.cart.loadCart().subscribe(); }
   shop = inject(ShopService);
   cart = inject(CartService);
   catalog = inject(CatalogService);

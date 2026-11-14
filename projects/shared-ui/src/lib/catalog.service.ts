@@ -309,7 +309,7 @@ export class CatalogService {
         catchError(() => of(this.toProduct(item, null)))
       )
     );
-    return forkJoin(requests).pipe(map(content => ({
+    return forkJoin(requests).pipe(switchMap(products => forkJoin(products.map(product => this.withSellingPrice(product)))), map(content => ({
       content,
       totalElements: res?.totalElements ?? content.length,
       totalPages: res?.totalPages ?? 1,
@@ -325,7 +325,7 @@ export class CatalogService {
     const assetImages: string[] = (detail?.assets ?? []).map((a: any) => this.resolveImageUrl(a.url)).filter(Boolean);
     const primaryImage = item.imageUrl ? this.resolveImageUrl(item.imageUrl) : this.FALLBACK_IMG;
     const specs = detail?.specifications || {};
-    const priceFromSpecs = specs['starting_price'] ? Number(specs['starting_price']) : undefined;
+
     const product: Product = {
       id: item.id,
       sku: sku?.code || '',
@@ -341,10 +341,10 @@ export class CatalogService {
       publicationStatus: item.available ? 'PUBLISHED' : 'UNAVAILABLE',
       brand: detail?.brand?.name || item.brandName || '',
       tags: [],
-      price: priceFromSpecs,
-      priceMinorUnits: priceFromSpecs ? priceFromSpecs * 100 : undefined
+      price: undefined,
+      priceMinorUnits: undefined
     };
-    return override ? { ...product, ...override } : product;
+    return { ...(override ? { ...product, ...override } : product), price: undefined, priceMinorUnits: undefined, retail: undefined, retailPrice: undefined };
   }
 
   /**
@@ -384,7 +384,7 @@ export class CatalogService {
         const sku = raw.skus?.[0]?.code || '';
         const override = this.getProductOverride(raw.id) || (sku ? this.getProductOverride(sku) : null) || (aliasSku ? this.getProductOverride(aliasSku) : null);
         const catName = raw.categories?.[0]?.name || '';
-        const priceMinor = override?.priceMinorUnits ?? (override?.price != null ? override.price * 100 : undefined);
+
 
         // Map ALL backend assets into images array
         const backendImages: string[] = raw.assets?.length
@@ -410,8 +410,7 @@ export class CatalogService {
         }
 
         const specs = raw.specifications || {};
-        const priceFromSpecs = specs['starting_price'] ? Number(specs['starting_price']) : undefined;
-        const finalPriceMinor = (priceFromSpecs && !isNaN(priceFromSpecs) && priceFromSpecs > 0) ? priceFromSpecs * 100 : priceMinor;
+
 
         const p: Product = {
           id: raw.id,
@@ -444,24 +443,25 @@ export class CatalogService {
           nationwideShipping: specs['nationwide_shipping'] || specs['nationwideShipping'] || override?.nationwideShipping,
           minWholesaleOrder: specs['min_wholesale_order'] || specs['minWholesaleOrder'] || override?.minWholesaleOrder,
           priceSubtitle: specs['price_subtitle'] || specs['priceSubtitle'] || override?.priceSubtitle,
-          retail: priceFromSpecs ?? (finalPriceMinor ? finalPriceMinor / 100 : undefined),
-          retailPrice: priceFromSpecs ?? (finalPriceMinor ? finalPriceMinor / 100 : undefined),
-          wholesale: specs['wholesale_rate'] ? Number(specs['wholesale_rate']) : (priceFromSpecs ? Math.round(priceFromSpecs * 0.85) : undefined),
-          wholesalePrice: specs['wholesale_rate'] ? Number(specs['wholesale_rate']) : (priceFromSpecs ? Math.round(priceFromSpecs * 0.85) : undefined),
-          distributor: specs['distributor_rate'] ? Number(specs['distributor_rate']) : (priceFromSpecs ? Math.round(priceFromSpecs * 0.70) : undefined),
-          distributorPrice: specs['distributor_rate'] ? Number(specs['distributor_rate']) : (priceFromSpecs ? Math.round(priceFromSpecs * 0.70) : undefined),
+          retail: undefined,
+          retailPrice: undefined,
+          wholesale: undefined,
+          wholesalePrice: undefined,
+          distributor: undefined,
+          distributorPrice: undefined,
           images: mergedImages,
-          priceMinorUnits: finalPriceMinor,
-          price: finalPriceMinor == null ? undefined : finalPriceMinor / 100
+          priceMinorUnits: undefined,
+          price: undefined
         };
         const finalP = this.enrichWithCategories([p])[0];
-        this.syncWithCart([finalP]);
         return finalP;
       }),
+      switchMap(product => this.withSellingPrice(product)),
+      tap(product => this.syncWithCart([product])),
       catchError(err => {
         const override = this.getProductOverride(uuid) || (aliasSku ? this.getProductOverride(aliasSku) : null);
         if (override) {
-          return of(override as Product);
+          return this.withSellingPrice(override as Product);
         }
         console.error('[CatalogService] getProduct failed:', err);
         throw err;
@@ -519,23 +519,20 @@ export class CatalogService {
    * Load price for a SKU UUID. Returns price in minor units (kobo).
    * Use formatPrice() to convert for display.
    */
-  private priceCache = new Map<string, PriceResponse>();
-
-  getPrice(skuId: string, quantity = 1): Observable<PriceResponse> {
-    const key = `${skuId}_${quantity}`;
-    if (this.priceCache.has(key)) {
-      return of(this.priceCache.get(key)!);
-    }
-    return this.http.get<any>(`/api/v1/catalogue/skus/${skuId}/price?market=NG&quantity=${quantity}`).pipe(
-      map(res => ({
-        skuId: res.skuId,
-        priceMinorUnits: Math.round(Number(res.unitAmount) * 100),
-        currency: res.currency
-      })),
-      tap(res => this.priceCache.set(key, res))
+  private withSellingPrice(product: Product): Observable<Product> {
+    const unpriced = { ...product, price: undefined, priceMinorUnits: undefined, retail: undefined, retailPrice: undefined, wholesale: undefined, wholesalePrice: undefined, distributor: undefined, distributorPrice: undefined };
+    if (!product.skuId) return of(unpriced);
+    return this.getPrice(product.skuId).pipe(
+      map(price => ({ ...unpriced, priceMinorUnits: price.priceMinorUnits, price: price.priceMinorUnits / 100, retail: price.priceMinorUnits / 100, retailPrice: price.priceMinorUnits / 100 })),
+      catchError(() => of(unpriced))
     );
   }
 
+  getPrice(skuId: string, quantity = 1): Observable<PriceResponse> {
+    return this.http.get<any>(`/api/v1/catalogue/skus/${skuId}/price?market=NG&quantity=${quantity}`).pipe(
+      map(res => ({ skuId: res.skuId, priceMinorUnits: Math.round(Number(res.unitAmount) * 100), currency: res.currency }))
+    );
+  }
 
   /**
    * TASK-20: Format price from NGN minor units (kobo) to display string.
