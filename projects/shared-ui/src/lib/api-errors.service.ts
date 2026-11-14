@@ -1,8 +1,11 @@
 import { Injectable, signal, inject } from '@angular/core';
-import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
+import { HttpContextToken, HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { catchError, throwError } from 'rxjs';
 
 export type ApiFailure = { id: number; message: string };
+
+/** Opt in only when the caller displays these specific failures in its own view. */
+export const LOCAL_API_FAILURE_CODES = new HttpContextToken<readonly string[]>(() => []);
 
 export function isAnonymousSessionUnauthorized(error: unknown, method: string, url: string): boolean {
   if (method !== 'GET' || url.split('?')[0] !== '/bff/session' || !(error instanceof HttpErrorResponse) || error.status !== 401) {
@@ -52,7 +55,9 @@ export class ApiErrorsService {
 export const apiErrorInterceptor: HttpInterceptorFn = (request, next) => {
   const errors = inject(ApiErrorsService);
   return next(request).pipe(catchError(error => {
-    if ((request.url.startsWith('/api/') || request.url.startsWith('/bff/')) &&
+    const handledLocally = error instanceof HttpErrorResponse &&
+      request.context.get(LOCAL_API_FAILURE_CODES).includes(`${error.status}:${error.error?.code}`);
+    if (!handledLocally && (request.url.startsWith('/api/') || request.url.startsWith('/bff/')) &&
         !isAnonymousSessionUnauthorized(error, request.method, request.url)) {
       errors.report(errors.describe(error, request.method, request.url));
     }

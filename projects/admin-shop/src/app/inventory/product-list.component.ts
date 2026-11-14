@@ -61,7 +61,10 @@ import { RouterLink } from '@angular/router';
               </td>
               <td class="px-6 py-4 text-ink font-medium">{{ p.sku }}</td>
               <td class="px-6 py-4 text-muted-ink">{{ p.category }}</td>
-              <td class="px-6 py-4 font-bold text-ink">{{ p.price > 0 ? (p.price | currency:'NGN':'symbol-narrow':'1.0-0') : 'Not configured' }}</td>
+              <td class="px-6 py-4 font-bold text-ink">
+                {{ p.price > 0 ? (p.price | currency:'NGN':'symbol-narrow':'1.0-0') : 'Not configured' }}
+                <p *ngIf="p.priceSubtitle" class="mt-1 text-xs font-normal text-muted-ink">{{ p.priceSubtitle }}</p>
+              </td>
               <td class="px-6 py-4 font-bold text-ink">{{ p.stock | number }}</td>
               <td class="px-6 py-4">
                 <span 

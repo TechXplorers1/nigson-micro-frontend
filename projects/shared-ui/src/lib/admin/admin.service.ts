@@ -1,6 +1,7 @@
 import { Injectable, computed, signal, inject, effect, untracked, WritableSignal } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Observable, of, tap, map, catchError, forkJoin, switchMap, defer, throwError, finalize } from 'rxjs';
+import { HttpClient, HttpContext, HttpHeaders } from '@angular/common/http';
+import { Observable, of, tap, map, catchError, forkJoin, switchMap, defer, throwError, finalize, shareReplay } from 'rxjs';
+import { LOCAL_API_FAILURE_CODES } from '../api-errors.service';
 import { SessionService } from '../session.service';
 import { CatalogService } from '../catalog.service';
 import { applyInventory, mapStaffProducts } from './inventory-mapping';
@@ -458,6 +459,7 @@ export class AdminService {
   readonly activity = signal<Activity[]>([]);
   readonly currentRole = computed(() => this.roles().find(r => this.session.roles().includes(r.id)) ?? null);
   private loadedFor = '';
+  private productsRequest?: Observable<AdminProduct[]>;
 
   constructor() {
     effect(() => {
@@ -524,6 +526,7 @@ export class AdminService {
   persistInquiries(): void { }
 
   loadStaffProducts(): Observable<AdminProduct[]> {
+    if (this.productsRequest) return this.productsRequest;
     const request = forkJoin({ catalogue: this.rows('/api/v1/staff/products'), balances: this.rows('/api/v1/staff/inventory') }).pipe(
       map(({ catalogue, balances }) => mapStaffProducts(catalogue, balances)),
       switchMap(products => products.length ? forkJoin(products.map(product => {
@@ -531,11 +534,13 @@ export class AdminService {
         const specPrice = specs['starting_price'] ? Number(specs['starting_price']) : null;
         const hasSpecPrice = specPrice != null && !isNaN(specPrice) && specPrice > 0;
 
-        if (!product.skuId) {
-          return of(product);
+        if (!product.skuId || product.status !== 'ACTIVE') {
+          return of({ ...product, priceSubtitle: 'Retail price is available after publication.' });
         }
 
-        return this.http.get<any>(`/api/v1/catalogue/skus/${product.skuId}/price?market=NG&quantity=${product.packSize || '1'}`).pipe(
+        return this.http.get<any>(`/api/v1/catalogue/skus/${product.skuId}/price?market=NG&quantity=${product.packSize || '1'}`, {
+          context: new HttpContext().set(LOCAL_API_FAILURE_CODES, ['404:NOT_FOUND', '422:MARKET_RULE_VIOLATION'])
+        }).pipe(
           map(price => {
             const fallbackPrice = Number(price.unitAmount);
             const resolvedPrice = hasSpecPrice ? specPrice : fallbackPrice;
@@ -552,12 +557,16 @@ export class AdminService {
             ...product,
             price: hasSpecPrice ? specPrice : product.price,
             retail: hasSpecPrice ? specPrice : product.retail,
-            priceSubtitle: product.priceSubtitle || specs['price_subtitle'] || this.message(error)
+            priceSubtitle: error?.status === 404 ? 'No public retail price is available for this SKU.' : this.message(error)
           }))
         );
       })) : of([]))
     );
-    return this.table('Products', request, this.products);
+    this.productsRequest = this.table('Products', request, this.products).pipe(
+      finalize(() => { this.productsRequest = undefined; }),
+      shareReplay({ bufferSize: 1, refCount: true })
+    );
+    return this.productsRequest;
   }
   loadStaffInventory(): Observable<any[]> {
     return this.rows('/api/v1/staff/inventory').pipe(tap(rows => this.products.update(products => applyInventory(products, rows))), catchError(error => this.fail('Inventory', error)));

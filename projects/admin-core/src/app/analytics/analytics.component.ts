@@ -100,7 +100,6 @@ export class AnalyticsComponent implements OnInit {
         if (rep.customers !== undefined) this.reportCustomers.set(rep.customers);
       }
     },error:()=>{}});
-    this.admin.loadEngagementReport().subscribe({error:()=>{}});
   }
 
   readonly weeklySalesTrend = computed(() => {
