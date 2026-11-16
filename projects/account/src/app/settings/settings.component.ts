@@ -5,7 +5,7 @@ import { HttpClient } from '@angular/common/http';
 import { ShopService, SessionService } from 'shared-ui';
 import {
   LucideLogOut, LucideTrash2, LucideX, LucideSave,
-  LucideShieldCheck
+  LucideShieldCheck, LucideLock
 } from '@lucide/angular';
 
 /**
@@ -13,7 +13,7 @@ import {
  *
  * Changes from fake implementation:
  * - saveAccount()   → PATCH /api/v1/me  (email field is now READ-ONLY)
- * - savePassword()  → redirects to Keycloak Account Console (Keycloak owns passwords)
+ * - savePassword()  → BFF starts Keycloak's closed UPDATE_PASSWORD action (identity owns passwords)
  * - logout()        → POST /bff/logout  (was: localStorage.removeItem)
  * - deleteAccount() → shows contact-support message (no backend delete API)
  */
@@ -23,7 +23,7 @@ import {
   imports: [
     CommonModule, FormsModule,
     LucideLogOut, LucideTrash2,
-    LucideX, LucideSave, LucideShieldCheck
+    LucideX, LucideSave, LucideShieldCheck, LucideLock
   ],
   template: `
     <div class="space-y-6" *ngIf="user()">
@@ -79,10 +79,12 @@ import {
             Password managed by Nigson Identity
           </p>
           <p class="mt-2 text-sm text-ink/70">
-            Passwords are managed by Nigson Identity. The current BFF does not
-            expose a password-change action; use the identity provider's recovery
-            option on its sign-in page when that option is configured.
+            Nigson never stores your password. Change it on Nigson Identity, then
+            you will return here automatically.
           </p>
+          <button (click)="changePassword()" class="mt-4 inline-flex items-center gap-2 rounded-full bg-brand text-white px-5 py-2.5 text-xs font-semibold hover:bg-brand-deep">
+            <svg lucideLock class="h-3.5 w-3.5"></svg> Change password
+          </button>
         </div>
       </div>
 
@@ -153,6 +155,10 @@ export class SettingsComponent implements OnInit {
   logout() {
     this.loggingOut.set(true);
     this.shop.signOut().subscribe(() => { window.location.href = '/'; });
+  }
+
+  changePassword() {
+    this.session.changePassword('/account/settings');
   }
 
   deleteAccount() {

@@ -6,6 +6,30 @@ import { catchError, finalize, map, switchMap, tap } from 'rxjs/operators';
 import { ApiErrorsService, isAnonymousSessionUnauthorized } from './api-errors.service';
 import { BFF_BASE } from './api.service';
 
+export const PASSWORD_CHANGE_RETURN_PATH = '/account/settings';
+
+/**
+ * Build a BFF login URL. `action` is a closed action name: the BFF maps
+ * `password` to Keycloak's UPDATE_PASSWORD required action and rejects anything else.
+ * The local Compose callback defaults to localhost:4200. Host-only session cookies
+ * created on 127.0.0.1 are not sent to that callback host.
+ */
+function identityLoginUrl(target: string, action?: 'password'): string {
+  const loginUrl = new URL(`${BFF_BASE}/bff/login`, window.location.origin);
+  if (!BFF_BASE && window.location.protocol === 'http:' &&
+    window.location.hostname === '127.0.0.1' && window.location.port === '4200') {
+    loginUrl.hostname = 'localhost';
+  }
+  loginUrl.searchParams.set('returnTo', target);
+  if (action === 'password') loginUrl.searchParams.set('action', 'password');
+  return loginUrl.toString();
+}
+
+/** Where the Change password action sends the browser; identity renders the form. */
+export function changePasswordUrl(returnTo: string = PASSWORD_CHANGE_RETURN_PATH): string {
+  return identityLoginUrl(safeReturnPath(returnTo) ?? PASSWORD_CHANGE_RETURN_PATH, 'password');
+}
+
 /** The server-side Commerce BFF session view. The browser never stores identity tokens. */
 export interface BffSession {
   authenticated: boolean;
@@ -72,15 +96,15 @@ export class SessionService {
           : returnUrl.startsWith('/admin')
             ? '/admin'
             : '/account';
-    const loginUrl = new URL(`${BFF_BASE}/bff/login`, window.location.origin);
-    // The local Compose callback defaults to localhost:4200. Host-only session
-    // cookies created on 127.0.0.1 are not sent to that callback host.
-    if (!BFF_BASE && window.location.protocol === 'http:' &&
-      window.location.hostname === '127.0.0.1' && window.location.port === '4200') {
-      loginUrl.hostname = 'localhost';
-    }
-    loginUrl.searchParams.set('returnTo', target);
-    window.location.assign(loginUrl.toString());
+    window.location.assign(identityLoginUrl(target));
+  }
+
+  /**
+   * Delegate credential change to Keycloak. Commerce never sees or stores passwords;
+   * identity renders the form after the BFF starts the closed UPDATE_PASSWORD action.
+   */
+  changePassword(returnUrl: string = PASSWORD_CHANGE_RETURN_PATH): void {
+    window.location.assign(changePasswordUrl(returnUrl));
   }
 
   clearSession(): void {
