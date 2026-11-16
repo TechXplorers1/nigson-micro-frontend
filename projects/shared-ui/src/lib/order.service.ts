@@ -71,6 +71,15 @@ export interface OrdersPage {
   size: number;
 }
 
+/** API-041 local payment state; `settled` is only true after independently verified provider success. */
+export interface OrderPayment {
+  orderId: string;
+  state: string;
+  settled: boolean;
+  reference: string;
+  checkoutUrl: string | null;
+}
+
 @Injectable({ providedIn: "root" })
 export class OrderService {
   private http = inject(HttpClient);
@@ -161,6 +170,11 @@ export class OrderService {
   /** TASK-42: Get single order detail */
   getOrder(orderId: string): Observable<BackendOrder> {
     return this.http.get<BackendOrder>("/api/v1/orders/" + orderId);
+  }
+
+  /** API-041: Verified local payment attempt state for the hosted-checkout return page. */
+  getPayment(orderId: string): Observable<OrderPayment> {
+    return this.http.get<OrderPayment>("/api/v1/orders/" + orderId + "/payment");
   }
 
   /** TASK-44: Cancel order (API-040: POST /api/v1/orders/:orderId/cancellation) */
