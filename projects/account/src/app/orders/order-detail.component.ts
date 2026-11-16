@@ -40,7 +40,7 @@ import {
               <span class="inline-block mt-1 rounded-full px-3 py-1 text-xs font-bold" [ngClass]="statusColor(order()?.status ?? '')">
                 {{ statusLabel(order()?.status ?? '') }}
               </span>
-              <div class="mt-2" *ngIf="order()?.status !== 'DELIVERED' && order()?.status !== 'CANCELLED'">
+              <div class="mt-2" *ngIf="canCancel()">
                 <button
                   (click)="cancelOrder()"
                   [disabled]="cancelling()"
@@ -65,7 +65,7 @@ import {
               </span>
             </div>
 
-            <ol class="mt-4 grid grid-cols-2 md:grid-cols-6 gap-3">
+            <ol class="mt-4 grid grid-cols-2 md:grid-cols-5 gap-3">
               <li *ngFor="let s of getTimeline(); let i = index" class="relative">
                 <div [ngClass]="['h-1.5 w-full rounded-full transition-colors', isStepDone(s, order()?.status ?? '') ? 'bg-brand' : 'bg-surface-alt']"></div>
                 <div class="mt-3 flex items-start gap-2">
@@ -76,6 +76,18 @@ import {
                 </div>
               </li>
             </ol>
+
+            <div *ngIf="tracking()?.scans?.length" class="mt-6 space-y-4 border-l-2 border-brand pl-4 ml-2">
+              <div *ngFor="let scan of tracking()!.scans" class="relative">
+                <div class="absolute -left-[21px] top-1.5 h-2.5 w-2.5 rounded-full bg-brand"></div>
+                <p class="text-sm font-semibold text-ink">{{ scan.status }}</p>
+                <p class="text-xs text-muted-ink">{{ scan.timestamp | date:'medium' }}<ng-container *ngIf="scan.location"> &bull; {{ scan.location }}</ng-container></p>
+                <p *ngIf="scan.description" class="mt-1 text-xs text-muted-ink">{{ scan.description }}</p>
+              </div>
+            </div>
+            <p *ngIf="tracking() && !tracking()!.scans.length" class="mt-5 text-xs text-muted-ink">
+              No tracking events yet. Shipment updates appear here after dispatch.
+            </p>
           </div>
         </div>
 
@@ -177,11 +189,17 @@ export class OrderDetailComponent implements OnInit {
   }
 
   getTimeline(): string[] {
-    return ['PENDING', 'CONFIRMED', 'PACKED', 'SHIPPED', 'OUT_FOR_DELIVERY', 'DELIVERED'];
+    return ['PENDING', 'PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED'];
   }
 
   isStepDone(step: string, status: string): boolean {
-    const order = ['PENDING','CONFIRMED','PACKED','SHIPPED','OUT_FOR_DELIVERY','DELIVERED'];
-    return order.indexOf(status) >= order.indexOf(step);
+    const order = this.getTimeline();
+    const current = order.indexOf(status);
+    return current >= 0 && current >= order.indexOf(step);
+  }
+
+  canCancel(): boolean {
+    const status = this.order()?.status;
+    return !!status && !['DELIVERED', 'CANCELLED', 'REFUNDING', 'REFUNDED', 'PAYMENT_HOLD'].includes(status);
   }
 }

@@ -1,0 +1,74 @@
+import '@angular/compiler';
+import { of } from 'rxjs';
+import { describe, it, expect, vi } from 'vitest';
+import { OrderService } from './order.service';
+
+function service() {
+  const instance: any = Object.create(OrderService.prototype);
+  instance.http = { get: vi.fn() };
+  return instance;
+}
+
+const rawOrder = {
+  id: '01a1e1f3-7f84-7c1c-9790-6a048b3b651e',
+  orderNumber: 'NIG_01a1e1f37f847c1c97906a048b3b651e',
+  status: 'PAID',
+  paymentStatus: 'PAID',
+  fulfillmentStatus: 'UNFULFILLED',
+  currency: 'NGN',
+  totals: { subtotal: '23254.88', discount: '0.00', tax: '1744.12', delivery: '33.00', grandTotal: '25032.00', refunded: '0.00' },
+  lines: [{ id: 'line-1', skuId: 'sku-1', skuCode: 'NX-PB20-BLK', name: 'Nexa Power Bank 20000 mAh', quantity: '1', unitAmount: '24999.00', lineTotal: '24999.00' }],
+  address: { label: 'Checkout snapshot', recipient: 'Gopi Ravi', phone: '+2341234123412', line1: '12 Adeola Odeku Street', line2: null, city: 'Eti-Osa', region: 'Lagos', postalCode: null, countryCode: 'NG', isDefault: false },
+  version: 2,
+  createdAt: '2026-11-16T01:23:13.924524Z'
+};
+
+describe('OrderService backend mapping', () => {
+  it('maps the commerce order DTO onto the storefront view model', () => {
+    const order = service().mapOrder(rawOrder);
+    expect(order.orderId).toBe(rawOrder.id);
+    expect(order.status).toBe('PAID');
+    expect(order.items[0]).toMatchObject({
+      sku: 'NX-PB20-BLK', name: 'Nexa Power Bank 20000 mAh', quantity: 1, unitPriceMinorUnits: 2499900
+    });
+    expect(order.subtotalMinorUnits).toBe(2325488);
+    expect(order.shippingMinorUnits).toBe(3300);
+    expect(order.taxMinorUnits).toBe(174412);
+    expect(order.totalMinorUnits).toBe(2503200);
+    expect(order.deliveryAddress).toMatchObject({ line1: '12 Adeola Odeku Street', city: 'Eti-Osa', state: 'Lagos', countryCode: 'NG' });
+    expect(order.buyerContact).toMatchObject({ fullName: 'Gopi Ravi', phone: '+2341234123412' });
+    expect(order.version).toBe(2);
+  });
+
+  it('getOrder resolves the same view model used by the order detail page', () => {
+    const s = service();
+    s.http.get.mockReturnValue(of(rawOrder));
+    let resolved: any;
+    s.getOrder(rawOrder.id).subscribe((value: any) => resolved = value);
+    expect(s.http.get).toHaveBeenCalledWith('/api/v1/orders/' + rawOrder.id);
+    expect(resolved.items).toHaveLength(1);
+    expect(resolved.totalMinorUnits).toBe(2503200);
+  });
+
+  it('maps tracking shipments and events instead of exposing the raw envelope', () => {
+    const s = service();
+    s.http.get.mockReturnValue(of({
+      orderId: 'order-1',
+      shipments: [{ id: 'shipment-1', status: 'SHIPPED' }],
+      events: [{ status: 'PICKED_UP', occurredAt: '2026-11-16T03:00:00Z', note: 'Collected from warehouse' }]
+    }));
+    let resolved: any;
+    s.getTracking('order-1').subscribe((value: any) => resolved = value);
+    expect(resolved.orderId).toBe('order-1');
+    expect(resolved.status).toBe('PICKED_UP');
+    expect(resolved.scans[0]).toMatchObject({ status: 'PICKED_UP', description: 'Collected from warehouse' });
+  });
+
+  it('keeps an unfulfilled order trackable with an explicit processing state', () => {
+    const s = service();
+    s.http.get.mockReturnValue(of({ orderId: 'order-2', shipments: [], events: [] }));
+    let resolved: any;
+    s.getTracking('order-2').subscribe((value: any) => resolved = value);
+    expect(resolved).toMatchObject({ orderId: 'order-2', status: 'PROCESSING', scans: [] });
+  });
+});

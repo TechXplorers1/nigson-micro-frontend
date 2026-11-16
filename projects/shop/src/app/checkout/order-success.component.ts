@@ -242,20 +242,19 @@ export class OrderSuccessComponent implements OnInit, OnDestroy {
   }
 
   private view(raw: any): OrderView {
-    const money = (value: unknown) => Math.round(parseFloat(String(value ?? '0')) * 100) || 0;
     return {
-      id: raw?.id || raw?.orderId || this.orderId,
+      id: raw?.orderId || this.orderId,
       orderNumber: raw?.orderNumber || '',
       status: raw?.status || '',
       paymentStatus: raw?.paymentStatus || '',
-      grandTotalMinorUnits: money(raw?.totals?.grandTotal),
+      grandTotalMinorUnits: raw?.totalMinorUnits ?? 0,
       currency: raw?.currency || 'NGN',
-      recipient: raw?.address?.recipient || '',
-      addressLine: [raw?.address?.line1, raw?.address?.city, raw?.address?.region].filter(Boolean).join(', '),
-      lines: (raw?.lines || []).map((line: any) => ({
+      recipient: raw?.buyerContact?.fullName || '',
+      addressLine: [raw?.deliveryAddress?.line1, raw?.deliveryAddress?.city, raw?.deliveryAddress?.state].filter(Boolean).join(', '),
+      lines: (raw?.items || []).map((line: any) => ({
         name: line.name || '',
         quantity: Number(line.quantity) || 1,
-        totalMinorUnits: money(line.lineTotal),
+        totalMinorUnits: (line.unitPriceMinorUnits || 0) * (Number(line.quantity) || 1),
         imageUrl: line.imageUrl
       }))
     };

@@ -44,8 +44,8 @@ export interface OrderTracking {
 export interface BackendOrder {
   orderId: string;
   orderNumber: string;
-  status: "PENDING" | "CONFIRMED" | "PACKED" | "SHIPPED" | "OUT_FOR_DELIVERY" | "DELIVERED" | "CANCELLED";
-  paymentStatus: "PENDING" | "AUTHORISED" | "CAPTURED" | "FAILED" | "REFUNDED";
+  status: "PENDING" | "PAID" | "PROCESSING" | "SHIPPED" | "DELIVERED" | "CANCELLED" | "PAYMENT_HOLD" | "REFUNDING" | "REFUNDED";
+  paymentStatus: "UNPAID" | "PENDING" | "PAID" | "PARTIALLY_REFUNDED" | "REFUNDED" | "FAILED";
   items: OrderItem[];
   subtotalMinorUnits: number;
   shippingMinorUnits: number;
@@ -105,43 +105,7 @@ export class OrderService {
     return this.http.get<any>("/api/v1/orders", { params, headers }).pipe(
       map(pg => {
         const rawList = pg?.items || pg?.content || [];
-        const mappedOrders: BackendOrder[] = rawList.map((raw: any) => ({
-          orderId: raw.id || raw.orderId,
-          orderNumber: raw.orderNumber,
-          status: raw.status,
-          paymentStatus: raw.paymentStatus,
-          items: (raw.lines || raw.items || []).map((l: any) => ({
-            lineId: l.id || l.lineId,
-            skuId: l.skuId,
-            sku: l.skuCode || l.sku || '',
-            name: l.name || '',
-            quantity: Number(l.quantity) || 1,
-            unitPriceMinorUnits: Math.round(parseFloat(l.unitAmount || '0') * 100),
-            imageUrl: l.imageUrl
-          })),
-          subtotalMinorUnits: Math.round(parseFloat(raw.totals?.subtotal || '0') * 100),
-          shippingMinorUnits: Math.round(parseFloat(raw.totals?.delivery || '0') * 100),
-          taxMinorUnits: Math.round(parseFloat(raw.totals?.tax || '0') * 100),
-          totalMinorUnits: Math.round(parseFloat(raw.totals?.grandTotal || '0') * 100),
-          currency: raw.currency || 'NGN',
-          deliveryAddress: raw.address ? {
-            line1: raw.address.line1 || '',
-            city: raw.address.city || '',
-            state: raw.address.region || raw.address.state || '',
-            countryCode: raw.address.countryCode || 'NG',
-            postalCode: raw.address.postalCode
-          } : { line1: '', city: '', state: '', countryCode: 'NG' },
-          buyerContact: {
-            fullName: raw.address?.recipient || raw.customerName || raw.customer?.name || raw.buyerContact?.fullName || '',
-            email: raw.customerEmail || raw.customer?.email || raw.buyerContact?.email || email,
-            phone: raw.address?.phone || raw.customerPhone || raw.customer?.phone || ''
-          },
-          deliveryMethod: raw.fulfillmentStatus || raw.delivery || raw.shippingMethod || 'STANDARD',
-          trackingNumber: raw.trackingNumber,
-          version: raw.version,
-          createdAt: raw.createdAt || raw.date || new Date().toISOString(),
-          updatedAt: raw.updatedAt || raw.createdAt || raw.date || new Date().toISOString()
-        }));
+        const mappedOrders: BackendOrder[] = rawList.map((raw: any) => this.mapOrder(raw, email));
 
         const resultPage: OrdersPage = {
           content: mappedOrders,
@@ -167,9 +131,52 @@ export class OrderService {
     );
   }
 
+  /** Map the commerce order DTO (lines/totals/address strings) onto the storefront view model. */
+  private mapOrder(raw: any, fallbackEmail = ''): BackendOrder {
+    const money = (value: unknown) => Math.round(parseFloat(String(value ?? '0')) * 100) || 0;
+    const lines = raw?.lines || raw?.items || [];
+    return {
+      orderId: raw?.id || raw?.orderId || '',
+      orderNumber: raw?.orderNumber || '',
+      status: raw?.status,
+      paymentStatus: raw?.paymentStatus,
+      items: lines.map((l: any) => ({
+        lineId: l.id || l.lineId,
+        skuId: l.skuId,
+        sku: l.skuCode || l.sku || '',
+        name: l.name || '',
+        quantity: Number(l.quantity) || 1,
+        unitPriceMinorUnits: l.unitPriceMinorUnits ?? money(l.unitAmount),
+        imageUrl: l.imageUrl
+      })),
+      subtotalMinorUnits: raw?.subtotalMinorUnits ?? money(raw?.totals?.subtotal),
+      shippingMinorUnits: raw?.shippingMinorUnits ?? money(raw?.totals?.delivery),
+      taxMinorUnits: raw?.taxMinorUnits ?? money(raw?.totals?.tax),
+      totalMinorUnits: raw?.totalMinorUnits ?? money(raw?.totals?.grandTotal),
+      currency: raw?.currency || 'NGN',
+      deliveryAddress: raw?.address ? {
+        line1: raw.address.line1 || '',
+        city: raw.address.city || '',
+        state: raw.address.region || raw.address.state || '',
+        countryCode: raw.address.countryCode || 'NG',
+        postalCode: raw.address.postalCode
+      } : { line1: '', city: '', state: '', countryCode: 'NG' },
+      buyerContact: {
+        fullName: raw?.address?.recipient || raw?.customerName || raw?.customer?.name || raw?.buyerContact?.fullName || '',
+        email: raw?.customerEmail || raw?.customer?.email || raw?.buyerContact?.email || fallbackEmail,
+        phone: raw?.address?.phone || raw?.customerPhone || raw?.customer?.phone || raw?.buyerContact?.phone || ''
+      },
+      deliveryMethod: raw?.fulfillmentStatus || raw?.delivery || raw?.shippingMethod || 'STANDARD',
+      trackingNumber: raw?.trackingNumber,
+      version: raw?.version,
+      createdAt: raw?.createdAt || raw?.date || new Date().toISOString(),
+      updatedAt: raw?.updatedAt || raw?.createdAt || raw?.date || new Date().toISOString()
+    };
+  }
+
   /** TASK-42: Get single order detail */
   getOrder(orderId: string): Observable<BackendOrder> {
-    return this.http.get<BackendOrder>("/api/v1/orders/" + orderId);
+    return this.http.get<any>("/api/v1/orders/" + orderId).pipe(map(raw => this.mapOrder(raw)));
   }
 
   /** API-041: Verified local payment attempt state for the hosted-checkout return page. */
@@ -180,9 +187,10 @@ export class OrderService {
   /** TASK-44: Cancel order (API-040: POST /api/v1/orders/:orderId/cancellation) */
   cancelOrder(orderId: string): Observable<BackendOrder | null> {
     return this.getOrder(orderId).pipe(
-      switchMap(order => this.http.post<BackendOrder>(`/api/v1/orders/${orderId}/cancellation`,
+      switchMap(order => this.http.post<any>(`/api/v1/orders/${orderId}/cancellation`,
         { reason: 'Customer requested order cancellation' },
-        { headers: new HttpHeaders({ 'If-Match': `\"${order.version}\"`, 'Idempotency-Key': crypto.randomUUID() }) })),
+        { headers: new HttpHeaders({ 'If-Match': `\"${order.version}\"`, 'Idempotency-Key': crypto.randomUUID() }) })
+        .pipe(map(raw => this.mapOrder(raw, order.buyerContact?.email)))),
       tap(updated => this.orders.update(list => list.map(order => order.orderId === orderId ? updated : order))),
       catchError(err => {
         console.error('[OrderService] cancelOrder failed:', err);
@@ -193,7 +201,24 @@ export class OrderService {
 
   /** TASK-45: Get order tracking (API-051: GET /api/v1/orders/:orderId/tracking) */
   getTracking(orderId: string): Observable<OrderTracking | null> {
-    return this.http.get<OrderTracking>("/api/v1/orders/" + orderId + "/tracking").pipe(
+    return this.http.get<any>("/api/v1/orders/" + orderId + "/tracking").pipe(
+      map(raw => {
+        if (!raw) return null;
+        const shipments = Array.isArray(raw.shipments) ? raw.shipments : [];
+        const events = Array.isArray(raw.events) ? raw.events : [];
+        const latestShipment = shipments.length ? shipments[shipments.length - 1] : null;
+        const latestEvent = events.length ? events[events.length - 1] : null;
+        return {
+          orderId: raw.orderId || orderId,
+          carrier: '',
+          status: latestEvent?.status || latestShipment?.status || 'PROCESSING',
+          scans: events.map((e: any) => ({
+            timestamp: e.occurredAt || e.timestamp || '',
+            status: e.status || '',
+            description: e.note || e.description || ''
+          }))
+        };
+      }),
       catchError(err => {
         console.warn("[OrderService] getTracking:", err);
         return of(null);
@@ -211,9 +236,10 @@ export class OrderService {
   /** Map backend status enum to display label */
   statusLabel(status: string): string {
     const map: Record<string, string> = {
-      PENDING: "Pending", CONFIRMED: "Confirmed", PACKED: "Packed",
-      SHIPPED: "Shipped", OUT_FOR_DELIVERY: "Out For Delivery",
-      DELIVERED: "Delivered", CANCELLED: "Cancelled"
+      PENDING: "Pending", PAID: "Paid", PROCESSING: "Processing",
+      SHIPPED: "Shipped", DELIVERED: "Delivered", CANCELLED: "Cancelled",
+      PAYMENT_HOLD: "Payment hold", REFUNDING: "Refunding", REFUNDED: "Refunded",
+      CONFIRMED: "Confirmed", PACKED: "Packed", OUT_FOR_DELIVERY: "Out For Delivery"
     };
     return map[status] ?? status;
   }
@@ -222,12 +248,17 @@ export class OrderService {
   statusColor(status: string): string {
     const colors: Record<string, string> = {
       PENDING: "bg-amber-100 text-amber-700",
-      CONFIRMED: "bg-blue-100 text-blue-700",
-      PACKED: "bg-indigo-100 text-indigo-700",
+      PAID: "bg-emerald-100 text-emerald-700",
+      PROCESSING: "bg-blue-100 text-blue-700",
       SHIPPED: "bg-violet-100 text-violet-700",
-      OUT_FOR_DELIVERY: "bg-orange-100 text-orange-700",
       DELIVERED: "bg-emerald-100 text-emerald-700",
       CANCELLED: "bg-rose-100 text-rose-700",
+      PAYMENT_HOLD: "bg-amber-100 text-amber-800",
+      REFUNDING: "bg-orange-100 text-orange-700",
+      REFUNDED: "bg-surface-alt text-muted-ink",
+      CONFIRMED: "bg-blue-100 text-blue-700",
+      PACKED: "bg-indigo-100 text-indigo-700",
+      OUT_FOR_DELIVERY: "bg-orange-100 text-orange-700",
     };
     return colors[status] ?? "bg-surface-alt";
   }
