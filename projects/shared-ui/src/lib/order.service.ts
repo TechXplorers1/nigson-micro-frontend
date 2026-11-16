@@ -48,9 +48,11 @@ export interface BackendOrder {
   paymentStatus: "UNPAID" | "PENDING" | "PAID" | "PARTIALLY_REFUNDED" | "REFUNDED" | "FAILED";
   items: OrderItem[];
   subtotalMinorUnits: number;
+  discountMinorUnits: number;
   shippingMinorUnits: number;
   taxMinorUnits: number;
   totalMinorUnits: number;
+  refundedMinorUnits: number;
   currency: string;
   deliveryAddress: OrderAddress;
   buyerContact: { fullName: string; email: string; phone?: string };
@@ -150,9 +152,11 @@ export class OrderService {
         imageUrl: l.imageUrl
       })),
       subtotalMinorUnits: raw?.subtotalMinorUnits ?? money(raw?.totals?.subtotal),
+      discountMinorUnits: raw?.discountMinorUnits ?? money(raw?.totals?.discount),
       shippingMinorUnits: raw?.shippingMinorUnits ?? money(raw?.totals?.delivery),
       taxMinorUnits: raw?.taxMinorUnits ?? money(raw?.totals?.tax),
       totalMinorUnits: raw?.totalMinorUnits ?? money(raw?.totals?.grandTotal),
+      refundedMinorUnits: raw?.refundedMinorUnits ?? money(raw?.totals?.refunded),
       currency: raw?.currency || 'NGN',
       deliveryAddress: raw?.address ? {
         line1: raw.address.line1 || '',

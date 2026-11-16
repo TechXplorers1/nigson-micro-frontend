@@ -54,7 +54,7 @@ import {
           </div>
 
           <!-- Tracking section (TASK-45) -->
-          <div class="mt-8 border-t border-hairline pt-6">
+          <div id="tracking" class="mt-8 border-t border-hairline pt-6 scroll-mt-24">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2">
                 <svg lucideTruck class="h-4 w-4 text-brand"></svg>
@@ -160,6 +160,7 @@ export class OrderDetailComponent implements OnInit {
         next: o => {
           this.order.set(o);
           this.loading.set(false);
+          this.scrollToTracking();
           this.orderSvc.getTracking(id).subscribe(t => {
             if (t) this.tracking.set(t);
           });
@@ -169,8 +170,7 @@ export class OrderDetailComponent implements OnInit {
     }
   }
 
-  formatPrice(minorUnits: number) { return this.orderSvc.formatPrice(minorUnits); }
-  statusLabel(status: string) { return this.orderSvc.statusLabel(status); }
+  formatPrice(minorUnits: number) { return this.orderSvc.formatPrice(minorUnits); }  statusLabel(status: string) { return this.orderSvc.statusLabel(status); }
   statusColor(status: string) { return this.orderSvc.statusColor(status); }
   formatDate(d: string) {
     if (!d) return '-';
@@ -201,5 +201,10 @@ export class OrderDetailComponent implements OnInit {
   canCancel(): boolean {
     const status = this.order()?.status;
     return !!status && !['DELIVERED', 'CANCELLED', 'REFUNDING', 'REFUNDED', 'PAYMENT_HOLD'].includes(status);
+  }
+
+  private scrollToTracking() {
+    if (this.route.snapshot.fragment !== 'tracking') return;
+    setTimeout(() => document.getElementById('tracking')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
   }
 }

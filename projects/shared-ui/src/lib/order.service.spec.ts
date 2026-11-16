@@ -32,9 +32,11 @@ describe('OrderService backend mapping', () => {
       sku: 'NX-PB20-BLK', name: 'Nexa Power Bank 20000 mAh', quantity: 1, unitPriceMinorUnits: 2499900
     });
     expect(order.subtotalMinorUnits).toBe(2325488);
+    expect(order.discountMinorUnits).toBe(0);
     expect(order.shippingMinorUnits).toBe(3300);
     expect(order.taxMinorUnits).toBe(174412);
     expect(order.totalMinorUnits).toBe(2503200);
+    expect(order.refundedMinorUnits).toBe(0);
     expect(order.deliveryAddress).toMatchObject({ line1: '12 Adeola Odeku Street', city: 'Eti-Osa', state: 'Lagos', countryCode: 'NG' });
     expect(order.buyerContact).toMatchObject({ fullName: 'Gopi Ravi', phone: '+2341234123412' });
     expect(order.version).toBe(2);

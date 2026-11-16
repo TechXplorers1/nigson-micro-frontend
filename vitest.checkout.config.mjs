@@ -1,2 +1,2 @@
 import base from './vitest.distributor.config.mjs';
-export default { ...base, test: { ...base.test, include: ['projects/shop/src/app/checkout/checkout.component.spec.ts', 'projects/shared-ui/src/lib/order.service.spec.ts'] } };
+export default { ...base, test: { ...base.test, include: ['projects/shop/src/app/checkout/checkout.component.spec.ts', 'projects/shared-ui/src/lib/order.service.spec.ts', 'projects/account/src/app/orders/orders-list.component.spec.ts'] } };
