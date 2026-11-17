@@ -1,285 +1,130 @@
-import { Component, inject, signal, computed, OnInit } from '@angular/core';
+import { Component, computed, inject, signal, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { AdminService, AdminHeadingComponent, BadgeComponent, statusTone, StatCardComponent, distributorDisplayState } from 'shared-ui';
-import { LucideSearch, LucideCheck, LucideX, LucideInfo } from '@lucide/angular';
+import { finalize, Subscription } from 'rxjs';
+import { AdminService, AdminHeadingComponent, BadgeComponent, StatCardComponent, statusTone, distributorActionBlock, distributorDisplayState, leadDisplayState, partnerLeadActionAllowed, applicationFailure } from 'shared-ui';
+import type { AdminApplication } from 'shared-ui';
 
 @Component({
-  selector: 'app-admin-applications',
-  standalone: true,
-  imports: [CommonModule, FormsModule, AdminHeadingComponent, BadgeComponent, StatCardComponent, LucideSearch, LucideCheck, LucideX, LucideInfo],
+  selector: 'app-admin-applications', standalone: true,
+  imports: [CommonModule, FormsModule, AdminHeadingComponent, BadgeComponent, StatCardComponent],
   template: `
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <lib-admin-heading title="Distributor Applications" subtitle="Distributor, wholesaler and affiliate marketer partnership requests"></lib-admin-heading>
-      <button (click)="refresh()" [disabled]="admin.loadingApplications()" class="rounded-full border border-gray-200 bg-white px-4 py-2 text-xs font-semibold text-ink shadow-sm hover:bg-gray-50 disabled:opacity-50">
-        {{ admin.loadingApplications() ? 'Refreshing...' : 'Refresh from DB' }}
-      </button>
-    </div>
-    <p *ngIf="admin.applicationError()" role="alert" class="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700">{{ admin.applicationError() }}</p>
-    
-    <div class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      <lib-stat-card label="Total applications" [value]="admin.applications().length.toString()"></lib-stat-card>
-      <lib-stat-card label="Pending" [value]="getStat('Pending').toString()"></lib-stat-card>
-      <lib-stat-card label="Approved" [value]="getStat('Approved').toString()"></lib-stat-card>
-      <lib-stat-card label="Rejected" [value]="getStat('Rejected').toString()"></lib-stat-card>
-    </div>
+  <div class="flex flex-wrap items-center justify-between gap-3">
+   <lib-admin-heading title="Partner Applications" subtitle="Review distributor applications and manage wholesaler or affiliate lead requests."></lib-admin-heading>
+   <button type="button" (click)="refresh()" [disabled]="admin.loadingApplications() || !!busy()" class="rounded-full border border-hairline bg-white px-4 py-2 text-sm font-semibold disabled:opacity-50">{{ admin.loadingApplications() ? 'Refreshing...' : 'Refresh status' }}</button>
+  </div>
+  <p *ngIf="admin.applicationError()" role="alert" class="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{{ admin.applicationError() }}</p>
+  <div class="mb-6 flex flex-wrap gap-3 border-b border-hairline" role="group" aria-label="Partner request type">
+   <button *ngFor="let name of tabs" type="button" (click)="changeTab(name)" [attr.aria-pressed]="tab()===name" [class.text-brand]="tab()===name" class="border-b-2 px-2 py-3 text-sm font-bold">{{ name }}</button>
+  </div>
+  <p class="mb-4 text-sm text-muted-ink">{{ tab()==='Distributors' ? 'Submitted ? Under Review ? Approval processing ? Approved. A different Sales-authorized person must approve after review.' : 'These records are contact leads. Resolving or closing a lead does not grant distributor access.' }}</p>
+  <div class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+   <lib-stat-card *ngFor="let stat of stats()" [label]="stat.label" [value]="stat.value"></lib-stat-card>
+  </div>
+  <div class="mb-5 flex flex-wrap gap-3">
+   <input type="search" [(ngModel)]="searchQuery" aria-label="Search partner requests" placeholder="Search business, contact or reference..." class="w-full max-w-sm rounded-full border border-hairline bg-white px-4 py-2 text-sm">
+   <select [(ngModel)]="catFilter" aria-label="Filter by category" class="rounded-full border border-hairline bg-white px-4 py-2 text-sm"><option value="All categories">All categories</option><option *ngFor="let category of categories()" [value]="category">{{ category }}</option></select>
+   <select [(ngModel)]="statusFilter" aria-label="Filter by status" class="rounded-full border border-hairline bg-white px-4 py-2 text-sm"><option value="All">All statuses</option><option *ngFor="let status of statuses()" [value]="status">{{ status }}</option></select>
+  </div>
+  <div class="overflow-x-auto rounded-2xl border border-hairline bg-white">
+   <table class="w-full min-w-[720px] text-left text-sm">
+    <thead class="border-b border-hairline text-xs uppercase text-muted-ink"><tr><th class="p-4">Reference</th><th class="p-4">Business</th><th class="p-4">Contact</th><th class="p-4">Submitted</th><th class="p-4">Status</th><th class="p-4">Action</th></tr></thead>
+    <tbody class="divide-y divide-hairline">
+     <tr *ngFor="let application of filteredList()"><td class="p-4">{{ application.number }}</td><td class="p-4 font-semibold">{{ application.businessName }}</td><td class="p-4">{{ application.contactPerson }}<br><span class="text-xs text-muted-ink">{{ application.email }}</span></td><td class="p-4">{{ application.date | date:'mediumDate' }}</td><td class="p-4"><lib-badge [tone]="getTone(application.status)">{{ application.status }}</lib-badge></td><td class="p-4"><button type="button" (click)="viewDetail(application)" [disabled]="!!busy()" class="rounded-full border border-hairline px-4 py-2 font-semibold disabled:opacity-50">Open {{ application.source==='lead' ? 'request' : 'application' }}</button></td></tr>
+     <tr *ngIf="!filteredList().length"><td colspan="6" class="p-10 text-center text-muted-ink">{{ admin.loadingApplications() ? 'Loading partner requests...' : 'No records match your filters.' }}</td></tr>
+    </tbody>
+   </table>
+  </div>
 
-    <!-- Tabs -->
-    <div class="mb-6 border-b border-gray-100 flex gap-6">
-      <button *ngFor="let t of ['Distributors', 'Wholesalers', 'Affiliate Marketers']"
-              (click)="tab.set(t)"
-              [class]="'pb-3 text-sm font-bold transition-all border-b-2 ' + (tab() === t ? 'border-brand text-brand' : 'border-transparent text-gray-400 hover:text-ink')">
-        {{ t }}
-      </button>
-    </div>
+  <div *ngIf="view(); let record" class="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4">
+   <section role="dialog" aria-modal="true" aria-labelledby="partner-dialog-title" class="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
+    <header class="mb-5 flex items-start justify-between gap-4 border-b border-hairline pb-4"><div><h2 id="partner-dialog-title" class="text-xl font-extrabold">{{ record.businessName || record.number }}</h2><p class="mt-1 text-sm text-muted-ink">{{ record.source==='lead' ? 'Partner lead request' : 'Distributor application' }} ? {{ record.number }}</p></div><button type="button" (click)="close()" [disabled]="!!busy()" class="rounded-full border border-hairline px-4 py-2 text-sm disabled:opacity-50">Close</button></header>
+    <p *ngIf="loadingDetail()" role="status" class="mb-4 text-sm">Loading the latest server record...</p>
+    <p *ngIf="actionError()" role="alert" class="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{{ actionError() }}</p>
+    <p *ngIf="success()" role="status" class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">{{ success() }}</p>
+    <dl class="mb-5 grid gap-4 text-sm sm:grid-cols-2"><div><dt class="text-muted-ink">Current status</dt><dd class="mt-1 font-semibold">{{ record.status }}</dd></div><div><dt class="text-muted-ink">Business registration</dt><dd>{{ record.businessReference || 'Not supplied' }}</dd></div><div><dt class="text-muted-ink">Contact</dt><dd>{{ record.contactPerson || 'Not supplied' }}<br>{{ record.email }}<br>{{ record.phone }}</dd></div><div><dt class="text-muted-ink">Location</dt><dd>{{ record.location || 'Not supplied' }}</dd></div></dl>
+    <div *ngIf="record.source==='lead' && record.note" class="mb-5 rounded-xl bg-surface-alt p-4 text-sm whitespace-pre-wrap">{{ record.note }}</div>
 
-    <div class="mb-5 flex flex-wrap gap-3">
-      <div class="relative w-[320px]">
-        <svg lucideSearch class="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"></svg>
-        <input type="text" [(ngModel)]="searchQuery" placeholder="Search applications..." class="w-full rounded-full border border-gray-200 bg-white py-2 pl-10 pr-4 text-sm text-ink shadow-sm outline-none transition-all focus:border-gray-300 focus:ring-4 focus:ring-gray-100">
+    <ng-container *ngIf="record.source!=='lead'">
+     <section class="mb-5 rounded-xl border border-hairline p-4"><h3 class="font-bold">Submitted documents</h3>
+      <p *ngIf="!record.documents?.length" class="mt-2 text-sm text-red-700">No document records were returned. Review cannot be completed.</p>
+      <ul class="mt-3 space-y-3"><li *ngFor="let document of record.documents" class="rounded-lg bg-surface-alt p-3 text-sm"><strong>{{ document.type || 'Registration document' }}</strong><p class="break-all font-mono text-xs">{{ document.fileId || 'Missing file ID' }}</p><p class="mt-1">Scan: {{ document.scanStatus || 'Unknown' }}</p></li></ul>
+      <p class="mt-3 text-xs text-muted-ink">Document contents cannot currently be opened by staff from this page. Confirm review only after inspecting the original documents; a CLEAN scan alone is not document verification.</p>
+     </section>
+     <section class="mb-5 rounded-xl border border-hairline p-4"><h3 class="font-bold">Recorded review</h3><p class="mt-2 text-sm">Reviewer: {{ reviewer(record) }}</p><p class="mt-2 whitespace-pre-wrap text-sm">{{ record.reviewReason || 'No review note recorded.' }}</p><p class="mt-2 text-xs text-muted-ink">This shows the latest recorded review.</p></section>
+     <section *ngIf="record.decisionReason || record.rawState==='REJECTED'" class="mb-5 rounded-xl border border-hairline p-4"><h3 class="font-bold">Latest decision reason</h3><p class="mt-2 whitespace-pre-wrap text-sm">{{ record.decisionReason || 'Decision reason unavailable. Refresh this record or contact an administrator.' }}</p></section>
+     <p *ngIf="processing(record)" role="status" class="mb-5 rounded-xl bg-amber-50 p-4 text-sm">{{ record.status }}: awaiting backend confirmation. Refresh status before attempting another decision.</p>
+     <p *ngIf="record.rawState==='APPROVED' || record.rawState==='REJECTED' || record.rawState==='SUSPENDED'" class="mb-5 text-sm">This application is {{ record.status.toLowerCase() }}. Review and approval actions are unavailable.</p>
+    </ng-container>
+
+    <div *ngIf="!loadingDetail() && editable(record)" class="border-t border-hairline pt-4">
+     <label class="block text-sm font-bold" for="staff-action-note">{{ record.source==='lead' ? 'Lead update note' : 'Decision / review note' }} (required)</label>
+     <textarea id="staff-action-note" [(ngModel)]="reviewerNote" maxlength="500" rows="3" [disabled]="!!busy()" class="mt-2 w-full rounded-xl border border-hairline p-3 text-sm" placeholder="Describe what you checked or why you are making this decision."></textarea>
+     <ng-container *ngIf="record.source!=='lead'">
+      <label *ngIf="record.rawState==='SUBMITTED'" class="mt-3 flex gap-2 text-sm"><input type="checkbox" [(ngModel)]="documentsVerified" [disabled]="!!busy() || !!block('Under Review')"> I inspected the registration documents and verified their contents.</label>
+      <p *ngIf="record.rawState==='SUBMITTED' && block('Under Review')" class="mt-2 text-sm text-amber-800">{{ block('Under Review') }}</p>
+      <p *ngIf="block('Approved')" class="mt-3 text-sm text-muted-ink">{{ block('Approved') }}</p>
+      <div class="mt-4 flex flex-wrap gap-3">
+       <button *ngIf="record.rawState==='SUBMITTED'" type="button" (click)="act('Under Review')" [disabled]="!!busy() || !!block('Under Review') || !documentsVerified || !validNote(reviewerNote)" class="rounded-full bg-amber-600 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-40">{{ busy()==='Under Review' ? 'Recording review...' : 'Complete review' }}</button>
+       <button type="button" (click)="act('Approved')" [disabled]="!!busy() || !!block('Approved') || !validNote(reviewerNote)" class="rounded-full bg-emerald-700 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-40">{{ busy()==='Approved' ? 'Submitting approval...' : 'Approve application' }}</button>
+       <button type="button" (click)="rejecting.set(true)" [disabled]="!!busy() || !!block('Rejected')" class="rounded-full border border-red-300 px-5 py-2.5 text-sm font-bold text-red-700 disabled:opacity-40">Reject...</button>
       </div>
-      <select [(ngModel)]="statusFilter" class="rounded-full border border-gray-200 bg-white px-5 py-2 text-sm text-ink shadow-sm outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100">
-        <option *ngFor="let s of statuses" [value]="s">{{ s }}</option>
-      </select>
-      <select [(ngModel)]="catFilter" class="rounded-full border border-gray-200 bg-white px-5 py-2 text-sm text-ink shadow-sm outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100">
-        <option *ngFor="let c of categories" [value]="c">{{ c }}</option>
-      </select>
+      <section *ngIf="rejecting()" aria-label="Confirm rejection" class="mt-4 rounded-xl border border-red-200 bg-red-50 p-4"><h3 class="font-bold">Reject this application?</h3><label for="rejection-reason" class="mt-2 block text-sm">Rejection reason (required)</label><textarea id="rejection-reason" [(ngModel)]="rejectionReason" maxlength="500" rows="2" [disabled]="!!busy()" class="mt-2 w-full rounded-lg border border-red-200 p-3"></textarea><div class="mt-3 flex gap-3"><button type="button" (click)="act('Rejected')" [disabled]="!!busy() || !validNote(rejectionReason)" class="rounded-full bg-red-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-40">Confirm rejection</button><button type="button" (click)="rejecting.set(false)" [disabled]="!!busy()" class="rounded-full border border-hairline bg-white px-4 py-2 text-sm">Cancel</button></div></section>
+     </ng-container>
+     <div *ngIf="record.source==='lead'" class="mt-4"><p class="mb-3 text-sm text-muted-ink">These actions update this lead only. They do not approve a distributor account.</p><div class="flex flex-wrap gap-3"><button *ngFor="let action of leadActions" type="button" (click)="act(action)" [disabled]="!!busy() || !validNote(reviewerNote) || !leadAllowed(record,action)" class="rounded-full border border-hairline px-5 py-2.5 text-sm font-bold disabled:opacity-40">{{ busy()===action ? 'Saving...' : action }}</button></div></div>
     </div>
-
-    <div class="rounded-[20px] border border-gray-100 bg-white shadow-sm overflow-hidden">
-      <div class="overflow-x-auto">
-        <table class="w-full min-w-[720px] text-left text-sm text-ink">
-          <thead class="border-b border-gray-100 bg-white text-[10px] font-bold uppercase tracking-widest text-muted-ink">
-            <tr>
-              <th class="px-6 py-5">Application</th>
-              <th class="px-6 py-5">Business</th>
-              <th class="px-6 py-5">Contact</th>
-              <th class="px-6 py-5">Location</th>
-              <th class="px-6 py-5">Date</th>
-              <th class="px-6 py-5">Status</th>
-              <th class="px-6 py-5 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-100">
-            <tr *ngFor="let a of filteredList()" class="transition-colors hover:bg-gray-50/50">
-              <td class="px-6 py-4 whitespace-nowrap font-semibold">{{ a.number }}</td>
-              <td class="px-6 py-4"><span class="font-semibold">{{ a.businessName }}</span><br><span class="text-xs text-muted-ink">{{ a.category }}</span></td>
-              <td class="px-6 py-4">{{ a.contactPerson }}<br><span class="text-xs text-muted-ink">{{ a.email }}</span></td>
-              <td class="px-6 py-4 text-muted-ink">{{ a.location }}</td>
-              <td class="px-6 py-4 whitespace-nowrap text-muted-ink">{{ a.date | date:'mediumDate' }}</td>
-              <td class="px-6 py-4"><lib-badge [tone]="getTone(a.status)">{{ a.status }}</lib-badge></td>
-              <td class="px-6 py-4 text-right">
-                <div class="flex justify-end gap-1.5">
-                  <button (click)="viewDetail(a)" class="grid h-8 w-8 place-items-center rounded-full border border-gray-200 bg-white text-gray-500 hover:bg-brand/10 hover:text-brand hover:border-brand/30 transition-all shadow-sm" title="View Complete Details"><svg lucideInfo class="h-4 w-4"></svg></button>
-                  <button (click)="setStatus(a.id, 'Approved')" class="grid h-8 w-8 place-items-center rounded-full border border-gray-200 bg-white text-gray-500 hover:bg-green-50 hover:text-green-600 hover:border-green-200 transition-all shadow-sm" title="Approve"><svg lucideCheck class="h-3.5 w-3.5"></svg></button>
-                  <button (click)="setStatus(a.id, 'Rejected')" class="grid h-8 w-8 place-items-center rounded-full border border-gray-200 bg-white text-gray-500 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all shadow-sm" title="Reject"><svg lucideX class="h-3.5 w-3.5"></svg></button>
-                </div>
-              </td>
-            </tr>
-            <tr *ngIf="filteredList().length === 0">
-              <td colspan="7" class="p-12 text-center text-muted-ink">
-                {{ admin.loadingApplications() ? 'Loading partner applications from database...' : 'No applications match your filters.' }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Modal Overlay -->
-    <div *ngIf="view()" class="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <div class="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-[24px] border border-gray-100 bg-white p-6 sm:p-8 shadow-2xl animate-in zoom-in-95 duration-200">
-        <div class="mb-6 flex items-center justify-between border-b border-gray-100 pb-4">
-          <div class="flex items-center gap-3">
-            <div class="grid h-10 w-10 place-items-center rounded-full bg-brand/10 text-brand">
-              <svg lucideInfo class="h-5 w-5"></svg>
-            </div>
-            <div>
-              <div class="flex items-center gap-2">
-                <h2 class="text-lg font-extrabold text-ink">Application {{ view().number }}</h2>
-                <lib-badge [tone]="getTone(view().type)">{{ view().type }}</lib-badge>
-              </div>
-              <p class="text-xs text-muted-ink">Submitted on {{ view().date | date:'medium' }}</p>
-            </div>
-          </div>
-          <button (click)="view.set(null)" class="grid h-8 w-8 place-items-center rounded-full bg-gray-50 text-gray-500 hover:bg-gray-100 transition-colors">
-            <svg lucideX class="h-4 w-4"></svg>
-          </button>
-        </div>
-        
-        <div class="space-y-4 text-sm">
-          <div class="grid gap-3 sm:grid-cols-2">
-            <div class="rounded-xl border border-gray-100 px-4 py-3 bg-surface-alt/40">
-              <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-ink">Business Name</p>
-              <p class="mt-1 font-semibold text-ink">{{ view().businessName }}</p>
-            </div>
-            <div class="rounded-xl border border-gray-100 px-4 py-3 bg-surface-alt/40">
-              <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-ink">Current Status</p>
-              <div class="mt-1">
-                <lib-badge [tone]="getTone(view().status)">{{ view().status }}</lib-badge>
-              </div>
-            </div>
-            <div class="rounded-xl border border-gray-100 px-4 py-3 bg-surface-alt/40">
-              <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-ink">Contact Person</p>
-              <p class="mt-1 font-semibold text-ink">{{ view().contactPerson }}</p>
-            </div>
-            <div class="rounded-xl border border-gray-100 px-4 py-3 bg-surface-alt/40">
-              <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-ink">Email Address</p>
-              <a [href]="'mailto:' + view().email" class="mt-1 block font-semibold text-brand hover:underline">{{ view().email }}</a>
-            </div>
-            <div class="rounded-xl border border-gray-100 px-4 py-3 bg-surface-alt/40">
-              <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-ink">Phone / WhatsApp</p>
-              <p class="mt-1 font-semibold text-ink">{{ view().phone || 'Not provided' }}</p>
-            </div>
-            <div class="rounded-xl border border-gray-100 px-4 py-3 bg-surface-alt/40">
-              <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-ink">Location / Territory</p>
-              <p class="mt-1 font-semibold text-ink">{{ view().location }}</p>
-            </div>
-            <div class="rounded-xl border border-gray-100 px-4 py-3 bg-surface-alt/40 sm:col-span-2">
-              <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-ink">Product Category / Focus</p>
-              <p class="mt-1 font-semibold text-ink">{{ view().category }}</p>
-            </div>
-          </div>
-          
-          <!-- Full Submitted Application Details (Notes, Channels, Bank info, etc.) -->
-          <div *ngIf="view().note">
-            <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-ink mb-1.5">Submitted Application Details</p>
-            <div class="rounded-2xl border border-gray-200 bg-gray-50/70 p-4 text-xs text-ink leading-relaxed whitespace-pre-wrap">
-              {{ view().note }}
-            </div>
-          </div>
-
-          <!-- Uploaded Proof Documents (Corporate Distributor) -->
-          <div *ngIf="view().documents?.length">
-            <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-ink mb-1.5">Verification Documents</p>
-            <div class="space-y-2">
-              <div *ngFor="let d of view().documents" class="flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50/70 px-4 py-2.5 text-xs">
-                <div>
-                  <span class="font-bold text-ink">{{ d.type }}</span>
-                  <span class="ml-2 font-mono text-[11px] text-muted-ink">{{ d.fileId }}</span>
-                </div>
-                <span class="rounded-full bg-white border border-gray-200 px-2.5 py-0.5 text-[11px] font-semibold">{{ d.scanStatus }}</span>
-              </div>
-            </div>
-          </div>
-          
-          <div>
-            <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-muted-ink">Staff Reviewer Note</label>
-            <textarea rows="2" [(ngModel)]="reviewerNote" placeholder="Add staff verification or assessment remarks..." class="w-full rounded-[16px] border border-gray-200 bg-white px-4 py-3 text-sm text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20"></textarea>
-          </div>
-          
-          <p *ngIf="admin.applicationError()" role="alert" class="text-sm text-red-700">{{ admin.applicationError() }}</p>
-          <ng-container *ngIf="view().type === 'Distributor'">
-            <label class="flex items-center gap-2 text-sm"><input type="checkbox" [(ngModel)]="documentsVerified" /> I have reviewed the registration document</label>
-            <p class="text-xs text-muted-ink">Approval requires prior verification (&quot;Under Review&quot;) and a different staff member from the reviewer. Market: {{ admin.distributorMarket()?.code || "Not configured" }}.</p>
-          </ng-container>
-          <div class="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-gray-100">
-            <div class="flex items-center gap-2">
-              <span class="text-xs font-semibold text-muted-ink">Status:</span>
-              <select [ngModel]="view().status" (ngModelChange)="setStatus(view().id, $event)" class="rounded-full border border-gray-200 bg-white px-4 py-2 text-xs font-semibold text-ink shadow-sm outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100">
-                <option *ngFor="let s of rawStatuses" [value]="s">{{ s }}</option>
-              </select>
-            </div>
-            <div class="flex flex-wrap gap-2">
-              <button *ngIf="view().status === 'Pending'" (click)="setStatus(view().id, 'Under Review')" class="rounded-full bg-amber-600 px-5 py-2 text-xs font-bold text-white hover:bg-amber-700 shadow-sm transition-colors">Mark Under Review</button>
-              <button *ngIf="view().type !== 'Distributor' || view().status === 'Under Review'" (click)="setStatus(view().id, 'Approved')" class="rounded-full bg-emerald-600 px-5 py-2 text-xs font-bold text-white hover:bg-emerald-700 shadow-sm transition-colors">Approve</button>
-              <button (click)="setStatus(view().id, 'Rejected')" class="rounded-full bg-rose-600 px-5 py-2 text-xs font-bold text-white hover:bg-rose-700 shadow-sm transition-colors">Reject</button>
-              <button (click)="view.set(null)" class="rounded-full border border-gray-200 bg-white px-5 py-2 text-xs font-semibold text-ink hover:bg-gray-50 transition-colors">Close</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  `
+    <div class="mt-5 border-t border-hairline pt-4"><button type="button" (click)="reloadDetail()" [disabled]="!!busy() || loadingDetail()" class="rounded-full border border-hairline px-4 py-2 text-sm disabled:opacity-40">Refresh this record</button></div>
+   </section>
+  </div>
+ `
 })
-export class AdminApplicationsComponent implements OnInit {
-  admin = inject(AdminService);
-
-  ngOnInit() {
-    this.admin.loadStaffApplications().subscribe();
-  }
-
-  refresh() {
-    this.admin.loadStaffApplications().subscribe();
-  }
-  
-  tab = signal('Distributors');
-  searchQuery = signal('');
-  statusFilter = signal('All statuses');
-  catFilter = signal('All categories');
-  view = signal<any>(null);
-
-  documentsVerified = false;
-  reviewerNote = '';
-  rawStatuses = ["Pending", "Under Review", "Approved", "Rejected"];
-  statuses = ["All statuses", ...this.rawStatuses];
-  categories = ["All categories", 'Corporate Distributor', 'Earbuds', 'Power Banks', 'Wireless Chargers', 'Car Chargers', 'Home Chargers', 'Cables', 'Accessories'];
-
-  getTone(status: string) { return statusTone(status); }
-
-  getStat(status: string) {
-    return this.admin.applications().filter(a => a.status === status).length;
-  }
-
-  filteredList = computed(() => {
-    let list = this.admin.applications();
-    const typeMap: Record<string, string> = {
-      'Distributors': 'Distributor',
-      'Wholesalers': 'Wholesaler',
-      'Affiliate Marketers': 'Affiliate Marketer'
-    };
-    const type = typeMap[this.tab()] || 'Distributor';
-    const q = this.searchQuery().toLowerCase();
-    const s = this.statusFilter();
-    const c = this.catFilter();
-
-    list = list.filter(a => a.type === type);
-
-    if (q) {
-      list = list.filter(a => 
-        (a.businessName + a.contactPerson + a.email + a.phone + a.location).toLowerCase().includes(q)
-      );
-    }
-    if (s !== 'All statuses') {
-      list = list.filter(a => a.status === s);
-    }
-    if (c !== 'All categories') {
-      list = list.filter(a => a.category === c);
-    }
-    return list;
+export class AdminApplicationsComponent implements OnInit, OnDestroy {
+  private detailRequest?: Subscription;
+  readonly detailReady = signal(false);
+  readonly admin = inject(AdminService);
+  readonly tabs = ['Distributors', 'Wholesalers', 'Affiliate Marketers'];
+  readonly leadActions = ['Start work', 'Resolve', 'Close'];
+  readonly tab = signal('Distributors'); readonly searchQuery = signal(''); readonly statusFilter = signal('All'); readonly catFilter = signal('All categories');
+  readonly view = signal<AdminApplication | null>(null); readonly busy = signal<string | null>(null); readonly loadingDetail = signal(false);
+  readonly actionError = signal(''); readonly success = signal(''); readonly rejecting = signal(false);
+  reviewerNote = ''; rejectionReason = ''; documentsVerified = false;
+  readonly tabRows = computed(() => this.admin.applications().filter(row => this.tab() === 'Distributors' ? row.source === 'distributor' : row.source === 'lead' && row.type === (this.tab() === 'Wholesalers' ? 'Wholesaler' : 'Affiliate Marketer')));
+  readonly categories = computed(() => [...new Set(this.tabRows().map(row => row.category).filter(Boolean))]);
+  readonly statuses = computed(() => this.tab() === 'Distributors' ? ['Pending', 'Under Review', 'Activation Pending', 'Approved', 'Rejected', 'Suspension Pending', 'Suspended', 'Unknown'] : ['New', 'Assigned', 'In Progress', 'Resolved', 'Closed', 'Unknown']);
+  readonly stats = computed(() => {
+    const rows = this.tabRows(); const count = (states: string[]) => rows.filter(row => states.includes(row.rawState ?? '')).length;
+    return this.tab() === 'Distributors' ? [{ label: 'Applications', value: rows.length }, { label: 'Awaiting review', value: count(['SUBMITTED']) }, { label: 'Under review', value: count(['UNDER_REVIEW']) }, { label: 'Processing', value: count(['ACTIVATION_PENDING', 'SUSPENSION_PENDING']) }, { label: 'Approved', value: count(['APPROVED']) }, { label: 'Rejected', value: count(['REJECTED']) }] : [{ label: 'Lead requests', value: rows.length }, { label: 'New', value: count(['NEW']) }, { label: 'In progress', value: count(['ASSIGNED', 'IN_PROGRESS']) }, { label: 'Resolved', value: count(['RESOLVED']) }, { label: 'Closed', value: count(['CLOSED']) }];
   });
-
-  viewDetail(app: any) {
-    // Create a copy so we edit reviewer note independently from submitted application text
-    this.documentsVerified = false;
-    this.reviewerNote = app.reviewReason || '';
-    this.admin.applicationError.set(null);
-    this.view.set({ ...app });
-  }
-
-  setStatus(id: string, status: string) {
-    const app = this.admin.applications().find(a => a.id === id);
-    if (app?.type === 'Distributor' && status === 'Approved' && app.status === 'Pending') {
-      this.viewDetail(app);
-      this.admin.applicationError.set('Corporate distributor applications must be reviewed and verified ("Under Review") before final approval.');
-      return;
-    }
-    const activeModal = this.view()?.id === id;
-    const note = activeModal ? this.reviewerNote : `Application marked ${status} by staff`;
-    const docsVerified = activeModal ? this.documentsVerified : false;
-    this.admin.setApplicationStatus(id, status, note, docsVerified).subscribe(result => {
-      if (result && this.view()?.id === id) {
-        const stateMap: Record<string, string> = {
-          RESOLVED: 'Approved',
-          CLOSED: 'Rejected',
-          IN_PROGRESS: 'Under Review',
-          ASSIGNED: 'Under Review'
-        };
-        const displayed = stateMap[result.state] || distributorDisplayState(result.state);
-        this.view.update((view: any) => ({ ...view, status: displayed, reviewReason: note, version: result.version }));
-      }
+  readonly filteredList = computed(() => { const query = this.searchQuery().toLowerCase(); return this.tabRows().filter(row => (this.statusFilter() === 'All' || row.status === this.statusFilter()) && (this.catFilter() === 'All categories' || row.category === this.catFilter()) && [row.businessName, row.contactPerson, row.email, row.phone, row.location, row.number, row.businessReference ?? ''].join(' ').toLowerCase().includes(query)); });
+  ngOnInit(): void { this.refresh(); }
+  ngOnDestroy(): void { this.detailRequest?.unsubscribe(); }
+  changeTab(tab: string): void { if (this.busy()) return; this.tab.set(tab); this.statusFilter.set('All'); this.catFilter.set('All categories'); }
+  refresh(): void { if (this.busy()) return; this.admin.loadStaffApplications().subscribe({ error: error => this.actionError.set(applicationFailure(error)) }); }
+  getTone(status: string) { return statusTone(status); }
+  validNote(note: string): boolean { return !!note.trim() && note.trim().length <= 500; }
+  processing(record: AdminApplication): boolean { return ['ACTIVATION_PENDING', 'SUSPENSION_PENDING'].includes(record.rawState ?? ''); }
+  editable(record: AdminApplication): boolean { if (!this.detailReady()) return false; return record.source === 'lead' ? ['NEW', 'ASSIGNED', 'IN_PROGRESS', 'RESOLVED'].includes(record.rawState ?? '') : ['SUBMITTED', 'UNDER_REVIEW'].includes(record.rawState ?? ''); }
+  reviewer(record: AdminApplication): string { const id = record.reviewerPartyId; if (!id) return 'Not recorded'; if (id === this.admin.session.userId()) return 'You (staff ID ' + id + ')'; return this.admin.admins().find(user => user.id === id)?.name ?? ('Staff ID ' + id); }
+  block(action: string): string | null { const row = this.view(); if (!row) return 'Open an application first.'; if (!this.admin.session.hasRole('SALES')) return 'Sales access is required.'; return distributorActionBlock({ state: row.rawState, reviewerPartyId: row.reviewerPartyId, documents: row.documents }, action, this.admin.session.userId(), this.admin.distributorMarket()?.id); }
+  leadAllowed(record: AdminApplication, action: string): boolean { return this.admin.session.hasRole('SALES') && partnerLeadActionAllowed(record.rawState ?? '', action); }
+  close(): void { if (this.busy()) return; this.detailRequest?.unsubscribe(); this.loadingDetail.set(false); this.detailReady.set(false); this.view.set(null); this.actionError.set(''); this.success.set(''); }
+  viewDetail(record: AdminApplication): void { if (this.busy()) return; this.view.set({ ...record }); this.reviewerNote = ''; this.rejectionReason = ''; this.documentsVerified = false; this.rejecting.set(false); this.actionError.set(''); this.success.set(''); this.reloadDetail(); }
+  reloadDetail(): void { const row = this.view(); if (!row || this.busy()) return; this.detailRequest?.unsubscribe(); this.detailReady.set(false); this.documentsVerified = false; this.loadingDetail.set(true); this.actionError.set(''); this.detailRequest = this.admin.refreshApplication(row.id).pipe(finalize(() => this.loadingDetail.set(false))).subscribe({ next: record => { if (this.view()?.id === record.id) { this.view.set({ ...record }); this.detailReady.set(true); } }, error: error => this.actionError.set(applicationFailure(error)) }); }
+  act(action: string): void {
+    const row = this.view(); if (!row || this.busy() || this.loadingDetail() || !this.detailReady()) return;
+    if (action === 'Rejected' && !this.rejecting()) { this.actionError.set('Confirm rejection and enter its reason first.'); return; }
+    const note = action === 'Rejected' ? this.rejectionReason : this.reviewerNote;
+    const blocked = row.source === 'lead' ? (this.leadAllowed(row, action) ? null : 'This lead action is not available.') : this.block(action);
+    if (blocked || !this.validNote(note) || (action === 'Under Review' && !this.documentsVerified)) { this.actionError.set(blocked ?? 'Enter a staff reason and confirm document inspection where required.'); return; }
+    this.actionError.set(''); this.success.set(''); this.busy.set(action);
+    this.admin.setApplicationStatus(row.id, action, note, this.documentsVerified, row.version).pipe(finalize(() => this.busy.set(null))).subscribe({
+      next: result => {
+        const latest = this.admin.applications().find(item => item.id === row.id);
+        if (latest && (result?.version == null || (latest.version ?? -1) >= result.version)) this.view.set({ ...latest });
+        else if (result?.state) this.view.set({ ...row, rawState: result.state, status: row.source === 'lead' ? leadDisplayState(result.state) : distributorDisplayState(result.state), version: result.version });
+        this.documentsVerified = false; this.reviewerNote = ''; this.rejectionReason = ''; this.rejecting.set(false);
+        const current = this.view(); this.success.set(current && this.processing(current) ? 'The backend is processing this decision; approval is not yet confirmed.' : 'Server update confirmed: ' + (current?.status ?? 'updated') + '.');
+      }, error: error => { this.detailReady.set(false); this.actionError.set(applicationFailure(error)); }
     });
   }
-
 }
-

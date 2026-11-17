@@ -17,8 +17,8 @@
           </a>
         </div>
       </div>
-      <div class="h-[40vh] min-h-[300px] bg-surface lg:h-[calc(100vh-4rem)] lg:min-h-[430px]">
-        <img [src]="heroImage" alt="Nigson audio and charging essentials" width="1600" height="1104" class="h-full w-full object-cover" />
+      <div class="h-[40vh] min-h-[300px] bg-[#f7f6f8] lg:h-[calc(100vh-4rem)] lg:min-h-[430px]">
+        <img [src]="heroImage" alt="Nigson power banks, chargers, earbuds and cables" width="1510" height="1042" fetchpriority="high" class="h-full w-full object-contain" />
       </div>
     </div>
   </section>
@@ -33,7 +33,7 @@
         {{newArrivals().t('btnLabel') || 'Explore New Arrivals'}} <svg lucideArrowRight class="h-4 w-4"></svg>
       </a>
     </div>
-    <img [src]="powerImage" alt="New Nigson power essentials" loading="lazy" width="1408" height="1200" class="mx-auto mt-10 aspect-[16/8] w-full max-w-6xl object-cover" />
+    <img [src]="newArrivalsImage" alt="Nigson everyday essentials: power banks, chargers, earbuds, cables and home accessories" loading="lazy" width="1771" height="888" class="mx-auto mt-10 h-auto w-full max-w-6xl object-contain" />
   </section>
 
   <!-- ── ALTERNATING CATEGORY LAYOUT ───────────────────────────────────── -->
@@ -50,8 +50,8 @@
               <a routerLink="/products" [queryParams]="{category: item.filter}" class="display-type mt-6 inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-primary transition-[gap] hover:gap-3">View Category <svg lucideArrowRight class="h-4 w-4"></svg></a>
             </div>
           </div>
-          <div class="h-[320px] overflow-hidden sm:h-[540px] lg:h-full" [ngClass]="{'lg:order-1': i % 2 === 1}">
-            <img [src]="item.image" [alt]="item.label + ' products'" loading="lazy" width="1400" height="1200" class="h-full w-full object-cover transition-transform duration-700 hover:scale-[1.02]" />
+          <div class="h-[320px] overflow-hidden sm:h-[540px] lg:h-full" [ngClass]="{'lg:order-1': i % 2 === 1, 'bg-black': item.label === 'FMCG', 'bg-[#f7f6f8]': item.label !== 'FMCG'}">
+            <img [src]="item.image" [alt]="item.label + ' products'" loading="lazy" width="1254" height="1254" class="h-full w-full object-contain" />
           </div>
         </div>
       </article>

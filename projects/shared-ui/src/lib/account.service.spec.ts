@@ -65,3 +65,12 @@ describe('AccountService referral code', () => {
     expect(s.loadingReferral()).toBe(false);
   });
 });
+
+describe('Profile update failures',()=>{
+ it('propagates the backend rejection without replacing the current profile',()=>{
+  const s:any=Object.create(AccountService.prototype);const before={id:'account',displayName:'Before',phone:null};s.profile=signal(before);s.shop={user:signal({fullName:'Before'})};s.http={patch:vi.fn(()=>throwError(()=>({status:412,error:{code:'VERSION_MISMATCH'}})))};const next=vi.fn(),error=vi.fn();s.updateProfile({phone:'+2348012345678'}).subscribe({next,error});expect(next).not.toHaveBeenCalled();expect(error).toHaveBeenCalledOnce();expect(error.mock.calls[0][0].status).toBe(412);expect(s.profile()).toEqual(before);
+ });
+ it('uses the acknowledged phone when updating shared profile state',()=>{
+  const s:any=Object.create(AccountService.prototype);s.profile=signal(null);s.shop={user:signal({fullName:'Before'})};s.http={patch:vi.fn(()=>of({id:'account',displayName:'After',phone:'+2348012345678'}))};s.updateProfile({phone:'+2348012345678'}).subscribe();expect(s.shop.user().phone).toBe('+2348012345678');
+ });
+});

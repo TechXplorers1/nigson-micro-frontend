@@ -2,7 +2,7 @@ import { Injectable, signal, inject } from '@angular/core';
 import { HttpContextToken, HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { catchError, throwError } from 'rxjs';
 
-export type ApiFailure = { id: number; message: string };
+export type ApiFailure = { id: number; message: string; page?: string };
 
 /** Opt in only when the caller displays these specific failures in its own view. */
 export const LOCAL_API_FAILURE_CODES = new HttpContextToken<readonly string[]>(() => []);
@@ -26,8 +26,9 @@ export function apiFailureDetail(error:any,fallback='The operation failed.'):str
 export class ApiErrorsService {
   readonly failures = signal<ApiFailure[]>([]);
   private sequence = 0;
-  report(message: string): void {
-    this.failures.update(items => items.some(x => x.message === message) ? items : [...items.slice(-4), { id: ++this.sequence, message }]);
+  visibleFor(page:string):ApiFailure[] {const path=page.split(/[?#]/)[0];return this.failures().filter(item=>!item.page||item.page===path);}
+  report(message: string,page?:string): void {
+    this.failures.update(items => items.some(x => x.message === message && x.page === page) ? items : [...items.slice(-4), { id: ++this.sequence, message, page }]);
   }
   dismiss(id: number): void { this.failures.update(items => items.filter(x => x.id !== id)); }
   describe(error: unknown, method = '', url = ''): string {
@@ -54,12 +55,13 @@ export class ApiErrorsService {
 
 export const apiErrorInterceptor: HttpInterceptorFn = (request, next) => {
   const errors = inject(ApiErrorsService);
+  const page=typeof window==='undefined'?undefined:window.location.pathname;
   return next(request).pipe(catchError(error => {
     const handledLocally = error instanceof HttpErrorResponse &&
       request.context.get(LOCAL_API_FAILURE_CODES).includes(`${error.status}:${error.error?.code}`);
     if (!handledLocally && (request.url.startsWith('/api/') || request.url.startsWith('/bff/')) &&
         !isAnonymousSessionUnauthorized(error, request.method, request.url)) {
-      errors.report(errors.describe(error, request.method, request.url));
+      errors.report(errors.describe(error, request.method, request.url),page);
     }
     return throwError(() => error);
   }));

@@ -27,7 +27,7 @@ import { LucideCheck, LucideX } from '@lucide/angular';
   template: `
     <div class="flex min-h-screen flex-col font-sans antialiased text-foreground bg-background relative">
       <app-header *ngIf="!isAdminRoute()"></app-header>
-      <section *ngIf="apiErrors.failures().length" aria-label="Backend errors" class="m-4 space-y-2">
+      <section *ngIf="apiErrors.visibleFor(currentPage()).length" aria-label="Backend errors" class="m-4 space-y-2">
         <div *ngFor="let failure of apiErrors.failures()" role="alert" class="flex justify-between gap-4 rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-900">
           <span>{{failure.message}}</span><button type="button" (click)="apiErrors.dismiss(failure.id)" aria-label="Dismiss backend error">✕</button>
         </div>
@@ -76,6 +76,7 @@ import { LucideCheck, LucideX } from '@lucide/angular';
 })
 export class AppComponent {
   title = 'shell';
+  readonly currentPage=signal(typeof window!=='undefined'?window.location.pathname:'/');
   isAdminRoute = signal(typeof window !== 'undefined' && window.location.pathname.startsWith('/admin'));
   shop = inject(ShopService);
   apiErrors = inject(ApiErrorsService);
@@ -85,6 +86,7 @@ export class AppComponent {
     router.events.pipe(
       filter(event => event instanceof NavigationEnd)
     ).subscribe((event: any) => {
+      this.currentPage.set(event.urlAfterRedirects.split(/[?#]/)[0]);
       this.isAdminRoute.set(event.urlAfterRedirects.startsWith('/admin'));
     });
   }

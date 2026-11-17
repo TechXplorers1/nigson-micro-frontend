@@ -1,3 +1,4 @@
+import { WishlistService } from 'shared-ui';
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterOutlet, Router, RouterLinkActive } from '@angular/router';
@@ -79,8 +80,8 @@ import {
                 class="inline-flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-colors text-ink hover:bg-surface-alt"
               >
                 <svg lucideHeart class="h-4 w-4"></svg> Wishlist
-                <span *ngIf="shop.saved().length" class="ml-auto rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-bold text-brand">
-                  {{ shop.saved().length }}
+                <span *ngIf="wishlist.items().length" class="ml-auto rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-bold text-brand">
+                  {{ wishlist.items().length }}
                 </span>
               </a>
               <!-- Quote Requests -->
@@ -127,6 +128,7 @@ import {
   `
 })
 export class AccountLayoutComponent implements OnInit {
+  readonly wishlist = inject(WishlistService);
   shop = inject(ShopService);
   session = inject(SessionService);
   accountSvc = inject(AccountService);

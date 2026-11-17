@@ -63,10 +63,27 @@ export class HomeComponent implements OnInit, OnDestroy {
   carousel         = computed(() => this.sections.get('featuredCarousel'));
 
   // ── derived card arrays ──────────────────────────────────────────────────
+  private readonly categoryImageReplacements: Record<string, { previous: string; current: string }> = {
+    'audio': { previous: '/assets/nigson-audio.jpg', current: '/assets/home-category-audio.png' },
+    'power': { previous: '/assets/nigson-power.jpg', current: '/assets/home-category-power.png' },
+    'charging': { previous: '/assets/nigson-hero-products.jpg', current: '/assets/home-category-charging.png' },
+    'mobile accessories': { previous: '/assets/nigson-audio.jpg', current: '/assets/home-category-mobile-accessories.png' },
+    'car accessories': { previous: '/assets/nigson-power.jpg', current: '/assets/home-category-car-accessories.png' },
+    'fmcg': { previous: '/assets/nigson-wholesale.jpg', current: '/assets/home-category-fmcg.png' },
+  };
+
+  // Resolve the old bundled defaults in published CMS cards without replacing custom uploads.
+  private categoryImage(label: string, image: string): string {
+    const replacement = this.categoryImageReplacements[(label || '').trim().toLowerCase()];
+    return replacement && (!image || image === replacement.previous)
+      ? replacement.current
+      : image || '/assets/nigson-hero-products.jpg';
+  }
+
   showcaseCards = computed(() =>
     this.categoryShowcase().cards((f) => ({
       label: f['label'], title: f['title'], description: f['description'],
-      filter: f['filter'], image: f['image'] || '/assets/nigson-hero-products.jpg'
+      filter: f['filter'], image: this.categoryImage(f['label'], f['image'])
     }))
   );
 
@@ -103,9 +120,9 @@ export class HomeComponent implements OnInit, OnDestroy {
   );
 
   // ── image assets ─────────────────────────────────────────────────────────
-  heroImage      = '/assets/nigson-hero-products.jpg';
+  heroImage      = '/assets/home-hero.png';
   audioImage     = '/assets/nigson-audio.jpg';
-  powerImage     = '/assets/nigson-power.jpg';
+  newArrivalsImage = '/assets/home-new-arrivals.png';
   wholesaleImage = '/assets/nigson-wholesale.jpg';
   lifestyleWork  = '/assets/nigson-lifestyle-work.jpg';
 

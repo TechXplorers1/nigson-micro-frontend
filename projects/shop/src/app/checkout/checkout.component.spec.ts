@@ -1,5 +1,6 @@
 import '@angular/compiler';
-import { of } from 'rxjs';
+import { signal } from '@angular/core';
+import { of, Subject } from 'rxjs';
 import { describe, it, expect, vi } from 'vitest';
 import { CheckoutComponent } from './checkout.component';
 
@@ -58,4 +59,16 @@ describe('Checkout automatic delivery location', () => {
   it('identifies disabled delivery instead of advising an ineffective retry', () => {
     expect(setup().errorMessage({ url: '/api/v1/carts/id/delivery-quotes', status: 422, error: { code: 'FEATURE_DISABLED' } })).toContain('disabled on the server');
   });
+});
+
+function prefillCheckout(){
+ const c=setup();c.customer.phone='';c.session={authenticated:()=>true,fullName:()=>'',email:()=>''};c.shop={user:()=>null};c.deliveryQuote=signal(null);const profile=new Subject<any>(),addresses=new Subject<any>();c.account={loadProfile:()=>profile,loadAddresses:()=>addresses};return {c,profile,addresses};
+}
+describe('Checkout phone prefilling',()=>{
+ it('loads the saved profile phone when no address is selected',()=>{const {c,profile,addresses}=prefillCheckout();c.ngOnInit();addresses.next([]);profile.next({displayName:'Customer',email:'test@example.invalid',phone:'+2348012345678'});expect(c.customer.phone).toBe('+2348012345678');});
+ it('uses the delivery address phone regardless of profile response order',()=>{
+  for(const profileFirst of [true,false]){const {c,profile,addresses}=prefillCheckout();c.ngOnInit();const p={phone:'+2348012345678'};if(profileFirst)profile.next(p);addresses.next([{id:'address',isDefault:true,phone:'+2348098765432'}]);if(!profileFirst)profile.next(p);expect(c.customer.phone).toBe('+2348098765432');}
+ });
+ it('preserves a deliberate phone edit when asynchronous saved data arrives',()=>{const {c,profile,addresses}=prefillCheckout();c.ngOnInit();c.phoneChanged('+2348099999999');profile.next({phone:'+2348012345678'});addresses.next([{id:'address',phone:'+2348098765432'}]);expect(c.customer.phone).toBe('+2348099999999');});
+ it('normalizes local and full international inputs before delivery requests',()=>{const c=setup();for(const [input,expected] of [['8012345678','+2348012345678'],['+2348012345678','+2348012345678'],['+447700900123','+447700900123']]){c.customer.phone=input;expect(c.deliveryPhone()).toBe(expected);}});
 });
