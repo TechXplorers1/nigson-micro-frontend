@@ -633,6 +633,15 @@ export class CheckoutComponent implements OnInit {
 
       const checkoutUrl = checkout?.payment?.checkoutUrl;
       if (typeof checkoutUrl === 'string' && checkoutUrl.startsWith('https://')) {
+        // Paystack appends ?trxref=&reference=; remember the order so the return page can poll API-041.
+        try {
+          const reference = checkout?.payment?.reference;
+          const orderId = checkout?.order?.id;
+          if (reference && orderId) {
+            sessionStorage.setItem('nigson.checkout.payment.' + reference, orderId);
+            sessionStorage.setItem('nigson.checkout.last', reference);
+          }
+        } catch { /* storage may be unavailable in private browsing */ }
         window.location.assign(checkoutUrl);
         return;
       }

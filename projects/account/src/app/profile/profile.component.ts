@@ -159,8 +159,21 @@ import {
               </button>
             </div>
 
-            <div *ngIf="!accountSvc.referral() && !accountSvc.loadingReferral()" class="text-xs text-muted-ink">
-              Your referral code will activate automatically after your first verified order.
+            <div *ngIf="!accountSvc.referral()" class="mt-1 space-y-3">
+              <p class="text-xs text-muted-ink">
+                Create your referral code to get a shareable link. Rewards are credited once a referred business places its first qualifying order.
+              </p>
+              <button
+                (click)="createReferral()"
+                [disabled]="accountSvc.loadingReferral() || creatingReferral()"
+                class="inline-flex items-center gap-1.5 rounded-xl bg-brand text-white px-3 py-2 text-xs font-semibold hover:bg-brand-deep transition-colors disabled:opacity-50"
+              >
+                <svg *ngIf="creatingReferral()" lucideLoader2 class="h-3.5 w-3.5 animate-spin"></svg>
+                {{ creatingReferral() ? 'Creating…' : 'Create referral code' }}
+              </button>
+              <p *ngIf="accountSvc.referralError()" class="text-xs font-semibold text-rose-600">
+                {{ accountSvc.referralError() }}
+              </p>
             </div>
           </div>
         </div>
@@ -214,6 +227,7 @@ export class ProfileComponent implements OnInit {
   saving = signal(false);
   saveSuccess = signal(false);
   copied = signal(false);
+  creatingReferral = signal(false);
   avatarUrl = signal<string | null>(null);
 
   form = signal<{ fullName: string; email: string; phone: string }>({
@@ -323,6 +337,16 @@ export class ProfileComponent implements OnInit {
       this.copied.set(true);
       setTimeout(() => this.copied.set(false), 2000);
     }
+  }
+
+  /** API-161: create the stable own referral code; failures render inside the card. */
+  createReferral() {
+    if (this.creatingReferral()) return;
+    this.creatingReferral.set(true);
+    this.accountSvc.createReferral().subscribe(ref => {
+      this.creatingReferral.set(false);
+      if (ref) this.copied.set(false);
+    });
   }
 
   initialsOf(name?: string) {

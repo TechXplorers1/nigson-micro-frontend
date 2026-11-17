@@ -1,8 +1,9 @@
 import { Injectable, inject, signal } from "@angular/core";
-import { HttpClient, HttpHeaders } from "@angular/common/http";
+import { HttpClient, HttpContext, HttpHeaders } from "@angular/common/http";
 import { Observable, of, tap, catchError, map } from "rxjs";
 import { SessionService } from "./session.service";
 import { ShopService } from "./shop.service";
+import { apiFailureDetail, LOCAL_API_FAILURE_CODES } from "./api-errors.service";
 
 /**
  * Backend Profile DTO (API-005, API-006 - TASK-47, TASK-48)
@@ -157,6 +158,8 @@ export class AccountService {
   readonly addresses = signal<AddressDTO[]>([]);
   readonly rewards = signal<RewardLedgerDTO | null>(null);
   readonly referral = signal<ReferralDTO | null>(null);
+  /** User-facing failure for referral code creation; the card renders it inline. */
+  readonly referralError = signal<string | null>(null);
 
   readonly loadingProfile = signal(false);
   readonly loadingAddresses = signal(false);
@@ -307,15 +310,20 @@ export class AccountService {
   loadReferral(): Observable<ReferralDTO | null> {
     if (!this.session.authenticated()) return of(null);
     this.loadingReferral.set(true);
-    return this.http.get<ReferralDTO>("/api/v1/me/referral-code").pipe(
+    this.referralError.set(null);
+    return this.http.get<ReferralDTO>("/api/v1/me/referral-code", {
+      // API-063 documents 404 when no code has been created yet; the card offers
+      // creation instead, so this expected 404 must not raise a global error.
+      context: new HttpContext().set(LOCAL_API_FAILURE_CODES, ["404:NOT_FOUND"])
+    }).pipe(
       tap(ref => {
         this.referral.set(ref);
         this.loadingReferral.set(false);
       }),
       catchError(err => {
-        // 404 indicates user has not created a referral code yet (expected domain behavior)
         if (err?.status !== 404) {
           console.error("[AccountService] Backend /api/v1/me/referral-code unavailable:", err?.status ?? err);
+          this.referralError.set(this.referralFailure(err));
         }
         this.referral.set(null);
         this.loadingReferral.set(false);
@@ -328,18 +336,29 @@ export class AccountService {
   createReferral(): Observable<ReferralDTO | null> {
     if (!this.session.authenticated()) return of(null);
     this.loadingReferral.set(true);
-    const headers = { 'Idempotency-Key': crypto.randomUUID() };
+    this.referralError.set(null);
+    const headers = new HttpHeaders({ "Idempotency-Key": crypto.randomUUID() });
     return this.http.post<ReferralDTO>("/api/v1/me/referral-code", {}, { headers }).pipe(
       tap(ref => {
         this.referral.set(ref);
         this.loadingReferral.set(false);
       }),
       catchError(err => {
-        console.error("[AccountService] createReferral failed:", err);
+        this.referralError.set(this.referralFailure(err));
         this.loadingReferral.set(false);
         return of(null);
       })
     );
+  }
+
+  /** Explain a referral failure without inventing a code or a link. */
+  private referralFailure(err: any): string {
+    if (err?.status === 422 && err?.error?.code === "FEATURE_DISABLED") {
+      return "Referral links are not configured for this store yet.";
+    }
+    if (err?.status === 401) return "Sign in again to create your referral code.";
+    if (err?.status === 0) return "The store is unreachable. Check your connection and try again.";
+    return apiFailureDetail(err, "The referral code could not be created.");
   }
 
   formatPrice(minorUnits: number): string {
