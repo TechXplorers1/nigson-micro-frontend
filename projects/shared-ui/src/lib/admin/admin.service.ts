@@ -8,7 +8,7 @@ import { LOCAL_API_FAILURE_CODES } from '../api-errors.service';
 import { SessionService } from '../session.service';
 import { CatalogService } from '../catalog.service';
 import { applyInventory, mapStaffProducts } from './inventory-mapping';
-import { distributorCommand, distributorDisplayState } from './distributor-workflow';
+import { distributorCommand, distributorDisplayState, leadDisplayState, distributorActionBlock, partnerLeadState, partnerLeadActionAllowed, applicationFailure } from './distributor-workflow';
 
 export type AdminProduct = {
   id: string; version?: number; skuVersion?: number; packSize?: string; categoryIds?: string[]; slug?: string; brandId?: string; skuId?: string; name: string; sku: string; category: string; price: number;
@@ -57,7 +57,8 @@ export type LeadStatus = "Pending" | "Under Review" | "Approved" | "Rejected";
 export type AdminApplication = {
   id: string; number: string; type: "Distributor" | "Wholesaler" | "Affiliate Marketer"; businessName: string;
   contactPerson: string; email: string; phone: string; location: string; category: string;
-  date: string; status: LeadStatus; note?: string; version?: number;
+  date: string; status: string; note?: string; version?: number;
+  rawState?: string; reviewerPartyId?: string | null; decisionReason?: string | null;
   source?: 'distributor' | 'lead';
   businessReference?: string;
   reviewReason?: string;
@@ -480,11 +481,11 @@ export class AdminService {
     if (version !== undefined) headers = headers.set('If-Match', `"${version}"`);
     return headers;
   }
-  private rows(path: string, page = 0): Observable<any[]> {
-    return this.http.get<any>(`${path}${path.includes('?') ? '&' : '?'}page=${page}&size=100`).pipe(switchMap(result => {
+  private rows(path: string, page = 0, local = false): Observable<any[]> {
+    return this.http.get<any>(`${path}${path.includes('?') ? '&' : '?'}page=${page}&size=100`, local ? {context:this.applicationContext()} : {}).pipe(switchMap(result => {
       const rows = result?.items ?? result?.content;
       if (!Array.isArray(rows)) throw new Error('The backend returned an invalid table response.');
-      return page + 1 < result.totalPages ? this.rows(path, page + 1).pipe(map(next => [...rows, ...next])) : of(rows);
+      return page + 1 < result.totalPages ? this.rows(path, page + 1, local).pipe(map(next => [...rows, ...next])) : of(rows);
     }));
   }
   private table<T>(key: string, request: Observable<any[]>, target: WritableSignal<T[]>): Observable<T[]> {
@@ -747,7 +748,7 @@ export class AdminService {
   loadStaffInquiries(): Observable<AdminInquiry[]> {
     return this.table(
       'Contact inquiries',
-      this.rows('/api/v1/staff/leads?type=CONTACT').pipe(
+      this.rows('/api/v1/staff/leads?type=CONTACT',0,true).pipe(
         map(rows =>
           rows
             .filter(row => !isPartnerSubmission({ subject: row.subject, message: row.message }))
@@ -802,13 +803,6 @@ export class AdminService {
     const category = getField('Product Category:') || getField('Primary Niche:') || 'Accessories';
     const code = (lead.id || '').replace(/-/g, '').slice(0, 4).toUpperCase();
     const prefix = type === 'Wholesaler' ? 'APP-W' : type === 'Affiliate Marketer' ? 'APP-A' : 'APP-D';
-    const statusMap: Record<string, LeadStatus> = {
-      NEW: 'Pending',
-      ASSIGNED: 'Under Review',
-      IN_PROGRESS: 'Under Review',
-      RESOLVED: 'Approved',
-      CLOSED: 'Rejected'
-    };
     const leadState = lead.state || 'NEW';
 
     return {
@@ -822,11 +816,17 @@ export class AdminService {
       phone: lead.phone || '',
       location,
       category,
-      date: lead.createdAt || new Date().toISOString(),
-      status: statusMap[leadState] || 'Pending',
+      date: lead.createdAt || '',
+      status: leadDisplayState(leadState),
+      rawState: leadState,
       note: lead.message,
       version: lead.version
     };
+  }
+  private applicationContext():HttpContext {return new HttpContext().set(LOCAL_API_FAILURE_CODES,['0:undefined','401:AUTH_REQUIRED','403:ACCESS_DENIED','404:NOT_FOUND','409:VERSION_MISMATCH','412:VERSION_MISMATCH','422:BUSINESS_RULE_VIOLATION','422:FEATURE_DISABLED','422:VALIDATION_ERROR','409:INVALID_TRANSITION','422:INVALID_TRANSITION','500:INTERNAL_ERROR','503:PROVIDER_UNAVAILABLE','503:PROVIDER_OUTCOME_UNKNOWN']);}
+  private acknowledgeApplication(id:string,result:any):void {
+    if(!result?.state)return;
+    this.applications.update(rows=>rows.map(row=>row.id===id?{...row,rawState:result.state,status:row.source==='lead'?leadDisplayState(result.state):distributorDisplayState(result.state),version:result.version??row.version}:row));
   }
   loadStaffApplications(): Observable<AdminApplication[]> {
     this.applicationError.set(null);
@@ -834,9 +834,9 @@ export class AdminService {
     let distError: string | null = null;
     let leadError: string | null = null;
 
-    const distributorApps$ = this.rows('/api/v1/staff/distributor-applications').pipe(
+    const distributorApps$ = this.rows('/api/v1/staff/distributor-applications',0,true).pipe(
       switchMap(rows => rows.length
-        ? forkJoin(rows.map(row => this.http.get<any>(`/api/v1/staff/distributor-applications/${row.id}`).pipe(map(detail => ({ ...row, ...detail })))))
+        ? forkJoin(rows.map(row => this.http.get<any>(`/api/v1/staff/distributor-applications/${row.id}`,{context:this.applicationContext()}).pipe(map(detail => ({ ...row, ...detail })))))
         : of([])),
       map(rows => rows.map(row => ({
         id: row.id,
@@ -851,6 +851,9 @@ export class AdminService {
         category: 'Corporate Distributor',
         date: row.submittedAt,
         status: distributorDisplayState(row.state),
+        rawState: row.state,
+        reviewerPartyId: row.reviewerPartyId ?? null,
+        decisionReason: row.decisionReason ?? null,
         note: row.reviewReason || '',
         businessReference: row.businessReference || '',
         reviewReason: row.reviewReason || '',
@@ -866,8 +869,7 @@ export class AdminService {
       }))),
       catchError(error => {
         distError = this.message(error);
-        this.errors.update(all => ({ ...all, 'Distributor applications': distError! }));
-        return of([] as AdminApplication[]);
+        return of(this.applications().filter(row=>row.source==='distributor'));
       })
     );
 
@@ -878,7 +880,6 @@ export class AdminService {
         .filter(app => app.type === 'Wholesaler' || app.type === 'Affiliate Marketer')),
       catchError(error => {
         leadError = this.message(error);
-        this.errors.update(all => ({ ...all, 'Partner leads': leadError! }));
         return of([] as AdminApplication[]);
       })
     );
@@ -890,31 +891,43 @@ export class AdminService {
         const combined = [...distributorApps, ...leadApps].sort(
           (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
         );
-        this.applications.set(combined);
+        this.applications.update(previous=>combined.map(row=>{const known=previous.find(item=>item.id===row.id);return known?.version!=null && row.version!=null && known.version>row.version?known:row;}));
         const errs = [distError, leadError].filter((msg): msg is string => Boolean(msg));
         this.applicationError.set(errs.length > 0 ? errs.join(' ') : null);
-        return combined;
+        return this.applications();
       }),
       finalize(() => this.loadingApplications.set(false))
     );
   }
-  setApplicationStatus(id: string, status: string, note?: string, documentsVerified = false): Observable<any> {
-    return defer(() => {
-      this.applicationError.set(null);
-      const row = this.applications().find(row => row.id === id);
-      if (row?.version == null) throw new Error('Reload the current distributor application before deciding.');
-      if (row.source === 'lead') {
-        const stateMap: Record<string, string> = { Pending: 'NEW', 'Under Review': 'IN_PROGRESS', Approved: 'RESOLVED', Rejected: 'CLOSED' };
-        const targetState = stateMap[status];
-        if (!targetState) throw new Error('Choose a valid partner lead status.');
-        const leadNote = note?.trim() || `Partner application marked ${status} by staff`;
-        return this.updateLead(id, row.version, targetState, leadNote).pipe(
-          switchMap(result => this.loadStaffApplications().pipe(map(() => result)))
-        );
+  refreshApplication(id:string):Observable<AdminApplication> {
+    const row=this.applications().find(item=>item.id===id);
+    if(!row) return throwError(()=>new Error('Refresh the application list first.'));
+    if(row.source==='lead')return this.loadStaffApplications().pipe(map(rows=>{const refreshed=rows.find(item=>item.id===id);if(!refreshed)throw new Error('The lead is no longer in the current queue.');return refreshed;}));
+    return this.http.get<any>('/api/v1/staff/distributor-applications/'+id,{context:this.applicationContext()}).pipe(map(detail=>({
+      ...row,rawState:detail.state,status:distributorDisplayState(detail.state),version:detail.version,
+      reviewerPartyId:detail.reviewerPartyId??null,reviewReason:detail.reviewReason??'',decisionReason:detail.decisionReason??null,
+      documents:(detail.documents??[]).map((document:any)=>({...document,fileId:document.fileId,type:document.type,scanStatus:document.scanStatus}))
+    })),tap(record=>this.applications.update(rows=>rows.map(item=>item.id===id?record:item))));
+  }
+  setApplicationStatus(id:string,status:string,note?:string,documentsVerified=false,expectedVersion?:number):Observable<any> {
+    return defer(()=>{
+      const row=this.applications().find(item=>item.id===id);
+      if(!this.session.hasRole('SALES'))throw new Error('Sales access is required.');
+      if(row?.version==null)throw new Error('Refresh the application before deciding.');
+      if(expectedVersion!=null&&row.version!==expectedVersion)throw new Error('This record changed. Refresh it before deciding.');
+      const reason=note?.trim()??'';
+      if(!reason||reason.length>500)throw new Error('Enter a staff reason between 1 and 500 characters.');
+      if(row.source==='lead'){
+        if(!partnerLeadActionAllowed(row.rawState??'',status))throw new Error('This lead action is not available in the current state.');
+        return this.http.patch<any>('/api/v1/staff/leads/'+id,{state:partnerLeadState(status),note:reason},{headers:this.headers(row.version),context:this.applicationContext()}).pipe(tap(result=>this.acknowledgeApplication(id,result)),switchMap(result=>this.loadStaffApplications().pipe(map(()=>result))));
       }
-      const {action, body} = distributorCommand(status,note?.trim() || 'Distributor application reviewed by staff',documentsVerified,this.distributorMarket()?.id);
-      return this.http.post<any>(`/api/v1/staff/distributor-applications/${id}/${action}`,body,{headers:this.headers(row.version)}).pipe(switchMap(result => this.loadStaffApplications().pipe(map(() => result))));
-    }).pipe(catchError(error => {this.applicationError.set(this.message(error));return this.fail('Distributor decision',error);}));
+      const blocked=distributorActionBlock({state:row.rawState,reviewerPartyId:row.reviewerPartyId,documents:row.documents},status,this.session.userId(),this.distributorMarket()?.id);
+      if(blocked)throw new Error(blocked);
+      const {action,body}=distributorCommand(status,reason,documentsVerified,this.distributorMarket()?.id);
+      return this.http.post<any>('/api/v1/staff/distributor-applications/'+id+'/'+action,body,{
+        headers:this.headers(row.version),context:this.applicationContext()
+      }).pipe(tap(result=>this.acknowledgeApplication(id,result)),switchMap(result=>this.loadStaffApplications().pipe(map(()=>result))));
+    }).pipe(catchError(error=>throwError(()=>error)));
   }
   loadStaffReviews(): Observable<AdminReview[]> {
     return this.table('Reviews', this.rows('/api/v1/staff/reviews').pipe(map(rows => rows.map(row => ({ id: row.id, sku: '', product: row.productId || '', author: row.authorName || row.author || 'Customer', rating: row.rating, text: row.text || row.body, date: row.createdAt, status: row.state === 'PUBLISHED' ? 'Published' as const : 'Hidden' as const, version: row.version, state: row.state })))), this.reviews);

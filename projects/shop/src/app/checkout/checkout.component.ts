@@ -1,3 +1,4 @@
+import { PhoneInputComponent, normalizePhoneNumber } from 'shared-ui';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -52,7 +53,7 @@ const BANKS = ["Access Bank", "First Bank", "Guaranty Trust Bank", "United Bank 
 @Component({
   selector: 'app-checkout',
   standalone: true,
-  imports: [
+  imports: [PhoneInputComponent,
     CommonModule, FormsModule,
     LucideArrowLeft, LucideArrowRight, LucideBuilding2, 
     LucideCreditCard, LucideLoader2, LucideLock, LucideWallet, LucideCheck
@@ -123,7 +124,7 @@ const BANKS = ["Access Bank", "First Bank", "Guaranty Trust Bank", "United Bank 
                   </div>
                   <div class="space-y-1">
                     <label class="text-xs font-semibold uppercase tracking-wider text-muted-ink">Phone</label>
-                    <input [(ngModel)]="customer.phone" placeholder="+2348012345678" class="w-full rounded-md border border-hairline bg-surface-alt px-4 py-2.5 text-sm focus:border-brand focus:outline-none" />
+                    <ui-phone-input [ngModel]="customer.phone" (ngModelChange)="phoneChanged($event)"></ui-phone-input>
                   </div>
                 </div>
               </div>
@@ -410,6 +411,7 @@ export class CheckoutComponent implements OnInit {
     email: this.shop.user()?.email || this.session.email() || "",
     phone: "",
   };
+  private phoneEdited = false;
   address = { street: "", city: "", state: "Lagos", country: "Nigeria", postal: "" };
   card = { name: "", number: "", expiry: "", cvv: "" };
   netbank = { bank: BANKS[0], userId: "", pin: "" };
@@ -417,6 +419,12 @@ export class CheckoutComponent implements OnInit {
   ngOnInit() {
     this.syncCustomer();
     if (this.session.authenticated()) {
+      this.account.loadProfile().subscribe(profile => {
+        if (!profile) return;
+        if (!this.customer.fullName) this.customer.fullName = profile.displayName;
+        if (!this.customer.email) this.customer.email = profile.email;
+        if (!this.phoneEdited && (!this.selectedAddressId || !this.customer.phone)) this.customer.phone = profile.phone ?? '';
+      });
       this.account.loadAddresses().subscribe(addrs => {
         this.savedAddresses = addrs ?? [];
         if (this.savedAddresses.length > 0) {
@@ -441,10 +449,16 @@ export class CheckoutComponent implements OnInit {
           this.address.country = a.countryCode === 'NG' ? 'Nigeria' : a.countryCode;
           this.address.postal = a.postalCode || '';
           if (a.recipient && !this.customer.fullName) this.customer.fullName = a.recipient;
-          if (a.phone && !this.customer.phone) this.customer.phone = a.phone;
+          if (a.phone && !this.phoneEdited) this.customer.phone = a.phone;
     } else if (!id) {
       this.address = { street: '', city: '', state: 'Lagos', country: 'Nigeria', postal: '' };
     }
+  }
+
+  phoneChanged(value: string) {
+    this.customer.phone = value;
+    this.phoneEdited = true;
+    this.addressChanged();
   }
 
   addressChanged() {
@@ -485,7 +499,7 @@ export class CheckoutComponent implements OnInit {
     if (this.step() === 0) {
       if (!this.customer.fullName.trim()) return "Please enter your full name.";
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.customer.email)) return "Please enter a valid email.";
-      if (!this.deliveryPhone()) return "Enter a valid delivery phone number with country code, for example +2348012345678.";
+      if (!this.deliveryPhone()) return "Enter a complete delivery phone number, for example 08012345678 or +2348012345678 with country code.";
     }
     if (this.step() === 1) {
       if (!this.address.street.trim()) return "Street address is required.";
@@ -516,14 +530,12 @@ export class CheckoutComponent implements OnInit {
   }
 
   private deliveryPhone(): string | null {
-    let phone = this.customer.phone.trim().replace(/[\s()-]/g, '');
-    if (/^0[789][01][0-9]{8}$/.test(phone)) phone = '+234' + phone.slice(1);
-    return /^\+[1-9][0-9]{7,14}$/.test(phone) ? phone : null;
+    return normalizePhoneNumber(this.customer.phone);
   }
 
   private async ensureAddressId(): Promise<string> {
     const phone = this.deliveryPhone();
-    if (!phone) throw new Error('Enter a valid delivery phone number with country code, for example +2348012345678.');
+    if (!phone) throw new Error('Enter a complete delivery phone number, for example 08012345678 or +2348012345678 with country code.');
     if (this.selectedAddressId) {
       const address = this.savedAddresses.find(a => a.id === this.selectedAddressId);
       if (!address) throw new Error('Reload checkout to refresh the selected delivery address.');

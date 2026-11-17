@@ -45,3 +45,13 @@ describe('Locally handled pricing failures', () => {
   expect(requestFailure(404,'NOT_FOUND',false)).toHaveLength(1);
  });
 });
+
+describe('Page-scoped API errors',()=>{
+ it('keeps staff-role errors on their originating page',()=>{
+  const errors=new ApiErrorsService();errors.report('Role update denied','/admin/users');
+  expect(errors.visibleFor('/admin/users')).toHaveLength(1);expect(errors.visibleFor('/admin/applications')).toHaveLength(0);
+ });
+ it('keeps explicitly global session failures visible',()=>{
+  const errors=new ApiErrorsService();errors.report('Session unavailable');expect(errors.visibleFor('/admin/applications')).toHaveLength(1);
+ });
+});

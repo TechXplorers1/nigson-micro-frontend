@@ -60,3 +60,9 @@ export * from './lib/keycloak.service';
 export * from './lib/retail-pricing.service';
 
 export * from './lib/staff-access';
+
+export * from './lib/wishlist.service';
+export * from './lib/wishlist-button.component';
+
+export * from './lib/phone-number';
+export * from './lib/phone-input.component';

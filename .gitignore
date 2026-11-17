@@ -47,3 +47,6 @@ Thumbs.db
 /projects/shell/public/local-distributor-fixtures.json
 
 /projects/shell/public/local-distributor-sample.pdf
+
+# Temporary wishlist verification build output
+/.angular/wishlist-check/

@@ -194,8 +194,8 @@ export class AccountService {
   }
 
   /** TASK-48: Update profile via PATCH /api/v1/me */
-  updateProfile(patch: ProfilePatch): Observable<ProfileDTO | null> {
-    return this.http.patch<ProfileDTO>("/api/v1/me", patch).pipe(
+  updateProfile(patch: ProfilePatch): Observable<ProfileDTO> {
+    return this.http.patch<ProfileDTO>("/api/v1/me", patch, {context:new HttpContext().set(LOCAL_API_FAILURE_CODES,['0:undefined','400:VALIDATION_ERROR','401:AUTH_REQUIRED','403:ACCESS_DENIED','409:IDEMPOTENCY_IN_PROGRESS','412:VERSION_MISMATCH','422:BUSINESS_RULE_VIOLATION','500:INTERNAL_ERROR'])}).pipe(
       tap(p => {
         this.profile.set(p);
         if (this.shop.user()) {
@@ -205,10 +205,6 @@ export class AccountService {
             phone: p.phone ?? undefined
           } : null);
         }
-      }),
-      catchError(err => {
-        console.error("[AccountService] updateProfile failed:", err);
-        return of(null);
       })
     );
   }

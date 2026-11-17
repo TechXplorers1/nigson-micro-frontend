@@ -1,7 +1,7 @@
 import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink, RouterOutlet, RouterLinkActive } from '@angular/router';
-import { ShopService, AdminService, SessionService, SectionKey } from 'shared-ui';
+import { ShopService, AdminService, SessionService, SectionKey, staffPathSection } from 'shared-ui';
 import { 
   LucideLayoutDashboard, LucideFileText, LucidePackage, LucideStar, LucideBuilding2, 
   LucideClipboardList, LucideMail, LucideBoxes, LucideBarChart3, 
@@ -114,7 +114,7 @@ type Item = { to: string; label: string; icon: any; key: SectionKey; exact?: boo
 
         <main class="flex-1 overflow-y-auto p-4 md:p-8">
           <div class="mx-auto max-w-[1200px]">
-            <div *ngFor="let failure of admin.errors() | keyvalue" role="alert" class="mb-4 rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-800"><strong>{{ failure.key }}:</strong> {{ failure.value }}</div>
+            <div *ngFor="let failure of pageErrors()" role="alert" class="mb-4 rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-800"><strong>{{ failure[0] }}:</strong> {{ failure[1] }}</div>
             <router-outlet></router-outlet>
           </div>
         </main>
@@ -148,6 +148,18 @@ export class AdminLayoutComponent implements OnInit {
   hydrated = computed(() => this.session.sessionLoaded() || this.shop.hydrated());
   sidebarOpen = signal(false);
 
+  pageErrors():Array<[string,string]> {
+    const section=staffPathSection(this.router.url);
+    const scopes:Record<string,SectionKey[]>={
+      'Staff permissions':['admins'],'Staff users':['admins','roles'],'Assign staff roles':['admins'],
+      Products:['products'],'Save product':['products'],'Product publication':['products'],
+      Inventory:['inventory'],Warehouses:['inventory'],'Stock movements':['inventory'],'Stock adjustment':['inventory'],
+      Orders:['orders'],'Order processing':['orders'],Customers:['customers'],
+      'Quote requests':['quotes'],'Quote request update':['quotes'],'Inquiry update':['inquiries'],
+      Reviews:['reviews'],'Review moderation':['reviews'],'Commerce report':['analytics'],'Engagement report':['analytics']
+    };
+    return Object.entries(this.admin.errors()).filter(([key])=>section!==undefined&&scopes[key]?.includes(section));
+  }
   currentRole = this.admin.currentRole;
 
   groups = [

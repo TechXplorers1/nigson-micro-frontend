@@ -1,3 +1,4 @@
+import { WishlistButtonComponent } from 'shared-ui';
 import { Component, Input, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
@@ -13,7 +14,7 @@ import { CatalogService, Product, ShopService, QtyStepperComponent } from 'share
 @Component({
   selector: 'app-product-card',
   standalone: true,
-  imports: [CommonModule, RouterLink, QtyStepperComponent],
+  imports: [CommonModule, RouterLink, QtyStepperComponent, WishlistButtonComponent],
   template: `
     <div class="group flex flex-col text-left rounded-2xl border border-border bg-background overflow-hidden hover:shadow-elegant hover:-translate-y-1 transition-all h-full">
       <!-- Route uses product UUID (id) -->
@@ -43,6 +44,7 @@ import { CatalogService, Product, ShopService, QtyStepperComponent } from 'share
         </div>
       </a>
 
+      <div class="px-5 pt-3"><ui-wishlist-button [productId]="p.id" [skuId]="resolvedSkuId() || p.skuId"></ui-wishlist-button></div>
       <!-- Action Area: View Details + ui-qty-stepper Add to Cart component -->
       <div class="mt-auto px-5 pb-5 pt-4 flex items-center gap-2">
         <a

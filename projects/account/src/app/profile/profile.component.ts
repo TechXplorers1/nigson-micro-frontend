@@ -1,3 +1,4 @@
+import { PhoneInputComponent, normalizePhoneNumber, apiFailureDetail } from 'shared-ui';
 import { Component, inject, signal, ViewChild, ElementRef, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -12,7 +13,7 @@ import {
   selector: 'app-profile',
   standalone: true,
   imports: [
-    CommonModule, FormsModule,
+    CommonModule, FormsModule, PhoneInputComponent,
     LucideUpload, LucideTrash2, LucidePencil, LucideSave, LucideX,
     LucidePackage, LucideFileText, LucideCalendarClock,
     LucideGift, LucideShare2, LucideCopy, LucideCheck, LucideAward, LucideLoader2
@@ -72,6 +73,7 @@ import {
           </div>
         </div>
 
+        <p *ngIf="saveError()" role="alert" class="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">{{saveError()}}</p>
         <div *ngIf="saveSuccess()" class="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-medium text-emerald-800">
           Profile updated successfully.
         </div>
@@ -202,15 +204,10 @@ import {
               class="mt-1.5 w-full rounded-xl border border-hairline bg-surface-alt px-4 py-2.5 text-sm focus:outline-none text-muted-ink cursor-not-allowed" 
             />
           </label>
-          <label class="block">
+          <div class="block">
             <span class="text-[10px] font-semibold uppercase tracking-widest text-muted-ink">Phone Number</span>
-            <input 
-              [(ngModel)]="form().phone" 
-              [disabled]="!editing()"
-              placeholder="+234 ..."
-              class="mt-1.5 w-full rounded-xl border border-hairline bg-white px-4 py-2.5 text-sm focus:outline-none focus:border-brand disabled:bg-surface-alt" 
-            />
-          </label>
+            <ui-phone-input [(ngModel)]="form().phone" [disabled]="!editing() || saving()"></ui-phone-input>
+          </div>
         </div>
       </div>
     </div>
@@ -226,6 +223,7 @@ export class ProfileComponent implements OnInit {
   editing = signal(false);
   saving = signal(false);
   saveSuccess = signal(false);
+  saveError = signal<string | null>(null);
   copied = signal(false);
   creatingReferral = signal(false);
   avatarUrl = signal<string | null>(null);
@@ -291,9 +289,11 @@ export class ProfileComponent implements OnInit {
   startEditing() {
     this.editing.set(true);
     this.saveSuccess.set(false);
+    this.saveError.set(null);
   }
 
   cancelEdit() {
+    this.saveError.set(null);
     this.editing.set(false);
     this.resetForm();
   }
@@ -313,19 +313,28 @@ export class ProfileComponent implements OnInit {
   }
 
   save() {
+    if (this.saving()) return;
+    this.saveSuccess.set(false);
+    this.saveError.set(null);
+    const raw = this.form().phone.trim();
+    const phone = raw ? normalizePhoneNumber(raw) : null;
+    if (raw && !phone) {
+      this.saveError.set('Enter a complete phone number, for example 08012345678 or +2348012345678.');
+      return;
+    }
     this.saving.set(true);
-    this.accountSvc.updateProfile({
-      displayName: this.form().fullName,
-      phone: this.form().phone || null
-    }).subscribe({
-      next: (updated) => {
+    this.accountSvc.updateProfile({displayName: this.form().fullName, phone}).subscribe({
+      next: updated => {
         this.saving.set(false);
+        if (!updated) { this.saveError.set('Profile changes were not confirmed. Please reload before retrying.'); return; }
+        this.form.set({fullName:updated.displayName,email:updated.email,phone:updated.phone??''});
         this.editing.set(false);
         this.saveSuccess.set(true);
         setTimeout(() => this.saveSuccess.set(false), 3000);
       },
-      error: () => {
+      error: error => {
         this.saving.set(false);
+        this.saveError.set(apiFailureDetail(error,'Unable to save your profile. Please retry.'));
       }
     });
   }

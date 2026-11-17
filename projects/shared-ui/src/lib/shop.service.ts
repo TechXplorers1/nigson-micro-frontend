@@ -33,14 +33,6 @@ export interface CartToast {
   qty: number;
 }
 
-export interface SavedProduct {
-  sku: string;
-  name: string;
-  category: string;
-  price: number;
-  image?: string;
-  savedAt: string;
-}
 
 export interface Order {
   id: string;
@@ -79,7 +71,6 @@ export class ShopService {
 
   readonly hydrated = signal(false);
   readonly user = signal<User | null>(null);
-  readonly saved = signal<SavedProduct[]>([]);
   readonly loginRequired = signal<{ open: boolean; reason?: string }>({ open: false });
   readonly lastAddedToast = signal<CartToast | null>(null);
   private toastTimeout: any = null;
@@ -148,9 +139,6 @@ export class ShopService {
     this.user.set(updated);
   }
 
-  private persistSaved(s: SavedProduct[]) {
-    this.saved.set(s);
-  }
 
   signOut(): Observable<void> {
     this.user.set(null);
@@ -211,21 +199,6 @@ export class ShopService {
     this.cartService.clearCart().subscribe();
   }
 
-  toggleSaved(item: Omit<SavedProduct, 'savedAt'>) {
-    const current = this.saved();
-    const exists = current.some(s => s.sku === item.sku);
-    if (exists) {
-      this.persistSaved(current.filter(s => s.sku !== item.sku));
-      return false;
-    } else {
-      this.persistSaved([{ ...item, savedAt: new Date().toISOString() }, ...current]);
-      return true;
-    }
-  }
-
-  isSaved(sku: string): boolean {
-    return this.saved().some(s => s.sku === sku);
-  }
 
   initialsOf(fullName: string | undefined): string {
     if (!fullName) return 'U';
