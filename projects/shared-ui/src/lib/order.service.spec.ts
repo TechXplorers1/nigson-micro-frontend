@@ -56,13 +56,15 @@ describe('OrderService backend mapping', () => {
     const s = service();
     s.http.get.mockReturnValue(of({
       orderId: 'order-1',
-      shipments: [{ id: 'shipment-1', status: 'SHIPPED' }],
+      shipments: [{ id: 'shipment-1', status: 'SHIPPED', providerOrderId: 'panda-123' }],
       events: [{ status: 'PICKED_UP', occurredAt: '2026-11-16T03:00:00Z', note: 'Collected from warehouse' }]
     }));
     let resolved: any;
     s.getTracking('order-1').subscribe((value: any) => resolved = value);
     expect(resolved.orderId).toBe('order-1');
-    expect(resolved.status).toBe('PICKED_UP');
+    expect(resolved.status).toBe('SHIPPED');
+    expect(resolved.trackingNumber).toBe('panda-123');
+    expect(resolved.carrier).toBe('PandaGo');
     expect(resolved.scans[0]).toMatchObject({ status: 'PICKED_UP', description: 'Collected from warehouse' });
   });
 

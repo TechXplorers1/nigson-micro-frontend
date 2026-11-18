@@ -6,7 +6,7 @@ import {
 } from '@lucide/angular';
 import { CatalogService, OrderPayment, OrderService, ShopService } from 'shared-ui';
 
-type Phase = 'CHECKING' | 'PAID' | 'PENDING' | 'FAILED' | 'UNVERIFIED';
+type Phase = 'CHECKING' | 'PAID' | 'PENDING' | 'FAILED' | 'UNVERIFIED' | 'COD';
 
 interface OrderView {
   id: string;
@@ -34,10 +34,10 @@ const MAX_POLLS = 20;
     <div class="min-h-[70vh] bg-background">
       <section class="pt-20 pb-24 md:pt-32">
         <div class="mx-auto max-w-3xl px-6 text-center">
-          <div *ngIf="phase() === 'PAID'" class="mx-auto grid h-20 w-20 place-items-center rounded-full bg-emerald-500/10 text-emerald-600 animate-scale-in">
+          <div *ngIf="phase() === 'PAID' || phase() === 'COD'" class="mx-auto grid h-20 w-20 place-items-center rounded-full bg-emerald-500/10 text-emerald-600 animate-scale-in">
             <svg lucideCheckCircle2 class="h-10 w-10"></svg>
           </div>
-          <div *ngIf="phase() !== 'PAID'" class="mx-auto grid h-20 w-20 place-items-center rounded-full bg-amber-500/10 text-amber-600">
+          <div *ngIf="phase() !== 'PAID' && phase() !== 'COD'" class="mx-auto grid h-20 w-20 place-items-center rounded-full bg-amber-500/10 text-amber-600">
             <svg lucideClock class="h-10 w-10"></svg>
           </div>
 
@@ -109,6 +109,9 @@ const MAX_POLLS = 20;
           <p *ngIf="phase() === 'PAID'" class="mt-8 inline-flex items-center gap-1.5 text-xs text-muted-ink">
             <svg lucideMail class="h-3.5 w-3.5"></svg> A confirmation email is on its way.
           </p>
+          <p *ngIf="phase() === 'COD'" class="mt-8 text-xs text-muted-ink">
+            Pay the courier when your order arrives. The order total is shown above.
+          </p>
           <p *ngIf="phase() === 'PENDING'" class="mt-8 text-xs text-muted-ink">
             Your payment is verified automatically. This page updates when the provider confirms the transaction.
           </p>
@@ -127,6 +130,7 @@ export class OrderSuccessComponent implements OnInit, OnDestroy {
   readonly phase = signal<Phase>('CHECKING');
   readonly reference = signal('');
   private orderId = '';
+  private cashOnDelivery = false;
   private polls = 0;
   private timer: ReturnType<typeof setTimeout> | null = null;
   private destroyed = false;
@@ -134,6 +138,7 @@ export class OrderSuccessComponent implements OnInit, OnDestroy {
   ngOnInit() {
     const query = this.route.snapshot.queryParamMap;
     this.reference.set(query.get('reference') || query.get('trxref') || '');
+    this.cashOnDelivery = query.get('method') === 'cod';
     this.orderId = query.get('id') || this.recalledOrderId(this.reference());
     this.refresh();
   }
@@ -146,6 +151,7 @@ export class OrderSuccessComponent implements OnInit, OnDestroy {
   heading(): string {
     switch (this.phase()) {
       case 'PAID': return 'Thank you for your order';
+      case 'COD': return 'Your cash-on-delivery order is placed';
       case 'PENDING': return 'Confirming your payment';
       case 'FAILED': return 'Payment not completed';
       case 'UNVERIFIED': return 'We could not match this payment';
@@ -156,6 +162,7 @@ export class OrderSuccessComponent implements OnInit, OnDestroy {
   eyebrow(): string {
     switch (this.phase()) {
       case 'PAID': return 'Payment received';
+      case 'COD': return 'Order placed';
       case 'PENDING': return 'Order processing';
       case 'FAILED': return 'Payment failed';
       case 'UNVERIFIED': return 'Payment unverified';
@@ -166,6 +173,7 @@ export class OrderSuccessComponent implements OnInit, OnDestroy {
   detail(): string {
     switch (this.phase()) {
       case 'PAID': return 'Your payment was successful and your order is being prepared.';
+      case 'COD': return 'Your order is reserved. Pay the courier in cash when your order arrives; no online payment was taken.';
       case 'PENDING': return 'Your order is reserved and we are waiting for the payment provider to confirm the transaction.';
       case 'FAILED': return 'The provider did not complete this payment. Your stock reservation was released and no money was taken.';
       case 'UNVERIFIED': return 'We have your payment reference but cannot match it to an order in this browser. Open your orders to check the latest state.';
@@ -176,6 +184,7 @@ export class OrderSuccessComponent implements OnInit, OnDestroy {
   paymentLabel(): string {
     const phase = this.phase();
     if (phase === 'PAID') return 'Paid';
+    if (phase === 'COD') return 'Cash on delivery';
     if (phase === 'FAILED') return 'Not completed';
     return 'Confirming';
   }
@@ -192,13 +201,20 @@ export class OrderSuccessComponent implements OnInit, OnDestroy {
       this.phase.set('UNVERIFIED');
       return;
     }
-    this.orderSvc.getPayment(this.orderId).subscribe({
-      next: payment => this.apply(payment),
-      error: () => this.phase.set('UNVERIFIED')
-    });
+    if (!this.cashOnDelivery) {
+      this.orderSvc.getPayment(this.orderId).subscribe({
+        next: payment => this.apply(payment),
+        error: () => this.phase.set('UNVERIFIED')
+      });
+    }
     this.orderSvc.getOrder(this.orderId).subscribe({
-      next: raw => this.order.set(this.view(raw)),
-      error: () => { /* the payment state remains visible even when detail fails */ }
+      next: raw => {
+        this.order.set(this.view(raw));
+        if (this.cashOnDelivery) {
+          this.phase.set(raw?.paymentStatus === 'PAID' ? 'PAID' : raw?.status === 'CANCELLED' ? 'FAILED' : 'COD');
+        }
+      },
+      error: () => { if (this.cashOnDelivery) this.phase.set('UNVERIFIED'); }
     });
   }
 
