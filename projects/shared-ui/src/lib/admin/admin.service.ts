@@ -7,13 +7,13 @@ import { Observable, of, tap, map, catchError, forkJoin, switchMap, defer, throw
 import { LOCAL_API_FAILURE_CODES } from '../api-errors.service';
 import { SessionService } from '../session.service';
 import { CatalogService } from '../catalog.service';
-import { applyInventory, mapStaffProducts } from './inventory-mapping';
+import { applyInventory, mapStaffProducts, inventoryTotals } from './inventory-mapping';
 import { distributorCommand, distributorDisplayState, leadDisplayState, distributorActionBlock, partnerLeadState, partnerLeadActionAllowed, applicationFailure } from './distributor-workflow';
 
 export type AdminProduct = {
   id: string; version?: number; skuVersion?: number; packSize?: string; categoryIds?: string[]; slug?: string; brandId?: string; skuId?: string; name: string; sku: string; category: string; price: number;
   desc: string; image: string; images?: string[]; status: "DRAFT" | "ACTIVE" | "ARCHIVED" | "Active" | "Draft" | "Out of Stock" | "UNKNOWN";
-  stock: number; reserved: number; rating: number;
+  stock: number; reserved: number; onHand?: number; allocated?: number; available?: number; rating: number;
   cost?: number; retail?: number; lowLevel?: number;
   brand?: string;
   type?: string;
@@ -561,7 +561,7 @@ export class AdminService {
       return ids.map(skuId=>{
         const known=this.products().find(product=>product.skuId===skuId);
         const rows=balances.filter(row=>row.skuId===skuId);
-        return {id:skuId,skuId,sku:known?.sku??skuId,name:known?.name??('SKU '+skuId),category:known?.category??'',price:0,desc:'',image:known?.image??'',status:'UNKNOWN' as const,stock:rows.reduce((n,row)=>n+Number(row.onHand),0),reserved:rows.reduce((n,row)=>n+Number(row.reserved),0),rating:0};
+        return {id:skuId,skuId,sku:known?.sku??skuId,name:known?.name??('SKU '+skuId),category:known?.category??'',price:0,desc:'',image:known?.image??'',status:'UNKNOWN' as const,...inventoryTotals(rows),rating:0};
       });
     })),this.products);
   }

@@ -33,9 +33,9 @@ describe('Owner-scoped staff inventory reads',()=>{
   const {service,http}=setup();Object.assign(service,{session:{hasRole:(role:string)=>role==='OPERATIONS'}});
   http.get.mockImplementation((url:string)=>{
    expect(url).toContain('/api/v1/staff/inventory');
-   return of({items:[{skuId:'actual-sku',onHand:'8',reserved:'2'}],totalPages:1});
+   return of({items:[{skuId:'actual-sku',onHand:'8',reserved:'2',allocated:'1',available:'5'}],totalPages:1});
   });
-  service.loadStaffProducts().subscribe();expect(service.products()[0]).toMatchObject({skuId:'actual-sku',stock:8,reserved:2,status:'UNKNOWN'});
+  service.loadStaffProducts().subscribe();expect(service.products()[0]).toMatchObject({skuId:'actual-sku',stock:8,reserved:2,allocated:1,available:5,status:'UNKNOWN'});
   expect(http.get).toHaveBeenCalledTimes(1);
  });
  it('loads Content Editor products without requesting Operations stock',()=>{

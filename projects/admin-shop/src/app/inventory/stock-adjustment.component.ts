@@ -26,7 +26,7 @@ import { AdminService, AdminHeadingComponent, BadgeComponent } from 'shared-ui';
             <label class="mb-2 block text-xs font-bold uppercase tracking-widest text-muted-ink">Product *</label>
             <select [(ngModel)]="sku" name="sku" required class="w-full rounded-full border border-gray-200 bg-white px-5 py-3 text-sm text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
               <option value="">Select product...</option>
-              <option *ngFor="let p of admin.products()" [value]="p.sku">{{ p.name }} ({{ p.sku }}) &middot; {{ p.stock }} in stock</option>
+              <option *ngFor="let p of admin.products()" [value]="p.sku">{{ p.name }} ({{ p.sku }}) &middot; {{ p.stock }} on hand</option>
             </select>
           </div>
           <div>

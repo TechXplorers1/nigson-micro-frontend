@@ -1,13 +1,29 @@
 import type { AdminProduct } from './admin.service';
 
+/** Stock remains the physical count for existing adjustment consumers. */
+export function inventoryTotals(rows: any[]) {
+  const amount = (value: any): number => {
+    const result = Number(value ?? 0);
+    if (!Number.isFinite(result)) throw new Error('Inventory contains an invalid quantity. Refresh inventory.');
+    return result;
+  };
+  const round = (value: number) => Math.round(value * 1000) / 1000;
+  const onHand = round(rows.reduce((sum, row) => sum + amount(row.onHand), 0));
+  const reserved = round(rows.reduce((sum, row) => sum + amount(row.reserved), 0));
+  const allocated = round(rows.reduce((sum, row) => sum + amount(row.allocated), 0));
+  const available = round(rows.reduce((sum, row) => sum + (row.available == null
+    ? amount(row.onHand) - amount(row.reserved) - amount(row.allocated)
+    : amount(row.available)), 0));
+  return { stock: onHand, onHand, reserved, allocated, available };
+}
+
 /** Join stock to the catalogue's actual SKU identifiers, summing warehouse balances. */
 export function applyInventory(products: AdminProduct[], balances: any[]): AdminProduct[] {
   return products.map(product => {
     const rows = balances.filter(balance => balance.skuId === product.skuId);
     return {
       ...product,
-      stock: rows.reduce((total, row) => total + Number(row.onHand || 0), 0),
-      reserved: rows.reduce((total, row) => total + Number(row.reserved || 0), 0)
+      ...inventoryTotals(rows)
     };
   });
 }
