@@ -113,7 +113,7 @@ import { AdminBlogPost, parseMarkdownToSections } from './blog.component';
           
           <div class="flex-1 overflow-y-auto p-3 space-y-1">
             <button 
-              *ngFor="let section of activeSections(); let i = index"
+              *ngFor="let section of activeSections(); trackBy: trackSection; let i = index"
               (click)="selectSection(section.id)"
               [class.bg-blue-50]="selectedSectionId() === section.id"
               [class.text-blue-700]="selectedSectionId() === section.id"
@@ -416,7 +416,7 @@ import { AdminBlogPost, parseMarkdownToSections } from './blog.component';
                 
                 <!-- Core fields -->
                 <div class="space-y-4">
-                  <div *ngFor="let field of def.fields" class="space-y-1.5">
+                  <div *ngFor="let field of def.fields; trackBy: trackField" class="space-y-1.5">
                     <label class="text-[11px] font-bold uppercase tracking-wider text-gray-500">{{ field.label }}</label>
                     
                     <input *ngIf="field.type === 'text' || field.type === 'link' || field.type === 'image'"
@@ -444,10 +444,10 @@ import { AdminBlogPost, parseMarkdownToSections } from './blog.component';
                   </div>
                   
                   <div class="space-y-4">
-                    <div *ngFor="let card of selectedSectionCards(); let ci = index" class="rounded-lg border border-gray-200 bg-gray-50/70 p-3 space-y-3">
+                    <div *ngFor="let card of selectedSectionCards(); trackBy: trackCard; let ci = index" class="rounded-lg border border-gray-200 bg-gray-50/70 p-3 space-y-3">
                       <div class="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Item #{{ ci + 1 }}</div>
                       
-                      <div *ngFor="let cfield of def.cardFields" class="space-y-1">
+                      <div *ngFor="let cfield of def.cardFields; trackBy: trackField" class="space-y-1">
                         <label class="text-[10px] font-bold uppercase tracking-wider text-gray-500">{{ cfield.label }}</label>
                         
                         <input *ngIf="cfield.type === 'text' || cfield.type === 'link' || cfield.type === 'image'"
@@ -629,6 +629,10 @@ export class VisualHomeEditorComponent implements OnInit, AfterViewInit {
   getSectionTitle(id: string): string {
     return this.pageDef()?.sections.find((s: SectionDef) => s.id === id)?.title || id;
   }
+
+  trackSection(_index: number, section: SectionContent): string { return section.id; }
+  trackCard(index: number, card: { id?: string }): string | number { return card.id ?? index; }
+  trackField(_index: number, field: { key: string }): string { return field.key; }
 
   setField(secId: string, key: string, value: string) {
     this.cms.updateDraft(this.pageId(), (p: PageContent) => ({

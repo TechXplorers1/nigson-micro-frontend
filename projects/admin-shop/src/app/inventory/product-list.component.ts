@@ -1,3 +1,4 @@
+import { finalize } from 'rxjs';
 import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -11,6 +12,7 @@ import { RouterLink } from '@angular/router';
   imports: [CommonModule, FormsModule, RouterLink, AdminHeadingComponent, LucidePlus, LucidePencil, LucideTrash2, LucideSearch, LucideEye],
   template: `
     <lib-admin-heading title="Products" [subtitle]="admin.products().length + ' products tracked in inventory'">
+      <button type="button" (click)="refresh()" [disabled]="refreshing()" class="rounded-full border border-hairline px-4 py-2 text-sm font-semibold disabled:opacity-50">{{refreshing() ? 'Refreshing...' : 'Refresh'}}</button>
       <a routerLink="new" class="flex h-10 items-center gap-2 rounded-full bg-brand px-5 text-sm font-bold text-white transition-colors hover:bg-brand-600 shadow-sm">
         <svg lucidePlus class="h-4 w-4"></svg> Add product
       </a>
@@ -44,7 +46,7 @@ import { RouterLink } from '@angular/router';
               <th class="px-6 py-5">SKU</th>
               <th class="px-6 py-5">Category</th>
               <th class="px-6 py-5">Price</th>
-              <th *ngIf="admin.session.hasRole('OPERATIONS')" class="px-6 py-5">Stock</th>
+              <th *ngIf="admin.session.hasRole('OPERATIONS')" class="px-6 py-5">Available to sell</th>
               <th class="px-6 py-5">Status</th>
               <th class="px-6 py-5 text-right">Actions</th>
             </tr>
@@ -65,13 +67,13 @@ import { RouterLink } from '@angular/router';
                 {{ p.price > 0 ? (p.price | currency:'NGN':'symbol-narrow':'1.0-0') : 'Not configured' }}
                 <p *ngIf="p.priceSubtitle" class="mt-1 text-xs font-normal text-muted-ink">{{ p.priceSubtitle }}</p>
               </td>
-              <td *ngIf="admin.session.hasRole('OPERATIONS')" class="px-6 py-4 font-bold text-ink">{{ p.stock | number }}</td>
+              <td *ngIf="admin.session.hasRole('OPERATIONS')" class="px-6 py-4 font-bold text-ink">{{ (p.available ?? 0) | number }}<p class="mt-1 text-xs font-normal text-muted-ink">On hand: {{p.onHand ?? p.stock | number}} &middot; Reserved: {{p.reserved | number}} &middot; Allocated: {{p.allocated ?? 0 | number}}</p></td>
               <td class="px-6 py-4">
                 <span 
-                  [class]="p.stock > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'"
+                  [class]="!admin.session.hasRole('OPERATIONS') ? 'bg-gray-50 text-gray-600' : (p.available ?? 0) > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'"
                   class="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold transition-colors"
                 >
-                  {{ admin.session.hasRole('OPERATIONS') ? (p.stock > 0 ? 'In Stock' : 'Out of Stock') : p.status }}
+                  {{ admin.session.hasRole('OPERATIONS') ? ((p.available ?? 0) > 0 ? 'In Stock' : 'Out of Stock') : p.status }}
                 </span>
               </td>
               <td class="px-6 py-4 text-right">
@@ -106,9 +108,15 @@ import { RouterLink } from '@angular/router';
 })
 export class ProductListComponent implements OnInit {
   ngOnInit() {
-    this.admin.loadStaffProducts().subscribe();
+    this.refresh();
   }
   admin = inject(AdminService);
+  readonly refreshing = signal(false);
+  refresh() {
+    if (this.refreshing()) return;
+    this.refreshing.set(true);
+    this.admin.loadStaffProducts().pipe(finalize(() => this.refreshing.set(false))).subscribe({error: () => {}});
+  }
   searchQuery = signal('');
   selectedCategory = signal('All categories');
 

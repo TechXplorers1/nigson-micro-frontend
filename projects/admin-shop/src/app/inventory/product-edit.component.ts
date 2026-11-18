@@ -455,10 +455,10 @@ export interface CustomSpec {
 
               <div class="border-t border-gray-100 pt-4 sm:col-span-2 grid gap-5 sm:grid-cols-2">
                 <div>
-                  <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-muted-ink">Current Inventory Stock (Units) *</label>
+                  <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-muted-ink">On hand stock (physical units)</label>
                   <span *ngIf="!canViewInventory" class="text-sm text-muted-ink">Requires Operations access</span>
                   <input [hidden]="!canViewInventory" type="number" [(ngModel)]="product.stock" name="stock" readonly required placeholder="e.g. 100" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
-                  <p class="mt-1 text-[10px] text-muted-ink">Tracked across warehouse balances.</p>
+                  <p class="mt-1 text-[10px] text-muted-ink">Physical stock across warehouses; paid orders remain on hand until dispatch. See Products for available-to-sell quantities.</p>
                 </div>
 
                 <div>

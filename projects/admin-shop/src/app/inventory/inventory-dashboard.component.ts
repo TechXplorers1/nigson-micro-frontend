@@ -9,7 +9,7 @@ import { RouterLink } from '@angular/router';
   standalone: true,
   imports: [CommonModule, AdminHeadingComponent, StatCardComponent, LucideBoxes, LucidePackageCheck, LucideAlertTriangle, LucideXCircle, RouterLink],
   template: `
-    <lib-admin-heading title="Inventory" subtitle="Manage and monitor your product stock."></lib-admin-heading>
+    <lib-admin-heading title="Inventory" subtitle="Monitor available-to-sell quantities across warehouse balances."></lib-admin-heading>
 
     <div class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <lib-stat-card label="Total products" [value]="admin.products().length" [icon]="true">
@@ -35,7 +35,7 @@ import { RouterLink } from '@angular/router';
               <tr>
                 <th class="px-4 py-3">Category</th>
                 <th class="px-4 py-3">Products</th>
-                <th class="px-4 py-3 text-right">Total stock</th>
+                <th class="px-4 py-3 text-right">Available to sell</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-hairline">
@@ -44,7 +44,7 @@ import { RouterLink } from '@angular/router';
                 <td class="px-4 py-3">{{ c.count }}</td>
                 <td class="px-4 py-3 font-semibold text-right">{{ c.stock | number }}</td>
               </tr>
-              <tr *ngIf="categories().length === 0">
+              <tr *ngIf="categories().length <= 0">
                 <td colspan="3" class="p-8 text-center text-muted-ink">No products in the catalogue yet.</td>
               </tr>
             </tbody>
@@ -131,7 +131,7 @@ import { RouterLink } from '@angular/router';
                 <span class="text-xs font-normal text-muted-ink">₦{{ p.retail | number }}</span>
               </td>
               <td class="px-4 py-3">{{ p.sku }}</td>
-              <td class="px-4 py-3 font-semibold">{{ p.stock }}</td>
+              <td class="px-4 py-3 font-semibold">{{ (p.available ?? 0) }}</td>
               <td class="px-4 py-3 text-muted-ink">{{ p.lowLevel }}</td>
               <td class="px-4 py-3">
                 <span class="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700">
@@ -151,13 +151,13 @@ import { RouterLink } from '@angular/router';
 export class InventoryDashboardComponent implements OnInit {
   ngOnInit() {
     this.admin.loadStaffProducts().subscribe();
-    this.admin.loadStaffInventory().subscribe();
+
   }
   admin = inject(AdminService);
 
-  inStock = computed(() => this.admin.products().filter((p) => p.stock > 10).length);
-  lowStock = computed(() => this.admin.products().filter((p) => p.stock > 0 && p.stock <= 10));
-  outOfStock = computed(() => this.admin.products().filter((p) => p.stock === 0).length);
+  inStock = computed(() => this.admin.products().filter((p) => (p.available ?? 0) > 10).length);
+  lowStock = computed(() => this.admin.products().filter((p) => (p.available ?? 0) > 0 && (p.available ?? 0) <= 10));
+  outOfStock = computed(() => this.admin.products().filter((p) => (p.available ?? 0) <= 0).length);
 
   // Live inventory activity sourced from AdminService stockLog
   movements = computed(() => {
@@ -176,7 +176,7 @@ export class InventoryDashboardComponent implements OnInit {
     const cats = Array.from(new Set(prods.map((p) => p.category)));
     return cats.map((c) => {
       const items = prods.filter((p) => p.category === c);
-      return { category: c, count: items.length, stock: items.reduce((n, p) => n + p.stock, 0) };
+      return { category: c, count: items.length, stock: items.reduce((n, p) => n + (p.available ?? 0), 0) };
     });
   });
 }
