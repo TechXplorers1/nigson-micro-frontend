@@ -10,7 +10,10 @@ function setup() {
     step: () => 1, address: { street: '12 Test street', city: 'Lagos', state: 'Lagos', postal: '' },
     selectedAddressId: '', savedAddresses: [],
     customer: { fullName: 'Test Customer', phone: '+2348000000001' },
-    session: { fullName: () => '' }, http: { post: vi.fn(), patch: vi.fn() }
+    deliveryMode: () => 'IMMEDIATE', scheduledForLocal: () => '',
+    payment: () => 'credit',
+    modalError: { set: vi.fn() }, processing: { set: vi.fn() },
+    session: { fullName: () => '' }, http: { post: vi.fn(), patch: vi.fn() }, router: { navigate: vi.fn() }
   });
   return component;
 }
@@ -59,6 +62,56 @@ describe('Checkout automatic delivery location', () => {
   it('identifies disabled delivery instead of advising an ineffective retry', () => {
     expect(setup().errorMessage({ url: '/api/v1/carts/id/delivery-quotes', status: 422, error: { code: 'FEATURE_DISABLED' } })).toContain('disabled on the server');
   });
+  it('requires a scheduled time and enforces the PandaGo 45-minute to 7-day window', () => {
+    const c = setup();
+    c.deliveryMode = () => 'SCHEDULED';
+    c.scheduledForLocal = () => '';
+    expect(c.validate()).toContain('Choose a delivery date');
+    c.scheduledForLocal = () => c.localDateTime(new Date(Date.now() + 10 * 60 * 1000));
+    expect(c.validate()).toContain('between 45 minutes and 7 days');
+    c.scheduledForLocal = () => c.localDateTime(new Date(Date.now() + 24 * 60 * 60 * 1000));
+    expect(c.validate()).toBeNull();
+  });
+  it('sends the selected delivery timing with the quote request', async () => {
+    const c = setup();
+    c.deliveryMode = () => 'SCHEDULED';
+    c.scheduledForLocal = () => c.localDateTime(new Date(Date.now() + 24 * 60 * 60 * 1000));
+    c.cart = { cartId: () => 'cart', cartVersion: () => 3 };
+    c.ensureAddressId = vi.fn().mockResolvedValue('address');
+    c.quoteLoading = { set: vi.fn() };
+    c.deliveryQuote = { set: vi.fn() };
+    c.http.post.mockReturnValue(of({ id: 'quote-1' }));
+    expect(await c.requestDeliveryQuote()).toEqual({ id: 'quote-1' });
+    const [url, body] = c.http.post.mock.calls[0];
+    expect(url).toBe('/api/v1/carts/cart/delivery-quotes');
+    expect(body.deliveryMode).toBe('SCHEDULED');
+    expect(body.scheduledFor).toMatch(/Z$/);
+  });
+  it('skips card validation for cash on delivery', async () => {
+    const c = setup();
+    c.payment = () => 'cod';
+    c.session = { authenticated: () => false, signIn: vi.fn() };
+    c.validatePayment = vi.fn();
+    await c.payNow();
+    expect(c.validatePayment).not.toHaveBeenCalled();
+    expect(c.session.signIn).toHaveBeenCalled();
+  });
+  it('places a COD order without a hosted payment and navigates using its server order ID', async () => {
+    const c = setup();
+    c.payment = () => 'cod';
+    c.session = { authenticated: () => true };
+    c.cart = { cartId: () => 'cart' };
+    c.ensureAddressId = vi.fn().mockResolvedValue('address');
+    c.deliveryQuote = () => ({ id: 'carrier', expiresAt: new Date(Date.now() + 60000).toISOString() });
+    c.deliveryQuoteAddressId = 'address';
+    c.payOpen = { set: vi.fn() };
+    c.http.post.mockReturnValueOnce(of({ id: 'quote', quoteHash: 'hash' }))
+      .mockReturnValueOnce(of({ order: { id: 'order' }, payment: null }));
+    await c.payNow();
+    expect(c.http.post.mock.calls[1][1]).toEqual({ checkoutQuoteId: 'quote', quoteHash: 'hash', paymentMethod: 'CASH_ON_DELIVERY' });
+    expect(c.router.navigate).toHaveBeenCalledWith(['/checkout/success'], { queryParams: { id: 'order', method: 'cod' } });
+  });
+
 });
 
 function prefillCheckout(){

@@ -65,6 +65,7 @@ import {
               </span>
             </div>
 
+            <p *ngIf="tracking()?.trackingNumber" class="mt-3 text-sm text-muted-ink">PandaGo order ID: <span class="font-mono text-ink">{{ tracking()!.trackingNumber }}</span></p>
             <ol class="mt-4 grid grid-cols-2 md:grid-cols-5 gap-3">
               <li *ngFor="let s of getTimeline(); let i = index" class="relative">
                 <div [ngClass]="['h-1.5 w-full rounded-full transition-colors', isStepDone(s, order()?.status ?? '') ? 'bg-brand' : 'bg-surface-alt']"></div>

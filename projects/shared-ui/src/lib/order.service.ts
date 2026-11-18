@@ -214,8 +214,9 @@ export class OrderService {
         const latestEvent = events.length ? events[events.length - 1] : null;
         return {
           orderId: raw.orderId || orderId,
-          carrier: '',
-          status: latestEvent?.status || latestShipment?.status || 'PROCESSING',
+          carrier: latestShipment?.providerOrderId ? 'PandaGo' : '',
+          trackingNumber: latestShipment?.providerOrderId || undefined,
+          status: latestShipment?.status || latestEvent?.status || 'PROCESSING',
           scans: events.map((e: any) => ({
             timestamp: e.occurredAt || e.timestamp || '',
             status: e.status || '',

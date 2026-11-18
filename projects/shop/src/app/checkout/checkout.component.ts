@@ -12,7 +12,8 @@ import { CartService, CatalogService, ShopService, AccountService, SessionServic
 import { firstValueFrom } from 'rxjs';
 
 type Step = 0 | 1 | 2;
-type PayId = "credit" | "debit" | "netbanking";
+type PayId = "credit" | "debit" | "netbanking" | "cod";
+type DeliveryMode = "IMMEDIATE" | "SCHEDULED";
 type CheckoutAddress = {
   id: string;
   label?: string | null;
@@ -46,6 +47,7 @@ const PAY_LABEL: Record<PayId, string> = {
   credit: "Credit Card",
   debit: "Debit Card",
   netbanking: "Net Banking",
+  cod: "Cash on Delivery",
 };
 
 const BANKS = ["Access Bank", "First Bank", "Guaranty Trust Bank", "United Bank for Africa", "Zenith Bank"];
@@ -164,6 +166,39 @@ const BANKS = ["Access Bank", "First Bank", "Guaranty Trust Bank", "United Bank 
                     <input [(ngModel)]="address.postal" [disabled]="!!selectedAddressId" (ngModelChange)="addressChanged()" class="w-full rounded-md border border-hairline bg-surface-alt px-4 py-2.5 text-sm focus:border-brand focus:outline-none disabled:opacity-70" />
                   </div>
                 </div>
+                <div class="space-y-3 rounded-xl border border-hairline p-4">
+                  <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-muted-ink">Delivery timing</p>
+                    <p class="mt-1 text-xs text-muted-ink">PandaGo can collect immediately or at a scheduled time between 45 minutes and 7 days from now.</p>
+                  </div>
+                  <div class="grid gap-3 sm:grid-cols-2">
+                    <label class="flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors" [ngClass]="deliveryMode() === 'IMMEDIATE' ? 'border-brand bg-brand/5' : 'border-hairline hover:border-brand/50'">
+                      <input type="radio" name="deliveryMode" value="IMMEDIATE" class="hidden" (change)="chooseDeliveryMode('IMMEDIATE')" [checked]="deliveryMode() === 'IMMEDIATE'">
+                      <div class="grid h-4 w-4 place-items-center rounded-full border border-hairline" [ngClass]="deliveryMode() === 'IMMEDIATE' ? 'border-brand' : ''">
+                        <div *ngIf="deliveryMode() === 'IMMEDIATE'" class="h-2 w-2 rounded-full bg-brand"></div>
+                      </div>
+                      <div>
+                        <p class="text-sm font-semibold">Send now</p>
+                        <p class="text-xs text-muted-ink">Request a courier immediately</p>
+                      </div>
+                    </label>
+                    <label class="flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors" [ngClass]="deliveryMode() === 'SCHEDULED' ? 'border-brand bg-brand/5' : 'border-hairline hover:border-brand/50'">
+                      <input type="radio" name="deliveryMode" value="SCHEDULED" class="hidden" (change)="chooseDeliveryMode('SCHEDULED')" [checked]="deliveryMode() === 'SCHEDULED'">
+                      <div class="grid h-4 w-4 place-items-center rounded-full border border-hairline" [ngClass]="deliveryMode() === 'SCHEDULED' ? 'border-brand' : ''">
+                        <div *ngIf="deliveryMode() === 'SCHEDULED'" class="h-2 w-2 rounded-full bg-brand"></div>
+                      </div>
+                      <div>
+                        <p class="text-sm font-semibold">Schedule delivery</p>
+                        <p class="text-xs text-muted-ink">Choose a delivery date and time</p>
+                      </div>
+                    </label>
+                  </div>
+                  <div *ngIf="deliveryMode() === 'SCHEDULED'" class="space-y-1">
+                    <label class="text-xs font-semibold uppercase tracking-wider text-muted-ink">Delivery date and time</label>
+                    <input type="datetime-local" [ngModel]="scheduledForLocal()" (ngModelChange)="scheduledForLocal.set($event); deliveryChoiceChanged()" [min]="minimumScheduledFor()" [max]="maximumScheduledFor()" class="w-full rounded-md border border-hairline bg-surface-alt px-4 py-2.5 text-sm focus:border-brand focus:outline-none" />
+                    <p class="text-[11px] text-muted-ink">Delivery must be at least 45 minutes and at most 7 days from now.</p>
+                  </div>
+                </div>
                 <p class="text-xs text-muted-ink">We’ll locate your delivery address automatically when you continue. Include your building number, street, city and state.</p>
                 <div *ngIf="deliveryQuote()" class="rounded-xl border border-brand/20 bg-brand/5 p-4 text-sm">
                   <p class="font-semibold">Delivery quote is ready</p>
@@ -235,6 +270,22 @@ const BANKS = ["Access Bank", "First Bank", "Guaranty Trust Bank", "United Bank 
                     <div *ngIf="payment() === 'netbanking'" class="h-2.5 w-2.5 rounded-full bg-brand"></div>
                   </div>
                   <input type="radio" name="payment" value="netbanking" class="hidden" (change)="payment.set('netbanking')" [checked]="payment() === 'netbanking'">
+                </label>
+
+                <label class="flex cursor-pointer items-center justify-between rounded-xl border p-4 transition-colors" [ngClass]="payment() === 'cod' ? 'border-brand bg-brand/5' : 'border-hairline hover:border-brand/50'">
+                  <div class="flex items-center gap-4">
+                    <div class="grid h-10 w-10 shrink-0 place-items-center rounded-full" [ngClass]="payment() === 'cod' ? 'bg-brand text-white' : 'bg-surface-alt text-ink'">
+                      <svg lucideWallet class="h-5 w-5"></svg>
+                    </div>
+                    <div>
+                      <p class="font-semibold text-ink">Cash on Delivery</p>
+                      <p class="text-xs text-muted-ink">Pay the courier when your order arrives</p>
+                    </div>
+                  </div>
+                  <div class="grid h-5 w-5 place-items-center rounded-full border border-hairline" [ngClass]="payment() === 'cod' ? 'border-brand' : ''">
+                    <div *ngIf="payment() === 'cod'" class="h-2.5 w-2.5 rounded-full bg-brand"></div>
+                  </div>
+                  <input type="radio" name="payment" value="cod" class="hidden" (change)="payment.set('cod')" [checked]="payment() === 'cod'">
                 </label>
 
                 <div class="mt-3 flex items-center gap-2 text-xs text-muted-ink">
@@ -316,8 +367,13 @@ const BANKS = ["Access Bank", "First Bank", "Guaranty Trust Bank", "United Bank 
       <div *ngIf="payOpen()" class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-ink/40 backdrop-blur-sm" (click)="payOpen.set(false)"></div>
         <div class="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-elegant animate-scale-in">
-          <h2 class="text-xl font-bold">Complete Payment</h2>
-          <p class="mt-1 text-sm text-muted-ink">Commerce will calculate the final total and create a hosted payment attempt.</p>
+          <h2 class="text-xl font-bold">{{ payment() === 'cod' ? 'Place your order' : 'Complete Payment' }}</h2>
+          <p class="mt-1 text-sm text-muted-ink">{{ payment() === 'cod' ? 'Your order will be reserved and the courier will collect cash on delivery.' : 'Commerce will calculate the final total and create a hosted payment attempt.' }}</p>
+
+          <div *ngIf="payment() === 'cod'" class="mt-6 rounded-xl border border-brand/20 bg-brand/5 p-4 text-sm">
+            <p class="font-semibold">Cash on delivery</p>
+            <p class="mt-1 text-muted-ink">No online payment is taken now. Have the order total ready when the courier arrives.</p>
+          </div>
           
           <div class="mt-6" *ngIf="payment() === 'credit' || payment() === 'debit'">
             <div class="space-y-4">
@@ -372,7 +428,7 @@ const BANKS = ["Access Bank", "First Bank", "Guaranty Trust Bank", "United Bank 
           >
             <svg *ngIf="processing()" lucideLoader2 class="h-4 w-4 animate-spin"></svg>
             <svg *ngIf="!processing()" lucideLock class="h-4 w-4"></svg>
-            {{ processing() ? 'Processing...' : 'Continue to secure payment' }}
+            {{ processing() ? 'Processing...' : (payment() === 'cod' ? 'Place cash-on-delivery order' : 'Continue to secure payment') }}
           </button>
         </div>
       </div>
@@ -395,6 +451,8 @@ export class CheckoutComponent implements OnInit {
   processing = signal(false);
   payOpen = signal(false);
   payment = signal<PayId>("credit");
+  deliveryMode = signal<DeliveryMode>('IMMEDIATE');
+  scheduledForLocal = signal('');
   errorMsg = signal<string | null>(null);
   modalError = signal<string | null>(null);
   quoteLoading = signal(false);
@@ -467,6 +525,37 @@ export class CheckoutComponent implements OnInit {
     this.deliveryQuoteAddressId = null;
   }
 
+  chooseDeliveryMode(mode: DeliveryMode) {
+    this.deliveryMode.set(mode);
+    this.deliveryChoiceChanged();
+  }
+
+  deliveryChoiceChanged() {
+    this.deliveryQuote.set(null);
+    this.deliveryQuoteAddressId = null;
+  }
+
+  private localDateTime(date: Date): string {
+    const pad = (value: number) => String(value).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  }
+
+  minimumScheduledFor(): string {
+    return this.localDateTime(new Date(Date.now() + 45 * 60 * 1000));
+  }
+
+  maximumScheduledFor(): string {
+    return this.localDateTime(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
+  }
+
+  private selectedScheduledFor(): Date | null {
+    if (this.deliveryMode() !== 'SCHEDULED') return null;
+    const raw = this.scheduledForLocal();
+    if (!raw) return null;
+    const value = new Date(raw);
+    return Number.isNaN(value.getTime()) ? null : value;
+  }
+
   private syncCustomer() {
     const user = this.shop.user();
     if (user) {
@@ -505,7 +594,14 @@ export class CheckoutComponent implements OnInit {
       if (!this.address.street.trim()) return "Street address is required.";
       if (!this.address.city.trim()) return "City is required.";
       if (!this.address.state.trim()) return "State is required to locate your delivery address.";
-
+      if (this.deliveryMode() === 'SCHEDULED') {
+        const scheduled = this.selectedScheduledFor();
+        if (!scheduled) return "Choose a delivery date and time.";
+        const now = Date.now();
+        if (scheduled.getTime() < now + 45 * 60 * 1000 || scheduled.getTime() > now + 7 * 24 * 60 * 60 * 1000) {
+          return "Scheduled delivery must be between 45 minutes and 7 days from now.";
+        }
+      }
     }
     return null;
   }
@@ -573,8 +669,11 @@ export class CheckoutComponent implements OnInit {
     this.quoteLoading.set(true);
     try {
       const addressId = await this.ensureAddressId();
+      const scheduledFor = this.selectedScheduledFor();
       const quote = await firstValueFrom(this.http.post<CarrierQuotePreview>(`/api/v1/carts/${cartId}/delivery-quotes`, {
-        addressId
+        addressId,
+        deliveryMode: this.deliveryMode(),
+        ...(scheduledFor ? { scheduledFor: scheduledFor.toISOString() } : {})
       }, { headers: new HttpHeaders({
         'If-Match': `\"${this.cart.cartVersion()}\"`,
         'Idempotency-Key': crypto.randomUUID()
@@ -612,8 +711,11 @@ export class CheckoutComponent implements OnInit {
 
   async payNow() {
     this.modalError.set(null);
-    const err = this.validatePayment();
-    if (err) { this.modalError.set(err); return; }
+    const cashOnDelivery = this.payment() === 'cod';
+    if (!cashOnDelivery) {
+      const err = this.validatePayment();
+      if (err) { this.modalError.set(err); return; }
+    }
 
     if (!this.session.authenticated()) {
       this.session.signIn('/checkout');
@@ -640,15 +742,26 @@ export class CheckoutComponent implements OnInit {
       const checkout = await firstValueFrom(this.http.post<any>('/api/v1/checkout/attempts', {
         checkoutQuoteId: quote.id,
         quoteHash: quote.quoteHash,
-        paymentMethod: 'HOSTED'
+        paymentMethod: cashOnDelivery ? 'CASH_ON_DELIVERY' : 'HOSTED'
       }, { headers: new HttpHeaders({ 'Idempotency-Key': crypto.randomUUID() }) }));
+
+      const orderId = checkout?.order?.id;
+      if (cashOnDelivery) {
+        this.processing.set(false);
+        this.payOpen.set(false);
+        if (!orderId) throw new Error('Order was created without an identifier.');
+        try {
+          sessionStorage.setItem('nigson.checkout.last', orderId);
+        } catch { /* storage may be unavailable in private browsing */ }
+        await this.router.navigate(['/checkout/success'], { queryParams: { id: orderId, method: 'cod' } });
+        return;
+      }
 
       const checkoutUrl = checkout?.payment?.checkoutUrl;
       if (typeof checkoutUrl === 'string' && checkoutUrl.startsWith('https://')) {
         // Paystack appends ?trxref=&reference=; remember the order so the return page can poll API-041.
         try {
           const reference = checkout?.payment?.reference;
-          const orderId = checkout?.order?.id;
           if (reference && orderId) {
             sessionStorage.setItem('nigson.checkout.payment.' + reference, orderId);
             sessionStorage.setItem('nigson.checkout.last', reference);
@@ -659,7 +772,6 @@ export class CheckoutComponent implements OnInit {
       }
 
       const state = checkout?.payment?.state || 'UNKNOWN';
-      const orderId = checkout?.order?.id;
       this.processing.set(false);
       this.payOpen.set(false);
       this.modalError.set(`Payment status is ${state}${orderId ? ` for order ${orderId}` : ''}. Check your orders before trying again.`);
