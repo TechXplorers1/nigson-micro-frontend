@@ -475,6 +475,7 @@ export class CheckoutComponent implements OnInit {
   netbank = { bank: BANKS[0], userId: "", pin: "" };
 
   ngOnInit() {
+    this.cart.loadCart().subscribe();
     this.syncCustomer();
     if (this.session.authenticated()) {
       this.account.loadProfile().subscribe(profile => {
@@ -738,6 +739,17 @@ export class CheckoutComponent implements OnInit {
         addressId,
         carrierQuoteId: carrierQuote.id
       }, { headers: new HttpHeaders({ 'Idempotency-Key': crypto.randomUUID() }) }));
+
+      const displayed = this.cart.items();
+      const changed = !Array.isArray(quote.lines) || quote.lines.length !== displayed.length || quote.lines.some((line: any) => {
+        const item = displayed.find(i => i.skuId === line.skuId);
+        return !item || Number(line.quantity) !== item.quantity || Math.round(Number(line.unitAmount) * 100) !== item.unitPriceMinorUnits;
+      });
+      if (changed || this.cart.pricingError() || this.cart.reviewRequired()) {
+        await firstValueFrom(this.cart.loadCart());
+        this.deliveryQuote.set(null);
+        throw new Error('Prices or quantities changed. Review your cart before placing the order.');
+      }
 
       const checkout = await firstValueFrom(this.http.post<any>('/api/v1/checkout/attempts', {
         checkoutQuoteId: quote.id,

@@ -13,6 +13,7 @@ function setup() {
     deliveryMode: () => 'IMMEDIATE', scheduledForLocal: () => '',
     payment: () => 'credit',
     modalError: { set: vi.fn() }, processing: { set: vi.fn() },
+    cart: {loadCart:()=>of(null)},
     session: { fullName: () => '' }, http: { post: vi.fn(), patch: vi.fn() }, router: { navigate: vi.fn() }
   });
   return component;
@@ -96,16 +97,24 @@ describe('Checkout automatic delivery location', () => {
     expect(c.validatePayment).not.toHaveBeenCalled();
     expect(c.session.signIn).toHaveBeenCalled();
   });
+  it('stops before order creation when the quote changes a displayed price', async () => {
+    const c = setup();c.payment=()=> 'cod';c.session={authenticated:()=>true};
+    c.cart={cartId:()=> 'cart',items:()=>[{skuId:'sku',quantity:2,unitPriceMinorUnits:1200}],pricingError:()=>null,reviewRequired:()=>false,loadCart:vi.fn(()=>of(null))};
+    c.ensureAddressId=vi.fn().mockResolvedValue('address');
+    const carrier={id:'carrier',expiresAt:new Date(Date.now()+60000).toISOString()};c.deliveryQuote=Object.assign(()=>carrier,{set:vi.fn()});c.deliveryQuoteAddressId='address';
+    c.http.post.mockReturnValueOnce(of({id:'quote',quoteHash:'hash',lines:[{skuId:'sku',quantity:'2',unitAmount:'7.00'}]}));
+    await c.payNow();expect(c.http.post).toHaveBeenCalledOnce();expect(c.cart.loadCart).toHaveBeenCalledOnce();expect(c.modalError.set).toHaveBeenLastCalledWith('Prices or quantities changed. Review your cart before placing the order.');
+  });
   it('places a COD order without a hosted payment and navigates using its server order ID', async () => {
     const c = setup();
     c.payment = () => 'cod';
     c.session = { authenticated: () => true };
-    c.cart = { cartId: () => 'cart' };
+    c.cart = { cartId: () => 'cart', items:()=>[{skuId:'sku',quantity:2,unitPriceMinorUnits:700}], pricingError:()=>null,reviewRequired:()=>false,loadCart:()=>of(null) };
     c.ensureAddressId = vi.fn().mockResolvedValue('address');
     c.deliveryQuote = () => ({ id: 'carrier', expiresAt: new Date(Date.now() + 60000).toISOString() });
     c.deliveryQuoteAddressId = 'address';
     c.payOpen = { set: vi.fn() };
-    c.http.post.mockReturnValueOnce(of({ id: 'quote', quoteHash: 'hash' }))
+    c.http.post.mockReturnValueOnce(of({ id: 'quote', quoteHash: 'hash',lines:[{skuId:'sku',quantity:'2',unitAmount:'7.00'}] }))
       .mockReturnValueOnce(of({ order: { id: 'order' }, payment: null }));
     await c.payNow();
     expect(c.http.post.mock.calls[1][1]).toEqual({ checkoutQuoteId: 'quote', quoteHash: 'hash', paymentMethod: 'CASH_ON_DELIVERY' });

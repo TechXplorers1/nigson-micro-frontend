@@ -53,6 +53,8 @@ export interface EnquiryPayload {
  * Distributor Application Input DTO (API-092 - TASK-60)
  */
 export interface DistributorApplicationPayload {
+  partnerType?: "DISTRIBUTOR" | "WHOLESALE";
+  businessDetails?: string;
   organizationName: string;
   countryCode: string;
   documentIds?: string[];
@@ -69,6 +71,7 @@ export type DistributorApplicationState =
   | "SUSPENDED";
 
 export interface BackendDistributorApplication {
+  partnerType?: "DISTRIBUTOR" | "WHOLESALE";
   id: string;
   state: DistributorApplicationState | string;
   organizationId?: string | null;
@@ -227,7 +230,9 @@ export class MarketingService {
     const body: Record<string, any> = {
       organizationName: sanitizeSingleLine(payload.organizationName, 200),
       countryCode: (payload.countryCode || "NG").trim().slice(0, 2).toUpperCase(),
-      documentIds: payload.documentIds || []
+      documentIds: payload.documentIds || [],
+      partnerType: payload.partnerType || "DISTRIBUTOR",
+      ...(payload.businessDetails ? {businessDetails: payload.businessDetails} : {})
     };
     if (cleanedRef) {
       body['businessReference'] = cleanedRef;

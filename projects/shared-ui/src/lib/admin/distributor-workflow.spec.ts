@@ -44,3 +44,5 @@ describe('Distributor decision prerequisites',()=>{
  });
  it('requires a human reason for a decision',()=>{expect(()=>distributorCommand('Rejected',' ',false)).toThrow('reason');});
 });
+
+it('uses saved-command retry only for an independent pending activation',()=>{expect(distributorActionBlock({state:'ACTIVATION_PENDING',reviewerPartyId:'reviewer'},'Retry activation','approver')).toBeNull();expect(distributorActionBlock({state:'ACTIVATION_PENDING',reviewerPartyId:'reviewer'},'Retry activation','reviewer')).toBeTruthy();expect(distributorActionBlock({state:'APPROVED'},'Retry activation','approver')).toBeTruthy();expect(distributorCommand('Retry activation','',false)).toEqual({action:'decision',body:{decision:'RETRY',reason:'Retry the saved activation command'}});});

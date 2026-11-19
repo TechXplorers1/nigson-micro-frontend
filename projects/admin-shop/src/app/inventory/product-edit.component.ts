@@ -4,7 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { AdminService, CatalogService, RetailPricingService, RetailPriceContext, retailAmount, canEditRetailPrice } from 'shared-ui';
+import { ProductPricesService, CommercialPrices, AdminService, CatalogService, retailAmount, canEditRetailPrice } from 'shared-ui';
 
 export interface CustomSpec {
   key: string;
@@ -242,7 +242,7 @@ export interface CustomSpec {
             <div class="flex items-center justify-between border-b border-gray-100 pb-3">
               <div>
                 <h2 class="text-xs font-extrabold uppercase tracking-[0.14em] text-muted-ink">Commercial Pricing (₦)</h2>
-                <p class="text-[11px] text-muted-ink mt-0.5">Edit the retail selling price used by the storefront and cart.</p>
+                <p class="text-[11px] text-muted-ink mt-0.5">Set retail, wholesale and distributor prices. Leave a business price and minimum blank to keep that rate unavailable.</p>
               </div>
             </div>
 
@@ -250,20 +250,22 @@ export interface CustomSpec {
             <div class="grid gap-4 sm:grid-cols-3">
               <div>
                 <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-brand">Starting Price (₦) *</label>
-                <input type="number" [(ngModel)]="product.retail" (ngModelChange)="onPriceChange($event)" name="retail" [disabled]="!canEditRetail" step="0.01" min="0" placeholder="e.g. 18500" class="w-full rounded-2xl border-2 border-brand/50 bg-brand/5 px-4 py-2.5 text-base font-black text-brand shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
+                <input type="text" inputmode="decimal" [(ngModel)]="product.retail" (ngModelChange)="onPriceChange($event)" name="retail" [disabled]="!canEditRetail" step="0.01" min="0" placeholder="e.g. 18500" class="w-full rounded-2xl border-2 border-brand/50 bg-brand/5 px-4 py-2.5 text-base font-black text-brand shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
                 <p class="mt-1 text-[10px] text-muted-ink font-semibold">Applies through the authorized retail price-book workflow.</p>
               </div>
 
               <div>
                 <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-muted-ink">Wholesale Rate (₦)</label>
-                <input type="number" [(ngModel)]="product.wholesale" name="wholesale" disabled placeholder="e.g. 14500" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
-                <p class="mt-1 text-[10px] text-muted-ink">Managed through quantity tiers in price books.</p>
+                <input type="text" inputmode="decimal" [(ngModel)]="product.wholesale" name="wholesale" [disabled]="!canEditRetail" class="w-full rounded-2xl border border-gray-200 p-3" placeholder="Price in naira">
+                <label class="mt-2 block text-xs">Minimum quantity</label><input type="text" inputmode="decimal" [(ngModel)]="product.wholesaleMinimum" name="wholesaleMinimum" [disabled]="!canEditRetail" class="mt-1 w-full rounded-2xl border border-gray-200 p-3" placeholder="Minimum units">
+                <p class="mt-1 text-[10px] text-muted-ink">Applies to approved wholesalers once automatic business pricing is enabled.</p>
               </div>
 
               <div>
                 <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-muted-ink">Distributor Rate (₦)</label>
-                <input type="number" [(ngModel)]="product.distributor" name="distributor" disabled placeholder="e.g. 12000" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20">
-                <p class="mt-1 text-[10px] text-muted-ink">Managed through organization price-book assignments.</p>
+                <input type="text" inputmode="decimal" [(ngModel)]="product.distributor" name="distributor" [disabled]="!canEditRetail" class="w-full rounded-2xl border border-gray-200 p-3" placeholder="Price in naira">
+                <label class="mt-2 block text-xs">Minimum quantity</label><input type="text" inputmode="decimal" [(ngModel)]="product.distributorMinimum" name="distributorMinimum" [disabled]="!canEditRetail" class="mt-1 w-full rounded-2xl border border-gray-200 p-3" placeholder="Minimum units">
+                <p class="mt-1 text-[10px] text-muted-ink">Applies to approved distributors once automatic business pricing is enabled.</p>
               </div>
 
               <div class="sm:col-span-3">
@@ -272,6 +274,8 @@ export interface CustomSpec {
               </div>
             </div>
           </div>
+
+
 
           <!-- Short Description & Hero Feature Bullets Card -->
           <div class="rounded-[20px] border border-gray-100 bg-white p-6 shadow-sm space-y-4">
@@ -449,7 +453,7 @@ export interface CustomSpec {
               </div>
 
               <div>
-                <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-muted-ink">Minimum Wholesale Order</label>
+                <label class="mb-1.5 block text-xs font-bold uppercase tracking-widest text-muted-ink">Wholesale description (display only)</label>
                 <input type="text" [(ngModel)]="product.minWholesaleOrder" name="minWholesaleOrder" placeholder="e.g. 10 Units" class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-xs text-ink shadow-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/20 font-bold text-brand">
               </div>
 
@@ -503,15 +507,15 @@ export class ProductEditComponent implements OnInit {
   private router = inject(Router);
   private admin = inject(AdminService);
   private catalog = inject(CatalogService);
-  private retailPricing = inject(RetailPricingService);
-  private retailContext: RetailPriceContext | null = null;
+  private productPrices = inject(ProductPricesService);
+  private commercialPrices: CommercialPrices | null = null;
   private originalRetail: string | null = null;
   readonly pricingNotice = signal('');
   get canPublishProduct(): boolean { return this.admin.session.hasRole('CONTENT_PUBLISHER'); }
   get canViewInventory(): boolean { return this.admin.session.hasRole('OPERATIONS'); }
   get canEditRetail(): boolean { return canEditRetailPrice(this.admin.session.roles()); }
   private async loadRetailPrice(skuId: string) {
-    this.retailContext = null;
+    this.commercialPrices = null;
     this.originalRetail = null;
     this.product.retail = null;
     this.product.price = null;
@@ -519,14 +523,12 @@ export class ProductEditComponent implements OnInit {
     this.product.distributor = null;
     try {
       if (this.canEditRetail) {
-        this.retailContext = await this.retailPricing.load(skuId);
-        const amount = this.retailContext.entry?.unitAmount;
-        if (amount != null) {
-          this.originalRetail = retailAmount(amount);
-          this.product.retail = Number(amount);
-          this.product.price = Number(amount);
-        }
-        this.pricingNotice.set('Admin accounts can save retail prices with normal login. Other SKU prices and quantity tiers are preserved.');
+        this.commercialPrices = await this.productPrices.get(skuId);
+        const amount=this.commercialPrices.retail.unitAmount;
+        if(amount!==null){this.originalRetail=retailAmount(amount);this.product.retail=amount;this.product.price=Number(amount);}
+        for(const kind of ['wholesale','distributor'] as const){this.product[kind]=this.commercialPrices[kind].unitAmount;this.product[kind+'Minimum']=this.commercialPrices[kind].minimumQuantity;}
+        this.pricingNotice.set('Save Changes confirms retail, wholesale and distributor prices together. Existing price books are preserved. Historical business values shown here become standard rates only after you save.');
+
       } else {
         const price = await firstValueFrom(this.catalog.getPrice(skuId));
         this.product.retail = price.priceMinorUnits / 100;
@@ -723,7 +725,7 @@ export class ProductEditComponent implements OnInit {
   onPriceChange(val: any) {
     const num = Number(val);
     if (!isNaN(num) && num > 0) {
-      this.product.retail = num;
+      this.product.retail = String(val);
       this.product.price = num;
 
       this.cdr.markForCheck();
@@ -998,6 +1000,7 @@ export class ProductEditComponent implements OnInit {
     this.uploadError.set(null);
     let payload: any = null;
     try {
+      this.productPrices.validate(this.product);
       const requestedRetail = this.product.retail == null || String(this.product.retail).trim() === '' ? null : retailAmount(this.product.retail);
       if (!this.product.name?.trim() || !this.product.sku?.trim() || !this.product.category) {
         throw new Error('Name, SKU and a backend category are required.');
@@ -1144,14 +1147,13 @@ export class ProductEditComponent implements OnInit {
       this.originalState = saved.status;
       if (rule) this.originalPackaging = JSON.stringify(rule);
 
-      if (requestedRetail !== null && requestedRetail !== this.originalRetail) {
-        if (!this.canEditRetail) throw new Error('An active Admin role is required for price changes with normal login. Sales/Finance staff retain their existing approval requirements.');
-        if (!this.product.skuId) throw new Error('Save a valid SKU before setting its selling price.');
-        const context = this.retailContext ?? await this.retailPricing.load(this.product.skuId);
-        await this.retailPricing.save(context, this.product.skuId, requestedRetail, this.skuConfig?.packSize || '1');
-        retailApplied = true;
-        this.originalRetail = requestedRetail;
+      if (requestedRetail !== null && this.canEditRetail) {
+        if (!this.product.skuId) throw new Error('Save a valid SKU before setting its selling prices.');
+        const view=this.commercialPrices??await this.productPrices.get(this.product.skuId);
+        const desired=this.productPrices.desired(view,this.product,this.skuConfig?.packSize||'1');
+        if(this.productPrices.changed(view,desired)){this.commercialPrices=await this.productPrices.save(this.product.skuId,desired);retailApplied=true;this.originalRetail=requestedRetail;}
       }
+
       const fresh = await firstValueFrom(this.http.get<any>('/api/v1/staff/products/' + this.product.id));
       this.populateProduct(fresh);
       if (this.product.skuId) await this.loadRetailPrice(this.product.skuId);
@@ -1169,7 +1171,7 @@ export class ProductEditComponent implements OnInit {
         this.product.version = payload.version ?? this.product.version;
         this.isNew.set(false);
       }
-      this.uploadError.set((productSaved ? (retailApplied ? 'Product details and retail price were saved, but refresh failed. ' : 'Product details were saved; the selling price update was not completed. ') : '') + this.admin.message(error));
+      this.uploadError.set((productSaved ? (retailApplied ? 'Product details and selling prices were saved, but refresh failed. ' : 'Product details were saved; the price update was not completed. ') : '') + this.admin.message(error));
       this.cdr.markForCheck();
     } finally {
       this.isSaving.set(false);

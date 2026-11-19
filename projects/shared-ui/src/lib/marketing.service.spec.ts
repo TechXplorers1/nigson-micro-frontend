@@ -92,3 +92,5 @@ describe('Distributor submission outcomes', () => {
     }));
   });
 });
+
+it('sends explicit wholesale type and business details without creating a contact lead',()=>{const {service,http,response}=setup();service.submitDistributorApplication({...payload,partnerType:'WHOLESALE',businessDetails:'Synthetic business profile'},'wholesale-key').subscribe();expect(http.post).toHaveBeenCalledWith('/api/v1/distributor-applications',expect.objectContaining({partnerType:'WHOLESALE',businessDetails:'Synthetic business profile'}),{headers:{'Idempotency-Key':'wholesale-key'}});response.complete();});

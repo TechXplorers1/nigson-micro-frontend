@@ -66,3 +66,10 @@ export * from './lib/wishlist-button.component';
 
 export * from './lib/phone-number';
 export * from './lib/phone-input.component';
+
+export * from './lib/business-pricing.service';
+export * from './lib/business-price-editor.component';
+
+export * from './lib/business-price-assignment.component';
+
+export * from './lib/product-prices.service';

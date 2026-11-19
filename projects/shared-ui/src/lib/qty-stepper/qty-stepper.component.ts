@@ -22,6 +22,7 @@ import { LucideMinus, LucidePlus, LucideShoppingCart } from '@lucide/angular';
         *ngIf="qty() <= 0"
         type="button"
         (click)="add($event)"
+        [disabled]="product?.priceMinorUnits == null && product?.price == null || initialQuantity() > stock"
         title="Add to cart"
         aria-label="Add to cart"
         [ngClass]="compact ? 'px-3 py-2 text-xs' : 'px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm'"
@@ -39,7 +40,7 @@ import { LucideMinus, LucidePlus, LucideShoppingCart } from '@lucide/angular';
           type="button"
           aria-label="Decrease quantity"
           title="Decrease quantity"
-          (click)="update(qty() - 1, $event)"
+          (click)="decrease($event)"
           [ngClass]="compact ? 'h-6 w-6' : 'h-8 w-8'"
           class="grid place-items-center rounded-full hover:bg-brand-deep transition-colors shrink-0"
         >
@@ -56,7 +57,7 @@ import { LucideMinus, LucidePlus, LucideShoppingCart } from '@lucide/angular';
           aria-label="Increase quantity"
           title="Increase quantity"
           [disabled]="atMax()"
-          (click)="update(qty() + 1, $event)"
+          (click)="update(nextQuantity(), $event)"
           [ngClass]="compact ? 'h-6 w-6' : 'h-8 w-8'"
           class="grid place-items-center rounded-full hover:bg-brand-deep transition-colors disabled:opacity-40 disabled:hover:bg-transparent shrink-0"
         >
@@ -74,7 +75,7 @@ export class QtyStepperComponent {
   @Input() compact = false;
 
   get stock(): number {
-    return this.product?.stock ?? 99;
+    return this.product?.stock ?? Number.POSITIVE_INFINITY;
   }
 
   private isGenericToken(val?: string): boolean {
@@ -125,15 +126,18 @@ export class QtyStepperComponent {
     return item ? item.qty : 0;
   }
 
-  atMax(): boolean {
-    return this.qty() >= this.stock;
-  }
+  minimum(): number { return Math.max(this.product?.minimumQuantity || 1, this.pack()); }
+  pack(): number { return this.product?.packMultiple || 1; }
+  initialQuantity(): number { return Math.ceil(this.minimum() / this.pack()) * this.pack(); }
+  nextQuantity(): number { return Math.max(this.initialQuantity(), Math.round((this.qty() + this.pack()) * 1000) / 1000); }
+  decrease(e?: Event) { const next = Math.round((this.qty() - this.pack()) * 1000) / 1000; this.update(next < this.minimum() ? 0 : next, e); }
+  atMax(): boolean { return this.nextQuantity() > this.stock; }
 
   add(e?: Event) {
     e?.stopPropagation();
     e?.preventDefault();
     const p = this.product;
-    if (!p) return;
+    if (!p || p.priceMinorUnits == null && p.price == null || this.initialQuantity() > this.stock) return;
     const priceMinor = p.priceMinorUnits ?? (p.price != null ? Math.round(p.price * 100) : 0);
     this.shop.addToCart({
       sku: p.sku || p.id,
@@ -144,7 +148,7 @@ export class QtyStepperComponent {
       price: p.price ?? (priceMinor / 100),
       priceMinorUnits: priceMinor,
       image: this.image || p.imageUrl || (p.images ? p.images[0] : undefined),
-    } as any);
+    } as any, this.initialQuantity());
   }
 
   update(newQty: number, e?: Event) {
