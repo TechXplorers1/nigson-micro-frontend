@@ -1,6 +1,6 @@
 import { Injectable, inject, signal, computed, effect } from "@angular/core";
 import { HttpClient, HttpHeaders } from "@angular/common/http";
-import { Observable, of, tap, catchError, switchMap, map, forkJoin } from "rxjs";
+import { Observable, of, tap, catchError, switchMap, map, forkJoin, finalize, shareReplay } from "rxjs";
 import { SessionService } from "./session.service";
 
 export interface CartLineItem {
@@ -11,6 +11,9 @@ export interface CartLineItem {
   name: string;
   unitPriceMinorUnits: number;
   quantity: number;
+  minimumQuantity?: number;
+  packMultiple?: number;
+  purchaseError?: string;
   imageUrl?: string;
   categoryName?: string;
 }
@@ -67,6 +70,11 @@ export class CartService {
   readonly cartVersion = signal<number>(0);
   readonly loading = signal(false);
   readonly syncing = signal(false);
+  readonly pricingError = signal<string | null>(null);
+  readonly reviewRequired = signal(false);
+  readonly readyForCheckout = computed(() => !this.loading() && !this.syncing() && !this.pricingError() && !this.reviewRequired() && this.items().length > 0 && this.items().every(i => !i.purchaseError));
+  acknowledgePrices() { this.reviewRequired.set(false); }
+
 
   // Selective Checkout Signals
   readonly selectedLineIds = signal<Set<string>>(new Set());
@@ -148,12 +156,15 @@ export class CartService {
 
   private handleUserLogout() {
     this.cartId.set(null);
+    this.pricingError.set(null);
+    this.reviewRequired.set(false);
     this.cartVersion.set(0);
     sessionStorage.removeItem('nigson_active_cart_id');
     this.items.set([]);
     this.selectedLineIds.set(new Set());
   }
 
+  private cartLoad?: Observable<CartSummary | null>;
   private skuCache = new Map<string, SkuMetadata>();
 
   private normalizeImageUrl(url?: string | null): string {
@@ -234,22 +245,6 @@ export class CartService {
 
   ensureCart(): Observable<string | null> {
     if (!this.session.authenticated()) return of(null);
-    if (this.cartId()) return of(this.cartId());
-
-    const storedId = sessionStorage.getItem('nigson_active_cart_id');
-    const headers = this.getAuthHeaders();
-
-    if (storedId) {
-      return this.http.get<BackendCart>(`/api/v1/carts/${storedId}`, { headers }).pipe(
-        tap(cart => {
-          this.cartId.set(cart.id);
-          this.cartVersion.set(cart.version);
-          this.items.set(this.mapLines(cart.lines));
-        }),
-        map(cart => cart.id),
-        catchError(() => this.createNewCart())
-      );
-    }
     return this.createNewCart();
   }
 
@@ -264,10 +259,15 @@ export class CartService {
         this.cartId.set(cart.id);
         this.cartVersion.set(cart.version);
         sessionStorage.setItem('nigson_active_cart_id', cart.id);
-        this.items.set(this.mapLines(cart.lines));
+        const previous = this.items();
+        this.items.set(this.mapLines(cart.lines).map(line => {
+          const old = previous.find(item => item.skuId === line.skuId);
+          return old ? {...line, unitPriceMinorUnits: old.unitPriceMinorUnits, minimumQuantity: old.minimumQuantity, packMultiple: old.packMultiple, purchaseError: old.purchaseError} : line;
+        }));
       }),
       map(cart => cart?.id ?? null),
       catchError(err => {
+        this.pricingError.set('Purchasing access could not be confirmed. Your partner access may be suspended or need review.');
         console.warn('[CartService] Java Commerce cart creation failed:', err);
         return of(null);
       })
@@ -280,8 +280,10 @@ export class CartService {
       this.cartId.set(null);
       return of(null);
     }
+    if (this.cartLoad) return this.cartLoad;
     this.loading.set(true);
-    return this.ensureCart().pipe(
+    this.pricingError.set(null);
+    const request = this.ensureCart().pipe(
       switchMap(cartId => {
         if (!cartId) {
           this.loading.set(false);
@@ -297,6 +299,7 @@ export class CartService {
               map(mapped => {
                 this.items.set(mapped);
                 this.loading.set(false);
+                this.syncing.set(false);
                 return {
                   cartId: cart.id,
                   items: mapped,
@@ -309,13 +312,18 @@ export class CartService {
             );
           }),
           catchError(err => {
+            this.pricingError.set('Current prices could not be confirmed. Refresh your cart before checkout.');
             console.warn('[CartService] loadCart database error:', err);
             this.loading.set(false);
             return of(null);
           })
         );
-      })
+      }),
+      finalize(() => { this.cartLoad = undefined; }),
+      shareReplay({bufferSize: 1, refCount: false})
     );
+    this.cartLoad = request;
+    return request;
   }
 
   addItem(skuId: string, quantity = 1, details?: { sku?: string; productId?: string; name?: string; category?: string; priceMinor?: number; image?: string }): Observable<CartSummary | null> {
@@ -477,6 +485,8 @@ export class CartService {
   clearCart(): Observable<void> {
     this.items.set([]);
     this.cartId.set(null);
+    this.pricingError.set(null);
+    this.reviewRequired.set(false);
     this.cartVersion.set(0);
     sessionStorage.removeItem('nigson_active_cart_id');
     return of(undefined);
@@ -514,11 +524,20 @@ export class CartService {
 
   private loadLinePrices(lines: CartLineItem[]): Observable<CartLineItem[]> {
     if (!lines.length) return of([]);
+    const previous = this.items();
     return forkJoin(lines.map(line => this.http.get<any>(
-      `/api/v1/catalogue/skus/${encodeURIComponent(line.skuId)}/price?market=NG&quantity=${line.quantity}`
+      `/api/v1/catalogue/skus/${encodeURIComponent(line.skuId)}/price?market=NG&quantity=${line.quantity}&preview=true`
     ).pipe(
-      map(price => ({ ...line, unitPriceMinorUnits: Math.round(Number(price.unitAmount) * 100) })),
-      catchError(() => of({ ...line, unitPriceMinorUnits: 0 }))
+      map(price => {
+        const amount = Math.round(Number(price.unitAmount) * 100);
+        const minimum = Number(price.minimumQuantity), pack = Number(price.packMultiple);
+        if (!Number.isSafeInteger(amount) || amount < 0 || !Number.isFinite(minimum) || !Number.isFinite(pack) || pack <= 0) throw new Error('Invalid current price');
+        const old = previous.find(i => i.skuId === line.skuId);
+        if (old && (old.unitPriceMinorUnits !== amount || old.minimumQuantity !== minimum || old.packMultiple !== pack)) this.reviewRequired.set(true);
+        const valid = line.quantity >= minimum && Math.abs(line.quantity / pack - Math.round(line.quantity / pack)) < 0.000001;
+        return { ...line, unitPriceMinorUnits: amount, minimumQuantity: minimum, packMultiple: pack, purchaseError: valid ? undefined : `Minimum ${minimum} units, in multiples of ${pack}. Update the quantity before checkout.` };
+      }),
+      catchError(() => of({ ...line, unitPriceMinorUnits: 0, purchaseError: 'No current price is available for your account. Contact the store.' }))
     )));
   }
 
@@ -532,7 +551,7 @@ export class CartService {
         sku: (line as any).sku || meta.code,
         name: (line as any).name || meta.name,
         unitPriceMinorUnits: Number((line as any).unitPriceMinorUnits) || meta.priceMinor || 0,
-        quantity: parseInt(String(line.quantity), 10) || 1,
+        quantity: Number(line.quantity),
         imageUrl: (line as any).imageUrl || meta.img,
         categoryName: (line as any).categoryName || meta.category
       };

@@ -9,7 +9,7 @@ import {
   LucideZoomIn, LucideZoomOut, LucideRotateCcw, LucideStar,
   LucideFileText, LucideShieldCheck
 } from '@lucide/angular';
-import { CatalogService, ShopService, ReviewService, QtyStepperComponent, relativeDate } from 'shared-ui';
+import { CatalogService, ShopService, SessionService, ReviewService, QtyStepperComponent, relativeDate } from 'shared-ui';
 import { ProductCardComponent } from './product-card.component';
 
 @Component({
@@ -109,6 +109,7 @@ import { ProductCardComponent } from './product-card.component';
             <div class="mt-6">
               <p class="text-[11px] uppercase tracking-widest text-muted-foreground">Starting From</p>
               <p class="mt-1 text-3xl md:text-4xl font-bold text-[#D62828] leading-tight">{{ commercePriceMinor() !== null ? catalog.formatPrice(displayPrice()) : 'Contact for price' }}</p>
+              <p *ngIf="commercePriceMinor() !== null && purchaseMinimum() > 1" class="mt-2 text-sm font-semibold">Minimum order: {{ purchaseMinimum() }} units<span *ngIf="purchasePack() > 1">; multiples of {{ purchasePack() }}</span>.</p>
               <p class="mt-2 text-sm text-muted-foreground">{{ product()?.priceSubtitle || 'Wholesale pricing available for distributors.' }}</p>
             </div>
 
@@ -480,12 +481,16 @@ export class ProductDetailComponent implements OnInit {
     return list;
   });
 
+  purchaseMinimum = signal(1);
+  purchasePack = signal(1);
   productWithPrice = computed(() => {
     const p = this.product();
-    if (!p) return null;
+    if (!p || this.commercePriceMinor() === null) return null;
     const minor = this.displayPrice();
     return {
       ...p,
+      minimumQuantity: this.purchaseMinimum(),
+      packMultiple: this.purchasePack(),
       priceMinorUnits: minor,
       price: minor / 100
     };
@@ -511,10 +516,11 @@ export class ProductDetailComponent implements OnInit {
     return this.shop.cart().find(c => c.sku === p.sku || (c as any).skuId === p.skuId)?.qty ?? 0;
   });
 
-  private readonly priceQuery = computed(() => ({ skuId: this.product()?.skuId, quantity: Math.max(1, this.qtyInCart()) }));
+  private readonly pricingSession = inject(SessionService);
+  private readonly priceQuery = computed(() => ({ customer: this.pricingSession.userId(), authenticated: this.pricingSession.authenticated(), skuId: this.product()?.skuId, quantity: Math.max(1, this.qtyInCart()) }));
   constructor() {
     toObservable(this.priceQuery).pipe(
-      switchMap(query => query.skuId ? this.catalog.getPrice(query.skuId, query.quantity).pipe(map(price => price.priceMinorUnits), catchError(() => of(null))) : of(null)),
+      switchMap(query => query.skuId ? this.catalog.getPrice(query.skuId, query.quantity).pipe(map(price => {this.purchaseMinimum.set(price.minimumQuantity);this.purchasePack.set(price.packMultiple);return price.priceMinorUnits;}), catchError(() => of(null))) : of(null)),
       takeUntilDestroyed()
     ).subscribe(price => this.commercePriceMinor.set(price));
   }

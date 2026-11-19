@@ -25,7 +25,7 @@ describe('Guided distributor decisions',()=>{
  });
  it('keeps an acknowledged pending activation distinct from approved',()=>{
   const {component,admin}=setup({rawState:'UNDER_REVIEW',status:'Under Review',reviewerPartyId:'first-reviewer',version:2},'approver');admin.setApplicationStatus.mockReturnValue(of({state:'ACTIVATION_PENDING',version:3}));
-  component.reviewerNote='Independent approval';component.act('Approved');expect(component.view()?.status).toBe('Activation Pending');expect(component.success()).toContain('not yet confirmed');expect(component.editable(component.view()!)).toBe(false);
+  component.reviewerNote='Independent approval';component.act('Approved');expect(component.view()?.status).toBe('Activation Pending');expect(component.success()).toContain('not yet confirmed');expect(component.editable(component.view()!)).toBe(true);expect(component.block('Approved')).toBeTruthy();expect(component.block('Retry activation')).toBeNull();
  });
  it('requires a separate rejection confirmation and rejection reason',()=>{
   const {component,admin}=setup();component.act('Rejected');expect(admin.setApplicationStatus).not.toHaveBeenCalled();component.rejecting.set(true);component.act('Rejected');expect(admin.setApplicationStatus).not.toHaveBeenCalled();
@@ -51,3 +51,5 @@ it('preserves category filtering and phone search while switching partner tabs',
  component.catFilter.set('All categories');expect(component.filteredList()[0].id).toBe('second');
  component.changeTab('Wholesalers');expect(component.catFilter()).toBe('All categories');
 });
+
+it('shows reviewed wholesale applications on the wholesale tab and preserves independent approval checks',()=>{const {component,record}=setup({type:'Wholesaler',rawState:'UNDER_REVIEW',status:'Under Review',reviewerPartyId:'reviewer'});expect(component.tabRows()).toHaveLength(0);component.changeTab('Wholesalers');expect(component.tabRows()).toHaveLength(1);expect(component.stats().find(x=>x.label==='Under review')?.value).toBe(1);component.view.set(record as any);expect(component.block('Approved')).toContain('Another');});

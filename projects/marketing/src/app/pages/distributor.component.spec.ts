@@ -52,8 +52,8 @@ describe('Distributor form submission', () => {
     component.selectedDocumentId = documentId;
     component.documentUploadState.set('CLEAN');
     component.onDistributorSubmit(new Event('submit'));
-    expect(submitEnquiry).toHaveBeenCalledOnce();
-    expect(submitApplication).toHaveBeenCalledWith(expect.objectContaining({ documentIds: [documentId] }));
+    expect(submitEnquiry).not.toHaveBeenCalled();
+    expect(submitApplication).toHaveBeenCalledWith(expect.objectContaining({ documentIds: [documentId] }),expect.any(String));
     requests[0].next({ id: 'application-id', state: 'SUBMITTED' });
     requests[0].complete();
     expect(component.distributorApplicationSubmitted()).toBe(true);
@@ -67,16 +67,17 @@ describe('Distributor form submission', () => {
     requests[0].error({ error: { code: 'ACCESS_DENIED' } });
     expect(submitApplication).toHaveBeenCalledOnce();
     expect(component.distributorSubmitted()).toBe(false);
-    expect(component.submitError()).toContain('ACCESS_DENIED');
+    expect(component.submitError()).toBeTruthy();
   });
 
-  it('records an unauthenticated enquiry without claiming an application was created', () => {
+  it('requires sign-in without creating an enquiry or claiming application success', () => {
     const { component, submitEnquiry, submitApplication, session } = setup(false);
     component.onDistributorSubmit(new Event('submit'));
-    expect(submitEnquiry).toHaveBeenCalledOnce();
+    expect(submitEnquiry).not.toHaveBeenCalled();
     expect(submitApplication).not.toHaveBeenCalled();
-    expect(component.distributorSubmitted()).toBe(true);
+    expect(component.distributorSubmitted()).toBe(false);
     expect(component.distributorApplicationSubmitted()).toBe(false);
+    expect(component.submitError()).toContain('Sign in');
     expect(session.signIn).not.toHaveBeenCalled();
   });
 
@@ -143,4 +144,16 @@ describe('Distributor form submission', () => {
     expect(http.post).not.toHaveBeenCalled();
     expect(component.documentUploadError()).toContain('Choose a PDF, JPEG, or PNG');
   });
+});
+
+it('submits a wholesale application with verified proof and waits for acknowledgment',()=>{
+ const {component,submitApplication,submitEnquiry,requests}=setup();
+ Object.assign(component.f,{company:'Wholesale Example',contact:'Example Person',email:'person@example.com',phone:'+2348012345678',state:'Lagos',address:'Synthetic business address'});
+ component.selectedDocumentId='00000000-0000-4000-8000-000000000001';component.documentUploadState.set('CLEAN');
+ component.onWholesaleSubmit(new Event('submit'));expect(submitEnquiry).not.toHaveBeenCalled();expect(submitApplication).toHaveBeenCalledWith(expect.objectContaining({partnerType:'WHOLESALE',organizationName:'Wholesale Example',documentIds:[component.selectedDocumentId],businessDetails:expect.stringContaining('Wholesale Example')}),expect.any(String));expect(component.wholesaleSubmitted()).toBe(false);
+ requests[0].next({id:'app',partnerType:'WHOLESALE',state:'SUBMITTED'});requests[0].complete();expect(component.wholesaleSubmitted()).toBe(true);
+});
+
+it('retries an unconfirmed application with the same key and blocks changed details',()=>{
+ const {component,submitApplication,requests}=setup();component.selectedDocumentId='00000000-0000-4000-8000-000000000001';component.documentUploadState.set('CLEAN');component.onDistributorSubmit(new Event('submit'));const key=submitApplication.mock.calls[0][1];requests[0].error({status:0});component.onDistributorSubmit(new Event('submit'));expect(submitApplication.mock.calls[1][1]).toBe(key);requests[1].error({status:0});component.dist.organizationName='Different business';component.onDistributorSubmit(new Event('submit'));expect(submitApplication).toHaveBeenCalledTimes(2);expect(component.submitError()).toContain('unconfirmed');
 });

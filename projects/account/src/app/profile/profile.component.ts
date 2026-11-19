@@ -1,3 +1,4 @@
+import {PartnerStatusComponent} from './partner-status.component';
 import { PhoneInputComponent, normalizePhoneNumber, apiFailureDetail } from 'shared-ui';
 import { Component, inject, signal, ViewChild, ElementRef, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -13,13 +14,14 @@ import {
   selector: 'app-profile',
   standalone: true,
   imports: [
-    CommonModule, FormsModule, PhoneInputComponent,
+    CommonModule, FormsModule, PhoneInputComponent, PartnerStatusComponent,
     LucideUpload, LucideTrash2, LucidePencil, LucideSave, LucideX,
     LucidePackage, LucideFileText, LucideCalendarClock,
     LucideGift, LucideShare2, LucideCopy, LucideCheck, LucideAward, LucideLoader2
   ],
   template: `
     <div class="space-y-6" *ngIf="user()">
+      <app-partner-status />
       <!-- Header card -->
       <div class="rounded-2xl border border-hairline bg-white p-6 md:p-8">
         <div class="flex flex-wrap items-start justify-between gap-6">

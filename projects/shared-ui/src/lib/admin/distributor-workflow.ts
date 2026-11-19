@@ -5,6 +5,7 @@ export function leadDisplayState(state:string):string{return ({NEW:'New',ASSIGNE
 export type DistributorContext={state?:string;reviewerPartyId?:string|null;documents?:Array<{fileId?:string;scanStatus?:string}>};
 export function distributorActionBlock(context:DistributorContext,action:string,actorId:string|null,marketId?:string):string|null {
  const state=context.state;
+ if(action==='Retry activation'){if(!actorId||actorId===context.reviewerPartyId)return 'The original independent approver must retry activation.';return state==='ACTIVATION_PENDING'?null:'Only a pending activation can be retried.';}
  if(!actorId)return 'Sign in with an active Sales-authorized account.';
  if(action==='Under Review'){
   if(state!=='SUBMITTED')return 'Only a submitted application can enter document review.';
@@ -22,6 +23,7 @@ export function distributorActionBlock(context:DistributorContext,action:string,
  return 'This action is not available for this application.';
 }
 export function distributorCommand(status:string,reason:string,documentsVerified:boolean,marketId?:string){
+ if(status==='Retry activation')return {action:'decision',body:{decision:'RETRY',reason:'Retry the saved activation command'}};
  if(!reason.trim()||reason.trim().length>500)throw new Error('Enter a staff reason between 1 and 500 characters.');
  if(status==='Under Review'){
   if(!documentsVerified)throw new Error('Confirm that you have inspected the registration documents.');

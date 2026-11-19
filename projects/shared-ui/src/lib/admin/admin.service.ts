@@ -55,6 +55,7 @@ export type AdminReview = {
 export type LeadStatus = "Pending" | "Under Review" | "Approved" | "Rejected";
 
 export type AdminApplication = {
+  organizationId?: string | null;
   id: string; number: string; type: "Distributor" | "Wholesaler" | "Affiliate Marketer"; businessName: string;
   contactPerson: string; email: string; phone: string; location: string; category: string;
   date: string; status: string; note?: string; version?: number;
@@ -841,20 +842,21 @@ export class AdminService {
       map(rows => rows.map(row => ({
         id: row.id,
         number: row.id.slice(0, 8),
-        type: 'Distributor' as const,
+        organizationId: row.organizationId,
+        type: (row.partnerType === 'WHOLESALE' ? 'Wholesaler' : 'Distributor') as 'Wholesaler' | 'Distributor',
         source: 'distributor' as const,
         businessName: row.organizationName || '',
         contactPerson: row.contactName || (row.businessReference ? `Reg: ${row.businessReference}` : ''),
         email: row.email || '',
         phone: row.phone || '',
         location: row.countryCode || '',
-        category: 'Corporate Distributor',
+        category: row.partnerType === 'WHOLESALE' ? 'Wholesale business' : 'Corporate Distributor',
         date: row.submittedAt,
         status: distributorDisplayState(row.state),
         rawState: row.state,
         reviewerPartyId: row.reviewerPartyId ?? null,
         decisionReason: row.decisionReason ?? null,
-        note: row.reviewReason || '',
+        note: row.businessDetails || '',
         businessReference: row.businessReference || '',
         reviewReason: row.reviewReason || '',
         documents: Array.isArray(row.documents)
@@ -904,7 +906,7 @@ export class AdminService {
     if(!row) return throwError(()=>new Error('Refresh the application list first.'));
     if(row.source==='lead')return this.loadStaffApplications().pipe(map(rows=>{const refreshed=rows.find(item=>item.id===id);if(!refreshed)throw new Error('The lead is no longer in the current queue.');return refreshed;}));
     return this.http.get<any>('/api/v1/staff/distributor-applications/'+id,{context:this.applicationContext()}).pipe(map(detail=>({
-      ...row,rawState:detail.state,status:distributorDisplayState(detail.state),version:detail.version,
+      ...row,organizationId:detail.organizationId,note:detail.businessDetails || row.note,rawState:detail.state,status:distributorDisplayState(detail.state),version:detail.version,
       reviewerPartyId:detail.reviewerPartyId??null,reviewReason:detail.reviewReason??'',decisionReason:detail.decisionReason??null,
       documents:(detail.documents??[]).map((document:any)=>({...document,fileId:document.fileId,type:document.type,scanStatus:document.scanStatus}))
     })),tap(record=>this.applications.update(rows=>rows.map(item=>item.id===id?record:item))));

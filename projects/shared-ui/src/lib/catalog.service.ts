@@ -36,6 +36,8 @@ export interface Product {
   images?: string[];
   /** Price in NGN minor units (kobo) — divide by 100 for display */
   priceMinorUnits?: number;
+  minimumQuantity?: number;
+  packMultiple?: number;
   price?: number;
   stock?: number;
   lowLevel?: number;
@@ -83,6 +85,8 @@ export interface PriceResponse {
   skuId: string;
   /** Price in NGN minor units (kobo) */
   priceMinorUnits: number;
+  minimumQuantity: number;
+  packMultiple: number;
   currency: string;
   marketId?: string;
 }
@@ -523,14 +527,14 @@ export class CatalogService {
     const unpriced = { ...product, price: undefined, priceMinorUnits: undefined, retail: undefined, retailPrice: undefined, wholesale: undefined, wholesalePrice: undefined, distributor: undefined, distributorPrice: undefined };
     if (!product.skuId) return of(unpriced);
     return this.getPrice(product.skuId).pipe(
-      map(price => ({ ...unpriced, priceMinorUnits: price.priceMinorUnits, price: price.priceMinorUnits / 100, retail: price.priceMinorUnits / 100, retailPrice: price.priceMinorUnits / 100 })),
+      map(price => ({ ...unpriced, priceMinorUnits: price.priceMinorUnits, minimumQuantity: price.minimumQuantity, packMultiple: price.packMultiple, price: price.priceMinorUnits / 100, retail: price.priceMinorUnits / 100, retailPrice: price.priceMinorUnits / 100 })),
       catchError(() => of(unpriced))
     );
   }
 
   getPrice(skuId: string, quantity = 1): Observable<PriceResponse> {
-    return this.http.get<any>(`/api/v1/catalogue/skus/${skuId}/price?market=NG&quantity=${quantity}`).pipe(
-      map(res => ({ skuId: res.skuId, priceMinorUnits: Math.round(Number(res.unitAmount) * 100), currency: res.currency }))
+    return this.http.get<any>(`/api/v1/catalogue/skus/${skuId}/price?market=NG&quantity=${quantity}&preview=true`).pipe(
+      map(res => ({ skuId: res.skuId, priceMinorUnits: Math.round(Number(res.unitAmount) * 100), currency: res.currency, minimumQuantity: Number(res.minimumQuantity), packMultiple: Number(res.packMultiple) }))
     );
   }
 

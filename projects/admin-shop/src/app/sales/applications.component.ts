@@ -10,14 +10,14 @@ import type {AdminApplication} from 'shared-ui';
  imports:[CommonModule,FormsModule,AdminHeadingComponent,BadgeComponent,StatCardComponent],
  template:`
   <div class="flex flex-wrap items-center justify-between gap-3">
-   <lib-admin-heading title="Partner Applications" subtitle="Review distributor applications and manage wholesaler or affiliate lead requests."></lib-admin-heading>
+   <lib-admin-heading title="Partner Applications" subtitle="Review distributor and wholesale applications; manage affiliate and legacy lead requests."></lib-admin-heading>
    <button type="button" (click)="refresh()" [disabled]="admin.loadingApplications() || !!busy()" class="rounded-full border border-hairline bg-white px-4 py-2 text-sm font-semibold disabled:opacity-50">{{ admin.loadingApplications() ? 'Refreshing...' : 'Refresh status' }}</button>
   </div>
   <p *ngIf="admin.applicationError()" role="alert" class="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{{ admin.applicationError() }}</p>
   <div class="mb-6 flex flex-wrap gap-3 border-b border-hairline" role="group" aria-label="Partner request type">
    <button *ngFor="let name of tabs" type="button" (click)="changeTab(name)" [attr.aria-pressed]="tab()===name" [class.text-brand]="tab()===name" class="border-b-2 px-2 py-3 text-sm font-bold">{{ name }}</button>
   </div>
-  <p class="mb-4 text-sm text-muted-ink">{{ tab()==='Distributors' ? 'Submitted ? Under Review ? Approval processing ? Approved. A different Sales-authorized person must approve after review.' : 'These records are contact leads. Resolving or closing a lead does not grant distributor access.' }}</p>
+  <p class="mb-4 text-sm text-muted-ink">{{ tab()!=='Affiliate Marketers' ? 'New applications require document review and independent approval. Legacy contact requests remain leads; resolving a lead grants no business access.' : 'Affiliate records remain contact leads. Resolving or closing a lead does not activate affiliate access.' }}</p>
   <div class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
    <lib-stat-card *ngFor="let stat of stats()" [label]="stat.label" [value]="stat.value"></lib-stat-card>
   </div>
@@ -43,7 +43,7 @@ import type {AdminApplication} from 'shared-ui';
     <p *ngIf="actionError()" role="alert" class="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{{ actionError() }}</p>
     <p *ngIf="success()" role="status" class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">{{ success() }}</p>
     <dl class="mb-5 grid gap-4 text-sm sm:grid-cols-2"><div><dt class="text-muted-ink">Current status</dt><dd class="mt-1 font-semibold">{{ record.status }}</dd></div><div><dt class="text-muted-ink">Business registration</dt><dd>{{ record.businessReference || 'Not supplied' }}</dd></div><div><dt class="text-muted-ink">Contact</dt><dd>{{ record.contactPerson || 'Not supplied' }}<br>{{ record.email }}<br>{{ record.phone }}</dd></div><div><dt class="text-muted-ink">Location</dt><dd>{{ record.location || 'Not supplied' }}</dd></div></dl>
-    <div *ngIf="record.source==='lead' && record.note" class="mb-5 rounded-xl bg-surface-alt p-4 text-sm whitespace-pre-wrap">{{ record.note }}</div>
+    <div *ngIf="record.note" class="mb-5 rounded-xl bg-surface-alt p-4 text-sm whitespace-pre-wrap">{{ record.note }}</div>
 
     <ng-container *ngIf="record.source!=='lead'">
      <section class="mb-5 rounded-xl border border-hairline p-4"><h3 class="font-bold">Submitted documents</h3>
@@ -65,6 +65,7 @@ import type {AdminApplication} from 'shared-ui';
       <p *ngIf="record.rawState==='SUBMITTED' && block('Under Review')" class="mt-2 text-sm text-amber-800">{{ block('Under Review') }}</p>
       <p *ngIf="block('Approved')" class="mt-3 text-sm text-muted-ink">{{ block('Approved') }}</p>
       <div class="mt-4 flex flex-wrap gap-3">
+       <button *ngIf="record.rawState==='ACTIVATION_PENDING'" type="button" (click)="reviewerNote='Retry saved activation';act('Retry activation')" [disabled]="!!busy() || !!block('Retry activation')" class="rounded-full bg-brand px-5 py-2.5 text-white">Retry activation</button><p *ngIf="record.rawState==='ACTIVATION_PENDING'" class="text-sm text-muted-ink">The original independent approver must retry. The saved decision and activation command are reused.</p>
        <button *ngIf="record.rawState==='SUBMITTED'" type="button" (click)="act('Under Review')" [disabled]="!!busy() || !!block('Under Review') || !documentsVerified || !validNote(reviewerNote)" class="rounded-full bg-amber-600 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-40">{{ busy()==='Under Review' ? 'Recording review...' : 'Complete review' }}</button>
        <button type="button" (click)="act('Approved')" [disabled]="!!busy() || !!block('Approved') || !validNote(reviewerNote)" class="rounded-full bg-emerald-700 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-40">{{ busy()==='Approved' ? 'Submitting approval...' : 'Approve application' }}</button>
        <button type="button" (click)="rejecting.set(true)" [disabled]="!!busy() || !!block('Rejected')" class="rounded-full border border-red-300 px-5 py-2.5 text-sm font-bold text-red-700 disabled:opacity-40">Reject...</button>
@@ -88,12 +89,12 @@ export class AdminApplicationsComponent implements OnInit,OnDestroy {
  readonly view=signal<AdminApplication|null>(null);readonly busy=signal<string|null>(null);readonly loadingDetail=signal(false);
  readonly actionError=signal('');readonly success=signal('');readonly rejecting=signal(false);
  reviewerNote='';rejectionReason='';documentsVerified=false;
- readonly tabRows=computed(()=>this.admin.applications().filter(row=>this.tab()==='Distributors'?row.source==='distributor':row.source==='lead'&&row.type===(this.tab()==='Wholesalers'?'Wholesaler':'Affiliate Marketer')));
+ readonly tabRows=computed(()=>this.admin.applications().filter(row=>row.type===(this.tab()==='Distributors'?'Distributor':this.tab()==='Wholesalers'?'Wholesaler':'Affiliate Marketer')));
  readonly categories=computed(()=>[...new Set(this.tabRows().map(row=>row.category).filter(Boolean))]);
- readonly statuses=computed(()=>this.tab()==='Distributors'?['Pending','Under Review','Activation Pending','Approved','Rejected','Suspension Pending','Suspended','Unknown']:['New','Assigned','In Progress','Resolved','Closed','Unknown']);
+ readonly statuses=computed(()=>this.tab()!=='Affiliate Marketers'?['New','Assigned','In Progress','Resolved','Closed','Pending','Under Review','Activation Pending','Approved','Rejected','Suspension Pending','Suspended','Unknown']:['New','Assigned','In Progress','Resolved','Closed','Unknown']);
  readonly stats=computed(()=>{
   const rows=this.tabRows();const count=(states:string[])=>rows.filter(row=>states.includes(row.rawState??'')).length;
-  return this.tab()==='Distributors'?[{label:'Applications',value:rows.length},{label:'Awaiting review',value:count(['SUBMITTED'])},{label:'Under review',value:count(['UNDER_REVIEW'])},{label:'Processing',value:count(['ACTIVATION_PENDING','SUSPENSION_PENDING'])},{label:'Approved',value:count(['APPROVED'])},{label:'Rejected',value:count(['REJECTED'])}]:[{label:'Lead requests',value:rows.length},{label:'New',value:count(['NEW'])},{label:'In progress',value:count(['ASSIGNED','IN_PROGRESS'])},{label:'Resolved',value:count(['RESOLVED'])},{label:'Closed',value:count(['CLOSED'])}];
+  return this.tab()!=='Affiliate Marketers'?[{label:'Applications',value:rows.length},{label:'Awaiting review',value:count(['SUBMITTED'])},{label:'Under review',value:count(['UNDER_REVIEW'])},{label:'Processing',value:count(['ACTIVATION_PENDING','SUSPENSION_PENDING'])},{label:'Approved',value:count(['APPROVED'])},{label:'Rejected',value:count(['REJECTED'])}]:[{label:'Lead requests',value:rows.length},{label:'New',value:count(['NEW'])},{label:'In progress',value:count(['ASSIGNED','IN_PROGRESS'])},{label:'Resolved',value:count(['RESOLVED'])},{label:'Closed',value:count(['CLOSED'])}];
  });
  readonly filteredList=computed(()=>{const query=this.searchQuery().toLowerCase();return this.tabRows().filter(row=>(this.statusFilter()==='All'||row.status===this.statusFilter())&&(this.catFilter()==='All categories'||row.category===this.catFilter())&&[row.businessName,row.contactPerson,row.email,row.phone,row.location,row.number,row.businessReference??''].join(' ').toLowerCase().includes(query));});
  ngOnInit():void{this.refresh();}
@@ -103,7 +104,7 @@ export class AdminApplicationsComponent implements OnInit,OnDestroy {
  getTone(status:string){return statusTone(status);}
  validNote(note:string):boolean{return !!note.trim()&&note.trim().length<=500;}
  processing(record:AdminApplication):boolean{return ['ACTIVATION_PENDING','SUSPENSION_PENDING'].includes(record.rawState??'');}
- editable(record:AdminApplication):boolean{if(!this.detailReady())return false;return record.source==='lead'?['NEW','ASSIGNED','IN_PROGRESS','RESOLVED'].includes(record.rawState??''):['SUBMITTED','UNDER_REVIEW'].includes(record.rawState??'');}
+ editable(record:AdminApplication):boolean{if(!this.detailReady())return false;return record.source==='lead'?['NEW','ASSIGNED','IN_PROGRESS','RESOLVED'].includes(record.rawState??''):['SUBMITTED','UNDER_REVIEW','ACTIVATION_PENDING'].includes(record.rawState??'');}
  reviewer(record:AdminApplication):string{const id=record.reviewerPartyId;if(!id)return 'Not recorded';if(id===this.admin.session.userId())return 'You (staff ID '+id+')';return this.admin.admins().find(user=>user.id===id)?.name??('Staff ID '+id);}
  block(action:string):string|null{const row=this.view();if(!row)return 'Open an application first.';if(!this.admin.session.hasRole('SALES'))return 'Sales access is required.';return distributorActionBlock({state:row.rawState,reviewerPartyId:row.reviewerPartyId,documents:row.documents},action,this.admin.session.userId(),this.admin.distributorMarket()?.id);}
  leadAllowed(record:AdminApplication,action:string):boolean{return this.admin.session.hasRole('SALES')&&partnerLeadActionAllowed(record.rawState??'',action);}

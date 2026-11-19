@@ -3,8 +3,8 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { firstValueFrom } from 'rxjs';
-import { SessionService, MarketingService, BackendDistributorApplication, apiFailureDetail } from 'shared-ui';
+import { firstValueFrom, tap, throwError } from 'rxjs';
+import { SessionService, MarketingService, BackendDistributorApplication, DistributorApplicationPayload, apiFailureDetail } from 'shared-ui';
 import {
   LucideCheckCircle2, LucideBuilding,
   LucideUsers, LucideLoader2, LucideShieldCheck,
@@ -97,23 +97,23 @@ function problemField(error: unknown, field: string): string | undefined {
             <div *ngIf="activeTab() === 'wholesaler'">
               <span class="text-xs font-bold uppercase tracking-wider text-brand">Trade & Bulk Sourcing</span>
               <h2 class="text-xl font-bold text-ink mt-1">Wholesale Benefits</h2>
-              <p class="mt-2 text-xs text-muted-foreground">Direct tier-1 factory pricing and rapid dispatch for bulk stockists and retailers.</p>
+              <p class="mt-2 text-xs text-muted-foreground">Apply for wholesale purchasing. Approval and pricing assignment are separate steps.</p>
               <ul class="mt-6 space-y-3.5 text-sm text-ink/80">
                 <li class="flex gap-3">
                   <svg lucideCheckCircle2 class="h-5 w-5 text-brand flex-none mt-0.5"></svg>
-                  <span><strong>Tiered Wholesale Margins:</strong> Up to 35-40% profit on carton and pallet trade orders.</span>
+                  <span><strong>Assigned wholesale prices:</strong> Staff configure your applicable prices after approval.</span>
                 </li>
                 <li class="flex gap-3">
                   <svg lucideCheckCircle2 class="h-5 w-5 text-brand flex-none mt-0.5"></svg>
-                  <span><strong>Lagos Central Hub Dispatch:</strong> 24-48 hr delivery nationwide across Alaba, Computer Village, Kano & Onitsha.</span>
+                  <span><strong>Purchase quantities:</strong> Product minimums and pack quantities apply to business orders.</span>
                 </li>
                 <li class="flex gap-3">
                   <svg lucideCheckCircle2 class="h-5 w-5 text-brand flex-none mt-0.5"></svg>
-                  <span><strong>Official 12-Month Warranty:</strong> Direct RMA replacement guarantee for your retail customers.</span>
+                  <span><strong>Application tracking:</strong> Follow the review status from your customer account.</span>
                 </li>
                 <li class="flex gap-3">
                   <svg lucideCheckCircle2 class="h-5 w-5 text-brand flex-none mt-0.5"></svg>
-                  <span><strong>Trade Settlement Options:</strong> Cash on delivery at Lagos hub or 14-day revolving trade terms.</span>
+                  <span><strong>Verified business:</strong> Submit registration proof for document review and independent approval.</span>
                 </li>
               </ul>
             </div>
@@ -122,23 +122,23 @@ function problemField(error: unknown, field: string): string | undefined {
             <div *ngIf="activeTab() === 'distributor'">
               <span class="text-xs font-bold uppercase tracking-wider text-brand">Regional Enterprise Network</span>
               <h2 class="text-xl font-bold text-ink mt-1">Distributor Privileges</h2>
-              <p class="mt-2 text-xs text-muted-foreground">Accredited corporate distribution rights with price book exclusivity and contract backing.</p>
+              <p class="mt-2 text-xs text-muted-foreground">Apply for distributor purchasing. Approval does not automatically grant territory exclusivity or credit.</p>
               <ul class="mt-6 space-y-3.5 text-sm text-ink/80">
                 <li class="flex gap-3">
                   <svg lucideCheckCircle2 class="h-5 w-5 text-brand flex-none mt-0.5"></svg>
-                  <span><strong>Exclusive State / Regional Territory:</strong> Protected distribution channel in your designated Nigerian market.</span>
+                  <span><strong>Business review:</strong> Staff review your company registration and requested territory.</span>
                 </li>
                 <li class="flex gap-3">
                   <svg lucideCheckCircle2 class="h-5 w-5 text-brand flex-none mt-0.5"></svg>
-                  <span><strong>Enterprise Price Book:</strong> Direct manufacturer price book entitlement with volume rebate structures.</span>
+                  <span><strong>Distributor pricing:</strong> Your approved organization receives its assigned price book.</span>
                 </li>
                 <li class="flex gap-3">
                   <svg lucideCheckCircle2 class="h-5 w-5 text-brand flex-none mt-0.5"></svg>
-                  <span><strong>Marketing Co-Op Funds:</strong> Branded point-of-sale displays, roadside branding, and digital lead routing.</span>
+                  <span><strong>Account-linked access:</strong> Partner access stays linked to your existing customer account.</span>
                 </li>
                 <li class="flex gap-3">
                   <svg lucideCheckCircle2 class="h-5 w-5 text-brand flex-none mt-0.5"></svg>
-                  <span><strong>Corporate Credit Line:</strong> Up to ₦50M revolving commercial facility for vetted incorporated businesses.</span>
+                  <span><strong>Explicit commercial terms:</strong> Staff assign prices and minimum quantities; approval alone does not enable credit.</span>
                 </li>
               </ul>
             </div>
@@ -203,7 +203,7 @@ function problemField(error: unknown, field: string): string | undefined {
                 </div>
                 <h3 class="text-2xl font-extrabold text-ink">Wholesale Application Received</h3>
                 <p class="text-sm md:text-base text-muted-foreground max-w-lg mx-auto">
-                  Thank you, <strong>{{ f.contact || f.company }}</strong>! Your application for <strong>{{ f.company }}</strong> has been recorded in the database. Our wholesale desk will contact you via WhatsApp / email within 24 hours.
+                  Thank you, <strong>{{ f.contact || f.company }}</strong>! Your application for <strong>{{ f.company }}</strong> has been recorded in the database. Track your application below. Business prices become available after review, approval and pricing assignment.
                 </p>
                 <div class="pt-4">
                   <button
@@ -211,7 +211,7 @@ function problemField(error: unknown, field: string): string | undefined {
                     (click)="resetWholesale()"
                     class="inline-flex items-center gap-2 rounded-full border border-hairline px-6 py-2.5 text-xs font-semibold hover:border-brand hover:text-brand transition-colors"
                   >
-                    Submit another wholesale enquiry
+                    Submit another wholesale application
                   </button>
                 </div>
               </div>
@@ -293,6 +293,46 @@ function problemField(error: unknown, field: string): string | undefined {
                   </select>
                 </div>
 
+                <div *ngIf="!session.authenticated()" class="rounded-xl border border-hairline p-4 text-sm"><p>Sign in to submit and track a wholesale application.</p><button type="button" (click)="session.signIn('/distributor?tab=wholesaler')" class="mt-2 rounded-full bg-brand px-4 py-2 text-white">Sign in to apply</button></div>
+                <section *ngIf="session.authenticated()" class="space-y-3 rounded-xl border border-hairline bg-surface-alt p-4" aria-labelledby="wholesale-registration-proof-label">
+                  <div>
+                    <label id="wholesale-registration-proof-label" for="wholesale-registration-proof" class="block text-xs font-bold uppercase tracking-wider text-muted-ink mb-1.5">
+                      Business registration proof <span class="text-brand">*</span>
+                    </label>
+                    <input
+                      id="wholesale-registration-proof"
+                      type="file"
+                      accept="application/pdf,image/jpeg,image/png"
+                      (change)="onDocumentSelected($event)"
+                      [disabled]="uploadingDocument() || checkingDocument() || submittingWholesale()"
+                      class="block w-full text-sm text-muted-ink file:mr-3 file:rounded-lg file:border-0 file:bg-brand file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white disabled:opacity-60"
+                    />
+                    <p class="mt-1 text-xs text-muted-foreground">PDF, JPEG, or PNG; maximum 10 MB. The document must pass the server-side security scan before you can submit.</p>
+                  </div>
+                  <p *ngIf="selectedDocumentName()" class="text-sm text-ink">{{ selectedDocumentName() }}</p>
+                  <p *ngIf="documentUploadState() === 'QUARANTINED'" class="text-sm text-amber-700" aria-live="polite">
+                    Upload complete. The document is awaiting security-scan approval.
+                  </p>
+                  <p *ngIf="documentUploadState() === 'CLEAN'" class="text-sm text-green-700" aria-live="polite">
+                    The document passed the security scan and is ready to submit.
+                  </p>
+                  <div class="flex flex-wrap items-center gap-3">
+                    <button
+                      *ngIf="selectedDocumentId && documentUploadState() === 'QUARANTINED'"
+                      type="button"
+                      (click)="checkDocumentStatus()"
+                      [disabled]="checkingDocument()"
+                      class="rounded-lg border border-hairline bg-white px-3 py-2 text-sm font-semibold text-ink disabled:opacity-60"
+                    >
+                      {{ checkingDocument() ? 'Checking scan status...' : 'Check scan status' }}
+                    </button>
+                    <a *ngIf="documentDownloadUrl()" [href]="documentDownloadUrl()" target="_blank" rel="noopener noreferrer" class="text-sm font-semibold text-brand underline">
+                      Download uploaded document
+                    </a>
+                  </div>
+                  <p *ngIf="documentUploadError()" class="text-sm text-red-700" role="alert">{{ documentUploadError() }}</p>
+                </section>
+
                 <button
                   type="submit"
                   [disabled]="submittingWholesale()"
@@ -313,16 +353,12 @@ function problemField(error: unknown, field: string): string | undefined {
                   <svg lucideCheckCircle2 class="h-9 w-9"></svg>
                 </div>
                 <h3 class="text-2xl font-extrabold text-ink">
-                  {{ distributorApplicationSubmitted() ? 'Corporate Distributor Application Submitted' : 'Distributor Enquiry Received' }}
+                  Distributor Application Submitted
                 </h3>
-                <p class="text-sm md:text-base text-muted-foreground max-w-lg mx-auto" *ngIf="distributorApplicationSubmitted(); else distributorEnquiryOnly">
+                <p class="text-sm md:text-base text-muted-foreground max-w-lg mx-auto">
                   The backend recorded your corporate application for <strong>{{ dist.organizationName }}</strong>. Our commercial partnerships team will contact your executive office.
                 </p>
-                <ng-template #distributorEnquiryOnly>
-                  <p class="text-sm md:text-base text-muted-foreground max-w-lg mx-auto">
-                    Your enquiry for <strong>{{ dist.organizationName }}</strong> was sent to Nigson. This does not create a distributor application; a signed-in application with a verified registration document is required.
-                  </p>
-                </ng-template>
+
                 <div class="pt-4">
                   <button
                     type="button"
@@ -340,7 +376,7 @@ function problemField(error: unknown, field: string): string | undefined {
                 <span class="text-xs font-bold uppercase tracking-wider text-brand">Exclusive Corporate Channel</span>
                 <h2 class="text-2xl font-bold text-ink mt-0.5">Corporate Distributor Application</h2>
                 <p class="mt-1 text-sm text-muted-foreground">For incorporated trading companies, regional logistics networks, and major electronics distributors.</p>
-                <p class="mt-2 text-sm text-muted-foreground">Authenticated applicants must upload genuine business-registration proof and wait for its security scan. Unauthenticated submissions are recorded as enquiries only.</p>
+                <p class="mt-2 text-sm text-muted-foreground">Sign in and upload genuine business-registration proof. Your application must pass document review and independent approval. Prices and minimum quantities are assigned separately.</p>
               </div>
 
               <div *ngIf="!session.authenticated()" class="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 flex flex-wrap items-center justify-between gap-3">
@@ -468,9 +504,12 @@ function problemField(error: unknown, field: string): string | undefined {
               </form>
             </ng-template>
 
-            <div *ngIf="session.authenticated()" class="mt-8 border-t border-hairline pt-6 space-y-3">
+
+          </div>
+
+            <div *ngIf="session.authenticated() && activeTab() !== 'affiliate'" class="mt-8 border-t border-hairline pt-6 space-y-3">
               <div class="flex items-center justify-between">
-                <h3 class="text-sm font-bold uppercase tracking-wider text-ink">Your Submitted Distributor Applications</h3>
+                <h3 class="text-sm font-bold uppercase tracking-wider text-ink">Your Business Applications</h3>
                 <button
                   type="button"
                   (click)="loadMyApplications()"
@@ -482,11 +521,11 @@ function problemField(error: unknown, field: string): string | undefined {
               <p *ngIf="marketingSvc.myApplicationsError?.()" class="text-xs text-red-600">{{ marketingSvc.myApplicationsError?.() }}</p>
               <p *ngIf="loadingMyApplications()" class="text-xs text-muted-foreground">Loading your applications from database...</p>
               <div *ngIf="!loadingMyApplications() && myApplications().length === 0" class="rounded-xl border border-hairline bg-surface-alt px-4 py-3 text-xs text-muted-foreground">
-                No distributor applications found for your account yet.
+                No business applications found for your account yet.
               </div>
               <div *ngFor="let app of myApplications()" class="rounded-xl border border-hairline bg-surface-alt px-4 py-3 flex flex-wrap items-center justify-between gap-2 text-xs">
                 <div>
-                  <p class="font-bold text-ink">Application APP-D{{ app.id.slice(0, 6).toUpperCase() }}</p>
+                  <p class="font-bold text-ink">{{ app.partnerType === 'WHOLESALE' ? 'Wholesale' : 'Distributor' }} application {{ app.id.slice(0, 8).toUpperCase() }}</p>
                   <p class="text-muted-foreground">Submitted {{ app.submittedAt | date:'medium' }}</p>
                 </div>
                 <span class="rounded-full px-3 py-1 font-bold text-[11px] bg-white border border-hairline text-ink">
@@ -494,7 +533,6 @@ function problemField(error: unknown, field: string): string | undefined {
                 </span>
               </div>
             </div>
-          </div>
 
           <!-- ================= TAB 3: AFFILIATE MARKETER FORM ================= -->
           <div *ngIf="activeTab() === 'affiliate'" class="rounded-2xl border border-hairline bg-white p-6 md:p-8 shadow-sm">
@@ -639,7 +677,7 @@ export class DistributorComponent {
   switchTab(tab: 'wholesaler' | 'distributor' | 'affiliate') {
     this.activeTab.set(tab);
     this.submitError.set(null);
-    if (tab === 'distributor' && this.session.authenticated()) {
+    if (tab !== 'affiliate' && this.session.authenticated()) {
       this.loadMyApplications();
     }
     if (this.router && this.route) {
@@ -964,6 +1002,15 @@ export class DistributorComponent {
     return Object.keys(this.affiliateErrors()).length === 0;
   }
 
+  private readonly pendingApplications = new Map<string,{body:string;key:string}>();
+  private submitBusinessApplication(payload: DistributorApplicationPayload) {
+    const scope=this.session.userId()+':'+payload.partnerType;
+    const body=JSON.stringify(payload);const previous=this.pendingApplications.get(scope);
+    if(previous && previous.body!==body)return throwError(()=>new Error('Your earlier submission is unconfirmed. Restore its details and retry, or refresh application status before starting another application.'));
+    const request=previous??{body,key:crypto.randomUUID()};this.pendingApplications.set(scope,request);
+    return this.marketingSvc.submitDistributorApplication(payload,request.key).pipe(tap(()=>this.pendingApplications.delete(scope)));
+  }
+
   onWholesaleSubmit(event: Event) {
     event.preventDefault();
     this.submitError.set(null);
@@ -989,32 +1036,11 @@ export class DistributorComponent {
       `Preferred Settlement: ${this.f.paymentTerms}`
     ].join('\n');
 
-    this.marketingSvc.submitEnquiry({
-      type: 'CONTACT',
-      name: (this.f.contact || this.f.company).trim().slice(0, 160),
-      email: this.f.email.trim().slice(0, 254),
-      phone: this.f.phone.trim().slice(0, 32),
-      subject: `Wholesale Application: ${this.f.company} (${this.f.state})`.slice(0, 200),
-      message: fullMessage
-    }).subscribe({
-      next: (res) => {
-        this.submittingWholesale.set(false);
-        if (res.success) {
-          this.wholesaleSubmitted.set(true);
-        } else {
-          this.wholesaleSubmitted.set(false);
-          if (res.status === 422) {
-            this.submitError.set(`Backend API returned 422 Unprocessable Entity (${res.error}).\nThe backend public lead intake service is currently gated/inactive in backend configuration.`);
-          } else {
-            this.submitError.set(`Submission failed (${res.status}): ${res.error || 'Server error'}`);
-          }
-        }
-      },
-      error: () => {
-        this.submittingWholesale.set(false);
-        this.wholesaleSubmitted.set(false);
-        this.submitError.set('Could not submit wholesale application. Please check network connection and try again.');
-      }
+    if (!this.session.authenticated()) {this.submittingWholesale.set(false);this.submitError.set('Sign in to submit a business application linked to your account.');return;}
+    if (!this.selectedDocumentId || this.documentUploadState() !== 'CLEAN') {this.submittingWholesale.set(false);this.submitError.set('Upload your registration proof and wait for a clean security scan.');return;}
+    this.submitBusinessApplication({organizationName:this.f.company.trim(),countryCode:'NG',partnerType:'WHOLESALE',documentIds:[this.selectedDocumentId],businessDetails:fullMessage}).subscribe({
+      next:()=>{this.submittingWholesale.set(false);this.wholesaleSubmitted.set(true);this.selectedDocumentId=undefined;this.loadMyApplications();},
+      error:(error:any)=>{this.submittingWholesale.set(false);this.submitError.set(apiFailureDetail(error,'Wholesale application was not submitted. Please try again.'));}
     });
   }
 
@@ -1053,61 +1079,10 @@ export class DistributorComponent {
       `Logistics Capacity: ${this.dist.logisticsCapacity}`
     ].join('\n');
 
-    this.marketingSvc.submitEnquiry({
-      type: 'CONTACT',
-      name: (this.dist.directorName || this.dist.organizationName).trim().slice(0, 160),
-      email: this.dist.email.trim().slice(0, 254),
-      phone: this.dist.phone.trim().slice(0, 32),
-      subject: `Corporate Distributor Application: ${this.dist.organizationName} (${this.dist.territory})`.slice(0, 200),
-      message: fullMessage
-    }).subscribe({
-      next: (res) => {
-        if (res.success) {
-          if (!authenticated) {
-            this.submittingDistributor.set(false);
-            this.distributorApplicationSubmitted.set(false);
-            this.distributorSubmitted.set(true);
-            return;
-          }
-          if (!documentId) {
-            this.submittingDistributor.set(false);
-            this.submitError.set('Your enquiry was received, but a verified registration document is required to create the distributor application.');
-            return;
-          }
-          this.marketingSvc.submitDistributorApplication({
-            organizationName: this.dist.organizationName.trim(),
-            countryCode: 'NG',
-            documentIds: [documentId],
-            businessReference: businessRef
-          }).subscribe({
-            next: () => {
-              this.submittingDistributor.set(false);
-              this.distributorApplicationSubmitted.set(true);
-              this.distributorSubmitted.set(true);
-              this.loadMyApplications();
-            },
-            error: (error: any) => {
-              this.submittingDistributor.set(false);
-              this.distributorSubmitted.set(false);
-              const reason = error?.error?.message || error?.error?.code || 'Distributor application submission failed';
-              this.submitError.set(`Your enquiry was received, but the distributor application was not submitted: ${reason}`);
-            }
-          });
-        } else {
-          this.submittingDistributor.set(false);
-          this.distributorSubmitted.set(false);
-          if (res.status === 422) {
-            this.submitError.set(`Backend API returned 422 Unprocessable Entity (${res.error}).\nThe backend public lead intake service is currently gated/inactive in backend configuration.`);
-          } else {
-            this.submitError.set(`Submission failed (${res.status}): ${res.error || 'Server error'}`);
-          }
-        }
-      },
-      error: (error: any) => {
-        this.submittingDistributor.set(false);
-        this.distributorSubmitted.set(false);
-        this.submitError.set(error?.error?.message || error?.error?.code || 'Could not submit the distributor enquiry. Please try again.');
-      }
+    if (!authenticated || !documentId) {this.submittingDistributor.set(false);this.submitError.set('Sign in and upload your registration proof to submit an application.');return;}
+    this.submitBusinessApplication({organizationName:this.dist.organizationName.trim(),countryCode:'NG',partnerType:'DISTRIBUTOR',documentIds:[documentId],businessReference:businessRef,businessDetails:fullMessage}).subscribe({
+      next:()=>{this.submittingDistributor.set(false);this.distributorApplicationSubmitted.set(true);this.distributorSubmitted.set(true);this.selectedDocumentId=undefined;this.loadMyApplications();},
+      error:(error:any)=>{this.submittingDistributor.set(false);this.submitError.set(apiFailureDetail(error,'Distributor application was not submitted. Please try again.'));}
     });
   }
 

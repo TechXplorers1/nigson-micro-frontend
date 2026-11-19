@@ -25,6 +25,8 @@ import { CartService, CatalogService, ShopService, SessionService, QtyStepperCom
 
           <div *ngIf="!shop.hydrated()" class="rounded-2xl border border-hairline p-10 animate-pulse h-64 bg-surface-alt"></div>
           
+          <div *ngIf="cart.pricingError()" role="alert" class="mb-4 rounded-xl border border-red-300 p-4">{{ cart.pricingError() }}</div>
+          <div *ngIf="cart.reviewRequired()" role="alert" class="mb-4 rounded-xl border border-amber-300 p-4">Prices or minimum quantities have changed. Review the updated items before checkout. <button (click)="cart.acknowledgePrices()" class="ml-2 underline">I have reviewed these prices</button></div>
           <ng-container *ngIf="shop.hydrated()">
             <div *ngIf="cart.items().length === 0" class="rounded-3xl border border-hairline bg-surface-alt p-10 md:p-16 text-center">
               <div class="mx-auto grid h-16 w-16 place-items-center rounded-full bg-white shadow-elegant">
@@ -111,6 +113,7 @@ import { CartService, CatalogService, ShopService, SessionService, QtyStepperCom
                       </p>
                     </div>
                     <div class="mt-auto pt-4 flex items-center justify-between">
+                      <p *ngIf="item.purchaseError" role="alert" class="mb-2 text-sm text-red-600">{{ item.purchaseError }}</p>
                       <ui-qty-stepper [product]="item" [image]="item.imageUrl"></ui-qty-stepper>
                       <button
                         (click)="removeItem(item.lineId)"
@@ -165,7 +168,7 @@ import { CartService, CatalogService, ShopService, SessionService, QtyStepperCom
 
                 <button
                   (click)="proceedToCheckout()"
-                  [disabled]="cart.selectedItems().length === 0"
+                  [disabled]="cart.selectedItems().length === 0 || !cart.readyForCheckout()"
                   title="Proceed to Checkout"
                   aria-label="Proceed to Checkout"
                   class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand text-white py-3.5 text-sm font-semibold hover:bg-brand-deep disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -216,6 +219,6 @@ export class CartComponent implements OnInit {
   }
 
   proceedToCheckout() {
-    this.router.navigate(["/checkout"]);
+    if (this.cart.readyForCheckout()) this.router.navigate(["/checkout"]);
   }
 }

@@ -40,6 +40,7 @@ import { CatalogService, Product, ShopService, QtyStepperComponent } from 'share
             </p>
           </ng-container>
           <p *ngIf="priceLoading()" class="mt-1 h-7 w-28 animate-pulse rounded-lg bg-surface-alt"></p>
+          <p *ngIf="priceMinorUnits() !== null && minimumQuantity() > 1" class="mt-2 text-xs font-semibold">Minimum {{ minimumQuantity() }} units<span *ngIf="packMultiple() > 1">; multiples of {{ packMultiple() }}</span>.</p>
           <p *ngIf="!compact" class="mt-3 text-sm text-muted-foreground leading-relaxed line-clamp-2">{{ p.description }}</p>
         </div>
       </a>
@@ -77,11 +78,13 @@ export class ProductCardComponent implements OnInit {
   readonly priceLoading = signal(true);
   readonly displayPrice = signal('Contact for price');
   readonly priceMinorUnits = signal<number | null>(null);
+  readonly minimumQuantity = signal(1);
+  readonly packMultiple = signal(1);
   readonly resolvedSkuId = signal<string | null>(null);
 
   productForStepper = computed(() => {
     const skuId = this.resolvedSkuId() || (this.p.skuId && this.p.skuId !== this.p.id ? this.p.skuId : null) || this.p.id;
-    const minor = this.priceMinorUnits() ?? this.p.priceMinorUnits ?? 0;
+    const minor = this.priceMinorUnits() ?? 0;
     return {
       ...this.p,
       skuId: skuId,
@@ -90,20 +93,14 @@ export class ProductCardComponent implements OnInit {
       name: this.p.name,
       categoryName: this.p.categoryName || 'General',
       imageUrl: this.primaryImage(),
+      minimumQuantity: this.minimumQuantity(),
+      packMultiple: this.packMultiple(),
       priceMinorUnits: minor,
       price: minor / 100
     };
   });
 
   ngOnInit() {
-    if (this.p.priceMinorUnits && this.p.priceMinorUnits > 0) {
-      this.displayPrice.set(this.catalog.formatPrice(this.p.priceMinorUnits));
-      this.priceLoading.set(false);
-    } else if (this.p.price && this.p.price > 0) {
-      this.displayPrice.set(this.catalog.formatPriceNaira(this.p.price));
-      this.priceLoading.set(false);
-    }
-
     const loadPrice = (skuId: string | undefined) => {
       if (!skuId || skuId === this.p.id) {
         if (!this.p.priceMinorUnits && !this.p.price) {
@@ -114,6 +111,8 @@ export class ProductCardComponent implements OnInit {
       this.resolvedSkuId.set(skuId);
       this.catalog.getPrice(skuId).subscribe({
         next: price => {
+          this.minimumQuantity.set(price.minimumQuantity);
+          this.packMultiple.set(price.packMultiple);
           this.priceMinorUnits.set(price.priceMinorUnits);
           this.displayPrice.set(this.catalog.formatPrice(price.priceMinorUnits));
           this.priceLoading.set(false);
