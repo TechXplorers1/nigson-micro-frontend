@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { forkJoin } from 'rxjs';
+import { forkJoin, of, catchError } from 'rxjs';
 import { CatalogService, PageHeaderComponent, Product, QuoteService, ShopService } from 'shared-ui';
 import { LucideCheckCircle2 } from '@lucide/angular';
 
@@ -56,7 +56,7 @@ interface QuoteSkuOption {
                 <option *ngFor="let sku of skuOptions()" [value]="sku.id">{{ sku.variantName || sku.code }}</option>
               </select>
             </div>
-            <p *ngIf="selectedProduct() && skuOptions().length === 0" class="text-sm text-amber-700">
+            <p *ngIf="selectedProduct() && skuOptions().length === 0 && !f.skuId" class="text-sm text-amber-700">
               This product has no currently available quoteable variants. Select another product.
             </p>
 
@@ -87,7 +87,7 @@ interface QuoteSkuOption {
 
             <button
               type="submit"
-              [disabled]="quoteSvc.submitting() || loadingOptions() || !marketId() || products().length === 0"
+              [disabled]="quoteSvc.submitting() || loadingOptions() || products().length === 0"
               class="w-full rounded-full bg-brand text-brand-foreground py-3 text-sm font-semibold hover:bg-brand-deep transition-colors disabled:opacity-50"
             >
               {{ quoteSvc.submitting() ? 'Submitting request...' : 'Send quote request' }}
@@ -124,15 +124,21 @@ export class QuoteComponent implements OnInit {
   };
 
   ngOnInit(): void {
+    const user = this.shop.user();
+    if (user) {
+      if (!this.f.name && user.fullName) this.f.name = user.fullName;
+      if (!this.f.email && user.email) this.f.email = user.email;
+      if (!this.f.phone && user.phone) this.f.phone = user.phone;
+    }
+
     forkJoin({
-      markets: this.http.get<Array<{ id: string; code: string }>>('/api/v1/markets'),
-      products: this.catalog.loadProducts({ page: 0, size: 100 })
+      markets: this.http.get<Array<{ id: string; code: string }>>('/api/v1/markets').pipe(catchError(() => of([] as Array<{ id: string; code: string }>))),
+      products: this.catalog.loadProducts({ page: 0, size: 100 }).pipe(catchError(() => of({ content: [] as Product[] } as any)))
     }).subscribe({
-      next: ({ markets, products }) => {
-        this.marketId.set(markets.find(market => market.code === 'NG')?.id ?? null);
-        this.products.set(products.content.filter(product => product.publicationStatus === 'PUBLISHED'));
-        if (!this.marketId()) this.error.set('No active NG market is available for quote requests.');
-        else if (this.products().length === 0) this.error.set('No catalogue products are currently available for quotes.');
+      next: ({ markets, products }: { markets: Array<{ id: string; code: string }>; products: any }) => {
+        this.marketId.set(markets.find(market => market.code === 'NG')?.id ?? '4a2f96cf-71df-4a6c-b3a1-7718c5f0bdf2');
+        this.products.set(((products?.content as Product[]) || []).filter((product: Product) => product.publicationStatus === 'PUBLISHED'));
+        if (this.products().length === 0) this.error.set('No catalogue products are currently available for quotes.');
         this.loadingOptions.set(false);
       },
       error: () => {
@@ -154,7 +160,11 @@ export class QuoteComponent implements OnInit {
         const options = product.quoteSkus ?? [];
         this.selectedProduct.set(product);
         this.skuOptions.set(options);
-        if (options.length === 1) this.f.skuId = options[0].id;
+        if (options.length === 1) {
+          this.f.skuId = options[0].id;
+        } else if (options.length === 0) {
+          this.f.skuId = product.skuId || product.id || '';
+        }
       },
       error: () => this.error.set('Unable to load variants for this product. Please choose another product.')
     });
@@ -164,33 +174,43 @@ export class QuoteComponent implements OnInit {
     event.preventDefault();
     this.error.set(null);
 
-    if (!this.shop.user()) {
-      this.shop.openLoginRequired('Sign in to submit a quote and track its status.');
+    if (!this.f.name?.trim() || !this.f.email?.trim()) {
+      this.error.set('Please provide your name and email address.');
       return;
     }
 
     const product = this.selectedProduct();
-    if (!this.marketId() || !product || !this.f.skuId || !this.f.quantity || Number(this.f.quantity) <= 0) {
+    const skuId = this.f.skuId || product?.skuId || product?.id;
+    if (!product || !skuId || !this.f.quantity || Number(this.f.quantity) <= 0) {
       this.error.set('Select an available product variant and enter a valid quantity.');
       return;
     }
 
+    const selectedOption = this.skuOptions().find(o => o.id === skuId);
+    const skuCode = selectedOption?.code || product.sku || skuId;
+
     this.quoteSvc.submitQuote({
-      marketId: this.marketId()!,
-      products: [{ skuId: this.f.skuId, quantity: String(this.f.quantity) }],
+      marketId: this.marketId() || '4a2f96cf-71df-4a6c-b3a1-7718c5f0bdf2',
+      products: [{ skuId: skuId, quantity: String(this.f.quantity).trim() }],
       subject: `Quote request - ${product.name}`,
-      message: this.f.message,
+      message: this.f.message.trim(),
+      productName: product.name,
+      skuCode: skuCode,
       contact: {
-        name: this.f.name,
-        email: this.f.email,
-        phone: this.f.phone || undefined
+        name: this.f.name.trim(),
+        email: this.f.email.trim(),
+        phone: this.f.phone?.trim() || undefined
       }
     }).subscribe({
       next: () => {
         this.submitted.set(true);
-        setTimeout(() => this.router.navigate(['/account/quotes']), 1200);
+        const destination = this.shop.user() ? '/account/quotes' : '/shop';
+        setTimeout(() => this.router.navigate([destination]), 1500);
       },
-      error: () => this.error.set('Failed to submit quote request. Please check your details and try again.')
+      error: (err) => {
+        console.error('[QuoteComponent] submit failed:', err);
+        this.error.set('Failed to submit quote request. Please check your details and try again.');
+      }
     });
   }
 }

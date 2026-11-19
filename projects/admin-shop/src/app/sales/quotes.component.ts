@@ -89,7 +89,7 @@ import { LucideSearch, LucideEye, LucideX } from '@lucide/angular';
             </div>
             <div class="rounded-xl border border-gray-100 px-4 py-3">
               <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-ink">Phone</p>
-              <p class="mt-1 font-semibold text-ink">{{ view().phone }}</p>
+              <p class="mt-1 font-semibold text-ink">{{ view().phone || '—' }}</p>
             </div>
             <div class="rounded-xl border border-gray-100 px-4 py-3">
               <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-ink">Product</p>
@@ -97,11 +97,11 @@ import { LucideSearch, LucideEye, LucideX } from '@lucide/angular';
             </div>
             <div class="rounded-xl border border-gray-100 px-4 py-3">
               <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-ink">SKU</p>
-              <p class="mt-1 font-semibold text-ink">{{ view().sku }}</p>
+              <p class="mt-1 font-semibold text-ink">{{ view().sku || '—' }}</p>
             </div>
             <div class="rounded-xl border border-gray-100 px-4 py-3">
               <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-ink">Quantity</p>
-              <p class="mt-1 font-semibold text-ink">{{ view().quantity }}</p>
+              <p class="mt-1 font-semibold text-ink">{{ view().quantity || '—' }}</p>
             </div>
             <div class="rounded-xl border border-gray-100 px-4 py-3">
               <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-ink">Submitted</p>
@@ -161,7 +161,7 @@ export class AdminQuotesComponent implements OnInit {
 
     if (q) {
       list = list.filter(x => 
-        (x.customer + x.email + x.product + x.number).toLowerCase().includes(q)
+        (x.customer + x.email + x.product + (x.sku || '') + x.number).toLowerCase().includes(q)
       );
     }
     if (s !== 'All statuses') {

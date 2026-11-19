@@ -735,7 +735,39 @@ export class AdminService {
   }
   loadStaffQuotes(): Observable<AdminQuote[]> {
     this.quoteLoadError.set(null);
-    return this.table('Quote requests', this.rows('/api/v1/staff/leads?type=QUOTE').pipe(map(rows => rows.map(row => ({ id: row.id, number: 'REQ-' + row.id.slice(0, 8), customer: row.name, email: row.email, phone: row.phone || '', product: row.subject, sku: '', quantity: 0, message: row.message, date: row.createdAt, version: row.version, status: ({ NEW: 'Pending', ASSIGNED: 'Under Review', IN_PROGRESS: 'Under Review', RESOLVED: 'Quoted', CLOSED: 'Closed' } as any)[row.state] })))), this.quotes).pipe(tap(() => this.quoteLoadError.set(this.errors()['Quote requests'] || null)));
+    return this.table('Quote requests', this.rows('/api/v1/staff/leads?type=QUOTE').pipe(map(rows => rows.map(row => {
+      let qty = 0;
+      const qtyMatch = (row.message || '').match(/(?:Qty|Quantity):\s*([0-9.]+)/i);
+      if (qtyMatch) {
+        qty = Number(qtyMatch[1]) || 0;
+      }
+
+      let sku = '';
+      const skuMatch = (row.message || '').match(/SKU:\s*([A-Za-z0-9_-]+)/i);
+      if (skuMatch) {
+        sku = skuMatch[1];
+      }
+
+      let product = row.subject || 'Quote request';
+      if (product.toLowerCase().startsWith('quote request - ')) {
+        product = product.slice(16).trim();
+      }
+
+      return {
+        id: row.id,
+        number: 'REQ-' + row.id.slice(0, 8),
+        customer: row.name,
+        email: row.email,
+        phone: row.phone || '',
+        product: product,
+        sku: sku,
+        quantity: qty,
+        message: row.message,
+        date: row.createdAt,
+        version: row.version,
+        status: ({ NEW: 'Pending', ASSIGNED: 'Under Review', IN_PROGRESS: 'Under Review', RESOLVED: 'Quoted', CLOSED: 'Closed' } as any)[row.state] || 'Pending'
+      };
+    }))), this.quotes).pipe(tap(() => this.quoteLoadError.set(this.errors()['Quote requests'] || null)));
   }
   private updateLead(id: string, version: number | undefined, state: string, note: string): Observable<any> {
     return defer(() => { if (version == null) throw new Error('Reload the current lead before saving.'); return this.http.patch<any>(`/api/v1/staff/leads/${id}`, { state, note }, { headers: this.headers(version) }); });

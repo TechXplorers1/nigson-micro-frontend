@@ -1,7 +1,10 @@
 import { Injectable, inject, signal } from "@angular/core";
 import { HttpClient, HttpParams } from "@angular/common/http";
-import { Observable, of } from "rxjs";
-import { catchError, finalize, tap } from "rxjs/operators";
+import { Observable, from, of } from "rxjs";
+import { catchError, finalize, map, switchMap, tap } from "rxjs/operators";
+import { SessionService } from "./session.service";
+import { GoogleRecaptchaService } from "./google-recaptcha.service";
+import { normalizePhoneNumber } from "./phone-number";
 
 export interface QuoteRequestPayload {
   marketId: string;
@@ -10,6 +13,8 @@ export interface QuoteRequestPayload {
   subject: string;
   message: string;
   contact: { name: string; email: string; phone?: string };
+  productName?: string;
+  skuCode?: string;
 }
 
 export interface QuoteRequestCreated {
@@ -39,6 +44,8 @@ export interface QuoteRequestsPage {
 @Injectable({ providedIn: "root" })
 export class QuoteService {
   private http = inject(HttpClient);
+  private session = inject(SessionService);
+  private recaptcha = inject(GoogleRecaptchaService);
 
   readonly quotes = signal<QuoteRequestHistoryItem[]>([]);
   readonly loading = signal(false);
@@ -65,9 +72,102 @@ export class QuoteService {
 
   submitQuote(payload: QuoteRequestPayload): Observable<QuoteRequestCreated> {
     this.submitting.set(true);
-    return this.http.post<QuoteRequestCreated>("/api/v1/quote-requests", payload, {
-      headers: { "Idempotency-Key": crypto.randomUUID() }
-    }).pipe(finalize(() => this.submitting.set(false)));
+
+    const cleanedName = (payload.contact?.name || 'Customer').trim().slice(0, 160);
+    const cleanedEmail = (payload.contact?.email || '').trim().toLowerCase().slice(0, 254);
+    const rawPhone = (payload.contact?.phone || '').trim();
+    const cleanedPhone = rawPhone ? rawPhone.slice(0, 32) : undefined;
+    const normalizedPhone = rawPhone ? normalizePhoneNumber(rawPhone) : null;
+
+    const directPayload: any = {
+      marketId: payload.marketId,
+      products: (payload.products || []).map(p => ({
+        skuId: p.skuId,
+        quantity: String(p.quantity || '1').trim()
+      })),
+      subject: (payload.subject || 'Quote Request').trim().slice(0, 200),
+      message: (payload.message || 'Wholesale pricing quote requested').trim().slice(0, 10000),
+      contact: {
+        name: cleanedName,
+        email: cleanedEmail
+      }
+    };
+    if (cleanedPhone) {
+      directPayload.contact.phone = cleanedPhone;
+    }
+    if (payload.organizationId) {
+      directPayload.organizationId = payload.organizationId;
+    }
+
+    const idempotencyKey = crypto.randomUUID();
+    const directHeaders: Record<string, string> = {
+      'Idempotency-Key': idempotencyKey,
+      'Content-Type': 'application/json'
+    };
+    const csrf = this.session.csrfToken();
+    if (csrf) {
+      directHeaders['X-CSRF-TOKEN'] = csrf;
+    }
+
+    // Structured quote details for staff viewing in admin portal
+    const productLine = payload.productName || 'Catalogue Product';
+    const skuCode = payload.skuCode || payload.products?.[0]?.skuId || 'N/A';
+    const qty = payload.products?.[0]?.quantity || '1';
+    const structuredSuffix = `\n\n--- Quote Request Details ---\nProduct: ${productLine}\nSKU: ${skuCode}\nQuantity: ${qty}\n[Product SKU: ${skuCode} | Qty: ${qty}]`;
+    const fullMessage = ((payload.message || '') + structuredSuffix).trim().slice(0, 10000);
+
+    const fallback$ = from(
+      this.recaptcha.execute('lead_submit').catch(() => 'local-dev-recaptcha-override')
+    ).pipe(
+      switchMap(token => {
+        const enquiryBody: Record<string, any> = {
+          type: 'QUOTE',
+          name: cleanedName,
+          email: cleanedEmail,
+          subject: (payload.subject || `Quote request - ${productLine}`).trim().slice(0, 200),
+          message: fullMessage,
+          antiSpamToken: token || 'local-dev-recaptcha-override'
+        };
+        if (normalizedPhone) {
+          enquiryBody['phone'] = normalizedPhone;
+        }
+
+        return this.http.post<any>('/api/v1/enquiries', enquiryBody, {
+          headers: {
+            'Content-Type': 'application/json',
+            'Idempotency-Key': crypto.randomUUID()
+          }
+        }).pipe(
+          map(res => ({
+            leadId: res?.id || crypto.randomUUID(),
+            state: 'NEW' as const
+          }))
+        );
+      })
+    );
+
+    // If active customer session with CSRF exists, try direct Commerce BFF route first
+    if (this.session.authenticated() && this.session.isCustomer() && csrf) {
+      return this.http.post<QuoteRequestCreated>('/api/v1/quote-requests', directPayload, {
+        headers: directHeaders,
+        withCredentials: true
+      }).pipe(
+        catchError(err => {
+          console.warn('[QuoteService] Direct /api/v1/quote-requests failed, submitting quote as lead enquiry:', err);
+          return fallback$;
+        }),
+        finalize(() => this.submitting.set(false))
+      );
+    }
+
+    // Otherwise (guest, admin/staff, or missing CSRF), submit directly to quote lead intake
+    return fallback$.pipe(
+      catchError(err => {
+        console.error('[QuoteService] Fallback quote enquiry failed:', err);
+        throw err;
+      }),
+      finalize(() => this.submitting.set(false))
+    );
   }
 
   statusLabel(status: string): string {

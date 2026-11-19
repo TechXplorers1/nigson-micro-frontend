@@ -3,6 +3,7 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { LucideEye, LucideEyeOff } from '@lucide/angular';
 import { BFF_BASE } from 'shared-ui';
 import { AuthShellComponent } from '../auth-shell/auth-shell.component';
 
@@ -16,7 +17,7 @@ interface RegistrationRequest {
 @Component({
   selector: 'app-signup',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, AuthShellComponent],
+  imports: [CommonModule, FormsModule, RouterLink, AuthShellComponent, LucideEye, LucideEyeOff],
   template: `
     <app-auth-shell eyebrow="Create an account" title="Join Nigson"
       subtitle="Create your Nigson account. Your password is securely sent to our identity service and is never stored by this application." [hasFooter]="true">
@@ -35,14 +36,30 @@ interface RegistrationRequest {
           <input name="email" [(ngModel)]="email" type="email" required maxlength="254" autocomplete="email"
             class="rounded-xl border border-hairline px-4 py-3 font-normal" />
         </label>
-        <label class="flex flex-col gap-1.5 text-sm font-medium text-ink">Password
-          <input name="password" [(ngModel)]="password" type="password" required minlength="12" maxlength="128" autocomplete="new-password"
-            class="rounded-xl border border-hairline px-4 py-3 font-normal" />
+        <label class="flex flex-col gap-1.5 text-sm font-medium text-ink">
+          <span>Password</span>
+          <div class="relative flex items-center">
+            <input name="password" [(ngModel)]="password" [type]="showPassword() ? 'text' : 'password'" required minlength="12" maxlength="128" autocomplete="new-password"
+              class="w-full rounded-xl border border-hairline px-4 py-3 pr-11 font-normal focus:border-brand focus:outline-none" />
+            <button type="button" (click)="togglePassword($event)" [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
+              class="absolute right-3 grid h-8 w-8 place-items-center rounded-lg text-muted-ink hover:text-ink transition-colors">
+              <svg *ngIf="!showPassword()" lucideEye class="h-4 w-4"></svg>
+              <svg *ngIf="showPassword()" lucideEyeOff class="h-4 w-4"></svg>
+            </button>
+          </div>
           <span class="text-xs font-normal text-muted-ink">Use at least 12 characters.</span>
         </label>
-        <label class="flex flex-col gap-1.5 text-sm font-medium text-ink">Confirm password
-          <input name="confirmPassword" [(ngModel)]="confirmPassword" type="password" required minlength="12" maxlength="128" autocomplete="new-password"
-            class="rounded-xl border border-hairline px-4 py-3 font-normal" />
+        <label class="flex flex-col gap-1.5 text-sm font-medium text-ink">
+          <span>Confirm password</span>
+          <div class="relative flex items-center">
+            <input name="confirmPassword" [(ngModel)]="confirmPassword" [type]="showConfirmPassword() ? 'text' : 'password'" required minlength="12" maxlength="128" autocomplete="new-password"
+              class="w-full rounded-xl border border-hairline px-4 py-3 pr-11 font-normal focus:border-brand focus:outline-none" />
+            <button type="button" (click)="toggleConfirmPassword($event)" [attr.aria-label]="showConfirmPassword() ? 'Hide confirm password' : 'Show confirm password'"
+              class="absolute right-3 grid h-8 w-8 place-items-center rounded-lg text-muted-ink hover:text-ink transition-colors">
+              <svg *ngIf="!showConfirmPassword()" lucideEye class="h-4 w-4"></svg>
+              <svg *ngIf="showConfirmPassword()" lucideEyeOff class="h-4 w-4"></svg>
+            </button>
+          </div>
         </label>
         <p *ngIf="error()" role="alert" class="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{{ error() }}</p>
         <button type="submit" [disabled]="signupForm.invalid || submitting()"
@@ -66,11 +83,23 @@ export class SignupComponent {
   readonly submitting = signal(false);
   readonly complete = signal(false);
   readonly error = signal<string | null>(null);
+  readonly showPassword = signal(false);
+  readonly showConfirmPassword = signal(false);
   firstName = '';
   lastName = '';
   email = '';
   password = '';
   confirmPassword = '';
+
+  togglePassword(event?: MouseEvent): void {
+    event?.preventDefault();
+    this.showPassword.update(show => !show);
+  }
+
+  toggleConfirmPassword(event?: MouseEvent): void {
+    event?.preventDefault();
+    this.showConfirmPassword.update(show => !show);
+  }
 
   submit(form: { valid: boolean | null }): void {
     this.error.set(null);
