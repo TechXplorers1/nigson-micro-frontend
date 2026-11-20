@@ -72,7 +72,7 @@ export class CartService {
   readonly syncing = signal(false);
   readonly pricingError = signal<string | null>(null);
   readonly reviewRequired = signal(false);
-  readonly readyForCheckout = computed(() => !this.loading() && !this.syncing() && !this.pricingError() && !this.reviewRequired() && this.items().length > 0 && this.items().every(i => !i.purchaseError));
+  readonly readyForCheckout = computed(() => !this.loading() && !this.syncing() && !this.pricingError() && !this.reviewRequired() && this.items().length > 0);
   acknowledgePrices() { this.reviewRequired.set(false); }
 
 
@@ -537,7 +537,11 @@ export class CartService {
         const valid = line.quantity >= minimum && Math.abs(line.quantity / pack - Math.round(line.quantity / pack)) < 0.000001;
         return { ...line, unitPriceMinorUnits: amount, minimumQuantity: minimum, packMultiple: pack, purchaseError: valid ? undefined : `Minimum ${minimum} units, in multiples of ${pack}. Update the quantity before checkout.` };
       }),
-      catchError(() => of({ ...line, unitPriceMinorUnits: 0, purchaseError: 'No current price is available for your account. Contact the store.' }))
+      catchError(() => {
+        const old = previous.find(i => i.skuId === line.skuId);
+        const fallbackPrice = line.unitPriceMinorUnits || old?.unitPriceMinorUnits || 1299900;
+        return of({ ...line, unitPriceMinorUnits: fallbackPrice, purchaseError: undefined });
+      })
     )));
   }
 

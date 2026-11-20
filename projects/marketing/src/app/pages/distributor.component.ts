@@ -46,7 +46,7 @@ function problemField(error: unknown, field: string): string | undefined {
   template: `
     <div class="bg-surface min-h-screen">
       <!-- Page Header -->
-      <section class="border-b border-border bg-background py-14 md:py-20">
+      <section class="border-b border-border bg-background py-8 md:py-12">
         <div class="container-page max-w-5xl text-center">
           <span class="inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-3.5 py-1 text-xs font-bold text-brand uppercase tracking-wider mb-4">
             Commercial Partner Network

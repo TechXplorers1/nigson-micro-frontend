@@ -635,13 +635,54 @@ export class AdminBlogComponent {
     };
   }
 
-  load(){this.cms.loadBlogs().subscribe({next:rows=>this.posts.set(rows),error:e=>this.showToast(this.cms.message(e))});}
+  load() {
+    this.cms.loadBlogs().subscribe({
+      next: (rows) => {
+        if (Array.isArray(rows) && rows.length > 0) {
+          this.posts.set(rows);
+          this.syncLocalStorage(rows);
+        } else {
+          this.loadFromStorageFallback();
+        }
+      },
+      error: (e) => {
+        this.loadFromStorageFallback();
+        this.showToast(this.cms.message(e));
+      }
+    });
+  }
+
+  private loadFromStorageFallback() {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const raw = localStorage.getItem('nigson.admin.v2');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed.posts) && parsed.posts.length > 0) {
+            this.posts.set(parsed.posts);
+          }
+        }
+      }
+    } catch { }
+  }
 
   resetToDefaults(){this.load();}
 
-  syncLocalStorage(_posts:AdminBlogPost[]){}
+  syncLocalStorage(posts: AdminBlogPost[]) {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const raw = localStorage.getItem('nigson.admin.v2');
+        const parsed = raw ? JSON.parse(raw) : {};
+        parsed.posts = posts;
+        localStorage.setItem('nigson.admin.v2', JSON.stringify(parsed));
+      }
+    } catch { }
+  }
 
-  saveAll(){this.load();}
+  saveAll() {
+    this.syncLocalStorage(this.posts());
+    this.load();
+  }
 
   showToast(message: string) {
     this.toastMessage.set(message);
@@ -688,7 +729,8 @@ export class AdminBlogComponent {
     this.editingPost = {
       ...post,
       image: post.image || '/assets/blog-market.jpg',
-      body: post.body || post.excerpt || ''
+      excerpt: (post.excerpt || '').trim(),
+      body: (post.body || post.excerpt || '').trim()
     };
     this.isModalOpen.set(true);
   }
@@ -708,16 +750,70 @@ export class AdminBlogComponent {
   }
 
   insertHeading() {
-    const snippet = '\n\n### New Section Heading\nSection content goes here.\n';
-    this.editingPost.body = (this.editingPost.body || '') + snippet;
+    const snippet = '\n\n### New Section Heading\nSection content goes here.';
+    this.editingPost.body = ((this.editingPost.body || '').trimEnd() + snippet).trim();
   }
 
   insertBullet() {
     const snippet = '\n- Bullet point detail item';
-    this.editingPost.body = (this.editingPost.body || '') + snippet;
+    this.editingPost.body = ((this.editingPost.body || '').trimEnd() + snippet).trim();
   }
 
-  savePost(){if(!this.editingPost.title.trim())return this.showToast('Enter an article title.');if(!this.editingPost.slug.trim())this.editingPost.slug=this.editingPost.title.toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');this.cms.saveBlog({...this.editingPost,status:this.cms.canPublish()?this.editingPost.status:'Draft'}).subscribe({next:()=>{this.load();this.closeModal();this.showToast('Article saved.');},error:e=>this.showToast(this.cms.message(e))});}
+  savePost() {
+    if (!this.editingPost.title.trim()) return this.showToast('Enter an article title.');
+    if (!this.editingPost.slug.trim()) {
+      this.editingPost.slug = this.editingPost.title
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
+    }
+
+    const cleanPost: AdminBlogPost = {
+      ...this.editingPost,
+      title: this.editingPost.title.trim(),
+      slug: this.editingPost.slug.trim(),
+      excerpt: (this.editingPost.excerpt || this.editingPost.title).trim(),
+      body: (this.editingPost.body || this.editingPost.excerpt || this.editingPost.title).trim(),
+      status: this.cms.canPublish() ? this.editingPost.status : 'Draft'
+    };
+
+    // Optimistically update post in signal and local storage so changes never revert
+    this.posts.update(ps => {
+      const idx = ps.findIndex(p => p.id === cleanPost.id || (cleanPost.slug && p.slug === cleanPost.slug));
+      if (idx >= 0) {
+        const copy = [...ps];
+        copy[idx] = { ...copy[idx], ...cleanPost };
+        return copy;
+      }
+      return [cleanPost, ...ps];
+    });
+    this.syncLocalStorage(this.posts());
+
+    this.cms.saveBlog(cleanPost).subscribe({
+      next: (saved) => {
+        if (saved) {
+          this.posts.update(ps => {
+            const idx = ps.findIndex(p => p.id === saved.id || (saved.slug && p.slug === saved.slug));
+            if (idx >= 0) {
+              const copy = [...ps];
+              copy[idx] = { ...copy[idx], ...saved };
+              return copy;
+            }
+            return [saved, ...ps];
+          });
+          this.syncLocalStorage(this.posts());
+        }
+        this.load();
+        this.closeModal();
+        this.showToast('Article saved.');
+      },
+      error: (e) => {
+        this.closeModal();
+        this.showToast('Article updated locally. Server note: ' + this.cms.message(e));
+      }
+    });
+  }
 
   delete(id:string){const post=this.posts().find(p=>p.id===id) as any;if(!post)return;if(!post.revision||!['PUBLISHED','APPROVED'].includes(post.revision.state))return this.showToast('Draft revisions are retained for audit. Publish or edit this draft.');this.cms.withdrawContent(post.revision).subscribe({next:()=>{this.load();this.showToast('Article withdrawn from the public site.');},error:e=>this.showToast(this.cms.message(e))});}
 

@@ -22,7 +22,7 @@ import { Subject } from 'rxjs';
   imports: [CommonModule, FormsModule, LucideSearch, LucideLoader2, ProductCardComponent],
   template: `
     <div class="min-h-screen bg-background">
-      <header class="bg-surface-alt border-b border-border py-12 md:py-16">
+      <header class="bg-surface-alt border-b border-border py-6 md:py-8">
         <div class="container-page text-center">
           <span class="inline-block px-3 py-1 rounded-full bg-brand/10 text-brand text-xs font-bold uppercase tracking-widest mb-4">
             Product Catalog

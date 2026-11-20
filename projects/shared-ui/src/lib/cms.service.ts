@@ -815,7 +815,7 @@ export type SectionApi = {
 export class CmsService {
   private http=inject(HttpClient);
   private session=inject(SessionService);
-  readonly canPublish=computed(()=>this.session.hasRole('CONTENT_EDITOR')&&this.session.hasRole('CONTENT_PUBLISHER'));
+  readonly canPublish=computed(()=>this.session.isAdmin()||(this.session.hasRole('CONTENT_EDITOR')&&this.session.hasRole('CONTENT_PUBLISHER')));
   readonly isPublishing=signal(false);
   readonly error=signal('');
   readonly state=signal<CmsState>({published:defaultStore(),drafts:defaultStore()});
@@ -827,7 +827,12 @@ export class CmsService {
   message(e:any){return e?.error?.detail || e?.message || 'Content request failed.';}
   private headers(version?:number){
     if(version!==undefined && !Number.isSafeInteger(version)) throw new Error('Reload the content before saving: current version is missing.');
-    return {'Idempotency-Key':crypto.randomUUID(),...(version===undefined?{}:{'If-Match':`"${version}"`})};
+    const csrf = this.session.csrfToken();
+    return {
+      'Idempotency-Key':crypto.randomUUID(),
+      ...(csrf ? {'X-CSRF-TOKEN': csrf} : {}),
+      ...(version===undefined?{}:{'If-Match':`"${version}"`})
+    };
   }
   private list(path:string,page=0):Observable<any[]> {
     return this.http.get<any>(`${path}${path.includes('?')?'&':'?'}page=${page}&size=100`).pipe(switchMap(r=>{
@@ -896,7 +901,37 @@ export class CmsService {
   private blog(r:any){const extra=r.metadata?.structuredData||{};return {...extra,id:r.contentItemId,revision:r,title:r.title,slug:r.slug,status:r.state==='PUBLISHED'?'Published':'Draft',body:(r.body?.blocks||[]).filter((b:any)=>b.type==='TEXT').map((b:any)=>b.text).join('\n\n'),tag:extra.tag||'',author:extra.author||'',date:r.publishedAt||extra.date||'',excerpt:extra.excerpt||'',image:extra.image||''};}
   saveBlog(post:any):Observable<any>{
     if(post.status==='Published'&&!this.canPublish())return throwError(()=>new Error('Publishing requires Content Editor and Content Publisher access. Save a draft instead.'));
-    const edit={title:post.title,body:{schemaVersion:1,blocks:[{type:'TEXT',text:post.body||post.excerpt||post.title}]},metadata:{title:post.title.slice(0,70),description:(post.excerpt||post.title).slice(0,180),robots:'INDEX',canonicalUrl:null,alternates:[],structuredData:{tag:post.tag||'',author:post.author||'',excerpt:post.excerpt||'',image:post.image||'',date:post.date||''}}};
-    return this.saveContent('BLOG',post.slug,edit).pipe(switchMap(r=>post.status==='Published'?this.publishContent(r):of(r)),map(r=>this.blog(r)));
+    const cleanTitle = (post.title || 'Untitled Article').trim();
+    const cleanSlug = (post.slug || cleanTitle).toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const cleanExcerpt = (post.excerpt || cleanTitle || 'Article summary.').trim();
+    const cleanBody = (post.body || post.excerpt || cleanTitle || 'Article content.').trim();
+    const metaTitle = cleanTitle.slice(0, 70).trim() || 'Article';
+    const metaDesc = (cleanExcerpt || cleanTitle).slice(0, 180).trim() || 'Article overview';
+
+    const edit={
+      title: cleanTitle,
+      body:{
+        schemaVersion: 1,
+        blocks: [{ type: 'TEXT', text: cleanBody }]
+      },
+      metadata:{
+        title: metaTitle,
+        description: metaDesc,
+        robots: 'INDEX',
+        canonicalUrl: null,
+        alternates: [],
+        structuredData:{
+          tag: (post.tag || 'Industry').trim(),
+          author: (post.author || 'Nigson Team').trim(),
+          excerpt: cleanExcerpt,
+          image: (post.image || '/assets/blog-market.jpg').trim(),
+          date: (post.date || new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' })).trim()
+        }
+      }
+    };
+    return this.saveContent('BLOG', cleanSlug, edit).pipe(
+      switchMap(r => post.status === 'Published' ? this.publishContent(r) : of(r)),
+      map(r => this.blog(r))
+    );
   }
 }

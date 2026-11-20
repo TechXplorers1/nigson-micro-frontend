@@ -8,7 +8,7 @@ import { CmsService, ContentDTO } from 'shared-ui';
   standalone: true,
   imports: [CommonModule, RouterLink],
   template: `
-    <div class="max-w-4xl mx-auto px-4 py-12">
+    <div class="max-w-4xl mx-auto px-4 py-6 md:py-8">
       <div class="mb-6">
         <a routerLink="/blog" class="inline-flex items-center text-sm font-semibold text-blue-600 hover:text-blue-800">
           &larr; Back to all insights

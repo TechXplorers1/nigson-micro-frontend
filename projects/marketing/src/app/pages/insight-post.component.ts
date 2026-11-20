@@ -25,7 +25,7 @@ import { BlogPost, POSTS, getAllPublishedPosts, parseMarkdownToSections } from '
   template: `
     <div class="bg-surface min-h-screen">
       <ng-container *ngIf="currentPost(); else notFound">
-        <article class="pt-28">
+        <article class="pt-6 md:pt-8">
           <div class="container-page max-w-3xl">
             <a routerLink="/insights" class="inline-flex items-center gap-2 text-sm font-semibold text-muted-ink hover:text-brand transition-colors">
               <svg lucideArrowLeft class="h-4 w-4"></svg> Back to Insights

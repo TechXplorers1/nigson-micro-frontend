@@ -16,9 +16,9 @@ import { CartService, CatalogService, ShopService, SessionService, QtyStepperCom
   ],
   template: `
     <div class="min-h-[70vh] bg-background">
-      <section class="pt-20 pb-16 md:pt-28 md:pb-24">
+      <section class="pt-6 pb-16 md:pt-8 md:pb-20">
         <div class="mx-auto max-w-7xl px-6">
-          <div class="mb-10">
+          <div class="mb-6 md:mb-8">
             <p class="text-[11px] font-semibold uppercase tracking-[0.25em] text-brand">Shopping</p>
             <h1 class="mt-2 text-4xl md:text-5xl font-extrabold tracking-[-0.02em]">Your Cart</h1>
           </div>
@@ -168,10 +168,10 @@ import { CartService, CatalogService, ShopService, SessionService, QtyStepperCom
 
                 <button
                   (click)="proceedToCheckout()"
-                  [disabled]="cart.selectedItems().length === 0 || !cart.readyForCheckout()"
+                  [disabled]="cart.selectedItems().length === 0"
                   title="Proceed to Checkout"
                   aria-label="Proceed to Checkout"
-                  class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand text-white py-3.5 text-sm font-semibold hover:bg-brand-deep disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand text-white py-3.5 text-sm font-semibold hover:bg-brand-deep disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 >
                   <ng-container *ngIf="session.authenticated()">Proceed to Checkout ({{ cart.selectedItems().length }}) <svg lucideArrowRight class="h-4 w-4"></svg></ng-container>
                   <ng-container *ngIf="!session.authenticated()"><svg lucideLock class="h-4 w-4"></svg> Sign in to Checkout</ng-container>
@@ -219,6 +219,6 @@ export class CartComponent implements OnInit {
   }
 
   proceedToCheckout() {
-    if (this.cart.readyForCheckout()) this.router.navigate(["/checkout"]);
+    this.router.navigate(["/checkout"]);
   }
 }

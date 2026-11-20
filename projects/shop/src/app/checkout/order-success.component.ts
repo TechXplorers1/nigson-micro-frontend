@@ -32,7 +32,7 @@ const MAX_POLLS = 20;
   ],
   template: `
     <div class="min-h-[70vh] bg-background">
-      <section class="pt-20 pb-24 md:pt-32">
+      <section class="pt-8 pb-16 md:pt-10 md:pb-20">
         <div class="mx-auto max-w-3xl px-6 text-center">
           <div *ngIf="phase() === 'PAID' || phase() === 'COD'" class="mx-auto grid h-20 w-20 place-items-center rounded-full bg-emerald-500/10 text-emerald-600 animate-scale-in">
             <svg lucideCheckCircle2 class="h-10 w-10"></svg>

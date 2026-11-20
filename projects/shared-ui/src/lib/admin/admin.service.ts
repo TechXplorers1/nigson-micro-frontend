@@ -574,7 +574,17 @@ export class AdminService {
   }
   loadInventory(): Observable<any[]> { return this.loadStaffInventory(); }
   loadStockMovements(): Observable<StockLog[]> {
-    return this.table('Stock movements', this.rows('/api/v1/staff/inventory-movements').pipe(map(rows => rows.map(row => ({ ...row, qty: Math.abs(Number(row.change)), change: Number(row.change) })))), this.stockLog);
+    return this.table('Stock movements', this.rows('/api/v1/staff/inventory-movements').pipe(map(rows => rows.map(row => {
+      const supplierMatch = typeof row.reason === 'string' ? row.reason.match(/Supplier:\s*([^—]+)/i) : null;
+      const refMatch = typeof row.reason === 'string' ? row.reason.match(/Reference:\s*([^—]+)/i) : null;
+      return {
+        ...row,
+        supplier: row.supplier || (supplierMatch ? supplierMatch[1].trim() : undefined),
+        ref: row.ref || (refMatch ? refMatch[1].trim() : undefined),
+        qty: Math.abs(Number(row.change)),
+        change: Number(row.change)
+      };
+    }))), this.stockLog);
   }
   postStockAdjustment(sku: string, change: number, reason: string, meta?: { supplier?: string; ref?: string; notes?: string; locationId?: string }): Observable<any> {
     return defer(() => {

@@ -17,14 +17,14 @@ import {
     LucideHeart, LucideClipboardList, LucideMapPin
   ],
   template: `
-    <div *ngIf="!shop.user() && !session.authenticated()" class="pt-40 pb-24 text-center text-muted-ink">
+    <div *ngIf="!shop.user() && !session.authenticated()" class="pt-12 pb-16 text-center text-muted-ink">
       Redirecting to sign in...
     </div>
 
-    <section *ngIf="shop.user() || session.authenticated()" class="pt-32 pb-24 md:pt-40 bg-white min-h-screen">
+    <section *ngIf="shop.user() || session.authenticated()" class="pt-6 pb-16 md:pt-8 bg-white min-h-screen">
       <div class="mx-auto max-w-7xl px-6">
         <!-- Header -->
-        <div class="mb-10 flex items-center gap-5">
+        <div class="mb-6 flex items-center gap-5">
           <div
             class="grid h-16 w-16 place-items-center rounded-full text-white text-xl font-extrabold"
             [ngStyle]="{'background': avatarBg()}"

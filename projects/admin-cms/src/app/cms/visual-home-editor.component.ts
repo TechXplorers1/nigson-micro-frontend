@@ -596,11 +596,13 @@ export class VisualHomeEditorComponent implements OnInit, AfterViewInit {
   }
 
   insertArticleHeading(art: AdminBlogPost) {
-    art.body = (art.body || '') + '\n\n### New Section Heading\nSection content goes here.\n';
+    const snippet = '\n\n### New Section Heading\nSection content goes here.';
+    art.body = ((art.body || '').trimEnd() + snippet).trim();
   }
 
   insertArticleBullet(art: AdminBlogPost) {
-    art.body = (art.body || '') + '\n- Bullet detail item';
+    const snippet = '\n- Bullet detail item';
+    art.body = ((art.body || '').trimEnd() + snippet).trim();
   }
 
   parseArticleSections(body: string) {

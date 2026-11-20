@@ -21,7 +21,6 @@ import {
   ],
   template: `
     <div class="space-y-6" *ngIf="user()">
-      <app-partner-status />
       <!-- Header card -->
       <div class="rounded-2xl border border-hairline bg-white p-6 md:p-8">
         <div class="flex flex-wrap items-start justify-between gap-6">
@@ -105,6 +104,36 @@ import {
         </div>
       </div>
 
+      <!-- Personal Info Form (TASK-48) - placed under the counts -->
+      <div class="rounded-2xl border border-hairline bg-white p-6 md:p-8">
+        <h3 class="text-sm font-extrabold uppercase tracking-widest text-ink">Personal Information</h3>
+        <div class="mt-5 grid gap-4 md:grid-cols-2">
+          <label class="block">
+            <span class="text-[10px] font-semibold uppercase tracking-widest text-muted-ink">Full Name</span>
+            <input 
+              [(ngModel)]="form().fullName" 
+              [disabled]="!editing()"
+              class="mt-1.5 w-full rounded-xl border border-hairline bg-white px-4 py-2.5 text-sm focus:outline-none focus:border-brand disabled:bg-surface-alt" 
+            />
+          </label>
+          <label class="block">
+            <span class="text-[10px] font-semibold uppercase tracking-widest text-muted-ink">
+              Email Address
+              <span class="ml-1 text-muted-ink font-normal normal-case tracking-normal">(immutable)</span>
+            </span>
+            <input 
+              [value]="form().email" 
+              disabled
+              class="mt-1.5 w-full rounded-xl border border-hairline bg-surface-alt px-4 py-2.5 text-sm focus:outline-none text-muted-ink cursor-not-allowed" 
+            />
+          </label>
+          <div class="block">
+            <span class="text-[10px] font-semibold uppercase tracking-widest text-muted-ink">Phone Number</span>
+            <ui-phone-input [(ngModel)]="form().phone" [disabled]="!editing() || saving()"></ui-phone-input>
+          </div>
+        </div>
+      </div>
+
       <!-- Rewards & Referral Widgets (TASK-50, TASK-51) -->
       <div class="grid gap-6 md:grid-cols-2">
         <!-- Rewards Card -->
@@ -183,35 +212,8 @@ import {
         </div>
       </div>
 
-      <!-- Personal Info Form (TASK-48) -->
-      <div class="rounded-2xl border border-hairline bg-white p-6 md:p-8">
-        <h3 class="text-sm font-extrabold uppercase tracking-widest text-ink">Personal Information</h3>
-        <div class="mt-5 grid gap-4 md:grid-cols-2">
-          <label class="block">
-            <span class="text-[10px] font-semibold uppercase tracking-widest text-muted-ink">Full Name</span>
-            <input 
-              [(ngModel)]="form().fullName" 
-              [disabled]="!editing()"
-              class="mt-1.5 w-full rounded-xl border border-hairline bg-white px-4 py-2.5 text-sm focus:outline-none focus:border-brand disabled:bg-surface-alt" 
-            />
-          </label>
-          <label class="block">
-            <span class="text-[10px] font-semibold uppercase tracking-widest text-muted-ink">
-              Email Address
-              <span class="ml-1 text-muted-ink font-normal normal-case tracking-normal">(immutable)</span>
-            </span>
-            <input 
-              [value]="form().email" 
-              disabled
-              class="mt-1.5 w-full rounded-xl border border-hairline bg-surface-alt px-4 py-2.5 text-sm focus:outline-none text-muted-ink cursor-not-allowed" 
-            />
-          </label>
-          <div class="block">
-            <span class="text-[10px] font-semibold uppercase tracking-widest text-muted-ink">Phone Number</span>
-            <ui-phone-input [(ngModel)]="form().phone" [disabled]="!editing() || saving()"></ui-phone-input>
-          </div>
-        </div>
-      </div>
+      <!-- Partner Applications (moved to bottom) -->
+      <app-partner-status />
     </div>
   `
 })

@@ -56,7 +56,7 @@ import { RouterLink } from '@angular/router';
             <span class="font-extrabold text-lg tracking-tight text-ink">NIGSON</span>
           </a>
         </div>
-        <div class="flex-1 flex items-center justify-center px-6 py-12 md:py-16">
+        <div class="flex-1 flex items-center justify-center px-6 py-8 md:py-10">
           <div class="w-full max-w-md">
             <p *ngIf="eyebrow" class="text-[11px] font-semibold uppercase tracking-[0.25em] text-brand">{{ eyebrow }}</p>
             <h1 class="mt-2 text-3xl md:text-4xl font-extrabold leading-tight tracking-[-0.02em] text-ink">

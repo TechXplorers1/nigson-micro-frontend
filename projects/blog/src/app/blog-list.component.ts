@@ -21,7 +21,7 @@ interface BlogPostSummary {
   standalone: true,
   imports: [CommonModule, RouterLink],
   template: `
-    <div class="max-w-6xl mx-auto px-4 py-12">
+    <div class="max-w-6xl mx-auto px-4 py-6 md:py-8">
       <div class="mb-10 text-center">
         <span class="text-xs font-bold tracking-widest text-blue-600 uppercase bg-blue-50 px-3 py-1 rounded-full">
           Nigson Insights & Industry News

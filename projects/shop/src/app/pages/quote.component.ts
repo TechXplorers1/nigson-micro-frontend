@@ -25,7 +25,7 @@ interface QuoteSkuOption {
         subtitle="Choose a catalogue product and quantity. Our team will follow up with wholesale pricing."
       ></lib-page-header>
 
-      <section class="container-page py-16 max-w-3xl">
+      <section class="container-page py-8 md:py-12 max-w-3xl">
         <form (submit)="onSubmit($event)" class="rounded-2xl border border-border bg-background p-8 shadow-elegant space-y-5">
           <ng-container *ngIf="submitted(); else formFields">
             <div class="text-center py-10">
