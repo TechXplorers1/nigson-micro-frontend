@@ -128,7 +128,7 @@ const PAGES: Record<string, Page> = {
     sections: [
       {
         heading: "How it works",
-        body: "Register for the affiliate programme, receive your unique referral code, and earn commission on every qualifying order placed through your referrals.",
+        body: "Apply for the affiliate programme. Approved affiliates will earn 5% on eligible retail purchases once referral tracking launches.",
       },
       {
         heading: "Who can join",
@@ -136,7 +136,7 @@ const PAGES: Record<string, Page> = {
       },
       {
         heading: "Payouts",
-        body: "Commissions are calculated monthly and paid by bank transfer once your balance crosses the payout threshold. Full reporting is available in your account.",
+        body: "The programme provides monthly manual bank payouts of the full available commission balance. Earnings become available seven days after delivery; payout details are collected separately after approval.",
       },
       {
         heading: "Get started",

@@ -7,10 +7,10 @@ import {SessionService,LOCAL_API_FAILURE_CODES,apiFailureDetail,BackendDistribut
 @Component({selector:'app-partner-status',standalone:true,imports:[CommonModule,RouterLink],template:`
 <section class="rounded-2xl border border-hairline bg-white p-6 space-y-3">
  <div class="flex items-center justify-between gap-3"><h2 class="font-bold">Partner applications</h2><button type="button" (click)="refresh()" [disabled]="loading()" class="text-sm font-semibold text-brand">Refresh status</button></div>
- <p class="text-sm text-muted-ink">Your customer account stays active. You may hold one partner type: wholesaler or distributor.</p>
+ <p class="text-sm text-muted-ink">Your customer account stays active. You may hold one partner type: wholesaler, distributor or affiliate.</p>
  <p *ngIf="loading()" role="status">Loading applications...</p><p *ngIf="error()" role="alert" class="text-sm text-red-700">{{ error() }}</p>
- <p *ngIf="!loading() && !error() && !rows().length" class="text-sm">No business applications submitted yet.</p>
- <div *ngFor="let row of rows()" class="rounded-xl border border-hairline p-3 text-sm"><strong>{{ row.partnerType === 'WHOLESALE' ? 'Wholesaler' : 'Distributor' }}</strong><span class="ml-3">{{ label(row.state) }}</span><p class="mt-1 text-muted-ink">Submitted {{ row.submittedAt | date:'mediumDate' }}</p><p *ngIf="row.state==='APPROVED'" class="mt-2">Business access approved. Business purchasing requires a valid price assignment.</p></div>
+ <p *ngIf="!loading() && !error() && !rows().length" class="text-sm">No partner applications submitted yet.</p>
+ <div *ngFor="let row of rows()" class="rounded-xl border border-hairline p-3 text-sm"><strong>{{ row.partnerType === 'AFFILIATE' ? 'Affiliate' : row.partnerType === 'WHOLESALE' ? 'Wholesaler' : 'Distributor' }}</strong><span class="ml-3">{{ label(row.state) }}</span><p class="mt-1 text-muted-ink">Submitted {{ row.submittedAt | date:'mediumDate' }}</p><p *ngIf="row.state==='APPROVED'" class="mt-2">{{ row.partnerType==='AFFILIATE' ? 'Affiliate application approved.' : 'Business access approved. Business purchasing requires a valid price assignment.' }}</p><a *ngIf="row.partnerType==='AFFILIATE' && row.state==='APPROVED'" routerLink="/account/affiliate" class="mt-2 inline-block underline">Open affiliate product links</a></div>
  <a routerLink="/distributor" class="inline-block text-sm font-semibold text-brand">View partner applications</a>
 </section>`})
 export class PartnerStatusComponent {

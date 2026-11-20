@@ -176,6 +176,7 @@ export const routes: Routes = [
       },
 
       // Sales / Lead routes (admin-shop MFE with local fallback)
+      {path:'affiliate-payouts',loadComponent:()=>Promise.resolve().then(()=>loadRemoteModule('admin-shop','./AffiliatePayouts')).then(m=>m.AdminAffiliatePayoutsComponent).catch(()=>import('../../../admin-shop/src/app/sales/affiliate-payouts.component').then(m=>m.AdminAffiliatePayoutsComponent))},
       {
         path: 'orders',
         loadComponent: () => Promise.resolve()

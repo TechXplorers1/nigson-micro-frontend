@@ -2,6 +2,7 @@ import {staffGuard, staffSectionGuard} from 'shared-ui';
 import { Routes } from '@angular/router';
 
 export const routes: Routes = [
+  {path:'affiliate-payouts',canActivate:[staffGuard,staffSectionGuard],loadComponent:()=>import('./sales/affiliate-payouts.component').then(m=>m.AdminAffiliatePayoutsComponent)},
   // Sales & CRM Routes
   {
     path: 'orders',

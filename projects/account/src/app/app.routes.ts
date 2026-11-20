@@ -6,6 +6,7 @@ export const routes: Routes = [
     path: '',
     component: AccountLayoutComponent,
     children: [
+      {path:'affiliate',loadComponent:()=>import('./affiliate/affiliate.component').then(m=>m.AffiliateComponent)},
       {
         path: '',
         loadComponent: () => import('./profile/profile.component').then(m => m.ProfileComponent)

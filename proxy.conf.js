@@ -37,6 +37,7 @@ module.exports = {
   '/bff': direct(commerce),
   '/api/v1/ai': direct(ai),
   '/api/v1/catalogue': direct(commerce),
+  '/api/v1/affiliate-links': direct(commerce),
   '/api/v1/carts': direct(commerce),
   '/api/v1/checkout': direct(commerce),
   '/api/v1/orders': direct(commerce),

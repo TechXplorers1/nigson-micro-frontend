@@ -3,8 +3,8 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { firstValueFrom, tap, throwError } from 'rxjs';
-import { SessionService, MarketingService, BackendDistributorApplication, DistributorApplicationPayload, apiFailureDetail } from 'shared-ui';
+import { firstValueFrom, tap, throwError, finalize, catchError } from 'rxjs';
+import { SessionService, MarketingService, BackendDistributorApplication, DistributorApplicationPayload, apiFailureDetail, normalizePhoneNumber } from 'shared-ui';
 import {
   LucideCheckCircle2, LucideBuilding,
   LucideUsers, LucideLoader2, LucideShieldCheck,
@@ -147,23 +147,23 @@ function problemField(error: unknown, field: string): string | undefined {
             <div *ngIf="activeTab() === 'affiliate'">
               <span class="text-xs font-bold uppercase tracking-wider text-brand">Creators & Promoters</span>
               <h2 class="text-xl font-bold text-ink mt-1">Affiliate Benefits</h2>
-              <p class="mt-2 text-xs text-muted-foreground">Monetize your audience with high-converting electronics and weekly Nigerian bank payouts.</p>
+              <p class="mt-2 text-xs text-muted-foreground">Applications are open. Referral links and earnings will become available when the programme launches.</p>
               <ul class="mt-6 space-y-3.5 text-sm text-ink/80">
                 <li class="flex gap-3">
                   <svg lucideCheckCircle2 class="h-5 w-5 text-brand flex-none mt-0.5"></svg>
-                  <span><strong>Up to 15% Commission:</strong> High payout on every confirmed order made through your referral link.</span>
+                  <span><strong>5% Commission:</strong> Programme rate on eligible retail merchandise after discounts, excluding shipping and tax.</span>
                 </li>
                 <li class="flex gap-3">
                   <svg lucideCheckCircle2 class="h-5 w-5 text-brand flex-none mt-0.5"></svg>
-                  <span><strong>30-Day Cookie Window:</strong> Receive commission even if your followers complete checkout days later.</span>
+                  <span><strong>7-Day Referral Window:</strong> The latest valid referral link in the same browser receives credit.</span>
                 </li>
                 <li class="flex gap-3">
                   <svg lucideCheckCircle2 class="h-5 w-5 text-brand flex-none mt-0.5"></svg>
-                  <span><strong>Weekly NUBAN Bank Payouts:</strong> Direct bank transfer disbursement every Monday to any Nigerian bank.</span>
+                  <span><strong>Monthly Bank Payouts:</strong> Available commissions will be paid together after payout details are reviewed.</span>
                 </li>
                 <li class="flex gap-3">
                   <svg lucideCheckCircle2 class="h-5 w-5 text-brand flex-none mt-0.5"></svg>
-                  <span><strong>Review Units & Unboxing Kits:</strong> Top promoters receive free samples of upcoming chargers and earbuds.</span>
+                  <span><strong>After Delivery:</strong> Commission becomes available seven days after delivery, subject to refund rules.</span>
                 </li>
               </ul>
             </div>
@@ -525,7 +525,7 @@ function problemField(error: unknown, field: string): string | undefined {
               </div>
               <div *ngFor="let app of myApplications()" class="rounded-xl border border-hairline bg-surface-alt px-4 py-3 flex flex-wrap items-center justify-between gap-2 text-xs">
                 <div>
-                  <p class="font-bold text-ink">{{ app.partnerType === 'WHOLESALE' ? 'Wholesale' : 'Distributor' }} application {{ app.id.slice(0, 8).toUpperCase() }}</p>
+                  <p class="font-bold text-ink">{{ app.partnerType === 'AFFILIATE' ? 'Affiliate' : app.partnerType === 'WHOLESALE' ? 'Wholesale' : 'Distributor' }} application {{ app.id.slice(0, 8).toUpperCase() }}</p>
                   <p class="text-muted-foreground">Submitted {{ app.submittedAt | date:'medium' }}</p>
                 </div>
                 <span class="rounded-full px-3 py-1 font-bold text-[11px] bg-white border border-hairline text-ink">
@@ -616,27 +616,7 @@ function problemField(error: unknown, field: string): string | undefined {
                   </div>
                 </div>
 
-                <!-- BANK PAYOUT CREDENTIALS -->
-                <div class="rounded-xl border border-hairline bg-surface-alt/70 p-4 space-y-3">
-                  <span class="block text-xs font-bold uppercase tracking-wider text-ink">Nigerian Bank Commission Settlement Details</span>
-                  <div class="grid gap-3 sm:grid-cols-3">
-                    <div>
-                      <label class="block text-[11px] font-semibold text-muted-ink mb-1">Bank Name <span class="text-brand">*</span></label>
-                      <input type="text" [(ngModel)]="aff.bankName" name="bankName" (input)="validateAffiliateField('bankName')" (blur)="validateAffiliateField('bankName')" placeholder="e.g. GTBank / Access" [ngClass]="affiliateErrors()['bankName'] ? 'border-red-500 bg-red-50/20' : 'border-hairline bg-white'" class="w-full rounded-lg border px-3 py-2 text-xs focus:outline-none focus:border-brand" />
-                      <p *ngIf="affiliateErrors()['bankName']" class="mt-1 text-[11px] text-red-600 font-medium">⚠ {{ affiliateErrors()['bankName'] }}</p>
-                    </div>
-                    <div>
-                      <label class="block text-[11px] font-semibold text-muted-ink mb-1">NUBAN Account (10 Numbers Only) <span class="text-brand">*</span></label>
-                      <input type="text" [(ngModel)]="aff.accountNumber" name="accountNumber" (keypress)="onDigitOnlyKeyPress($event)" (input)="onAccountInput()" (blur)="validateAffiliateField('accountNumber')" maxlength="10" placeholder="0123456789" [ngClass]="affiliateErrors()['accountNumber'] ? 'border-red-500 bg-red-50/20' : 'border-hairline bg-white'" class="w-full rounded-lg border px-3 py-2 text-xs font-mono focus:outline-none focus:border-brand" />
-                      <p *ngIf="affiliateErrors()['accountNumber']" class="mt-1 text-[11px] text-red-600 font-medium">⚠ {{ affiliateErrors()['accountNumber'] }}</p>
-                    </div>
-                    <div>
-                      <label class="block text-[11px] font-semibold text-muted-ink mb-1">Account Holder Name <span class="text-brand">*</span></label>
-                      <input type="text" [(ngModel)]="aff.accountName" name="accountName" (input)="validateAffiliateField('accountName')" (blur)="validateAffiliateField('accountName')" placeholder="Full account name" [ngClass]="affiliateErrors()['accountName'] ? 'border-red-500 bg-red-50/20' : 'border-hairline bg-white'" class="w-full rounded-lg border px-3 py-2 text-xs focus:outline-none focus:border-brand" />
-                      <p *ngIf="affiliateErrors()['accountName']" class="mt-1 text-[11px] text-red-600 font-medium">⚠ {{ affiliateErrors()['accountName'] }}</p>
-                    </div>
-                  </div>
-                </div>
+                <p class="text-sm text-muted-ink">Sign in to apply. Bank details are not needed to apply.</p>
 
                 <div>
                   <label class="block text-xs font-bold uppercase tracking-wider text-muted-ink mb-1.5">Promotion Strategy</label>
@@ -677,7 +657,7 @@ export class DistributorComponent {
   switchTab(tab: 'wholesaler' | 'distributor' | 'affiliate') {
     this.activeTab.set(tab);
     this.submitError.set(null);
-    if (tab !== 'affiliate' && this.session.authenticated()) {
+    if (this.session.authenticated()) {
       this.loadMyApplications();
     }
     if (this.router && this.route) {
@@ -791,9 +771,6 @@ export class DistributorComponent {
     channels: '',
     audience: '5,000 - 25,000 followers',
     niche: 'Mobile phones & charging gear',
-    bankName: '',
-    accountNumber: '',
-    accountName: '',
     strategy: ''
   };
 
@@ -856,10 +833,6 @@ export class DistributorComponent {
     }
   }
 
-  onAccountInput(): void {
-    this.aff.accountNumber = (this.aff.accountNumber || '').replace(/[^0-9]/g, '').slice(0, 10);
-    if (this.affiliateErrors()['accountNumber']) this.validateAffiliateField('accountNumber');
-  }
 
   onYearsInput(tab: string): void {
     this.f.years = (this.f.years || '').toString().replace(/[^0-9]/g, '').slice(0, 2);
@@ -969,7 +942,7 @@ export class DistributorComponent {
     }
     if (field === 'phone') {
       if (!this.aff.phone.trim()) errors['phone'] = 'WhatsApp phone number is required';
-      else if (!this.validatePhone(this.aff.phone)) errors['phone'] = 'Please enter a valid phone number (digits only, 7-15 digits)';
+      else if (!normalizePhoneNumber(this.aff.phone)) errors['phone'] = 'Please enter a valid phone number (digits only, 7-15 digits)';
       else delete errors['phone'];
     }
     if (field === 'location') {
@@ -980,25 +953,11 @@ export class DistributorComponent {
       if (!this.aff.channels.trim()) errors['channels'] = 'Social channel handles or URLs are required';
       else delete errors['channels'];
     }
-    if (field === 'bankName') {
-      if (!this.aff.bankName.trim()) errors['bankName'] = 'Bank name is required';
-      else delete errors['bankName'];
-    }
-    if (field === 'accountNumber') {
-      const digits = (this.aff.accountNumber || '').replace(/[^0-9]/g, '');
-      if (!digits) errors['accountNumber'] = 'Account number is required';
-      else if (digits.length !== 10) errors['accountNumber'] = 'Account number must be exactly 10 digits (NUBAN)';
-      else delete errors['accountNumber'];
-    }
-    if (field === 'accountName') {
-      if (!this.aff.accountName.trim()) errors['accountName'] = 'Account holder name is required';
-      else delete errors['accountName'];
-    }
     this.affiliateErrors.set(errors);
   }
 
   validateAffiliate(): boolean {
-    ['name', 'email', 'phone', 'location', 'channels', 'bankName', 'accountNumber', 'accountName'].forEach(f => this.validateAffiliateField(f));
+    ['name', 'email', 'phone', 'location', 'channels'].forEach(f => this.validateAffiliateField(f));
     return Object.keys(this.affiliateErrors()).length === 0;
   }
 
@@ -1008,7 +967,7 @@ export class DistributorComponent {
     const body=JSON.stringify(payload);const previous=this.pendingApplications.get(scope);
     if(previous && previous.body!==body)return throwError(()=>new Error('Your earlier submission is unconfirmed. Restore its details and retry, or refresh application status before starting another application.'));
     const request=previous??{body,key:crypto.randomUUID()};this.pendingApplications.set(scope,request);
-    return this.marketingSvc.submitDistributorApplication(payload,request.key).pipe(tap(()=>this.pendingApplications.delete(scope)));
+    return this.marketingSvc.submitDistributorApplication(payload,request.key).pipe(tap(()=>this.pendingApplications.delete(scope)),catchError(error=>{if([400,401,403,404,422].includes(error?.status))this.pendingApplications.delete(scope);return throwError(()=>error);}));
   }
 
   onWholesaleSubmit(event: Event) {
@@ -1185,58 +1144,12 @@ export class DistributorComponent {
   }
 
   onAffiliateSubmit(event: Event) {
-    event.preventDefault();
-    this.submitError.set(null);
-
-    if (!this.validateAffiliate()) {
-      this.submitError.set('Please fill out all required fields correctly before submitting.');
-      return;
-    }
-
-    this.submittingAffiliate.set(true);
-
-    const fullMessage = [
-      `Affiliate Marketer / Creator Application`,
-      `Legal Name: ${this.aff.name}`,
-      `Email: ${this.aff.email}`,
-      `WhatsApp Phone: ${this.aff.phone}`,
-      `Location: ${this.aff.location}`,
-      `Channels / Handles: ${this.aff.channels}`,
-      `Audience Reach: ${this.aff.audience}`,
-      `Content Niche: ${this.aff.niche}`,
-      `Payout Bank: ${this.aff.bankName}`,
-      `NUBAN Account: ${this.aff.accountNumber}`,
-      `Account Name: ${this.aff.accountName}`,
-      `Promotion Strategy: ${this.aff.strategy || 'Organic social media content, review unboxings & WhatsApp catalog broadcast'}`
-    ].join('\n');
-
-    this.marketingSvc.submitEnquiry({
-      type: 'CONTACT',
-      name: this.aff.name.trim().slice(0, 160),
-      email: this.aff.email.trim().slice(0, 254),
-      phone: this.aff.phone.trim().slice(0, 32),
-      subject: `Affiliate Partner Application: ${this.aff.name} (${this.aff.location})`.slice(0, 200),
-      message: fullMessage
-    }).subscribe({
-      next: (res) => {
-        this.submittingAffiliate.set(false);
-        if (res.success) {
-          this.affiliateSubmitted.set(true);
-        } else {
-          this.affiliateSubmitted.set(false);
-          if (res.status === 422) {
-            this.submitError.set(`Backend API returned 422 Unprocessable Entity (${res.error}).\nThe backend public lead intake service is currently gated/inactive in backend configuration.`);
-          } else {
-            this.submitError.set(`Submission failed (${res.status}): ${res.error || 'Server error'}`);
-          }
-        }
-      },
-      error: () => {
-        this.submittingAffiliate.set(false);
-        this.affiliateSubmitted.set(false);
-        this.submitError.set('Could not submit affiliate application. Please check connection and try again.');
-      }
-    });
+    event.preventDefault();this.submitError.set(null);
+    if(!this.session.authenticated()){this.session.signIn('/affiliate');return;}
+    if(!this.validateAffiliate()){this.submitError.set('Please complete the required application details.');return;}
+    if(this.submittingAffiliate())return;this.submittingAffiliate.set(true);
+    const details={email:this.aff.email.trim(),phone:normalizePhoneNumber(this.aff.phone)!,location:this.aff.location.trim(),channels:this.aff.channels.trim(),...(this.aff.strategy.trim()?{strategy:this.aff.strategy.trim()}:{}),audience:this.aff.audience,niche:this.aff.niche};
+    this.submitBusinessApplication({partnerType:'AFFILIATE',organizationName:this.aff.name.trim(),countryCode:'NG',documentIds:[],businessDetails:JSON.stringify(details)}).pipe(finalize(()=>this.submittingAffiliate.set(false))).subscribe({next:()=>{this.affiliateSubmitted.set(true);this.loadMyApplications();},error:(error:any)=>this.submitError.set(error?.error?.detail||error?.message||'Application could not be confirmed. Retry the unchanged details to safely check its outcome.')});
   }
 
   resetWholesale() {
@@ -1282,9 +1195,6 @@ export class DistributorComponent {
       channels: '',
       audience: '5,000 - 25,000 followers',
       niche: 'Mobile phones & charging gear',
-      bankName: '',
-      accountNumber: '',
-      accountName: '',
       strategy: ''
     };
   }

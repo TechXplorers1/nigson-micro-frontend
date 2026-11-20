@@ -2,7 +2,7 @@ import { WishlistService } from 'shared-ui';
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterOutlet, Router, RouterLinkActive } from '@angular/router';
-import { AccountService, OrderService, ShopService, SessionService } from 'shared-ui';
+import { AffiliateService, AccountService, OrderService, ShopService, SessionService } from 'shared-ui';
 import {
   LucideUser, LucidePackage, LucideLogOut, LucideSettings,
   LucideHeart, LucideClipboardList, LucideMapPin
@@ -92,6 +92,7 @@ import {
               >
                 <svg lucideClipboardList class="h-4 w-4"></svg> Quote Requests
               </a>
+              <a *ngIf="affiliate.state()==='ACTIVE' || affiliate.state()==='SUSPENDED'" routerLink="/account/affiliate" routerLinkActive="bg-brand text-white" class="flex items-center gap-3 rounded-2xl px-5 py-3.5 text-sm font-semibold">Affiliate</a>
               <!-- Settings -->
               <a 
                 routerLink="/account/settings" 
@@ -128,6 +129,7 @@ import {
   `
 })
 export class AccountLayoutComponent implements OnInit {
+  readonly affiliate = inject(AffiliateService);
   readonly wishlist = inject(WishlistService);
   shop = inject(ShopService);
   session = inject(SessionService);
@@ -136,6 +138,7 @@ export class AccountLayoutComponent implements OnInit {
   router = inject(Router);
 
   ngOnInit() {
+    this.affiliate.load().subscribe({error:()=>{}});
     const destination=this.session.consumeLoginReturn();
     if(destination && destination!==this.router.url){ this.router.navigateByUrl(destination); return; }
     if (!this.shop.user() && this.session.authenticated()) {

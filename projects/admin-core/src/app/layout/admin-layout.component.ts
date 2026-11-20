@@ -188,6 +188,7 @@ export class AdminLayoutComponent implements OnInit {
       title: "Sales Management",
       items: [
         { to: "/admin/orders", label: "Orders", icon: null, key: "orders" as SectionKey },
+        { to: "/admin/affiliate-payouts", label: "Affiliate Payouts", icon: null, key: "affiliatePayouts" as SectionKey },
         { to: "/admin/customers", label: "Customers", icon: null, key: "customers" as SectionKey },
       ],
     },
