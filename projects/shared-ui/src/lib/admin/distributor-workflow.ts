@@ -2,10 +2,11 @@ export type DistributorStateLabel='Pending'|'Under Review'|'Activation Pending'|
 export const DISTRIBUTOR_STATES:Record<string,DistributorStateLabel>={SUBMITTED:'Pending',UNDER_REVIEW:'Under Review',ACTIVATION_PENDING:'Activation Pending',APPROVED:'Approved',REJECTED:'Rejected',SUSPENSION_PENDING:'Suspension Pending',SUSPENDED:'Suspended'};
 export function distributorDisplayState(state:string):DistributorStateLabel{return DISTRIBUTOR_STATES[state]??'Unknown';}
 export function leadDisplayState(state:string):string{return ({NEW:'New',ASSIGNED:'Assigned',IN_PROGRESS:'In Progress',RESOLVED:'Resolved',CLOSED:'Closed'} as Record<string,string>)[state]??'Unknown';}
-export type DistributorContext={state?:string;reviewerPartyId?:string|null;documents?:Array<{fileId?:string;scanStatus?:string}>};
+export type DistributorContext={partnerType?:string;state?:string;reviewerPartyId?:string|null;documents?:Array<{fileId?:string;scanStatus?:string}>};
 export function distributorActionBlock(context:DistributorContext,action:string,actorId:string|null,marketId?:string):string|null {
  const state=context.state;
- if(action==='Retry activation'){if(!actorId||actorId===context.reviewerPartyId)return 'The original independent approver must retry activation.';return state==='ACTIVATION_PENDING'?null:'Only a pending activation can be retried.';}
+ if(context.partnerType==='AFFILIATE'){if(!actorId)return 'Sign in with Sales access.';if(action==='Approved')return ['SUBMITTED','UNDER_REVIEW'].includes(state??'')?(marketId?null:'A configured approval market is required.'):'Only a pending affiliate application can be approved.';if(action==='Suspended')return state==='APPROVED'?null:'Only an approved affiliate can be suspended.';}
+ if(action==='Retry activation'){if(context.partnerType==='AFFILIATE'&&state==='SUSPENSION_PENDING')return actorId?null:'Sign in with Sales access.';if(!actorId||actorId===context.reviewerPartyId)return 'The original independent approver must retry activation.';return state==='ACTIVATION_PENDING'?null:'Only a pending activation can be retried.';}
  if(!actorId)return 'Sign in with an active Sales-authorized account.';
  if(action==='Under Review'){
   if(state!=='SUBMITTED')return 'Only a submitted application can enter document review.';
@@ -33,6 +34,7 @@ export function distributorCommand(status:string,reason:string,documentsVerified
   if(!marketId)throw new Error('A configured approval market is required.');
   return {action:'decision',body:{reason:reason.trim(),decision:'APPROVE',marketId}};
  }
+ if(status==='Suspended')return {action:'decision',body:{reason:reason.trim(),decision:'SUSPEND'}};
  if(status==='Rejected')return {action:'decision',body:{reason:reason.trim(),decision:'REJECT'}};
  throw new Error('Choose a review or decision.');
 }

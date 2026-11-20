@@ -53,7 +53,7 @@ export interface EnquiryPayload {
  * Distributor Application Input DTO (API-092 - TASK-60)
  */
 export interface DistributorApplicationPayload {
-  partnerType?: "DISTRIBUTOR" | "WHOLESALE";
+  partnerType?: "DISTRIBUTOR" | "WHOLESALE" | "AFFILIATE";
   businessDetails?: string;
   organizationName: string;
   countryCode: string;
@@ -71,7 +71,7 @@ export type DistributorApplicationState =
   | "SUSPENDED";
 
 export interface BackendDistributorApplication {
-  partnerType?: "DISTRIBUTOR" | "WHOLESALE";
+  partnerType?: "DISTRIBUTOR" | "WHOLESALE" | "AFFILIATE";
   id: string;
   state: DistributorApplicationState | string;
   organizationId?: string | null;

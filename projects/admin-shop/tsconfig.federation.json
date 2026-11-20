@@ -10,6 +10,7 @@
     "src/app/inventory/stock-movements.component.ts",
     "src/app/inventory/stock-report.component.ts",
     "src/app/sales/orders.component.ts",
+    "src/app/sales/affiliate-payouts.component.ts",
     "src/app/sales/customers.component.ts",
     "src/app/sales/quotes.component.ts",
     "src/app/sales/applications.component.ts",

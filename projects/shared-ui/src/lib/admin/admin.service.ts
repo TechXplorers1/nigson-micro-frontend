@@ -59,7 +59,7 @@ export type AdminApplication = {
   id: string; number: string; type: "Distributor" | "Wholesaler" | "Affiliate Marketer"; businessName: string;
   contactPerson: string; email: string; phone: string; location: string; category: string;
   date: string; status: string; note?: string; version?: number;
-  rawState?: string; reviewerPartyId?: string | null; decisionReason?: string | null;
+  rawState?: string; partnerType?:string; reviewerPartyId?: string | null; decisionReason?: string | null;
   source?: 'distributor' | 'lead';
   businessReference?: string;
   reviewReason?: string;
@@ -866,6 +866,10 @@ export class AdminService {
       version: lead.version
     };
   }
+  private affiliateContact(row:any):any {
+    if(row.partnerType!=='AFFILIATE')return {};
+    try{const d=JSON.parse(row.businessDetails||'{}');return {contactPerson:row.organizationName,email:d.email||'',phone:d.phone||'',location:d.location||'',note:['Channels: '+(d.channels||''),d.strategy?'Strategy: '+d.strategy:''].filter(Boolean).join('\n')};}catch{return {};}
+  }
   private applicationContext():HttpContext {return new HttpContext().set(LOCAL_API_FAILURE_CODES,['0:undefined','401:AUTH_REQUIRED','403:ACCESS_DENIED','404:NOT_FOUND','409:VERSION_MISMATCH','412:VERSION_MISMATCH','422:BUSINESS_RULE_VIOLATION','422:FEATURE_DISABLED','422:VALIDATION_ERROR','409:INVALID_TRANSITION','422:INVALID_TRANSITION','500:INTERNAL_ERROR','503:PROVIDER_UNAVAILABLE','503:PROVIDER_OUTCOME_UNKNOWN']);}
   private acknowledgeApplication(id:string,result:any):void {
     if(!result?.state)return;
@@ -885,20 +889,22 @@ export class AdminService {
         id: row.id,
         number: row.id.slice(0, 8),
         organizationId: row.organizationId,
-        type: (row.partnerType === 'WHOLESALE' ? 'Wholesaler' : 'Distributor') as 'Wholesaler' | 'Distributor',
+        type: (row.partnerType === 'AFFILIATE' ? 'Affiliate Marketer' : row.partnerType === 'WHOLESALE' ? 'Wholesaler' : 'Distributor') as 'Affiliate Marketer' | 'Wholesaler' | 'Distributor',
         source: 'distributor' as const,
         businessName: row.organizationName || '',
         contactPerson: row.contactName || (row.businessReference ? `Reg: ${row.businessReference}` : ''),
         email: row.email || '',
         phone: row.phone || '',
         location: row.countryCode || '',
-        category: row.partnerType === 'WHOLESALE' ? 'Wholesale business' : 'Corporate Distributor',
+        category: row.partnerType === 'AFFILIATE' ? 'Affiliate' : row.partnerType === 'WHOLESALE' ? 'Wholesale business' : 'Corporate Distributor',
+        partnerType:row.partnerType,
         date: row.submittedAt,
         status: distributorDisplayState(row.state),
         rawState: row.state,
         reviewerPartyId: row.reviewerPartyId ?? null,
         decisionReason: row.decisionReason ?? null,
         note: row.businessDetails || '',
+        ...this.affiliateContact(row),
         businessReference: row.businessReference || '',
         reviewReason: row.reviewReason || '',
         documents: Array.isArray(row.documents)
@@ -949,7 +955,7 @@ export class AdminService {
     if(row.source==='lead')return this.loadStaffApplications().pipe(map(rows=>{const refreshed=rows.find(item=>item.id===id);if(!refreshed)throw new Error('The lead is no longer in the current queue.');return refreshed;}));
     return this.http.get<any>('/api/v1/staff/distributor-applications/'+id,{context:this.applicationContext()}).pipe(map(detail=>({
       ...row,organizationId:detail.organizationId,note:detail.businessDetails || row.note,rawState:detail.state,status:distributorDisplayState(detail.state),version:detail.version,
-      reviewerPartyId:detail.reviewerPartyId??null,reviewReason:detail.reviewReason??'',decisionReason:detail.decisionReason??null,
+      partnerType:detail.partnerType,...this.affiliateContact(detail),reviewerPartyId:detail.reviewerPartyId??null,reviewReason:detail.reviewReason??'',decisionReason:detail.decisionReason??null,
       documents:(detail.documents??[]).map((document:any)=>({...document,fileId:document.fileId,type:document.type,scanStatus:document.scanStatus}))
     })),tap(record=>this.applications.update(rows=>rows.map(item=>item.id===id?record:item))));
   }
@@ -965,7 +971,7 @@ export class AdminService {
         if(!partnerLeadActionAllowed(row.rawState??'',status))throw new Error('This lead action is not available in the current state.');
         return this.http.patch<any>('/api/v1/staff/leads/'+id,{state:partnerLeadState(status),note:reason},{headers:this.headers(row.version),context:this.applicationContext()}).pipe(tap(result=>this.acknowledgeApplication(id,result)),switchMap(result=>this.loadStaffApplications().pipe(map(()=>result))));
       }
-      const blocked=distributorActionBlock({state:row.rawState,reviewerPartyId:row.reviewerPartyId,documents:row.documents},status,this.session.userId(),this.distributorMarket()?.id);
+      const blocked=distributorActionBlock({partnerType:row.partnerType,state:row.rawState,reviewerPartyId:row.reviewerPartyId,documents:row.documents},status,this.session.userId(),this.distributorMarket()?.id);
       if(blocked)throw new Error(blocked);
       const {action,body}=distributorCommand(status,reason,documentsVerified,this.distributorMarket()?.id);
       return this.http.post<any>('/api/v1/staff/distributor-applications/'+id+'/'+action,body,{

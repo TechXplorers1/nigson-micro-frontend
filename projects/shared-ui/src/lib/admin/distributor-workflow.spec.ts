@@ -46,3 +46,10 @@ describe('Distributor decision prerequisites',()=>{
 });
 
 it('uses saved-command retry only for an independent pending activation',()=>{expect(distributorActionBlock({state:'ACTIVATION_PENDING',reviewerPartyId:'reviewer'},'Retry activation','approver')).toBeNull();expect(distributorActionBlock({state:'ACTIVATION_PENDING',reviewerPartyId:'reviewer'},'Retry activation','reviewer')).toBeTruthy();expect(distributorActionBlock({state:'APPROVED'},'Retry activation','approver')).toBeTruthy();expect(distributorCommand('Retry activation','',false)).toEqual({action:'decision',body:{decision:'RETRY',reason:'Retry the saved activation command'}});});
+
+describe('Simple affiliate decisions',()=>{
+ it('allows direct affiliate approval without weakening business review',()=>{expect(distributorActionBlock({partnerType:'AFFILIATE',state:'SUBMITTED'},'Approved','staff','market')).toBeNull();expect(distributorActionBlock({partnerType:'WHOLESALE',state:'SUBMITTED'},'Approved','staff','market')).toContain('review');});
+ it('suspends only an approved affiliate through the existing decision command',()=>{expect(distributorActionBlock({partnerType:'AFFILIATE',state:'APPROVED'},'Suspended','staff','market')).toBeNull();expect(distributorActionBlock({partnerType:'AFFILIATE',state:'SUBMITTED'},'Suspended','staff','market')).toContain('approved');expect(distributorCommand('Suspended','Terms review',false).body.decision).toBe('SUSPEND');});
+});
+
+it('permits recovery of a pending affiliate suspension without creating a fresh decision',()=>{expect(distributorActionBlock({partnerType:'AFFILIATE',state:'SUSPENSION_PENDING'},'Retry activation','staff','market')).toBeNull();expect(distributorCommand('Retry activation','',false).body.decision).toBe('RETRY');});

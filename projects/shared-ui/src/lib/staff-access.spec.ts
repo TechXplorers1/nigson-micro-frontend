@@ -17,6 +17,7 @@ async function guard(roles:string[],url:string,options:{authenticated?:boolean;l
  return {result:isObservable(result)?await firstValueFrom(result):await result,session};
 }
 describe('Staff route access',()=>{
+ it('allows affiliate payout records only to Admin and Finance',async()=>{for(const role of ['ADMIN','FINANCE'])expect((await guard([role],'/admin/affiliate-payouts')).result).toBe(true);for(const role of ['SALES','OPERATIONS','CONTENT_EDITOR','CONTENT_PUBLISHER','ANALYST','CUSTOMER'])expect((await guard([role],'/admin/affiliate-payouts')).result).not.toBe(true);});
  it('admits every recognized staff role through the portal entrance',async()=>{
   for(const role of ['ADMIN','SALES','OPERATIONS','FINANCE','CONTENT_EDITOR','CONTENT_PUBLISHER','ANALYST'])expect((await guard([role],'/admin',{entry:true})).result).toBe(true);
  });

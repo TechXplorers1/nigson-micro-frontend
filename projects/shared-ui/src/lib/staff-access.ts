@@ -1,12 +1,12 @@
-export type SectionKey = 'dashboard'|'pages'|'products'|'reviews'|'distributors'|'quotes'|'inquiries'|'inventory'|'orders'|'customers'|'analytics'|'blog'|'admins'|'roles';
+export type SectionKey = 'dashboard'|'pages'|'products'|'reviews'|'distributors'|'quotes'|'inquiries'|'inventory'|'orders'|'customers'|'analytics'|'blog'|'admins'|'roles'|'affiliatePayouts';
 export type BackendRole = 'ADMIN'|'SALES'|'OPERATIONS'|'FINANCE'|'CONTENT_EDITOR'|'CONTENT_PUBLISHER'|'ANALYST';
 
 /** Mirrors current owner API permissions; ADMIN is not an implicit domain grant. */
 export const ROLE_PERMISSIONS:Record<BackendRole,SectionKey[]> = {
- ADMIN:['dashboard','admins','roles'],
+ ADMIN:['dashboard','admins','roles','affiliatePayouts'],
  SALES:['dashboard','quotes','distributors','customers','inquiries'],
  OPERATIONS:['dashboard','orders','inventory'],
- FINANCE:['dashboard','orders'],
+ FINANCE:['dashboard','orders','affiliatePayouts'],
  CONTENT_EDITOR:['dashboard','products','pages','blog'],
  CONTENT_PUBLISHER:['dashboard','reviews'],
  ANALYST:['dashboard','analytics']
@@ -24,7 +24,7 @@ export function staffPathSection(url:string):SectionKey|undefined {
  const path=url.split(/[?#]/)[0].replace(/\/$/,'');
  if(path==='/admin')return 'dashboard';
  if(/^\/admin\/inventory\/products(?:\/new|\/[^/]+\/edit)?$/.test(path))return 'products';
- const routes:Record<string,SectionKey>={analytics:'analytics',users:'admins',roles:'roles',pages:'pages',reviews:'reviews',blog:'blog',inventory:'inventory',orders:'orders',customers:'customers',quotes:'quotes',applications:'distributors',inquiries:'inquiries'};
+ const routes:Record<string,SectionKey>={'affiliate-payouts':'affiliatePayouts',analytics:'analytics',users:'admins',roles:'roles',pages:'pages',reviews:'reviews',blog:'blog',inventory:'inventory',orders:'orders',customers:'customers',quotes:'quotes',applications:'distributors',inquiries:'inquiries'};
  const suffix=path.slice('/admin/'.length);
  if(path.startsWith('/admin/')&&routes[suffix])return routes[suffix];
  if(/^\/admin\/pages\/[^/]+$/.test(path))return 'pages';
