@@ -39,13 +39,19 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   // ── section getters ──────────────────────────────────────────────────────
   linkRoute(value: string | null | undefined, fallback = '/products'): string {
-    const target = value?.trim() || fallback;
+    const target = value?.trim();
+    if (!target || target === '#' || target === '#new-arrivals' || target.includes('new-arrivals')) {
+      return fallback;
+    }
     const hash = target.indexOf('#');
     return hash === 0 ? '/' : hash > 0 ? target.slice(0, hash) : target;
   }
 
   linkFragment(value: string | null | undefined, fallback = '/products'): string | undefined {
-    const target = value?.trim() || fallback;
+    const target = value?.trim();
+    if (!target || target === '#' || target === '#new-arrivals' || target.includes('new-arrivals')) {
+      return undefined;
+    }
     const hash = target.indexOf('#');
     return hash < 0 ? undefined : target.slice(hash + 1);
   }

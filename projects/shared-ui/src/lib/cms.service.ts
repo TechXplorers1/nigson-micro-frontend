@@ -157,10 +157,10 @@ export const PAGES: PageDef[] = [
         defaultCards: [
           { label: "Audio", title: "Sound that moves with you.", description: "Immersive listening, made effortless.", filter: "Earbuds", image: "/assets/home-category-audio.png" },
           { label: "Power", title: "Ready when you need it.", description: "Dependable portable power for every day.", filter: "Power Banks", image: "/assets/home-category-power.png" },
-          { label: "Charging", title: "Fast power. Less waiting.", description: "Compact chargers and cables built to keep up.", filter: "Home Chargers", image: "/assets/home-category-charging.png" },
+          { label: "Charging", title: "Fast power. Less waiting.", description: "Compact chargers and cables built to keep up.", filter: "Chargers", image: "/assets/home-category-charging.png" },
           { label: "Mobile Accessories", title: "Made for your mobile life.", description: "The useful details that make every device better.", filter: "Cables", image: "/assets/home-category-mobile-accessories.png" },
-          { label: "Car Accessories", title: "Upgrade every drive.", description: "Smarter essentials for the road ahead.", filter: "Car Chargers", image: "/assets/home-category-car-accessories.png" },
-          { label: "Home & Power", title: "Everyday power, simplified.", description: "Reliable essentials for a more connected home.", filter: "Power Strips", image: "/assets/nigson-hero-products.jpg" },
+          { label: "Car Accessories", title: "Upgrade every drive.", description: "Smarter essentials for the road ahead.", filter: "Power and Accessories", image: "/assets/home-category-car-accessories.png" },
+          { label: "Home & Power", title: "Everyday power, simplified.", description: "Reliable essentials for a more connected home.", filter: "Extension Sockets", image: "/assets/nigson-hero-products.jpg" },
           { label: "FMCG", title: "The everyday, considered.", description: "Useful products selected for modern routines.", filter: "FMCG", image: "/assets/home-category-fmcg.png" },
         ],
       },

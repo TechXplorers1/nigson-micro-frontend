@@ -10,6 +10,8 @@ function setup() {
     step: () => 1, address: { street: '12 Test street', city: 'Lagos', state: 'Lagos', postal: '' },
     selectedAddressId: '', savedAddresses: [],
     customer: { fullName: 'Test Customer', phone: '+2348000000001' },
+    card: { name: 'Test User', number: '1234 5678 1234 5678', expiry: '12/30', cvv: '123' },
+    netbank: { bank: 'Access Bank', userId: 'user1', pin: '1234' },
     deliveryMode: () => 'IMMEDIATE', scheduledForLocal: () => '',
     payment: () => 'credit',
     modalError: { set: vi.fn() }, processing: { set: vi.fn() },
@@ -119,6 +121,67 @@ describe('Checkout automatic delivery location', () => {
     await c.payNow();
     expect(c.http.post.mock.calls[1][1]).toEqual({ checkoutQuoteId: 'quote', quoteHash: 'hash', paymentMethod: 'CASH_ON_DELIVERY' });
     expect(c.router.navigate).toHaveBeenCalledWith(['/checkout/success'], { queryParams: { id: 'order', method: 'cod' } });
+  });
+
+  describe('Card validation and input formatting', () => {
+    it('validates cardholder name requiring letters only', () => {
+      const c = setup();
+      c.card.name = '';
+      expect(c.validatePayment()).toContain('cardholder name');
+      c.card.name = '12345';
+      expect(c.validatePayment()).toContain('letters only');
+      c.card.name = 'John Doe';
+      expect(c.validatePayment()).toBeNull();
+    });
+
+    it('validates card number requiring 13 to 19 digits', () => {
+      const c = setup();
+      c.card.number = '1234';
+      expect(c.validatePayment()).toContain('13 to 19 digits');
+      c.card.number = '4111 1111 1111 1111';
+      expect(c.validatePayment()).toBeNull();
+    });
+
+    it('validates expiry format and non-expired date', () => {
+      const c = setup();
+      c.card.expiry = '13/30';
+      expect(c.validatePayment()).toContain('MM/YY format');
+      c.card.expiry = 'invalid';
+      expect(c.validatePayment()).toContain('MM/YY format');
+      c.card.expiry = '01/20'; // past year
+      expect(c.validatePayment()).toContain('expired');
+      c.card.expiry = '12/35'; // future
+      expect(c.validatePayment()).toBeNull();
+    });
+
+    it('validates CVV requiring 3 or 4 digits', () => {
+      const c = setup();
+      c.card.cvv = '12';
+      expect(c.validatePayment()).toContain('3 or 4 digit');
+      c.card.cvv = 'abc';
+      expect(c.validatePayment()).toContain('3 or 4 digit');
+      c.card.cvv = '123';
+      expect(c.validatePayment()).toBeNull();
+      c.card.cvv = '1234';
+      expect(c.validatePayment()).toBeNull();
+    });
+
+    it('sanitizes inputs via onCardNameInput, onCardNumberInput, onExpiryInput, onCvvInput', () => {
+      const c = setup();
+      const fakeEvent = (val: string) => ({ target: { value: val } } as any);
+
+      c.onCardNameInput(fakeEvent('John123! Doe'));
+      expect(c.card.name).toBe('John Doe');
+
+      c.onCardNumberInput(fakeEvent('4111abcd222233334444'));
+      expect(c.card.number).toBe('4111 2222 3333 4444');
+
+      c.onExpiryInput(fakeEvent('12a30'));
+      expect(c.card.expiry).toBe('12/30');
+
+      c.onCvvInput(fakeEvent('12ab3'));
+      expect(c.card.cvv).toBe('123');
+    });
   });
 
 });

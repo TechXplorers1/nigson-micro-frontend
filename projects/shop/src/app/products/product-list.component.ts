@@ -1,18 +1,111 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, OnDestroy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { LucideSearch, LucideLoader2 } from '@lucide/angular';
 import { CatalogService, Product } from 'shared-ui';
 import { ProductCardComponent } from './product-card.component';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { map, debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
-import { Subject } from 'rxjs';
+import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
+import { Subject, Subscription } from 'rxjs';
+
+/**
+ * Robust category resolver that matches UUIDs, exact category names/slugs,
+ * typo-tolerant prefix matches (e.g. 'Earbudsj' -> 'Earbuds'),
+ * and common storefront CMS aliases (e.g. 'Home Chargers' -> 'Chargers').
+ */
+export function resolveCategory(rawCategory: string, categories: { id: string; name: string; slug?: string }[]): string | null {
+  if (!rawCategory || !categories?.length) return null;
+  const trimmed = rawCategory.trim();
+
+  // 1. Direct UUID match
+  if (/^[0-9a-f-]{36}$/i.test(trimmed)) {
+    const byId = categories.find(c => c.id.toLowerCase() === trimmed.toLowerCase());
+    return byId ? byId.id : trimmed;
+  }
+
+  const norm = trimmed.toLowerCase();
+
+  // 2. Exact match on name or slug
+  const exact = categories.find(c => c.name.toLowerCase() === norm || c.slug?.toLowerCase() === norm);
+  if (exact) return exact.id;
+
+  // 3. Cleaned match (strip trailing non-alphanumeric or stray characters)
+  const cleaned = norm.replace(/[^a-z0-9\s]/g, '').trim();
+  const cleanedMatch = categories.find(c => {
+    const cName = c.name.toLowerCase();
+    const cSlug = (c.slug || '').toLowerCase();
+    return cName === cleaned || cSlug === cleaned;
+  });
+  if (cleanedMatch) return cleanedMatch.id;
+
+  // 4. StartsWith / Prefix match (e.g. 'earbudsj' starts with 'earbuds')
+  const prefixMatch = categories.find(c => {
+    const cName = c.name.toLowerCase();
+    return norm.startsWith(cName) || cName.startsWith(norm) ||
+           cleaned.startsWith(cName) || cName.startsWith(cleaned);
+  });
+  if (prefixMatch) return prefixMatch.id;
+
+  // 5. Semantic aliases for known storefront categories (sorted longest to shortest so specific phrases match first)
+  const aliasMap: Record<string, string> = {
+    'power strips': 'extension sockets',
+    'power strip': 'extension sockets',
+    'surge protector': 'extension sockets',
+    'extension sockets': 'extension sockets',
+    'sockets': 'extension sockets',
+    'wireless chargers': 'wireless chargers',
+    'wireless charger': 'wireless chargers',
+    'home chargers': 'chargers',
+    'car chargers': 'chargers',
+    'car accessories': 'power and accessories',
+    'mobile accessories': 'cables',
+    'power banks': 'power banks',
+    'power bank': 'power banks',
+    'earbudsj': 'earbuds',
+    'earbuds': 'earbuds',
+    'earbud': 'earbuds',
+    'headphone': 'earbuds',
+    'chargers': 'chargers',
+    'charger': 'chargers',
+    'charging': 'chargers',
+    'cables': 'cables',
+    'cable': 'cables',
+    'power': 'power banks',
+    'audio': 'audio',
+    'wireless': 'wireless chargers',
+    'smartphones': 'smartphones',
+    'smartphone': 'smartphones',
+    'laptops': 'laptops',
+    'laptop': 'laptops',
+    'tablets': 'tablets',
+    'tablet': 'tablets',
+    'gaming': 'gaming',
+    'storage': 'storage',
+    'networking': 'networking'
+  };
+
+  const sortedAliases = Object.entries(aliasMap).sort((a, b) => b[0].length - a[0].length);
+  for (const [key, targetCat] of sortedAliases) {
+    if (norm.includes(key) || key.includes(norm) || cleaned.includes(key)) {
+      const targetFound = categories.find(c => c.name.toLowerCase() === targetCat || c.slug?.toLowerCase() === targetCat);
+      if (targetFound) return targetFound.id;
+    }
+  }
+
+  // 6. Contains / Substring match (e.g. 'home chargers' contains 'chargers')
+  const containsMatch = categories.find(c => {
+    const cName = c.name.toLowerCase();
+    return norm.includes(cName) || cName.includes(norm);
+  });
+  if (containsMatch) return containsMatch.id;
+
+  return null;
+}
 
 /**
  * ProductListComponent (TASK-15, TASK-17, TASK-23)
  *
- * Replaces hardcoded PRODUCTS/CATEGORIES arrays with:
+ * Loads all catalog products & categories from backend:
  *  - GET /api/v1/catalogue/products?q=...&categoryId=...
  *  - GET /api/v1/catalogue/categories
  */
@@ -50,7 +143,7 @@ import { Subject } from 'rxjs';
           </div>
         </div>
 
-        <!-- Category chips from backend -->
+        <!-- Category chips from backend (all available categories) -->
         <div class="flex flex-wrap gap-2 mb-10">
           <button
             (click)="selectCategory(null)"
@@ -109,7 +202,7 @@ import { Subject } from 'rxjs';
     </div>
   `
 })
-export class ProductListComponent implements OnInit {
+export class ProductListComponent implements OnInit, OnDestroy {
   catalog = inject(CatalogService);
   route = inject(ActivatedRoute);
   router = inject(Router);
@@ -117,35 +210,56 @@ export class ProductListComponent implements OnInit {
   readonly searchQuery = signal('');
   readonly activeCategory = signal<string | null>(null);
   private searchSubject = new Subject<string>();
+  private subs = new Subscription();
 
   ngOnInit() {
-    const params = this.route.snapshot.queryParams;
-    const initialCategory = params['categoryId'] || params['category'] || null;
-    this.activeCategory.set(initialCategory);
+    const initialParam = this.route.snapshot.queryParams['categoryId'] || this.route.snapshot.queryParams['category'] || null;
 
+    // 1. Always fetch all real categories from backend on initialization
     this.catalog.loadCategories().subscribe(cats => {
-      if (initialCategory && !/^[0-9a-f-]{36}$/i.test(initialCategory)) {
-        const found = cats.find(c =>
-          c.name.toLowerCase() === initialCategory.toLowerCase() ||
-          c.slug?.toLowerCase() === initialCategory.toLowerCase()
-        );
-        if (found) {
-          this.activeCategory.set(found.id);
-          this.loadProducts(0);
-        }
+      if (initialParam && cats?.length) {
+        const resolvedId = resolveCategory(initialParam, cats);
+        this.activeCategory.set(resolvedId);
+        this.loadProducts(0);
       }
     });
 
-    this.loadProducts(0);
-
-    // Debounced search
-    this.searchSubject.pipe(
-      debounceTime(350),
-      distinctUntilChanged()
-    ).subscribe(q => {
-      this.searchQuery.set(q);
+    // If no initial category parameter was passed, load all products immediately
+    if (!initialParam) {
+      this.activeCategory.set(null);
       this.loadProducts(0);
-    });
+    }
+
+    // 2. Listen to route query param changes (e.g. clicking category links while on the page)
+    this.subs.add(
+      this.route.queryParams.subscribe(params => {
+        const catParam = params['categoryId'] || params['category'] || null;
+        const currentCats = this.catalog.categories();
+
+        if (currentCats && currentCats.length > 0) {
+          const resolvedId = catParam ? resolveCategory(catParam, currentCats) : null;
+          if (resolvedId !== this.activeCategory()) {
+            this.activeCategory.set(resolvedId);
+            this.loadProducts(0);
+          }
+        }
+      })
+    );
+
+    // 3. Debounced search
+    this.subs.add(
+      this.searchSubject.pipe(
+        debounceTime(350),
+        distinctUntilChanged()
+      ).subscribe(q => {
+        this.searchQuery.set(q);
+        this.loadProducts(0);
+      })
+    );
+  }
+
+  ngOnDestroy() {
+    this.subs.unsubscribe();
   }
 
   onSearch(q: string) {

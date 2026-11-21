@@ -88,6 +88,11 @@ export class AppComponent {
     ).subscribe((event: any) => {
       this.currentPage.set(event.urlAfterRedirects.split(/[?#]/)[0]);
       this.isAdminRoute.set(event.urlAfterRedirects.startsWith('/admin'));
+      if (typeof window !== 'undefined' && !event.urlAfterRedirects.includes('#')) {
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
+      }
     });
   }
 }

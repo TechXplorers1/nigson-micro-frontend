@@ -379,20 +379,52 @@ const BANKS = ["Access Bank", "First Bank", "Guaranty Trust Bank", "United Bank 
             <div class="space-y-4">
               <div class="space-y-1">
                 <label class="text-xs font-semibold uppercase tracking-wider text-muted-ink">Cardholder Name</label>
-                <input [(ngModel)]="card.name" class="w-full rounded-md border border-hairline bg-surface-alt px-4 py-2 text-sm focus:border-brand focus:outline-none" />
+                <input
+                  [value]="card.name"
+                  (input)="onCardNameInput($event)"
+                  placeholder="Cardholder Name"
+                  autocomplete="cc-name"
+                  maxlength="50"
+                  class="w-full rounded-md border border-hairline bg-surface-alt px-4 py-2 text-sm focus:border-brand focus:outline-none"
+                />
               </div>
               <div class="space-y-1">
                 <label class="text-xs font-semibold uppercase tracking-wider text-muted-ink">Card Number</label>
-                <input [(ngModel)]="card.number" placeholder="0000 0000 0000 0000" class="w-full rounded-md border border-hairline bg-surface-alt px-4 py-2 text-sm focus:border-brand focus:outline-none tabular-nums" />
+                <input
+                  [value]="card.number"
+                  (input)="onCardNumberInput($event)"
+                  placeholder="0000 0000 0000 0000"
+                  inputmode="numeric"
+                  autocomplete="cc-number"
+                  maxlength="23"
+                  class="w-full rounded-md border border-hairline bg-surface-alt px-4 py-2 text-sm focus:border-brand focus:outline-none tabular-nums"
+                />
               </div>
               <div class="grid grid-cols-2 gap-4">
                 <div class="space-y-1">
                   <label class="text-xs font-semibold uppercase tracking-wider text-muted-ink">Expiry (MM/YY)</label>
-                  <input [(ngModel)]="card.expiry" placeholder="MM/YY" class="w-full rounded-md border border-hairline bg-surface-alt px-4 py-2 text-sm focus:border-brand focus:outline-none tabular-nums" />
+                  <input
+                    [value]="card.expiry"
+                    (input)="onExpiryInput($event)"
+                    placeholder="MM/YY"
+                    inputmode="numeric"
+                    autocomplete="cc-exp"
+                    maxlength="5"
+                    class="w-full rounded-md border border-hairline bg-surface-alt px-4 py-2 text-sm focus:border-brand focus:outline-none tabular-nums"
+                  />
                 </div>
                 <div class="space-y-1">
                   <label class="text-xs font-semibold uppercase tracking-wider text-muted-ink">CVV</label>
-                  <input [(ngModel)]="card.cvv" type="password" placeholder="123" class="w-full rounded-md border border-hairline bg-surface-alt px-4 py-2 text-sm focus:border-brand focus:outline-none tabular-nums" />
+                  <input
+                    [value]="card.cvv"
+                    (input)="onCvvInput($event)"
+                    type="password"
+                    placeholder="123"
+                    inputmode="numeric"
+                    autocomplete="cc-csc"
+                    maxlength="4"
+                    class="w-full rounded-md border border-hairline bg-surface-alt px-4 py-2 text-sm focus:border-brand focus:outline-none tabular-nums"
+                  />
                 </div>
               </div>
             </div>
@@ -638,6 +670,39 @@ export class CheckoutComponent implements OnInit {
     this.next();
   }
 
+  onCardNameInput(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const sanitized = input.value.replace(/[^a-zA-Z\s'-]/g, '');
+    input.value = sanitized;
+    this.card.name = sanitized;
+  }
+
+  onCardNumberInput(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const digits = input.value.replace(/\D/g, '').slice(0, 19);
+    const formatted = digits.match(/.{1,4}/g)?.join(' ') || digits;
+    input.value = formatted;
+    this.card.number = formatted;
+  }
+
+  onExpiryInput(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const digits = input.value.replace(/\D/g, '').slice(0, 4);
+    if (digits.length >= 2) {
+      input.value = `${digits.slice(0, 2)}/${digits.slice(2)}`;
+    } else {
+      input.value = digits;
+    }
+    this.card.expiry = input.value;
+  }
+
+  onCvvInput(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const digits = input.value.replace(/\D/g, '').slice(0, 4);
+    input.value = digits;
+    this.card.cvv = digits;
+  }
+
   private deliveryPhone(): string | null {
     return normalizePhoneNumber(this.customer.phone);
   }
@@ -700,11 +765,30 @@ export class CheckoutComponent implements OnInit {
   }
 
   private errorMessage(error: any, fallback = 'Delivery quote could not be obtained. Please try again.'): string {
-    const deliveryUnavailable = error?.url?.includes('/delivery-quotes') &&
-      (error?.status === 404 || error?.error?.code === 'FEATURE_DISABLED');
-    if (deliveryUnavailable) return error?.error?.code === 'FEATURE_DISABLED'
-      ? 'Delivery quotes are disabled on the server (FEATURE_DISABLED). The delivery provider must be enabled before an address can be quoted.'
-      : 'The delivery quote resource was not found (HTTP 404). Reload your cart and address; if it persists, check the server delivery route.';
+    const isDeliveryUrl = error?.url?.includes('/delivery-quotes');
+    const isCheckoutQuoteUrl = error?.url?.includes('/checkout/quotes');
+    const code = error?.error?.code;
+    const status = error?.status;
+
+    if (isDeliveryUrl) {
+      if (code === 'FEATURE_DISABLED') {
+        return 'Delivery quotes are disabled on the server (FEATURE_DISABLED). The delivery provider must be enabled before an address can be quoted.';
+      }
+      if (status === 503 || code === 'PROVIDER_UNAVAILABLE') {
+        return 'The courier delivery service is currently unavailable. Please verify your address or try again later.';
+      }
+      if (status === 404) {
+        return 'The delivery quote resource was not found (HTTP 404). Reload your cart and address; if it persists, check the server delivery route.';
+      }
+    }
+    if (isCheckoutQuoteUrl) {
+      if (status === 404 || code === 'NOT_FOUND') {
+        return 'A valid carrier delivery quote was not found for this checkout. Please return to the Shipping Address step to refresh your delivery quote.';
+      }
+      if (status === 422 || code === 'PRICING_RULE_VIOLATION') {
+        return 'Price calculation could not be completed for this delivery quote. Please review your cart items and shipping address.';
+      }
+    }
     return error?.error?.detail || error?.error?.title || error?.message || fallback;
   }
 
@@ -715,10 +799,32 @@ export class CheckoutComponent implements OnInit {
       if (this.netbank.pin.trim().length < 4) return "Please enter your password / PIN.";
       return null;
     }
-    if (!this.card.name.trim()) return "Please enter the cardholder name.";
-    if (this.card.number.replace(/\D/g, "").length < 12) return "Please enter a valid card number.";
-    if (!/^\d{2}\s?\/\s?\d{2}$/.test(this.card.expiry.trim())) return "Expiry must be in MM/YY format.";
-    if (!/^\d{3,4}$/.test(this.card.cvv.trim())) return "Please enter a valid CVV.";
+    const name = this.card.name.trim();
+    if (!name) return "Please enter the cardholder name.";
+    if (!/^[a-zA-Z\s'-]{2,50}$/.test(name)) return "Cardholder name must contain letters only (minimum 2 characters).";
+
+    const digits = this.card.number.replace(/\D/g, "");
+    if (digits.length < 13 || digits.length > 19) return "Please enter a valid card number (13 to 19 digits).";
+
+    const expiryMatch = this.card.expiry.trim().match(/^(0[1-9]|1[0-2])\/(\d{2})$/);
+    if (!expiryMatch) return "Expiry must be in MM/YY format with a valid month (01-12).";
+
+    const expMonth = parseInt(expiryMatch[1], 10);
+    const expYear = 2000 + parseInt(expiryMatch[2], 10);
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+
+    if (expYear < currentYear || (expYear === currentYear && expMonth < currentMonth)) {
+      return "Card has expired. Please check the expiry date.";
+    }
+    if (expYear > currentYear + 25) {
+      return "Please enter a valid future expiry year.";
+    }
+
+    const cvv = this.card.cvv.trim();
+    if (!/^\d{3,4}$/.test(cvv)) return "Please enter a valid 3 or 4 digit CVV.";
+
     return null;
   }
 

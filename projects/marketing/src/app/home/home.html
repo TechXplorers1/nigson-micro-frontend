@@ -29,7 +29,7 @@
       <p class="display-type mb-3 text-[10px] font-bold uppercase text-primary">New Arrival</p>
       <h2 class="display-type text-balance text-2xl font-bold leading-[1.05] sm:text-6xl lg:text-7xl">MADE FOR EVERY DAY.</h2>
       <p class="mx-auto mt-4 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-lg sm:leading-7">{{newArrivals().t('subtitle')}}</p>
-      <a [routerLink]="linkRoute(newArrivals().t('btnLink'), '/products')" [fragment]="linkFragment(newArrivals().t('btnLink'), '/products')" class="display-type mt-8 inline-flex items-center gap-2 text-sm font-semibold text-primary">
+      <a routerLink="/products" class="display-type mt-8 inline-flex items-center gap-2 text-sm font-semibold text-primary cursor-pointer hover:underline transition-all">
         {{newArrivals().t('btnLabel') || 'Explore New Arrivals'}} <svg lucideArrowRight class="h-4 w-4"></svg>
       </a>
     </div>
@@ -47,7 +47,7 @@
               <p class="display-type mb-3 text-[10px] font-bold uppercase text-primary">{{item.label}}</p>
               <h3 class="display-type text-balance text-2xl font-bold leading-[1.05] sm:text-5xl lg:text-6xl">{{item.title}}</h3>
               <p class="mt-4 max-w-md text-sm leading-6 text-muted-foreground sm:text-lg sm:leading-7">{{item.description}}</p>
-              <a routerLink="/products" [queryParams]="{category: item.filter}" class="display-type mt-6 inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-primary transition-[gap] hover:gap-3">View Category <svg lucideArrowRight class="h-4 w-4"></svg></a>
+              <a routerLink="/products" [queryParams]="{category: item.filter || item.label}" class="display-type mt-6 inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-primary transition-[gap] hover:gap-3">View Category <svg lucideArrowRight class="h-4 w-4"></svg></a>
             </div>
           </div>
           <div class="h-[320px] overflow-hidden sm:h-[540px] lg:h-full" [ngClass]="{'lg:order-1': i % 2 === 1, 'bg-black': item.label === 'FMCG', 'bg-[#f7f6f8]': item.label !== 'FMCG'}">
