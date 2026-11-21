@@ -6,7 +6,7 @@ import {
   LucideLayoutDashboard, LucideFileText, LucidePackage, LucideStar, LucideBuilding2, 
   LucideClipboardList, LucideMail, LucideBoxes, LucideBarChart3, 
   LucideNewspaper, LucideShieldCheck, LucideUserCog, LucideLogOut, LucideMenu,
-  LucidePackagePlus, LucideSlidersHorizontal, LucideArrowLeftRight, LucideAlertTriangle, LucideXCircle
+  LucidePackagePlus, LucideSlidersHorizontal, LucideArrowLeftRight, LucideAlertTriangle, LucideXCircle, LucideWallet
 } from '@lucide/angular';
 
 type Item = { to: string; label: string; icon: any; key: SectionKey; exact?: boolean };
@@ -19,7 +19,7 @@ type Item = { to: string; label: string; icon: any; key: SectionKey; exact?: boo
     LucideLayoutDashboard, LucideFileText, LucidePackage, LucideStar, LucideBuilding2, 
     LucideClipboardList, LucideMail, LucideBoxes, LucideBarChart3, 
     LucideNewspaper, LucideShieldCheck, LucideUserCog, LucideLogOut, LucideMenu,
-    LucidePackagePlus, LucideSlidersHorizontal, LucideArrowLeftRight, LucideAlertTriangle, LucideXCircle
+    LucidePackagePlus, LucideSlidersHorizontal, LucideArrowLeftRight, LucideAlertTriangle, LucideXCircle, LucideWallet
   ],
   template: `
     <div *ngIf="!hydrated() || !user() || !isStaff()" class="grid min-h-screen place-items-center bg-surface-alt text-sm text-muted-ink">
@@ -70,6 +70,7 @@ type Item = { to: string; label: string; icon: any; key: SectionKey; exact?: boo
                   <svg *ngIf="i.label === 'Low Stock'" lucideAlertTriangle class="h-4 w-4 shrink-0"></svg>
                   <svg *ngIf="i.label === 'Out of Stock'" lucideXCircle class="h-4 w-4 shrink-0"></svg>
                   <svg *ngIf="i.label === 'Orders'" lucideClipboardList class="h-4 w-4 shrink-0"></svg>
+                  <svg *ngIf="i.key === 'affiliatePayouts'" lucideWallet aria-hidden="true" class="h-4 w-4 shrink-0"></svg>
                   <svg *ngIf="i.label === 'Customers'" lucideUserCog class="h-4 w-4 shrink-0"></svg>
                   <svg *ngIf="i.label === 'Distributor Applications'" lucideBuilding2 class="h-4 w-4 shrink-0"></svg>
                   <svg *ngIf="i.label === 'Quote Requests'" lucideClipboardList class="h-4 w-4 shrink-0"></svg>

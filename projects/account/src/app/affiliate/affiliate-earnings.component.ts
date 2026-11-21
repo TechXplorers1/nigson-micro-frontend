@@ -4,24 +4,19 @@ import {AffiliateService,AffiliateEarnings} from 'shared-ui';
 import {finalize} from 'rxjs';
 
 @Component({selector:'app-affiliate-earnings',standalone:true,imports:[CommonModule],template:`
- <section class="rounded-2xl border border-hairline bg-white p-6 space-y-4 mb-6">
-  <div class="flex justify-between gap-4"><h2 class="text-2xl font-extrabold">Order commissions</h2><button (click)="load(result()?.page || 0)" [disabled]="loading()" class="underline">Refresh</button></div>
-  <p>Earn 5% of retail merchandise after discounts, excluding shipping and tax. Commission becomes available seven days after confirmed delivery. Refunds reduce commission.</p>
-  <p>These order totals show qualification before payouts. The payout balance above shows the amount still available to receive.</p>
-  <p *ngIf="loading()" role="status">Loading earnings...</p><p *ngIf="error()" role="alert" class="text-red-700">{{error()}}</p>
-  <ng-container *ngIf="result() as earnings">
-   <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-    <div><span>Pending</span><p class="font-bold">{{earnings.pending | currency:earnings.currency:'symbol-narrow'}}</p></div>
-    <div><span>Qualified before payouts</span><p class="font-bold">{{earnings.available | currency:earnings.currency:'symbol-narrow'}}</p></div>
-    <div><span>On hold</span><p class="font-bold">{{earnings.held | currency:earnings.currency:'symbol-narrow'}}</p></div>
-    <div><span>Reversed by refunds</span><p class="font-bold">{{earnings.reversed | currency:earnings.currency:'symbol-narrow'}}</p></div>
-   </div>
-   <p class="text-sm text-muted">Pending includes orders awaiting delivery or the seven-day waiting period. Unresolved refunds and order holds block availability.</p>
-   <p *ngIf="!earnings.items.length">No qualifying paid orders yet. Earnings appear for new purchases made through your referral links.</p>
-   <div class="overflow-x-auto" *ngIf="earnings.items.length"><table class="w-full text-left text-sm"><thead><tr><th class="py-3">Order</th><th>Commission</th><th>Status</th><th>Available from</th></tr></thead><tbody><tr *ngFor="let item of earnings.items" class="border-t"><td class="py-3 pr-3 break-all">{{item.orderNumber}}</td><td class="pr-3">{{item.net | currency:earnings.currency:'symbol-narrow'}}<span *ngIf="item.reversed!=='0.00'" class="block text-muted">Refund reversal: {{item.reversed | currency:earnings.currency:'symbol-narrow'}}</span></td><td class="pr-3">{{item.state==='HELD'?'On hold':(item.state==='AVAILABLE'?'Qualified':(item.state | titlecase))}}</td><td>{{item.availableAt?(item.availableAt | date:'mediumDate'):'After delivery'}}</td></tr></tbody></table></div>
-   <div class="flex gap-4" *ngIf="earnings.totalPages>1"><button (click)="load(earnings.page-1)" [disabled]="loading() || earnings.page===0">Previous</button><span>Page {{earnings.page+1}}</span><button (click)="load(earnings.page+1)" [disabled]="loading() || earnings.page+1>=earnings.totalPages">Next</button></div>
-  </ng-container>
- </section>`})
+<details class="rounded-2xl border border-hairline bg-white text-ink">
+  <summary class="cursor-pointer rounded-2xl p-6 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand md:px-8"><span class="font-semibold">Commission details</span><p class="mt-1 text-sm text-muted-ink">View the orders behind your earnings.</p></summary>
+  <div class="space-y-4 border-t border-hairline p-6 md:px-8">
+   <div class="flex flex-wrap items-center justify-between gap-3"><p class="max-w-xl text-sm leading-relaxed text-muted-ink">Commission is 5% after merchandise discounts, excluding shipping and tax. Orders clear seven days after complete delivery. These amounts are before payout deductions; your remaining balance is shown above.</p><button type="button" (click)="load(result()?.page || 0)" [disabled]="loading()" class="rounded-full border border-hairline px-4 py-2 text-sm font-semibold disabled:opacity-50">Refresh</button></div>
+   <p *ngIf="loading()" role="status" class="text-sm text-muted-ink">Loading commissions...</p><p *ngIf="error()" role="alert" class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{{error()}}</p>
+   <ng-container *ngIf="result() as earnings">
+    <p *ngIf="!earnings.items.length" class="rounded-xl bg-surface p-6 text-center text-sm text-muted-ink">No qualifying paid orders yet. Share a product to get started.</p>
+    <div *ngIf="earnings.items.length" class="overflow-x-auto rounded-xl border border-hairline"><table class="w-full min-w-[560px] text-left text-sm"><thead class="border-b border-hairline bg-surface text-xs uppercase tracking-wide text-muted-ink"><tr><th class="p-4">Order</th><th class="p-4">Commission</th><th class="p-4">Status</th><th class="p-4">Clears from</th></tr></thead><tbody class="divide-y divide-hairline"><tr *ngFor="let item of earnings.items"><td class="max-w-[200px] break-all p-4 text-xs">{{item.orderNumber}}</td><td class="p-4 font-semibold">{{item.net | currency:earnings.currency:'symbol-narrow'}}<span *ngIf="item.reversed!=='0.00'" class="mt-1 block text-xs font-normal text-muted-ink">Refund adjustment: {{item.reversed | currency:earnings.currency:'symbol-narrow'}}</span></td><td class="p-4">{{item.state==='HELD'?'On hold':item.state==='AVAILABLE'?'Cleared':item.state==='REVERSED'?'Refunded':'Pending'}}</td><td class="p-4 text-muted-ink">{{item.availableAt?(item.availableAt | date:'mediumDate'):'After delivery'}}</td></tr></tbody></table></div>
+    <nav *ngIf="earnings.totalPages>1" aria-label="Commission pages" class="flex items-center justify-between gap-3 text-sm"><button type="button" (click)="load(earnings.page-1)" [disabled]="loading() || earnings.page===0" class="rounded-full border border-hairline px-4 py-2 disabled:opacity-40">Previous</button><span class="text-muted-ink">Page {{earnings.page+1}}</span><button type="button" (click)="load(earnings.page+1)" [disabled]="loading() || earnings.page+1>=earnings.totalPages" class="rounded-full border border-hairline px-4 py-2 disabled:opacity-40">Next</button></nav>
+   </ng-container>
+  </div>
+ </details>
+`})
 export class AffiliateEarningsComponent implements OnInit {
  private affiliate=inject(AffiliateService);readonly result=signal<AffiliateEarnings|null>(null);readonly loading=signal(false);readonly error=signal('');
  ngOnInit(){this.load(0);}
