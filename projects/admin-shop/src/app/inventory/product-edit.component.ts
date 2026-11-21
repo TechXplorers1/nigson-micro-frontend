@@ -101,6 +101,7 @@ export interface CustomSpec {
             </span>
           </div>
 
+          <p *ngIf="!imageRequired()" class="rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs text-blue-900">Local testing: images are optional for publishing. Products without an image use the storefront placeholder.</p>
           <div *ngIf="uploadError()" class="rounded-xl border border-red-200 bg-red-50 p-2.5 text-xs font-semibold text-red-700">
             {{ uploadError() }}
           </div>
@@ -503,6 +504,14 @@ export interface CustomSpec {
   `
 })
 export class ProductEditComponent implements OnInit {
+  readonly imageRequired = signal(true);
+  loadPublicationPolicy() {
+    this.imageRequired.set(true);
+    this.http.get<{imageRequired:boolean}>('/api/v1/staff/catalogue/publication-policy').subscribe({
+      next:policy=>{this.imageRequired.set(policy.imageRequired!==false);this.cdr.markForCheck();},
+      error:()=>{this.imageRequired.set(true);this.cdr.markForCheck();}
+    });
+  }
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private admin = inject(AdminService);
@@ -575,15 +584,7 @@ export class ProductEditComponent implements OnInit {
     { id: 'availability' as const, label: '4. Availability & Warehouse' }
   ];
 
-  categories = [
-    'Cables',
-    'Power Banks',
-    'Earbuds',
-    'Chargers',
-    'Extension Sockets',
-    'Motion-Activated Lights',
-    'Accessories'
-  ];
+  categories: string[] = [];
 
   customSpecs: CustomSpec[] = [];
 
@@ -673,10 +674,11 @@ export class ProductEditComponent implements OnInit {
   }
 
   ngOnInit() {
-    this.http.get<any[]>('/api/v1/catalogue/categories?market=NG').subscribe({
+    this.loadPublicationPolicy();
+    this.http.get<any[]>('/api/v1/staff/categories').subscribe({
       next: rows => {
-        if (Array.isArray(rows) && rows.length > 0) {
-          const names = rows.map(row => row.name);
+        if (Array.isArray(rows)) {
+          const names = rows.filter(row => row.active).map(row => row.name);
           if (this.product.category && !names.includes(this.product.category)) {
             names.push(this.product.category);
           }
@@ -814,6 +816,7 @@ export class ProductEditComponent implements OnInit {
         desc: descText,
         description: descText,
         brand: brandName,
+        brandId: full.brand?.id || cachedProduct?.brandId || null,
         category: categoryName,
         sku: skuCode,
         skuId: skuId,
@@ -915,6 +918,8 @@ export class ProductEditComponent implements OnInit {
     this.product = {
       ...this.product,
       ...full,
+      brand: typeof full.brand === 'string' ? full.brand : full.brand === null ? '' : full.brand?.name ?? this.product.brand ?? '',
+      brandId: full.brand === null ? null : full.brand?.id ?? full.brandId ?? this.product.brandId ?? null,
       desc: full.description || full.desc || this.product.desc || '',
       status: statusMap[full.status] || 'Active',
       retail: full.retail ?? full.price ?? this.product.retail,
@@ -1130,7 +1135,7 @@ export class ProductEditComponent implements OnInit {
 
       if (desiredStatus === 'Active' && saved.status !== 'ACTIVE') {
         const hasImages = this.activeImageCount() > 0 || (saved.assets && saved.assets.length > 0);
-        if (!hasImages) {
+        if (!hasImages && this.imageRequired()) {
           throw new Error('A product must have at least one uploaded image before it can be published in Nigeria. Please upload a primary image in Slot 1, or change Catalog Status to "Draft" to save without publishing.');
         }
         saved = await firstValueFrom(this.admin.publishProduct(saved.id, 'PUBLISH'));

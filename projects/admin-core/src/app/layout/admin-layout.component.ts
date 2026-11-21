@@ -64,6 +64,7 @@ type Item = { to: string; label: string; icon: any; key: SectionKey; exact?: boo
                   <svg *ngIf="i.label === 'Blog Posts'" lucideNewspaper class="h-4 w-4 shrink-0"></svg>
                   <svg *ngIf="i.label === 'Inventory Overview'" lucideBoxes class="h-4 w-4 shrink-0"></svg>
                   <svg *ngIf="i.label === 'Products'" lucidePackage class="h-4 w-4 shrink-0"></svg>
+                  <svg *ngIf="i.key === 'categories'" lucideBoxes aria-hidden="true" class="h-4 w-4 shrink-0"></svg>
                   <svg *ngIf="i.label === 'Stock In / Receive'" lucidePackagePlus class="h-4 w-4 shrink-0"></svg>
                   <svg *ngIf="i.label === 'Stock Adjustment'" lucideSlidersHorizontal class="h-4 w-4 shrink-0"></svg>
                   <svg *ngIf="i.label === 'Stock Movements'" lucideArrowLeftRight class="h-4 w-4 shrink-0"></svg>
@@ -178,6 +179,7 @@ export class AdminLayoutComponent implements OnInit {
       items: [
         { to: "/admin/inventory", label: "Inventory Overview", icon: null, key: "inventory" as SectionKey, exact: true },
         { to: "/admin/inventory/products", label: "Products", icon: null, key: "products" as SectionKey },
+        { to: "/admin/categories", label: "Categories", icon: null, key: "categories" as SectionKey },
         { to: "/admin/inventory/stock-in", label: "Stock In / Receive", icon: null, key: "inventory" as SectionKey },
         { to: "/admin/inventory/adjustment", label: "Stock Adjustment", icon: null, key: "inventory" as SectionKey },
         { to: "/admin/inventory/movements", label: "Stock Movements", icon: null, key: "inventory" as SectionKey },
