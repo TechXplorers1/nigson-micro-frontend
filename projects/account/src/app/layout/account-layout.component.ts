@@ -5,7 +5,7 @@ import { RouterLink, RouterOutlet, Router, RouterLinkActive } from '@angular/rou
 import { AffiliateService, AccountService, OrderService, ShopService, SessionService } from 'shared-ui';
 import {
   LucideUser, LucidePackage, LucideLogOut, LucideSettings,
-  LucideHeart, LucideClipboardList, LucideMapPin
+  LucideHeart, LucideClipboardList, LucideMapPin, LucideHandshake
 } from '@lucide/angular';
 
 @Component({
@@ -14,7 +14,7 @@ import {
   imports: [
     CommonModule, RouterLink, RouterOutlet, RouterLinkActive,
     LucideUser, LucidePackage, LucideLogOut, LucideSettings,
-    LucideHeart, LucideClipboardList, LucideMapPin
+    LucideHeart, LucideClipboardList, LucideMapPin, LucideHandshake
   ],
   template: `
     <div *ngIf="!shop.user() && !session.authenticated()" class="pt-12 pb-16 text-center text-muted-ink">
@@ -92,7 +92,7 @@ import {
               >
                 <svg lucideClipboardList class="h-4 w-4"></svg> Quote Requests
               </a>
-              <a *ngIf="affiliate.state()==='ACTIVE' || affiliate.state()==='SUSPENDED'" routerLink="/account/affiliate" routerLinkActive="bg-brand text-white" class="flex items-center gap-3 rounded-2xl px-5 py-3.5 text-sm font-semibold">Affiliate</a>
+              <a *ngIf="affiliate.state()==='ACTIVE' || affiliate.state()==='SUSPENDED'" routerLink="/account/affiliate" routerLinkActive="bg-brand text-white" class="inline-flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-colors text-ink hover:bg-surface-alt"><svg lucideHandshake aria-hidden="true" class="h-4 w-4 shrink-0"></svg> Affiliate</a>
               <!-- Settings -->
               <a 
                 routerLink="/account/settings" 
