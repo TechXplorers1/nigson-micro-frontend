@@ -115,6 +115,10 @@ export const routes: Routes = [
           .catch(() => import('../../../admin-shop/src/app/inventory/inventory-dashboard.component').then(m => m.InventoryDashboardComponent))
       },
       {
+        path: 'inventory/products/import',canDeactivate:[(component:any)=>!component.saving()],
+        loadComponent: () => Promise.resolve().then(() => loadRemoteModule('admin-shop','./CatalogueImport')).then(m=>m.CatalogueImportComponent).catch(()=>import('../../../admin-shop/src/app/inventory/catalogue-import.component').then(m=>m.CatalogueImportComponent))
+      },
+      {
         path: 'inventory/products',
         loadComponent: () => Promise.resolve()
           .then(() => loadRemoteModule('admin-shop', './ProductList'))
@@ -175,6 +179,7 @@ export const routes: Routes = [
         data: { type: 'out-of-stock' }
       },
 
+      {path:'categories',loadComponent:()=>Promise.resolve().then(()=>loadRemoteModule('admin-shop','./Categories')).then(m=>m.AdminCategoriesComponent).catch(()=>import('../../../admin-shop/src/app/inventory/categories.component').then(m=>m.AdminCategoriesComponent))},
       // Sales / Lead routes (admin-shop MFE with local fallback)
       {path:'affiliate-payouts',loadComponent:()=>Promise.resolve().then(()=>loadRemoteModule('admin-shop','./AffiliatePayouts')).then(m=>m.AdminAffiliatePayoutsComponent).catch(()=>import('../../../admin-shop/src/app/sales/affiliate-payouts.component').then(m=>m.AdminAffiliatePayoutsComponent))},
       {

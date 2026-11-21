@@ -2,6 +2,8 @@ import {staffGuard, staffSectionGuard} from 'shared-ui';
 import { Routes } from '@angular/router';
 
 export const routes: Routes = [
+  {path:'inventory/products/import',canDeactivate:[(component:any)=>!component.saving()],canActivate:[staffGuard,staffSectionGuard],loadComponent:()=>import('./inventory/catalogue-import.component').then(m=>m.CatalogueImportComponent)},
+  {path:'categories',canActivate:[staffGuard,staffSectionGuard],loadComponent:()=>import('./inventory/categories.component').then(m=>m.AdminCategoriesComponent)},
   {path:'affiliate-payouts',canActivate:[staffGuard,staffSectionGuard],loadComponent:()=>import('./sales/affiliate-payouts.component').then(m=>m.AdminAffiliatePayoutsComponent)},
   // Sales & CRM Routes
   {

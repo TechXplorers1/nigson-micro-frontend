@@ -1,4 +1,5 @@
 import { finalize } from 'rxjs';
+import { HttpClient } from '@angular/common/http';
 import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -12,6 +13,7 @@ import { RouterLink } from '@angular/router';
   imports: [CommonModule, FormsModule, RouterLink, AdminHeadingComponent, LucidePlus, LucidePencil, LucideTrash2, LucideSearch, LucideEye],
   template: `
     <lib-admin-heading title="Products" [subtitle]="admin.products().length + ' products tracked in inventory'">
+      <a *ngIf="admin.session.hasRole('ADMIN')" routerLink="/admin/inventory/products/import" class="rounded-full border border-hairline px-4 py-2 text-sm font-semibold">Import CSV</a>
       <button type="button" (click)="refresh()" [disabled]="refreshing()" class="rounded-full border border-hairline px-4 py-2 text-sm font-semibold disabled:opacity-50">{{refreshing() ? 'Refreshing...' : 'Refresh'}}</button>
       <a routerLink="new" class="flex h-10 items-center gap-2 rounded-full bg-brand px-5 text-sm font-bold text-white transition-colors hover:bg-brand-600 shadow-sm">
         <svg lucidePlus class="h-4 w-4"></svg> Add product
@@ -111,17 +113,20 @@ export class ProductListComponent implements OnInit {
     this.refresh();
   }
   admin = inject(AdminService);
+  private http = inject(HttpClient);
+  readonly categoryNames = signal<string[]>([]);
   readonly refreshing = signal(false);
   refresh() {
     if (this.refreshing()) return;
     this.refreshing.set(true);
+    this.http.get<{name:string}[]>('/api/v1/staff/categories').subscribe({next:rows=>this.categoryNames.set(rows.map(row=>row.name)),error:()=>this.categoryNames.set([])});
     this.admin.loadStaffProducts().pipe(finalize(() => this.refreshing.set(false))).subscribe({error: () => {}});
   }
   searchQuery = signal('');
   selectedCategory = signal('All categories');
 
   categories = computed(() => {
-    const cats = new Set(this.admin.products().map(p => p.category).filter(Boolean));
+    const cats = new Set([...this.categoryNames(), ...this.admin.products().map(p => p.category).filter(Boolean)]);
     return ['All categories', ...Array.from(cats)];
   });
 

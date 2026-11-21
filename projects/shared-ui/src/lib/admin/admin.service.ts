@@ -607,11 +607,14 @@ export class AdminService {
 
   private productBody(payload: any, categories: any[], brands: any[]): any {
     const category = categories.find(row => row.id === payload.categoryId || row.name.toLowerCase() === (payload.category || payload.categoryName || '').toLowerCase());
-    const categoryIds = category ? [category.id] : (payload.categoryIds?.length ? payload.categoryIds : (categories[0]?.id ? [categories[0].id] : []));
+    const categoryIds = category ? [category.id] : (!(payload.category || payload.categoryName || payload.categoryId) && payload.categoryIds?.length ? payload.categoryIds : []);
     if (!categoryIds.length) throw new Error('Choose a category returned by the backend.');
-    const brandName = (payload.brand || '').trim();
-    const brand = brands.find(row => brandName ? row.name.toLowerCase() === brandName.toLowerCase() : row.id === payload.brandId);
-    const brandId = brand?.id || payload.brandId || (brands[0]?.id ?? null);
+    const brandName = (typeof payload.brand === 'string' ? payload.brand : payload.brand?.name || '').trim();
+    const requestedBrandId = payload.brand?.id || payload.brandId;
+    const matchingBrands = brands.filter(row => brandName ? row.name.toLowerCase() === brandName.toLowerCase() : row.id === requestedBrandId);
+    const brand = matchingBrands.find(row=>row.id===requestedBrandId) || (matchingBrands.length===1 ? matchingBrands[0] : undefined);
+    if ((brandName || requestedBrandId) && !brand) throw new Error('Choose an existing active brand returned by the backend.');
+    const brandId = brand?.id ?? null;
     const specifications = Object.fromEntries(Object.entries(payload.specifications || {}).filter(([, value]) => value !== undefined && value !== null && value !== ''));
     // Clean and validate specifications according to strict backend rules
     const cleanSpecs: Record<string, any> = {};
@@ -655,7 +658,7 @@ export class AdminService {
   }
   createProduct(payload: any): Observable<any> {
     if (!payload.sku?.trim() || !payload.carrierPackaging) return throwError(() => new Error('SKU and measured shipping package are required before creating a product.'));
-    return forkJoin({ categories: this.http.get<any[]>('/api/v1/catalogue/categories?market=NG'), brands: this.http.get<any[]>('/api/v1/catalogue/brands') }).pipe(
+    return forkJoin({ categories: this.http.get<any[]>('/api/v1/staff/categories'), brands: this.http.get<any[]>('/api/v1/catalogue/brands') }).pipe(
       switchMap(({ categories, brands }) => this.http.post<any>('/api/v1/staff/products', this.productBody(payload, categories, brands), { headers: this.headers() })),
       switchMap(product => {
         payload.id = product.id;
@@ -675,7 +678,7 @@ export class AdminService {
     );
   }
   updateProduct(id: string, payload: any): Observable<any> {
-    return forkJoin({ current: this.http.get<any>(`/api/v1/staff/products/${id}`), categories: this.http.get<any[]>('/api/v1/catalogue/categories?market=NG'), brands: this.http.get<any[]>('/api/v1/catalogue/brands') }).pipe(
+    return forkJoin({ current: this.http.get<any>(`/api/v1/staff/products/${id}`), categories: this.http.get<any[]>('/api/v1/staff/categories'), brands: this.http.get<any[]>('/api/v1/catalogue/brands') }).pipe(
       switchMap(({ current, categories, brands }) => this.http.patch<any>(`/api/v1/staff/products/${id}`, this.productBody(payload, categories, brands), { headers: this.headers(current.version) })),
       tap(() => { this.log('Product changes saved'); this.loadStaffProducts().subscribe(); }), catchError(error => this.fail('Save product', error))
     );

@@ -4,6 +4,8 @@ export default withNativeFederation({
   name: 'admin-shop',
 
   exposes: {
+    './CatalogueImport': './projects/admin-shop/src/app/inventory/catalogue-import.component.ts',
+    './Categories': './projects/admin-shop/src/app/inventory/categories.component.ts',
     './Routes': './projects/admin-shop/src/app/app.routes.ts',
     './InventoryDashboard': './projects/admin-shop/src/app/inventory/inventory-dashboard.component.ts',
     './ProductList': './projects/admin-shop/src/app/inventory/product-list.component.ts',
