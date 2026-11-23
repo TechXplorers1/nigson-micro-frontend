@@ -41,7 +41,17 @@ export interface OrderTracking {
   scans: TrackingScan[];
 }
 
+export interface OrderCancellation {
+  id: string;
+  state: 'REQUESTED' | 'WAITING_PAYMENT' | 'WAITING_CARRIER' | 'CANCELLED' | 'REJECTED';
+  refundState: string | null;
+  refundId?: string | null;
+  errorCode: string | null;
+}
+
 export interface BackendOrder {
+  cancellation?: OrderCancellation | null;
+  cancellationAllowed?: boolean;
   orderId: string;
   orderNumber: string;
   status: "PENDING" | "PAID" | "PROCESSING" | "SHIPPED" | "DELIVERED" | "CANCELLED" | "PAYMENT_HOLD" | "REFUNDING" | "REFUNDED";
@@ -90,6 +100,8 @@ export class OrderService {
   readonly orders = signal<BackendOrder[]>([]);
   readonly loading = signal(false);
   readonly totalElements = signal(0);
+  readonly cancellationError = signal<string | null>(null);
+  private cancellationKeys = new Map<string, string>();
 
   /** TASK-41: Load paginated order history */
   loadOrders(page = 0, size = 20): Observable<OrdersPage | null> {
@@ -142,6 +154,8 @@ export class OrderService {
       orderNumber: raw?.orderNumber || '',
       status: raw?.status,
       paymentStatus: raw?.paymentStatus,
+      cancellation: raw?.cancellation ?? null,
+      cancellationAllowed: raw?.cancellationAllowed === true,
       items: lines.map((l: any) => ({
         lineId: l.id || l.lineId,
         skuId: l.skuId,
@@ -190,14 +204,31 @@ export class OrderService {
 
   /** TASK-44: Cancel order (API-040: POST /api/v1/orders/:orderId/cancellation) */
   cancelOrder(orderId: string): Observable<BackendOrder | null> {
+    this.cancellationError.set(null);
+    // A retry after response loss reuses both the original version and request key.
     return this.getOrder(orderId).pipe(
-      switchMap(order => this.http.post<any>(`/api/v1/orders/${orderId}/cancellation`,
-        { reason: 'Customer requested order cancellation' },
-        { headers: new HttpHeaders({ 'If-Match': `\"${order.version}\"`, 'Idempotency-Key': crypto.randomUUID() }) })
-        .pipe(map(raw => this.mapOrder(raw, order.buyerContact?.email)))),
+      switchMap(order => {
+        if (order.cancellation) return of(order);
+        let saved = this.cancellationKeys.get(orderId);
+        if (!saved) {
+          saved = JSON.stringify({ key: crypto.randomUUID(), version: order.version });
+          this.cancellationKeys.set(orderId, saved);
+        }
+        const command = JSON.parse(saved) as { key: string; version: number };
+        return this.http.post<any>(`/api/v1/orders/${orderId}/cancellation`,
+          { reason: 'Customer requested order cancellation' },
+          { headers: new HttpHeaders({ 'If-Match': `"${command.version}"`, 'Idempotency-Key': command.key }) })
+          .pipe(map(raw => this.mapOrder(raw, order.buyerContact?.email)));
+      }),
       tap(updated => this.orders.update(list => list.map(order => order.orderId === orderId ? updated : order))),
       catchError(err => {
-        console.error('[OrderService] cancelOrder failed:', err);
+        const code = err?.error?.code;
+        this.cancellationError.set(code === 'INVALID_TRANSITION'
+          ? 'This order can no longer be cancelled online. Please contact support.'
+          : code === 'VERSION_MISMATCH'
+            ? 'The order changed. Please review its latest status and try again.'
+            : 'We could not confirm your cancellation request. Retry to check the same request.');
+        if (code === 'VERSION_MISMATCH') this.cancellationKeys.delete(orderId);
         return of(null);
       })
     );

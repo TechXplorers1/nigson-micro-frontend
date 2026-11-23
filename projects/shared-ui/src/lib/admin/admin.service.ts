@@ -5,6 +5,7 @@ import { Injectable, computed, signal, inject, effect, untracked, WritableSignal
 import { HttpClient, HttpContext, HttpHeaders } from '@angular/common/http';
 import { Observable, of, tap, map, catchError, forkJoin, switchMap, defer, throwError, finalize, shareReplay } from 'rxjs';
 import { LOCAL_API_FAILURE_CODES } from '../api-errors.service';
+import type { OrderCancellation } from '../order.service';
 import { SessionService } from '../session.service';
 import { CatalogService } from '../catalog.service';
 import { applyInventory, mapStaffProducts, inventoryTotals } from './inventory-mapping';
@@ -112,7 +113,10 @@ export function isPartnerSubmission(item: { subject?: string; message?: string }
 
 export type AdminOrderStatus = "Pending" | "Confirmed" | "Processing" | "Packed" | "Shipped" | "Delivered" | "Cancelled";
 
+export type AdminRefund = { id: string; state: string; amount: string; currency: string; version: number };
+
 export type AdminOrder = {
+  cancellation?: OrderCancellation | null;
   id: string; version?: number; rawState?: string; number: string; date: string;
   customer: { name: string; email: string; phone: string; address: string };
   items: { sku: string; name: string; qty: number; price: number }[];
@@ -735,12 +739,24 @@ export class AdminService {
   saveCustomer(_customer: AdminCustomer): void { throw new Error('Customer profiles are managed by their account owners.'); }
   loadStaffOrders(): Observable<AdminOrder[]> {
     return this.table('Orders', this.rows('/api/v1/staff/orders').pipe(map(rows => rows.map(order => ({
-      id: order.id, number: order.orderNumber, date: order.createdAt, version: order.version, rawState: order.status,
+      id: order.id, number: order.orderNumber, date: order.createdAt, version: order.version, rawState: order.status, cancellation: order.cancellation ?? null,
       customer: { name: order.address?.recipient || '', email: '', phone: order.address?.phone || '', address: [order.address?.line1, order.address?.city, order.address?.region].filter(Boolean).join(', ') },
       items: (order.lines || []).map((line: any) => ({ sku: line.skuCode, name: line.name, qty: Number(line.quantity), price: Number(line.unitAmount) })), total: Number(order.totals.grandTotal), paymentStatus: order.paymentStatus === 'PAID' ? 'Paid' as const : order.paymentStatus === 'REFUNDED' ? 'Refunded' as const : 'Pending' as const,
       status: ({ PENDING: 'Pending', PAID: 'Confirmed', PROCESSING: 'Processing', SHIPPED: 'Shipped', DELIVERED: 'Delivered', CANCELLED: 'Cancelled' } as any)[order.status] || order.status,
       delivery: order.fulfillmentStatus, timeline: []
     })))), this.orders);
+  }
+  getRefund(id: string): Observable<AdminRefund> {
+    return this.http.get<AdminRefund>(`/api/v1/staff/refunds/${id}`);
+  }
+  private refundApprovalKeys = new Map<string, string>();
+  approveCancellationRefund(refund: AdminRefund): Observable<unknown> {
+    const identity = `${refund.id}:${refund.version}`;
+    let key = this.refundApprovalKeys.get(identity);
+    if (!key) { key = crypto.randomUUID(); this.refundApprovalKeys.set(identity, key); }
+    return this.http.post(`/api/v1/staff/refunds/${refund.id}/approval`,
+      { approve: true, reason: 'Finance reviewed and approved the cancelled order refund' },
+      { headers: this.headers(refund.version).set('Idempotency-Key', key) });
   }
   setOrderStatus(id: string, status: string): void {
     const order = this.orders().find(row => row.id === id);

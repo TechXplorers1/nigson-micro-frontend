@@ -1,4 +1,6 @@
-import { Component, inject, computed, OnInit, signal } from '@angular/core';
+import { Component, inject, computed, OnInit, signal, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { timer, filter, switchMap, catchError, EMPTY, take } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { RouterLink, ActivatedRoute } from '@angular/router';
 import { OrderService, BackendOrder, OrderTracking } from 'shared-ui';
@@ -47,10 +49,16 @@ import {
                   class="inline-flex items-center gap-1 rounded-full border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors disabled:opacity-50"
                 >
                   <svg lucideXCircle class="h-3.5 w-3.5"></svg>
-                  {{ cancelling() ? 'Cancelling...' : 'Cancel Order' }}
+                  {{ cancelling() ? 'Requesting...' : 'Cancel Order' }}
                 </button>
               </div>
             </div>
+          </div>
+
+          <p *ngIf="orderSvcError()" role="alert" class="mt-4 text-sm text-rose-700">{{ orderSvcError() }}</p>
+          <div *ngIf="order()?.cancellation" role="status" aria-live="polite" class="mt-4 rounded-xl border border-hairline bg-surface-alt p-4 text-sm text-ink">
+            <p>{{ cancellationMessage() }}</p>
+            <p *ngIf="refundMessage()" class="mt-1 text-muted-ink">{{ refundMessage() }}</p>
           </div>
 
           <!-- Tracking section (TASK-45) -->
@@ -147,6 +155,7 @@ import {
 })
 export class OrderDetailComponent implements OnInit {
   private orderSvc = inject(OrderService);
+  private destroyRef = inject(DestroyRef);
   route = inject(ActivatedRoute);
 
   readonly order = signal<BackendOrder | null>(null);
@@ -157,6 +166,12 @@ export class OrderDetailComponent implements OnInit {
   ngOnInit() {
     const id = this.route.snapshot.paramMap.get("id") ?? this.route.snapshot.paramMap.get("orderId") ?? "";
     if (id) {
+      timer(5000, 5000).pipe(
+        take(120),
+        filter(() => !!this.order()?.cancellation),
+        switchMap(() => this.orderSvc.getOrder(id).pipe(catchError(() => EMPTY))),
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe(o => this.order.set(o));
       this.orderSvc.getOrder(id).subscribe({
         next: o => {
           this.order.set(o);
@@ -181,7 +196,7 @@ export class OrderDetailComponent implements OnInit {
   cancelOrder() {
     const o = this.order();
     if (!o) return;
-    if (!confirm('Are you sure you want to cancel this order?')) return;
+    if (!this.canCancel() || !confirm('Request cancellation? Delivery cancellation must be confirmed and any refund requires review.')) return;
     this.cancelling.set(true);
     this.orderSvc.cancelOrder(o.orderId).subscribe(updated => {
       this.cancelling.set(false);
@@ -200,8 +215,28 @@ export class OrderDetailComponent implements OnInit {
   }
 
   canCancel(): boolean {
-    const status = this.order()?.status;
-    return !!status && !['DELIVERED', 'CANCELLED', 'REFUNDING', 'REFUNDED', 'PAYMENT_HOLD'].includes(status);
+    const order = this.order();
+    return order?.cancellationAllowed === true && !order.cancellation;
+  }
+
+  orderSvcError() { return this.orderSvc.cancellationError(); }
+
+  cancellationMessage(): string {
+    const state = this.order()?.cancellation?.state;
+    return ({ REQUESTED: 'Cancellation requested. We are checking your order.',
+      WAITING_PAYMENT: 'Cancellation requested. We are checking the payment outcome.',
+      WAITING_CARRIER: 'Cancellation requested. We are waiting for delivery cancellation confirmation.',
+      CANCELLED: 'Your order has been cancelled.',
+      REJECTED: 'We could not cancel this order automatically. Please contact support.' } as Record<string, string>)[state ?? ''] ?? '';
+  }
+
+  refundMessage(): string {
+    const state = this.order()?.cancellation?.refundState;
+    if (!state) return '';
+    if (state === 'SUCCEEDED') return 'Your refund has been processed.';
+    if (['FAILED', 'REJECTED'].includes(state)) return 'Your refund needs attention. Please contact support.';
+    if (state === 'REQUESTED') return 'Your refund is awaiting Finance review.';
+    return 'Your refund is being processed. We will update this order when it is confirmed.';
   }
 
   private scrollToTracking() {

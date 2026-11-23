@@ -1,4 +1,5 @@
 import { Component, inject, signal, computed, OnInit } from '@angular/core';
+import { EMPTY, switchMap, finalize } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AdminService, AdminHeadingComponent, StatCardComponent, BadgeComponent, statusTone, AdminOrder, AdminOrderStatus } from 'shared-ui';
@@ -18,7 +19,9 @@ import { LucideEye } from '@lucide/angular';
       <lib-stat-card label="Revenue" [value]="revenue() | currency:'NGN':'symbol-narrow':'1.0-0'"></lib-stat-card>
     </div>
 
+    <p *ngIf="admin.errors()['Orders']" role="alert" class="mb-3 text-sm text-rose-700">{{ admin.errors()['Orders'] }}</p>
     <div class="mb-5 flex flex-wrap gap-3">
+      <button (click)="refreshOrders()" [disabled]="reviewingRefund()" class="rounded-xl border border-hairline bg-white px-4 py-2 text-sm">Refresh orders</button>
       <input type="text" [(ngModel)]="searchQuery" placeholder="Search order or customer..." class="w-64 rounded-xl border border-hairline bg-white px-4 py-2 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20">
       <select [(ngModel)]="statusFilter" class="rounded-xl border border-hairline bg-white px-4 py-2 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20">
         <option value="All statuses">All statuses</option>
@@ -56,7 +59,7 @@ import { LucideEye } from '@lucide/angular';
             <td class="px-6 py-4 whitespace-nowrap text-muted-ink">{{ o.date | date:'shortDate' }}</td>
             <td class="px-6 py-4 text-right">
               <div class="flex items-center justify-end">
-                <button (click)="viewOrder = o" class="grid h-8 w-8 place-items-center rounded-lg text-muted-ink transition-colors hover:bg-brand/10 hover:text-brand" title="View order">
+                <button (click)="openOrder(o)" class="grid h-8 w-8 place-items-center rounded-lg text-muted-ink transition-colors hover:bg-brand/10 hover:text-brand" title="View order">
                   <svg lucideEye class="h-4 w-4"></svg>
                 </button>
               </div>
@@ -74,7 +77,7 @@ import { LucideEye } from '@lucide/angular';
       <div class="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl">
         <div class="mb-4 flex items-center justify-between">
           <h2 class="text-xl font-bold">Order {{ viewOrder.number }}</h2>
-          <button (click)="viewOrder = null" class="text-muted-ink hover:text-ink">✕</button>
+          <button (click)="closeOrder()" [disabled]="reviewingRefund()" class="text-muted-ink hover:text-ink">✕</button>
         </div>
         
         <div class="mb-4 grid grid-cols-2 gap-4">
@@ -99,9 +102,18 @@ import { LucideEye } from '@lucide/angular';
           </ul>
         </div>
 
+        <div *ngIf="viewOrder.cancellation" class="mb-4 rounded-xl border border-hairline bg-surface-alt p-4 text-sm">
+          <p>Cancellation: {{ viewOrder.cancellation.state }}</p>
+          <p *ngIf="viewOrder.cancellation.refundState">Refund: {{ viewOrder.cancellation.refundState }}</p>
+          <button *ngIf="viewOrder.cancellation.state === 'CANCELLED' && viewOrder.cancellation.refundId && viewOrder.cancellation.refundState === 'REQUESTED' && admin.session.hasRole('FINANCE')"
+            (click)="reviewRefund()" [disabled]="reviewingRefund()" class="mt-3 rounded-xl bg-brand px-4 py-2 font-semibold text-white disabled:opacity-50">
+            {{ reviewingRefund() ? 'Checking refund...' : 'Review and approve refund' }}
+          </button>
+          <p *ngIf="refundError()" role="alert" class="mt-2 text-rose-700">{{ refundError() }}</p>
+        </div>
         <div class="flex items-center gap-2">
           <p class="text-sm">Shipping and delivery update from recorded fulfillment operations.</p>
-          <button *ngIf="viewOrder.rawState === 'PAID' && admin.session.hasRole('OPERATIONS')" (click)="admin.setOrderStatus(viewOrder.id, 'Processing')" class="rounded-xl bg-brand px-4 py-2 font-bold text-white">Release for processing</button>
+          <button *ngIf="viewOrder.rawState === 'PAID' && (!viewOrder.cancellation || viewOrder.cancellation.state === 'REJECTED') && admin.session.hasRole('OPERATIONS')" (click)="admin.setOrderStatus(viewOrder.id, 'Processing')" class="rounded-xl bg-brand px-4 py-2 font-bold text-white">Release for processing</button>
         </div>
       </div>
     </div>
@@ -112,12 +124,39 @@ export class AdminOrdersComponent implements OnInit {
     this.admin.loadStaffOrders().subscribe();
   }
   admin = inject(AdminService);
+  refreshOrders() { this.admin.loadStaffOrders().subscribe({ error: () => {} }); }
   
   searchQuery = signal('');
   statusFilter = signal('All statuses');
   statuses: string[] = ["Pending", "Confirmed", "Processing", "Packed", "Shipped", "Delivered", "Cancelled"];
   
-  viewOrder: any = null;
+  viewOrder: AdminOrder | null = null;
+  readonly reviewingRefund = signal(false);
+  readonly refundError = signal<string | null>(null);
+
+  openOrder(order: AdminOrder) { if (this.reviewingRefund()) return; this.refundError.set(null); this.viewOrder = order; }
+  closeOrder() { if (!this.reviewingRefund()) this.viewOrder = null; }
+  reviewRefund() {
+    const order = this.viewOrder;
+    const id = order?.cancellation?.refundId;
+    if (!order || !id || this.reviewingRefund() || !this.admin.session.hasRole('FINANCE')) return;
+    this.reviewingRefund.set(true);
+    this.refundError.set(null);
+    this.admin.getRefund(id).pipe(
+      switchMap(refund => {
+        if (refund.state !== 'REQUESTED') return this.admin.loadStaffOrders();
+        const amount = new Intl.NumberFormat('en-NG', { style: 'currency', currency: refund.currency }).format(Number(refund.amount));
+        if (!confirm(`Approve a refund of ${amount} to the original payment for cancelled order ${order.number}? This will submit the approved refund for processing.`)) return EMPTY;
+        return this.admin.approveCancellationRefund(refund).pipe(switchMap(() => this.admin.loadStaffOrders()));
+      }),
+      finalize(() => this.reviewingRefund.set(false))
+    ).subscribe({
+      next: () => { this.viewOrder = this.admin.orders().find(o => o.id === order.id) ?? order; },
+      error: (error: any) => { this.refundError.set(error?.error?.code === 'ACCESS_DENIED'
+        ? 'Finance approval requires current permissions, recent MFA and a separate approver when configured.'
+        : 'We could not confirm refund approval. Refresh the order or retry to check the same request.'); }
+    });
+  }
 
   pendingCount = computed(() => this.admin.orders().filter(o => o.status === 'Pending').length);
   deliveredCount = computed(() => this.admin.orders().filter(o => o.status === 'Delivered').length);

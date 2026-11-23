@@ -1,11 +1,15 @@
 import '@angular/compiler';
-import { of } from 'rxjs';
+import { signal } from '@angular/core';
+import { of, throwError } from 'rxjs';
 import { describe, it, expect, vi } from 'vitest';
 import { OrderService } from './order.service';
 
 function service() {
   const instance: any = Object.create(OrderService.prototype);
-  instance.http = { get: vi.fn() };
+  instance.http = { get: vi.fn(), post: vi.fn() };
+  instance.orders = signal([]);
+  instance.cancellationError = signal(null);
+  instance.cancellationKeys = new Map();
   return instance;
 }
 
@@ -74,5 +78,32 @@ describe('OrderService backend mapping', () => {
     let resolved: any;
     s.getTracking('order-2').subscribe((value: any) => resolved = value);
     expect(resolved).toMatchObject({ orderId: 'order-2', status: 'PROCESSING', scans: [] });
+  });
+});
+
+describe('Order cancellation', () => {
+  it('preserves cancellation progress and authoritative eligibility', () => {
+    const s = service();
+    const c = { id: 'cancel-1', state: 'WAITING_CARRIER', refundState: null, errorCode: null };
+    expect(s.mapOrder({ ...rawOrder, cancellation: c, cancellationAllowed: false })).toMatchObject({ cancellation: c, cancellationAllowed: false });
+    expect(s.mapOrder(rawOrder).cancellationAllowed).toBe(false);
+  });
+  it('reuses the original key and version after response loss', () => {
+    const s = service();
+    s.http.get.mockReturnValueOnce(of({ ...rawOrder, cancellationAllowed: true })).mockReturnValueOnce(of({ ...rawOrder, version: 3, cancellationAllowed: true }));
+    s.http.post.mockReturnValue(throwError(() => ({ status: 503 })));
+    s.cancelOrder(rawOrder.id).subscribe();
+    s.cancelOrder(rawOrder.id).subscribe();
+    const first = s.http.post.mock.calls[0][2].headers;
+    const second = s.http.post.mock.calls[1][2].headers;
+    expect(second.get('Idempotency-Key')).toBe(first.get('Idempotency-Key'));
+    expect(second.get('If-Match')).toBe(first.get('If-Match'));
+    expect(s.cancellationError()).toContain('Retry');
+  });
+  it('returns the persisted cancellation without sending another command', () => {
+    const s = service();
+    s.http.get.mockReturnValue(of({ ...rawOrder, cancellation: { id: 'cancel-1', state: 'REQUESTED' } }));
+    s.cancelOrder(rawOrder.id).subscribe();
+    expect(s.http.post).not.toHaveBeenCalled();
   });
 });
