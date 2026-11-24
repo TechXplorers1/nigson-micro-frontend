@@ -1,4 +1,4 @@
-import { WishlistButtonComponent } from 'shared-ui';
+import { WishlistButtonComponent,StockStatusComponent } from 'shared-ui';
 import { Component, Input, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
@@ -14,7 +14,7 @@ import { CatalogService, Product, ShopService, QtyStepperComponent } from 'share
 @Component({
   selector: 'app-product-card',
   standalone: true,
-  imports: [CommonModule, RouterLink, QtyStepperComponent, WishlistButtonComponent],
+  imports: [CommonModule, RouterLink, QtyStepperComponent, WishlistButtonComponent,StockStatusComponent],
   template: `
     <div class="group flex flex-col text-left rounded-2xl border border-border bg-background overflow-hidden hover:shadow-elegant hover:-translate-y-1 transition-all h-full">
       <!-- Route uses product UUID (id) -->
@@ -33,6 +33,7 @@ import { CatalogService, Product, ShopService, QtyStepperComponent } from 'share
         <div class="px-5 pt-5">
           <p class="text-[11px] uppercase tracking-widest text-muted-foreground">{{ p.sku }}</p>
           <h3 class="mt-1 text-lg font-semibold group-hover:text-brand transition-colors">{{ p.name }}</h3>
+          <div class="mt-2"><ui-stock-status [status]="p.stockStatus"></ui-stock-status></div>
           <p class="mt-3 text-[11px] uppercase tracking-widest text-muted-foreground">Starting from</p>
           <ng-container *ngIf="!priceLoading()">
             <p class="mt-1 text-[22px] font-bold text-[#D62828] leading-tight">
@@ -63,6 +64,7 @@ import { CatalogService, Product, ShopService, QtyStepperComponent } from 'share
             [image]="primaryImage()"
             [compact]="true"
           ></ui-qty-stepper>
+          <p *ngIf="priceMinorUnits()===null && p.stockStatus==='OUT_OF_STOCK'" class="text-sm font-semibold text-muted-ink">Out of stock</p>
         </div>
       </div>
     </div>
@@ -125,11 +127,12 @@ export class ProductCardComponent implements OnInit {
       });
     };
 
-    if (this.p.skuId && this.p.skuId !== this.p.id) {
+    if (this.p.skuId && this.p.skuId !== this.p.id && this.p.stockStatus) {
       loadPrice(this.p.skuId);
     } else {
       this.catalog.getProduct(this.p.id).subscribe({
         next: product => {
+          this.p={...this.p,stock:product?.stock??0,stockStatus:product?.stockStatus??'UNKNOWN'};
           if (product?.skuId) {
             this.resolvedSkuId.set(product.skuId);
             loadPrice(product.skuId);

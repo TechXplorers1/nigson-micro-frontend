@@ -9,7 +9,7 @@ import {QtyStepperComponent} from '../../../../shared-ui/src/lib/qty-stepper/qty
 function setup(fail=false){
  const catalog={getPrice:vi.fn(()=>fail?throwError(()=>({status:403})):of({priceMinorUnits:55555500,minimumQuantity:30,packMultiple:2})),formatPrice:(value:number)=>String(value),primaryImage:()=>'/asset.png'};
  const injector=Injector.create({providers:[{provide:CatalogService,useValue:catalog},{provide:ShopService,useValue:{}},{provide:ProductCardComponent,useFactory:()=>new ProductCardComponent()}]});
- const card=injector.get(ProductCardComponent);card.p={id:'product',skuId:'sku',sku:'SKU',name:'Product',description:'',categoryId:'category',priceMinorUnits:66666700,minimumQuantity:1,packMultiple:1};
+ const card=injector.get(ProductCardComponent);card.p={id:'product',skuId:'sku',sku:'SKU',name:'Product',description:'',categoryId:'category',stock:100,stockStatus:'IN_STOCK',priceMinorUnits:66666700,minimumQuantity:1,packMultiple:1};
  return card;
 }
 describe('Catalogue card account pricing',()=>{

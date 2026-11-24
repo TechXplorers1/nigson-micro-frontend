@@ -1,4 +1,4 @@
-import { WishlistButtonComponent } from 'shared-ui';
+import { WishlistButtonComponent,StockStatusComponent } from 'shared-ui';
 import {toObservable, takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {switchMap, map, catchError, of} from 'rxjs';
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
@@ -15,7 +15,7 @@ import { ProductCardComponent } from './product-card.component';
 @Component({
   selector: 'app-product-detail',
   standalone: true,
-  imports: [WishlistButtonComponent,
+  imports: [WishlistButtonComponent,StockStatusComponent,
     CommonModule, RouterLink, LucideArrowLeft, LucideChevronLeft,
     LucideChevronRight, LucideZoomIn, LucideZoomOut, LucideRotateCcw,
     LucideStar, LucideFileText,
@@ -128,6 +128,7 @@ import { ProductCardComponent } from './product-card.component';
             <div class="mt-8 flex flex-wrap gap-3">
               <ui-wishlist-button [productId]="product()!.id" [skuId]="product()!.skuId"></ui-wishlist-button>
               <!-- Qty Stepper / Cart Control -->
+              <ui-stock-status [status]="product()?.stockStatus"></ui-stock-status>
               <ui-qty-stepper *ngIf="productWithPrice()" [product]="productWithPrice()" [image]="gallery()[0]"></ui-qty-stepper>
 
               <a [routerLink]="['/quote']" title="Request a quote" aria-label="Request a quote" class="inline-flex items-center gap-2 rounded-full border border-ink text-ink px-6 py-3 text-sm font-semibold hover:bg-ink hover:text-white transition-colors">
@@ -575,15 +576,18 @@ export class ProductDetailComponent implements OnInit {
 
   addToCart() {
     const p = this.product();
-    if (!p) return;
+    const quantity=Math.ceil(this.purchaseMinimum()/this.purchasePack())*this.purchasePack();
+    if (!p || !this.productWithPrice() || (p.stock??0)<quantity) return;
     this.shop.addToCart({
       sku: p.sku,
       skuId: p.skuId || p.id,
+      stock:p.stock,
+      stockStatus:p.stockStatus,
       name: p.name,
       category: p.categoryName ?? '',
       price: (p.priceMinorUnits ?? 0) / 100,
       image: this.primaryImg()
-    } as any);
+    } as any,quantity);
   }
 }
 

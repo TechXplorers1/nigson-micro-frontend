@@ -168,7 +168,7 @@ import { CartService, CatalogService, ShopService, SessionService, QtyStepperCom
 
                 <button
                   (click)="proceedToCheckout()"
-                  [disabled]="cart.selectedItems().length === 0"
+                  [disabled]="cart.selectedItems().length === 0 || !cart.readyForCheckout()"
                   title="Proceed to Checkout"
                   aria-label="Proceed to Checkout"
                   class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand text-white py-3.5 text-sm font-semibold hover:bg-brand-deep disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
@@ -219,6 +219,7 @@ export class CartComponent implements OnInit {
   }
 
   proceedToCheckout() {
+    if(!this.cart.readyForCheckout())return;
     this.router.navigate(["/checkout"]);
   }
 }

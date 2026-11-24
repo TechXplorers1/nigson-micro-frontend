@@ -1,9 +1,11 @@
 import { Injectable, inject, signal, computed, effect } from "@angular/core";
 import { HttpClient, HttpHeaders } from "@angular/common/http";
 import { Observable, of, tap, catchError, switchMap, map, forkJoin, finalize, shareReplay } from "rxjs";
+import {stockFromSku} from './stock-status.component';
 import { SessionService } from "./session.service";
 
 export interface CartLineItem {
+  stock?:number;stockStatus?:string;
   lineId: string;
   skuId: string;
   productId?: string;
@@ -72,7 +74,7 @@ export class CartService {
   readonly syncing = signal(false);
   readonly pricingError = signal<string | null>(null);
   readonly reviewRequired = signal(false);
-  readonly readyForCheckout = computed(() => !this.loading() && !this.syncing() && !this.pricingError() && !this.reviewRequired() && this.items().length > 0);
+  readonly readyForCheckout = computed(() => !this.loading() && !this.syncing() && !this.pricingError() && !this.reviewRequired() && this.items().length > 0 && this.selectedItems().every(item=>!item.purchaseError));
   acknowledgePrices() { this.reviewRequired.set(false); }
 
 
@@ -297,7 +299,7 @@ export class CartService {
             return this.ensureSkuMetadataLoaded(cart.lines).pipe(
               switchMap(() => this.loadLinePrices(this.mapLines(cart.lines))),
               map(mapped => {
-                this.items.set(mapped);
+                this.items.set(mapped);this.pricingError.set(null);
                 this.loading.set(false);
                 this.syncing.set(false);
                 return {
@@ -370,7 +372,7 @@ export class CartService {
           switchMap(cart => this.loadLinePrices(this.mapLines(cart.lines)).pipe(map(mapped => {
             this.cartId.set(cart.id);
             this.cartVersion.set(cart.version);
-            this.items.set(mapped);
+            this.items.set(mapped);this.pricingError.set(null);
             this.syncing.set(false);
             return {
               cartId: cart.id,
@@ -382,9 +384,9 @@ export class CartService {
             };
           }))),
           catchError(err => {
-            console.error('[CartService] addItem database sync error:', err);
+              console.error('[CartService] addItem database sync error:', err);
             this.syncing.set(false);
-            return of(null);
+              return this.loadCart().pipe(tap(()=>this.pricingError.set('Stock or purchasing rules may have changed. Review your refreshed cart and quantity.')),map(()=>null));
           })
         );
       })
@@ -426,7 +428,7 @@ export class CartService {
     ).pipe(
       switchMap(cart => this.loadLinePrices(this.mapLines(cart.lines)).pipe(map(mapped => {
         this.cartVersion.set(cart.version);
-        this.items.set(mapped);
+        this.items.set(mapped);this.pricingError.set(null);
         this.syncing.set(false);
         return {
           cartId: cart.id,
@@ -441,7 +443,7 @@ export class CartService {
         console.error('[CartService] updateQty database error:', err);
         this.items.set(prevItems);
         this.syncing.set(false);
-        return of(null);
+        return this.loadCart().pipe(tap(()=>this.pricingError.set('Stock or purchasing rules may have changed. Review your refreshed cart and quantity.')),map(()=>null));
       })
     );
   }
@@ -537,10 +539,11 @@ export class CartService {
         const valid = line.quantity >= minimum && Math.abs(line.quantity / pack - Math.round(line.quantity / pack)) < 0.000001;
         return { ...line, unitPriceMinorUnits: amount, minimumQuantity: minimum, packMultiple: pack, purchaseError: valid ? undefined : `Minimum ${minimum} units, in multiples of ${pack}. Update the quantity before checkout.` };
       }),
+      switchMap(priced=>line.productId?this.http.get<any>('/api/v1/catalogue/products/'+line.productId+'?market=NG').pipe(map(product=>{const stock=stockFromSku(product.skus?.find((sku:any)=>sku.id===line.skuId));const error=stock.stockStatus==='UNKNOWN'?'Availability could not be confirmed. Refresh before checkout.':line.quantity>stock.stock?'The requested quantity is no longer available. Reduce it or remove this item.':priced.purchaseError;return {...priced,...stock,purchaseError:error};})):of({...priced,stock:0,stockStatus:'UNKNOWN',purchaseError:'Availability could not be confirmed. Refresh before checkout.'})),
       catchError(() => {
         const old = previous.find(i => i.skuId === line.skuId);
-        const fallbackPrice = line.unitPriceMinorUnits || old?.unitPriceMinorUnits || 1299900;
-        return of({ ...line, unitPriceMinorUnits: fallbackPrice, purchaseError: undefined });
+        const fallbackPrice = 0;
+        return of({ ...line, unitPriceMinorUnits: fallbackPrice, stock:0, stockStatus:'UNKNOWN', purchaseError: 'No current price is available. Availability could not be confirmed. Refresh before checkout.' });
       })
     )));
   }

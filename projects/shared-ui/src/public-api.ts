@@ -73,6 +73,7 @@ export * from './lib/business-price-editor.component';
 export * from './lib/business-price-assignment.component';
 
 export * from './lib/product-prices.service';
+export * from './lib/stock-status.component';
 
 export * from './lib/affiliate.service';
 export * from './lib/affiliate-payout.service';

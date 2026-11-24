@@ -3,6 +3,7 @@ import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http'
 import { Observable, forkJoin, of } from 'rxjs';
 import { tap, catchError, map, switchMap } from 'rxjs/operators';
 import { CartService } from './cart.service';
+import {stockFromSku} from './stock-status.component';
 
 // ─── Backend DTOs ──────────────────────────────────────────────────────────────
 
@@ -40,6 +41,7 @@ export interface Product {
   packMultiple?: number;
   price?: number;
   stock?: number;
+  stockStatus?: string;
   lowLevel?: number;
   /** Publication status from backend */
   publicationStatus?: string;
@@ -323,7 +325,7 @@ export class CatalogService {
   }
 
   private toProduct(item: any, detail: any): Product {
-    const sku = detail?.skus?.[0];
+    const sku = detail?.skus?.find((s:any)=>s.available) || detail?.skus?.[0];
     const category = detail?.categories?.[0];
     const override = this.getProductOverride(item.id) || (sku?.code ? this.getProductOverride(sku.code) : null);
     const assetImages: string[] = (detail?.assets ?? []).map((a: any) => this.resolveImageUrl(a.url)).filter(Boolean);
@@ -348,7 +350,7 @@ export class CatalogService {
       price: undefined,
       priceMinorUnits: undefined
     };
-    return { ...(override ? { ...product, ...override } : product), price: undefined, priceMinorUnits: undefined, retail: undefined, retailPrice: undefined };
+    return { ...(override ? { ...product, ...override } : product), ...stockFromSku(sku), price: undefined, priceMinorUnits: undefined, retail: undefined, retailPrice: undefined };
   }
 
   /**
@@ -385,7 +387,8 @@ export class CatalogService {
   private getProductByUuid(uuid: string, aliasSku?: string): Observable<Product> {
     return this.http.get<any>(`/api/v1/catalogue/products/${uuid}?market=NG`).pipe(
       map(raw => {
-        const sku = raw.skus?.[0]?.code || '';
+        const selectedSku = raw.skus?.find((s:any)=>s.available) || raw.skus?.[0];
+        const sku = selectedSku?.code || '';
         const override = this.getProductOverride(raw.id) || (sku ? this.getProductOverride(sku) : null) || (aliasSku ? this.getProductOverride(aliasSku) : null);
         const catName = raw.categories?.[0]?.name || '';
 
@@ -419,7 +422,7 @@ export class CatalogService {
         const p: Product = {
           id: raw.id,
           sku: override?.sku || sku,
-          skuId: raw.skus?.[0]?.id || raw.id,
+          skuId: selectedSku?.id || raw.id,
           quoteSkus: (raw.skus || []).filter((s: any) => s.available).map((s: any) => ({
             id: s.id,
             code: s.code,
@@ -457,6 +460,7 @@ export class CatalogService {
           priceMinorUnits: undefined,
           price: undefined
         };
+        Object.assign(p,stockFromSku(selectedSku));
         const finalP = this.enrichWithCategories([p])[0];
         return finalP;
       }),
@@ -465,7 +469,7 @@ export class CatalogService {
       catchError(err => {
         const override = this.getProductOverride(uuid) || (aliasSku ? this.getProductOverride(aliasSku) : null);
         if (override) {
-          return this.withSellingPrice(override as Product);
+          return this.withSellingPrice({...override,...stockFromSku(undefined)} as Product);
         }
         console.error('[CatalogService] getProduct failed:', err);
         throw err;

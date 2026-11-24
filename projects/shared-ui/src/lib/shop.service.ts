@@ -168,6 +168,8 @@ export class ShopService {
   }
 
   addToCart(item: Omit<CartItem, 'qty'> & { skuId?: string; productId?: string; priceMinorUnits?: number }, qty = 1): boolean {
+    const available=(item as any).stock;const already=this.cart().find(line=>line.skuId===item.skuId)?.qty||0;
+    if((item as any).stockStatus==='OUT_OF_STOCK'||(item as any).stockStatus==='UNKNOWN'||typeof available==='number'&&qty+already>available)return false;
     if (!this.session.authenticated()) {
       this.loginRequired.set({ open: true, reason: 'Please sign in to add products to your cart.' });
       this.session.signIn(window.location.pathname);
@@ -182,8 +184,7 @@ export class ShopService {
       category: item.category,
       priceMinor: priceMinor,
       image: item.image
-    }).subscribe();
-    this.showToast({ name: item.name, image: item.image, price: priceMinor / 100, qty });
+    }).subscribe(cart=>{if(cart)this.showToast({ name: item.name, image: item.image, price: priceMinor / 100, qty });});
     return true;
   }
 
