@@ -833,21 +833,23 @@ export class ProductEditComponent implements OnInit {
         return fallback;
       };
 
-      // Populate specifications (supporting both snake_case from backend and camelCase, with storefront standard defaults if unpopulated)
+      // Populate only persisted specifications. Empty fields stay empty until an
+      // administrator provides real product information; placeholders are shown
+      // by the form instead of being saved as catalogue data.
       const specs = full.specifications || {};
-      this.product.overview = specs['overview'] || (descText && descText !== full.name ? descText : 'Engineered to meet the highest standards of durability and performance across Nigerian markets. Suitable for both wholesale commercial resale and direct consumer use.');
-      this.product.highlights = toMultiline(specs['highlights'], 'Wholesale & retail pricing tier\nFast dispatch from central Lagos hub\n12-month standard Nigson warranty\nBulk order distributor volume discounts');
-      this.product.features = toMultiline(specs['features'], 'Wholesale & retail pricing\nNationwide delivery from Lagos hub\n12-month standard warranty\nBulk discounts for distributors');
-      this.product.warranty = specs['warranty'] || '12 Months Standard Manufacturer Warranty';
-      this.product.connectors = specs['connectors'] || 'USB-C Fast Charging Port';
+      this.product.overview = specs['overview'] || (descText && descText !== full.name ? descText : '');
+      this.product.highlights = toMultiline(specs['highlights'], '');
+      this.product.features = toMultiline(specs['features'], '');
+      this.product.warranty = specs['warranty'] || '';
+      this.product.connectors = specs['connectors'] || '';
       this.product.powerRating = specs['power_rating'] ?? specs['powerRating'] ?? '';
-      this.product.compatibility = specs['compatibility'] || 'Universal iOS / Android / USB-C Standards Compliant';
-      this.product.buildMaterial = specs['build_material'] || specs['buildMaterial'] || 'Premium Grade Fire-Retardant Polymer & Alloy';
-      this.product.certification = specs['certification'] || 'CE / RoHS / FCC Quality Verified';
-      this.product.importer = specs['importer'] || 'Nigson Group Ltd, Lagos Nigeria';
-      this.product.packaging = toMultiline(specs['packaging'], `1x ${full.name || 'Unit'}\n1x User Manual & Setup Guide\n1x Nigson Warranty Card`);
-      this.product.cartonSpecs = toMultiline(specs['carton_specs'] ?? specs['cartonSpecs'], 'Carton Quantity: 40 Units / Box\nGross Weight: ~ 0.45 kg per unit box\nBarcode: Individually Labelled for Resale');
-      this.product.warehouseStatus = specs['warehouse_status'] || specs['warehouseStatus'] || 'In Stock & Ready to Ship';
+      this.product.compatibility = specs['compatibility'] || '';
+      this.product.buildMaterial = specs['build_material'] || specs['buildMaterial'] || '';
+      this.product.certification = specs['certification'] || '';
+      this.product.importer = specs['importer'] || '';
+      this.product.packaging = toMultiline(specs['packaging'], '');
+      this.product.cartonSpecs = toMultiline(specs['carton_specs'] ?? specs['cartonSpecs'], '');
+      this.product.warehouseStatus = specs['warehouse_status'] || specs['warehouseStatus'] || '';
       this.product.dispatchTurnaround = specs['dispatch_turnaround'] || specs['dispatchTurnaround'] || 'Dispatched within 24 Hours';
       this.product.nationwideShipping = specs['nationwide_shipping'] || specs['nationwideShipping'] || '2 - 4 Business Days across Nigeria';
       this.product.minWholesaleOrder = specs['min_wholesale_order'] || specs['minWholesaleOrder'] || '10 Units';

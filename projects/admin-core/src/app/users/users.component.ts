@@ -1,7 +1,7 @@
 import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { AdminService, AdminHeadingComponent, BadgeComponent, statusTone, AdminUser, AdminCustomer, BackendRole } from 'shared-ui';
+import { AdminService, AdminHeadingComponent, BadgeComponent, statusTone, AdminUser, BackendRole } from 'shared-ui';
 import { LucidePlus, LucidePencil, LucideX, LucideSearch } from '@lucide/angular';
 
 @Component({
@@ -294,19 +294,16 @@ import { LucidePlus, LucidePencil, LucideX, LucideSearch } from '@lucide/angular
         <!-- Mode 2: Promote Existing User -->
         <div *ngIf="creationMode() === 'promote'" class="space-y-4">
           <div>
-            <label class="block text-xs font-bold uppercase tracking-wider text-muted-ink mb-1.5">Select Registered User *</label>
-            <select
+            <label class="block text-xs font-bold uppercase tracking-wider text-muted-ink mb-1.5">Registered account email *</label>
+            <input
+              type="email"
               [ngModel]="selectedPromoteEmail()"
-              (ngModelChange)="onSelectPromoteUser($event)"
+              (ngModelChange)="selectedPromoteEmail.set($event)"
+              placeholder="name@example.com"
               class="w-full rounded-xl border border-hairline bg-white px-4 py-2.5 text-sm font-medium focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
             >
-              <option value="">-- Choose registered customer / user --</option>
-              <option *ngFor="let c of availableToPromote()" [value]="c.email">
-                {{ c.name }} ({{ c.email }})
-              </option>
-            </select>
             <p class="mt-1 text-[11px] text-muted-ink">
-              User already exists in database with their own password. This assigns them a staff role.
+              Enter the email used to sign up. We will verify the active account before assigning a role.
             </p>
           </div>
 
@@ -402,7 +399,6 @@ export class AdminUsersComponent implements OnInit {
 
   ngOnInit() {
     this.admin.loadStaffUsers().subscribe();
-    this.admin.loadStaffCustomers().subscribe();
   }
 
   filteredUsers = computed(() => {
@@ -421,11 +417,6 @@ export class AdminUsersComponent implements OnInit {
     }
     return users;
   });
-
-    availableToPromote = computed(() => {
-      const existingEmails = new Set(this.admin.admins().map(a => a.email.toLowerCase().trim()));
-      return this.admin.customers().filter(c => !existingEmails.has(c.email.toLowerCase().trim()));
-    });
 
     roleName(id: string): string {
       return this.admin.roles().find((r) => r.id === id)?.name ?? id;
@@ -475,15 +466,6 @@ export class AdminUsersComponent implements OnInit {
       this.newReason.set('Staff provisioning by administrator');
       this.newError.set(null);
       this.newSuccess.set(null);
-    }
-
-    onSelectPromoteUser(email: string) {
-      this.selectedPromoteEmail.set(email);
-      const cust = this.availableToPromote().find(c => c.email === email);
-      if (cust) {
-        this.newName.set(cust.name);
-        this.newEmail.set(cust.email);
-      }
     }
 
     submitStaffUser() {
@@ -551,19 +533,13 @@ export class AdminUsersComponent implements OnInit {
         this.newError.set('Please select a registered user to promote.');
         return;
       }
-      const cust = this.admin.customers().find(c => c.email.toLowerCase() === email.toLowerCase());
-      if (!cust) {
-        this.newError.set('Customer profile not found.');
-        return;
-      }
-
       this.newSaving.set(true);
       this.newError.set(null);
 
         const promotedUser: AdminUser = {
-          id: cust.id,
-          name: cust.name,
-          email: cust.email,
+          id: '',
+          name: email,
+          email,
           roleId: this.newRole(),
           status: 'Active',
           lastLogin: new Date().toISOString(),
@@ -573,7 +549,7 @@ export class AdminUsersComponent implements OnInit {
         this.admin.addStaffUser(promotedUser, undefined, this.newReason()).subscribe({
           next: () => {
             this.newSaving.set(false);
-            this.newSuccess.set(`${cust.name} promoted to staff role successfully!`);
+            this.newSuccess.set(`${email} was assigned staff access successfully.`);
             setTimeout(() => {
               this.isNewUserOpen.set(false);
               this.newSuccess.set(null);

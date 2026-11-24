@@ -730,7 +730,15 @@ export class AdminService {
     }).pipe(catchError(error => this.fail('Staff permissions', error)));
   }
   updateStaffUser(user: AdminUser, reason = 'Staff role assignment updated by administrator'): Observable<boolean> { return this.http.put<any>(`/api/v1/staff/users/${user.id}/roles`, { roles: user.status === 'Disabled' ? [] : user.roles || [user.roleId], reason }, { headers: this.headers(user.version) }).pipe(switchMap(() => this.loadStaffUsers()), map(() => true), catchError(e => this.fail('Staff permissions', e))); }
-  addStaffUser(user: AdminUser, _password?: string, reason = 'Existing customer assigned staff permissions'): Observable<boolean> { return this.rows(`/api/v1/staff/users?q=${encodeURIComponent(user.email)}`).pipe(switchMap(rows => { const party = rows.find(row => row.email?.toLowerCase() === user.email.toLowerCase()); if (!party) throw new Error('Register this account through Sign up before assigning staff access.'); return this.updateStaffUser({ ...user, id: party.id, version: party.version }, reason); }), catchError(e => this.fail('Assign staff roles', e))); }
+  addStaffUser(user: AdminUser, _password?: string, reason = 'Existing customer assigned staff permissions'): Observable<boolean> {
+    const email = user.email.trim().toLowerCase();
+    return this.http.get<any>(`/api/v1/staff/users/lookup?email=${encodeURIComponent(email)}`).pipe(
+      switchMap(party => this.http.put<any>(`/api/v1/staff/users/${party.id}/roles`, { roles: [...new Set([...(Array.isArray(party.roles) ? party.roles : []), user.roleId])], reason }, { headers: this.headers(party.version) })),
+      switchMap(() => this.loadStaffUsers()),
+      map(() => true),
+      catchError(error => this.fail('Assign staff roles', error))
+    );
+  }
   deleteStaffUser(userId: string): Observable<boolean> { return this.updateUserRoles(userId, [], 'Staff access removed by administrator'); }
   loadStaffCustomers(): Observable<AdminCustomer[]> {
     return this.table('Customers', this.rows('/api/v1/staff/customers').pipe(map(rows => rows.map(row => ({ ...row, email: row.email || '', phone: row.phone || '', location: '', saved: 0, status: row.status === 'ACTIVE' ? 'Active' as const : 'Suspended' as const })))), this.customers);
