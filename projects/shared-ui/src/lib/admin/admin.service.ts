@@ -851,6 +851,18 @@ export class AdminService {
     if (status !== 'Processing') { this.errors.update(all => ({ ...all, Orders: 'Shipping and delivery require a recorded shipment and stock allocation. They cannot be changed as a display status.' })); return; }
     this.http.post(`/api/v1/staff/orders/${id}/processing`, { reason: 'Order released for processing by operations' }, { headers: this.headers(order?.version) }).pipe(switchMap(() => this.loadStaffOrders()), catchError(error => this.fail('Order processing', error))).subscribe({ error: () => { } });
   }
+  getOrderFulfillment(orderId: string): Observable<{ orderId: string; lines: Array<{ orderLineId: string; balanceId: string; quantity: string }>; shipment: { id: string; status: string; version: number; trackingUrl: string | null } | null }> {
+    return this.http.get<{ orderId: string; lines: Array<{ orderLineId: string; balanceId: string; quantity: string }>; shipment: { id: string; status: string; version: number; trackingUrl: string | null } | null }>(`/api/v1/staff/orders/${orderId}/fulfillment`).pipe(catchError(error => this.fail('Fulfillment', error)));
+  }
+  createManualShipment(orderId: string, lines: Array<{ orderLineId: string; balanceId: string; quantity: string }>): Observable<any> {
+    return this.http.post(`/api/v1/staff/orders/${orderId}/shipments`, { lines, provider: 'MANUAL', providerReference: `LOCAL-${orderId.slice(0, 8)}` }, { headers: this.headers().set('Idempotency-Key', crypto.randomUUID()) }).pipe(catchError(error => this.fail('Fulfillment', error)));
+  }
+  dispatchShipment(shipment: { id: string; version: number }): Observable<any> {
+    return this.http.post(`/api/v1/staff/shipments/${shipment.id}/dispatch`, { reason: 'Local test shipment dispatched by operations' }, { headers: this.headers(shipment.version).set('Idempotency-Key', crypto.randomUUID()) }).pipe(catchError(error => this.fail('Fulfillment', error)));
+  }
+  deliverShipment(shipment: { id: string; version: number }): Observable<any> {
+    return this.http.post(`/api/v1/staff/shipments/${shipment.id}/delivery`, { deliveredAt: new Date().toISOString(), reason: 'Local test delivery confirmed by operations' }, { headers: this.headers(shipment.version).set('Idempotency-Key', crypto.randomUUID()) }).pipe(catchError(error => this.fail('Fulfillment', error)));
+  }
   loadStaffQuotes(): Observable<AdminQuote[]> {
     this.quoteLoadError.set(null);
     return this.table('Quote requests', this.rows('/api/v1/staff/leads?type=QUOTE').pipe(map(rows => rows.map(row => {

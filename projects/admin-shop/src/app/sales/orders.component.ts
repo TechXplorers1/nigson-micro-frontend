@@ -176,7 +176,18 @@ import { LucideEye } from '@lucide/angular';
           <p *ngIf="admin.errors()['Returns']" role="alert" class="mt-2 text-xs text-rose-700">{{ admin.errors()['Returns'] }}</p>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="rounded-xl border border-hairline bg-surface-alt/40 p-4">
+          <h3 class="font-bold">Fulfilment</h3>
+          <p class="mt-1 text-sm text-muted-ink">Create a local test shipment from the order's allocated stock, then dispatch and confirm delivery.</p>
+          <p *ngIf="fulfillmentError()" role="alert" class="mt-2 text-sm text-rose-700">{{ fulfillmentError() }}</p>
+          <p *ngIf="shipment()" class="mt-2 text-sm font-medium">Shipment: {{ shipment()!.status }}</p>
+          <div *ngIf="admin.session.hasRole('OPERATIONS')" class="mt-3 flex flex-wrap gap-2">
+            <button *ngIf="viewOrder.rawState === 'PROCESSING' && !shipment()" (click)="createShipment()" [disabled]="fulfillmentBusy()" class="rounded-xl bg-brand px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{{ fulfillmentBusy() ? 'Creating...' : 'Create shipment' }}</button>
+            <button *ngIf="shipment()?.status === 'READY' || shipment()?.status === 'CREATED'" (click)="dispatchShipment()" [disabled]="fulfillmentBusy()" class="rounded-xl bg-brand px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{{ fulfillmentBusy() ? 'Dispatching...' : 'Dispatch shipment' }}</button>
+            <button *ngIf="shipment()?.status === 'SHIPPED'" (click)="deliverShipment()" [disabled]="fulfillmentBusy()" class="rounded-xl bg-brand px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{{ fulfillmentBusy() ? 'Recording...' : 'Mark delivered' }}</button>
+          </div>
+        </div>
+        <div class="mt-4 flex items-center gap-2">
           <p class="text-sm">Shipping and delivery update from recorded fulfillment operations.</p>
           <button *ngIf="viewOrder.rawState === 'PAID' && (!viewOrder.cancellation || viewOrder.cancellation.state === 'REJECTED') && admin.session.hasRole('OPERATIONS')" (click)="admin.setOrderStatus(viewOrder.id, 'Processing')" class="rounded-xl bg-brand px-4 py-2 font-bold text-white">Release for processing</button>
         </div>
@@ -196,6 +207,9 @@ export class AdminOrdersComponent implements OnInit {
   statuses: string[] = ["Pending", "Confirmed", "Processing", "Packed", "Shipped", "Delivered", "Cancelled"];
   
   viewOrder: AdminOrder | null = null;
+  readonly shipment = signal<{ id: string; status: string; version: number } | null>(null);
+  readonly fulfillmentBusy = signal(false);
+  readonly fulfillmentError = signal<string | null>(null);
   readonly reviewingRefund = signal(false);
   readonly refundError = signal<string | null>(null);
   readonly returns = signal<OrderReturns | null>(null);
@@ -214,14 +228,48 @@ export class AdminOrdersComponent implements OnInit {
     if (this.reviewingRefund()) return;
     this.refundError.set(null);
     this.viewOrder = order;
+    this.shipment.set(null);
+    this.fulfillmentError.set(null);
+    this.loadFulfillment(order.id);
     this.loadReturns(order.id);
   }
 
   closeOrder() {
     if (this.reviewingRefund() || this.returnBusy()) return;
     this.viewOrder = null;
+    this.shipment.set(null);
+    this.fulfillmentError.set(null);
     this.resetReturnAction();
     this.returns.set(null);
+  }
+
+  private loadFulfillment(orderId: string) {
+    this.fulfillmentBusy.set(true);
+    this.admin.getOrderFulfillment(orderId).pipe(finalize(() => this.fulfillmentBusy.set(false))).subscribe({
+      next: view => this.shipment.set(view.shipment),
+      error: () => this.fulfillmentError.set(this.admin.errors()['Fulfillment'] || 'Fulfilment status could not be loaded.')
+    });
+  }
+
+  createShipment() {
+    if (!this.viewOrder || this.fulfillmentBusy()) return;
+    this.fulfillmentBusy.set(true); this.fulfillmentError.set(null);
+    this.admin.getOrderFulfillment(this.viewOrder.id).pipe(
+      switchMap(view => this.admin.createManualShipment(this.viewOrder!.id, view.lines)),
+      finalize(() => this.fulfillmentBusy.set(false))
+    ).subscribe({ next: shipment => this.shipment.set(shipment), error: () => { this.loadFulfillment(this.viewOrder!.id); this.fulfillmentError.set(this.admin.errors()['Fulfillment'] || 'Shipment could not be created.'); } });
+  }
+
+  dispatchShipment() {
+    const shipment = this.shipment(); if (!shipment || this.fulfillmentBusy()) return;
+    this.fulfillmentBusy.set(true); this.fulfillmentError.set(null);
+    this.admin.dispatchShipment(shipment).pipe(finalize(() => this.fulfillmentBusy.set(false))).subscribe({ next: result => { this.shipment.set(result); this.refreshOrders(); }, error: () => this.fulfillmentError.set(this.admin.errors()['Fulfillment'] || 'Shipment could not be dispatched.') });
+  }
+
+  deliverShipment() {
+    const shipment = this.shipment(); if (!shipment || this.fulfillmentBusy()) return;
+    this.fulfillmentBusy.set(true); this.fulfillmentError.set(null);
+    this.admin.deliverShipment(shipment).pipe(finalize(() => this.fulfillmentBusy.set(false))).subscribe({ next: result => { this.shipment.set(result); this.refreshOrders(); }, error: () => this.fulfillmentError.set(this.admin.errors()['Fulfillment'] || 'Delivery could not be recorded.') });
   }
 
   private loadReturns(orderId: string) {
