@@ -443,11 +443,7 @@ export class AdminOrdersComponent implements OnInit {
     let list = this.admin.orders();
     const q = this.searchQuery().trim().toLowerCase();
     if (q) {
-      list = list.filter(o => (o.number + (this.pickupCode(o.number) ?? '') + o.customer.name + o.customer.email).toLowerCase().includes(q));
-    }
-    const s = this.statusFilter();
-    if (s !== 'All statuses') {
-      list = list.filter(o => o.status === s);
+      list = list.filter(o => [o.number, this.pickupCode(o.number) ?? '', o.customer.name, o.customer.email, ...o.items.flatMap(item => [item.name, item.sku])].join(' ').toLowerCase().includes(q));
     }
     const tab = this.activeTab();
     if (tab === 'Needs attention') list = list.filter(o => !!this.attention(o));
