@@ -10,6 +10,8 @@ function service() {
   instance.orders = signal([]);
   instance.cancellationError = signal(null);
   instance.cancellationKeys = new Map();
+  instance.returnError = signal(null);
+  instance.returnKeys = new Map();
   return instance;
 }
 
@@ -105,5 +107,42 @@ describe('Order cancellation', () => {
     s.http.get.mockReturnValue(of({ ...rawOrder, cancellation: { id: 'cancel-1', state: 'REQUESTED' } }));
     s.cancelOrder(rawOrder.id).subscribe();
     expect(s.http.post).not.toHaveBeenCalled();
+  });
+});
+
+const rawReturns = {
+  orderId: rawOrder.id, orderVersion: 2, delivered: true,
+  lines: [{ orderLineId: 'line-1', name: 'Nexa Power Bank 20000 mAh', orderedQuantity: '5', availableQuantity: '3', quantityScale: 0 }],
+  requests: [{ id: 'return-1', orderId: rawOrder.id, orderLineId: 'line-1', productName: 'Nexa Power Bank 20000 mAh', quantity: '2', reason: 'Synthetic damaged product return', policyRevision: 'POLICY_1', state: 'REQUESTED', decisionReason: null, instructions: null, receiptReference: null, restock: null, receivedAt: null, refundId: null, refundState: null, version: 0, createdAt: '2026-11-22T10:00:00Z' }],
+  refundableAmount: '100.00', paystackRefundAvailable: true
+};
+
+describe('Order returns', () => {
+  it('maps bounded return lines and requests without provider detail', () => {
+    const view = service().mapReturns(rawReturns);
+    expect(view).toMatchObject({ orderId: rawOrder.id, orderVersion: 2, delivered: true, refundableAmount: 100, paystackRefundAvailable: true });
+    expect(view.lines[0]).toMatchObject({ orderLineId: 'line-1', orderedQuantity: 5, availableQuantity: 3, quantityScale: 0 });
+    expect(view.requests[0]).toMatchObject({ id: 'return-1', quantity: 2, state: 'REQUESTED' });
+  });
+
+  it('reuses the original key and order version after response loss', () => {
+    const s = service();
+    s.http.get.mockReturnValue(of(rawReturns));
+    s.http.post.mockReturnValue(throwError(() => ({ status: 503 })));
+    s.requestReturn(rawOrder.id, 'line-1', 2, 'Synthetic damaged product return').subscribe();
+    s.requestReturn(rawOrder.id, 'line-1', 2, 'Synthetic damaged product return').subscribe();
+    const first = s.http.post.mock.calls[0][2].headers;
+    const second = s.http.post.mock.calls[1][2].headers;
+    expect(second.get('Idempotency-Key')).toBe(first.get('Idempotency-Key'));
+    expect(second.get('If-Match')).toBe('"2"');
+    expect(s.returnError()).toContain('Retry');
+  });
+
+  it('does not send a return command before delivery', () => {
+    const s = service();
+    s.http.get.mockReturnValue(of({ ...rawReturns, delivered: false }));
+    s.requestReturn(rawOrder.id, 'line-1', 1, 'Synthetic undelivered product return').subscribe();
+    expect(s.http.post).not.toHaveBeenCalled();
+    expect(s.returnError()).toContain('after the order has been delivered');
   });
 });

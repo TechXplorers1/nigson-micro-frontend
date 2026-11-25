@@ -2,8 +2,9 @@ import { Component, inject, computed, OnInit, signal, DestroyRef } from '@angula
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { timer, filter, switchMap, catchError, EMPTY, take } from 'rxjs';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { RouterLink, ActivatedRoute } from '@angular/router';
-import { OrderService, BackendOrder, OrderTracking } from 'shared-ui';
+import { OrderService, BackendOrder, OrderTracking, OrderReturns, OrderReturn } from 'shared-ui';
 import { 
   LucideArrowLeft, LucideXCircle, LucideTruck
 } from '@lucide/angular';
@@ -12,7 +13,7 @@ import {
   selector: 'app-order-detail',
   standalone: true,
   imports: [
-    CommonModule, RouterLink,
+    CommonModule, FormsModule, RouterLink,
     LucideArrowLeft, LucideXCircle, LucideTruck
   ],
   template: `
@@ -119,6 +120,63 @@ import {
                 </li>
               </ul>
             </div>
+
+            <!-- Returns (API-237/238) -->
+            <div *ngIf="returns()" class="rounded-2xl border border-hairline bg-white p-6">
+              <h3 class="text-sm font-extrabold uppercase tracking-widest border-b border-hairline pb-4 mb-4">Returns</h3>
+
+              <p *ngIf="!returns()!.delivered" class="text-xs text-muted-ink">
+                Returns become available after this order has been delivered.
+              </p>
+
+              <div *ngIf="returns()!.requests.length" class="space-y-3">
+                <div *ngFor="let item of returns()!.requests" class="rounded-xl border border-hairline bg-surface-alt/40 p-4">
+                  <div class="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <p class="text-sm font-semibold text-ink">{{ item.productName }} &times; {{ item.quantity }}</p>
+                      <p class="text-xs text-muted-ink">Requested {{ formatDate(item.createdAt) }}</p>
+                    </div>
+                    <span class="rounded-full bg-white px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-ink">{{ returnStateLabel(item.state) }}</span>
+                  </div>
+                  <p class="mt-2 text-xs text-muted-ink">{{ returnMessage(item) }}</p>
+                  <p *ngIf="item.instructions" class="mt-2 rounded-lg bg-white p-3 text-xs text-ink">
+                    <span class="font-semibold">Return instructions:</span> {{ item.instructions }}
+                  </p>
+                  <p *ngIf="item.receiptReference" class="mt-2 text-xs text-muted-ink">
+                    Receipt reference: <span class="font-mono text-ink">{{ item.receiptReference }}</span>
+                  </p>
+                  <p *ngIf="item.refundState" class="mt-2 text-xs text-muted-ink">{{ returnRefundMessage(item) }}</p>
+                </div>
+              </div>
+
+              <div *ngIf="returns()!.delivered && returnableLines().length" class="mt-5 space-y-3 border-t border-hairline pt-4">
+                <p class="text-xs font-semibold uppercase tracking-widest text-muted-ink">Request another return</p>
+                <label class="block text-xs font-semibold text-ink">
+                  Product
+                  <select [(ngModel)]="returnLineId" class="mt-1 w-full rounded-xl border border-hairline bg-white px-3 py-2 text-sm font-normal focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20">
+                    <option *ngFor="let line of returnableLines()" [value]="line.orderLineId">
+                      {{ line.name }} ({{ line.availableQuantity }} available)
+                    </option>
+                  </select>
+                </label>
+                <label class="block text-xs font-semibold text-ink">
+                  Quantity
+                  <input type="number" [min]="scaleStep()" [max]="selectedReturnLine()?.availableQuantity ?? scaleStep()" [step]="scaleStep()" [(ngModel)]="returnQuantity" class="mt-1 w-full rounded-xl border border-hairline bg-white px-3 py-2 text-sm font-normal focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20">
+                </label>
+                <label class="block text-xs font-semibold text-ink">
+                  Reason
+                  <textarea rows="3" maxlength="500" [(ngModel)]="returnReason" placeholder="Tell us what is wrong with the product" class="mt-1 w-full rounded-xl border border-hairline bg-white px-3 py-2 text-sm font-normal focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"></textarea>
+                </label>
+                <p *ngIf="returnError()" role="alert" class="text-xs text-rose-700">{{ returnError() }}</p>
+                <button (click)="submitReturn()" [disabled]="returning()" class="rounded-xl bg-brand px-4 py-2 text-sm font-bold text-white disabled:opacity-50">
+                  {{ returning() ? 'Submitting...' : 'Request return' }}
+                </button>
+              </div>
+
+              <p *ngIf="returns()!.delivered && !returnableLines().length && !returns()!.requests.length" class="mt-3 text-xs text-muted-ink">
+                No delivered quantity remains available to return.
+              </p>
+            </div>
           </div>
 
           <!-- Totals and Delivery -->
@@ -160,8 +218,13 @@ export class OrderDetailComponent implements OnInit {
 
   readonly order = signal<BackendOrder | null>(null);
   readonly tracking = signal<OrderTracking | null>(null);
+  readonly returns = signal<OrderReturns | null>(null);
   readonly loading = signal(true);
   readonly cancelling = signal(false);
+  readonly returning = signal(false);
+  returnLineId = '';
+  returnQuantity = 1;
+  returnReason = '';
 
   ngOnInit() {
     const id = this.route.snapshot.paramMap.get("id") ?? this.route.snapshot.paramMap.get("orderId") ?? "";
@@ -177,6 +240,7 @@ export class OrderDetailComponent implements OnInit {
           this.order.set(o);
           this.loading.set(false);
           this.scrollToTracking();
+          this.loadReturns(o.orderId || id);
           this.orderSvc.getTracking(id).subscribe(t => {
             if (t) this.tracking.set(t);
           });
@@ -202,6 +266,69 @@ export class OrderDetailComponent implements OnInit {
       this.cancelling.set(false);
       if (updated) this.order.set(updated);
     });
+  }
+
+  private loadReturns(orderId: string) {
+    this.orderSvc.getReturns(orderId).subscribe(view => {
+      this.returns.set(view);
+      const lines = view?.lines.filter(line => line.availableQuantity > 0) ?? [];
+      if (!lines.some(line => line.orderLineId === this.returnLineId)) {
+        this.returnLineId = lines[0]?.orderLineId ?? '';
+        this.returnQuantity = Math.min(this.scaleStep(), lines[0]?.availableQuantity ?? this.scaleStep());
+      }
+    });
+  }
+
+  returnableLines() {
+    return this.returns()?.lines.filter(line => line.availableQuantity > 0) ?? [];
+  }
+
+  selectedReturnLine() {
+    return this.returnableLines().find(line => line.orderLineId === this.returnLineId) ?? null;
+  }
+
+  scaleStep(): number {
+    const scale = this.selectedReturnLine()?.quantityScale ?? 0;
+    return 1 / Math.pow(10, scale);
+  }
+
+  submitReturn() {
+    const order = this.order();
+    const line = this.selectedReturnLine();
+    const quantity = Number(this.returnQuantity);
+    if (!order || !line || !Number.isFinite(quantity) || quantity <= 0 || quantity > line.availableQuantity) return;
+    this.returning.set(true);
+    this.orderSvc.requestReturn(order.orderId, line.orderLineId, quantity, this.returnReason.trim()).subscribe(item => {
+      this.returning.set(false);
+      if (item) {
+        this.returnReason = '';
+        this.returnQuantity = this.scaleStep();
+        this.loadReturns(order.orderId);
+      }
+    });
+  }
+
+  returnError() { return this.orderSvc.returnError(); }
+
+  returnStateLabel(state: string): string {
+    return ({ REQUESTED: 'Under review', APPROVED: 'Approved', REJECTED: 'Not approved', RECEIVED: 'Received' } as Record<string, string>)[state] ?? state;
+  }
+
+  returnMessage(item: OrderReturn): string {
+    if (item.state === 'REQUESTED') return 'Operations are reviewing this request against the returns policy recorded with your order.';
+    if (item.state === 'APPROVED') return 'This return is approved. Follow the return instructions recorded by Operations.';
+    if (item.state === 'REJECTED') return item.decisionReason ? `Not approved: ${item.decisionReason}` : 'This return was not approved.';
+    return item.restock === false
+      ? 'Received and inspected. This item was not returned to saleable stock.'
+      : 'Received and inspected. Your refund remains a separate Finance decision.';
+  }
+
+  returnRefundMessage(item: OrderReturn): string {
+    const state = item.refundState;
+    if (state === 'SUCCEEDED') return 'Refund completed.';
+    if (state === 'REJECTED' || state === 'FAILED') return 'Refund needs attention. Please contact support.';
+    if (state === 'REQUESTED') return 'A refund is awaiting Finance approval.';
+    return 'A refund is being processed. We will update this request when it is confirmed.';
   }
 
   getTimeline(): string[] {

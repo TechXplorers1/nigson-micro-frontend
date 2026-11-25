@@ -5,7 +5,8 @@ import { Injectable, computed, signal, inject, effect, untracked, WritableSignal
 import { HttpClient, HttpContext, HttpHeaders } from '@angular/common/http';
 import { Observable, of, tap, map, catchError, forkJoin, switchMap, defer, throwError, finalize, shareReplay } from 'rxjs';
 import { LOCAL_API_FAILURE_CODES } from '../api-errors.service';
-import type { OrderCancellation } from '../order.service';
+import type { OrderCancellation, OrderReturn, OrderReturns } from '../order.service';
+export type { OrderReturn, OrderReturns } from '../order.service';
 import { SessionService } from '../session.service';
 import { CatalogService } from '../catalog.service';
 import { applyInventory, mapStaffProducts, inventoryTotals } from './inventory-mapping';
@@ -119,7 +120,7 @@ export type AdminOrder = {
   cancellation?: OrderCancellation | null;
   id: string; version?: number; rawState?: string; number: string; date: string;
   customer: { name: string; email: string; phone: string; address: string };
-  items: { sku: string; name: string; qty: number; price: number }[];
+  items: { lineId?: string; sku: string; name: string; qty: number; price: number }[];
   total: number; paymentStatus: "Paid" | "Pending" | "Refunded";
   status: AdminOrderStatus; delivery: string; timeline: { label: string; date: string }[];
 };
@@ -749,7 +750,7 @@ export class AdminService {
     return this.table('Orders', this.rows('/api/v1/staff/orders').pipe(map(rows => rows.map(order => ({
       id: order.id, number: order.orderNumber, date: order.createdAt, version: order.version, rawState: order.status, cancellation: order.cancellation ?? null,
       customer: { name: order.address?.recipient || '', email: '', phone: order.address?.phone || '', address: [order.address?.line1, order.address?.city, order.address?.region].filter(Boolean).join(', ') },
-      items: (order.lines || []).map((line: any) => ({ sku: line.skuCode, name: line.name, qty: Number(line.quantity), price: Number(line.unitAmount) })), total: Number(order.totals.grandTotal), paymentStatus: order.paymentStatus === 'PAID' ? 'Paid' as const : order.paymentStatus === 'REFUNDED' ? 'Refunded' as const : 'Pending' as const,
+      items: (order.lines || []).map((line: any) => ({ lineId: line.id, sku: line.skuCode, name: line.name, qty: Number(line.quantity), price: Number(line.unitAmount) })), total: Number(order.totals.grandTotal), paymentStatus: order.paymentStatus === 'PAID' ? 'Paid' as const : order.paymentStatus === 'REFUNDED' ? 'Refunded' as const : 'Pending' as const,
       status: ({ PENDING: 'Pending', PAID: 'Confirmed', PROCESSING: 'Processing', SHIPPED: 'Shipped', DELIVERED: 'Delivered', CANCELLED: 'Cancelled' } as any)[order.status] || order.status,
       delivery: order.fulfillmentStatus, timeline: []
     })))), this.orders);
@@ -765,6 +766,85 @@ export class AdminService {
     return this.http.post(`/api/v1/staff/refunds/${refund.id}/approval`,
       { approve: true, reason: 'Finance reviewed and approved the cancelled order refund' },
       { headers: this.headers(refund.version).set('Idempotency-Key', key) });
+  }
+  private returnKeys = new Map<string, string>();
+  private returnHeaders(version: number, identity: string): HttpHeaders {
+    let key = this.returnKeys.get(identity);
+    if (!key) { key = crypto.randomUUID(); this.returnKeys.set(identity, key); }
+    return this.headers(version).set('Idempotency-Key', key);
+  }
+  /** API-243: bounded return quantities and records for one staff-visible order. */
+  getOrderReturns(orderId: string): Observable<OrderReturns> {
+    this.clear('Returns');
+    return this.http.get<any>(`/api/v1/staff/orders/${orderId}/returns`).pipe(
+      map(raw => this.mapOrderReturns(raw)),
+      catchError(error => this.fail('Returns', error))
+    );
+  }
+  /** API-240: current Operations review; approval requires customer-facing instructions. */
+  reviewReturn(orderId: string, item: OrderReturn, approve: boolean, reason: string, instructions: string): Observable<OrderReturns> {
+    const identity = `review:${item.id}:${item.version}`;
+    return this.http.post(`/api/v1/staff/returns/${item.id}/review`,
+      approve ? { approve, reason, instructions } : { approve, reason },
+      { headers: this.returnHeaders(item.version, identity) }).pipe(
+        tap(() => this.returnKeys.delete(identity)),
+        switchMap(() => this.getOrderReturns(orderId)),
+        catchError(error => {
+          if (error?.error?.code === 'VERSION_MISMATCH') this.returnKeys.delete(identity);
+          return this.fail('Returns', error);
+        })
+      );
+  }
+  /** API-241: explicit physical receipt, external reference and restock decision. */
+  receiveReturn(orderId: string, item: OrderReturn, receiptReference: string, restock: boolean, reason: string): Observable<OrderReturns> {
+    const identity = `receipt:${item.id}:${item.version}`;
+    return this.http.post(`/api/v1/staff/returns/${item.id}/receipt`,
+      { receiptReference, restock, reason },
+      { headers: this.returnHeaders(item.version, identity) }).pipe(
+        tap(() => this.returnKeys.delete(identity)),
+        switchMap(() => this.getOrderReturns(orderId)),
+        catchError(error => {
+          if (error?.error?.code === 'VERSION_MISMATCH') this.returnKeys.delete(identity);
+          return this.fail('Returns', error);
+        })
+      );
+  }
+  /** API-242: Finance requests a chosen amount on the original verified Paystack settlement. */
+  requestReturnRefund(orderId: string, item: OrderReturn, amount: string, reason: string): Observable<OrderReturns> {
+    const identity = `refund:${item.id}:${item.version}`;
+    return this.http.post(`/api/v1/staff/returns/${item.id}/refund`,
+      { amount, reason },
+      { headers: this.returnHeaders(item.version, identity) }).pipe(
+        tap(() => this.returnKeys.delete(identity)),
+        switchMap(() => this.getOrderReturns(orderId)),
+        catchError(error => {
+          if (error?.error?.code === 'VERSION_MISMATCH') this.returnKeys.delete(identity);
+          return this.fail('Returns', error);
+        })
+      );
+  }
+  private mapOrderReturns(raw: any): OrderReturns {
+    const quantity = (value: unknown) => Number(value ?? 0) || 0;
+    return {
+      orderId: raw?.orderId ?? '',
+      orderVersion: Number(raw?.orderVersion ?? 0) || 0,
+      delivered: raw?.delivered === true,
+      lines: (raw?.lines ?? []).map((line: any) => ({
+        orderLineId: line.orderLineId, name: line.name,
+        orderedQuantity: quantity(line.orderedQuantity), availableQuantity: quantity(line.availableQuantity),
+        quantityScale: Number(line.quantityScale ?? 0) || 0
+      })),
+      requests: (raw?.requests ?? []).map((item: any): OrderReturn => ({
+        id: item.id, orderId: item.orderId, orderLineId: item.orderLineId, productName: item.productName,
+        quantity: quantity(item.quantity), reason: item.reason, policyRevision: item.policyRevision,
+        state: item.state, decisionReason: item.decisionReason ?? null, instructions: item.instructions ?? null,
+        receiptReference: item.receiptReference ?? null, restock: typeof item.restock === 'boolean' ? item.restock : null,
+        receivedAt: item.receivedAt ?? null, refundId: item.refundId ?? null, refundState: item.refundState ?? null,
+        version: Number(item.version ?? 0) || 0, createdAt: item.createdAt ?? ''
+      })),
+      refundableAmount: quantity(raw?.refundableAmount),
+      paystackRefundAvailable: raw?.paystackRefundAvailable === true
+    };
   }
   setOrderStatus(id: string, status: string): void {
     const order = this.orders().find(row => row.id === id);

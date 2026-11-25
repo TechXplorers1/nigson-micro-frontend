@@ -2,7 +2,7 @@ import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { EMPTY, switchMap, finalize } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { AdminService, AdminHeadingComponent, StatCardComponent, BadgeComponent, statusTone, AdminOrder, AdminOrderStatus } from 'shared-ui';
+import { AdminService, AdminHeadingComponent, StatCardComponent, BadgeComponent, statusTone, AdminOrder, AdminOrderStatus, OrderReturn, OrderReturns } from 'shared-ui';
 import { LucideEye } from '@lucide/angular';
 
 @Component({
@@ -111,6 +111,71 @@ import { LucideEye } from '@lucide/angular';
           </button>
           <p *ngIf="refundError()" role="alert" class="mt-2 text-rose-700">{{ refundError() }}</p>
         </div>
+
+        <div class="mb-4 rounded-xl border border-hairline bg-surface-alt/40 p-4 text-sm">
+          <div class="mb-2 flex items-center justify-between">
+            <h3 class="font-bold">Returns</h3>
+            <span *ngIf="returnsLoading()" class="text-xs text-muted-ink">Loading...</span>
+          </div>
+          <p *ngIf="!returns() && !returnsLoading()" class="text-xs text-muted-ink">No return records were loaded.</p>
+          <p *ngIf="returns() && !returns()!.delivered" class="text-xs text-muted-ink">This order has not been delivered, so returns are not requestable.</p>
+          <p *ngIf="returns() && returns()!.delivered && !returns()!.requests.length" class="text-xs text-muted-ink">No return requests have been recorded.</p>
+          <div *ngIf="returns()?.requests?.length" class="space-y-3">
+            <div *ngFor="let item of returns()!.requests" class="rounded-lg border border-hairline bg-white p-3">
+              <div class="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <p class="font-semibold">{{ item.productName }} &times; {{ item.quantity }}</p>
+                  <p class="text-xs text-muted-ink">Policy {{ item.policyRevision }} &bull; {{ item.createdAt | date:'medium' }}</p>
+                </div>
+                <lib-badge tone="neutral">{{ item.state }}</lib-badge>
+              </div>
+              <p class="mt-2 text-xs text-muted-ink">Customer reason: {{ item.reason }}</p>
+              <p *ngIf="item.decisionReason" class="mt-1 text-xs text-muted-ink">Decision: {{ item.decisionReason }}</p>
+              <p *ngIf="item.instructions" class="mt-1 text-xs text-muted-ink">Instructions: {{ item.instructions }}</p>
+              <p *ngIf="item.receiptReference" class="mt-1 text-xs text-muted-ink">Receipt: <span class="font-mono">{{ item.receiptReference }}</span> &bull; {{ item.restock ? 'Restocked' : 'Not restocked' }}</p>
+              <p *ngIf="item.refundId" class="mt-1 text-xs text-muted-ink">Refund: {{ item.refundState }} ({{ item.refundId }})</p>
+              <div class="mt-2 flex flex-wrap gap-2">
+                <ng-container *ngIf="item.state === 'REQUESTED' && admin.session.hasRole('OPERATIONS')">
+                  <button (click)="beginReturn(item, 'APPROVE')" [disabled]="returnBusy()" class="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50">Approve</button>
+                  <button (click)="beginReturn(item, 'REJECT')" [disabled]="returnBusy()" class="rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-700 disabled:opacity-50">Reject</button>
+                </ng-container>
+                <button *ngIf="item.state === 'APPROVED' && admin.session.hasRole('OPERATIONS')" (click)="beginReturn(item, 'RECEIVE')" [disabled]="returnBusy()" class="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50">Record receipt</button>
+                <button *ngIf="item.state === 'RECEIVED' && !item.refundId && admin.session.hasRole('FINANCE')" (click)="beginReturn(item, 'REFUND')" [disabled]="returnBusy()" class="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50">Request refund</button>
+              </div>
+              <p *ngIf="item.state === 'RECEIVED' && !item.refundId && !returns()!.paystackRefundAvailable" class="mt-2 text-xs text-amber-700">
+                No verified Paystack settlement is available. Resolve payment and refund outside this automated flow.
+              </p>
+            </div>
+          </div>
+
+          <div *ngIf="returnAction()" class="mt-3 rounded-lg border border-hairline bg-white p-3">
+            <p class="mb-2 text-xs font-bold uppercase tracking-widest text-muted-ink">{{ returnActionLabel() }}</p>
+            <label class="mb-2 block text-xs font-semibold">Reason
+              <textarea rows="2" maxlength="500" [(ngModel)]="returnReason" class="mt-1 w-full rounded-lg border border-hairline px-3 py-2 text-sm font-normal"></textarea>
+            </label>
+            <label *ngIf="returnAction() === 'APPROVE'" class="mb-2 block text-xs font-semibold">Customer instructions
+              <textarea rows="2" maxlength="1000" [(ngModel)]="returnInstructions" class="mt-1 w-full rounded-lg border border-hairline px-3 py-2 text-sm font-normal"></textarea>
+            </label>
+            <ng-container *ngIf="returnAction() === 'RECEIVE'">
+              <label class="mb-2 block text-xs font-semibold">External receipt reference
+                <input type="text" maxlength="120" [(ngModel)]="receiptReference" class="mt-1 w-full rounded-lg border border-hairline px-3 py-2 text-sm font-normal">
+              </label>
+              <label class="mb-2 flex items-center gap-2 text-xs font-semibold">
+                <input type="checkbox" [(ngModel)]="restock"> Restock this quantity into saleable stock
+              </label>
+            </ng-container>
+            <label *ngIf="returnAction() === 'REFUND'" class="mb-2 block text-xs font-semibold">Refund amount (NGN)
+              <input type="number" min="0.01" step="0.01" [(ngModel)]="refundAmount" class="mt-1 w-full rounded-lg border border-hairline px-3 py-2 text-sm font-normal">
+            </label>
+            <p *ngIf="returnError()" role="alert" class="mb-2 text-xs text-rose-700">{{ returnError() }}</p>
+            <div class="flex gap-2">
+              <button (click)="submitReturnAction()" [disabled]="returnBusy()" class="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50">{{ returnBusy() ? 'Saving...' : 'Confirm' }}</button>
+              <button (click)="cancelReturnAction()" [disabled]="returnBusy()" class="rounded-lg border border-hairline px-3 py-1.5 text-xs font-semibold disabled:opacity-50">Cancel</button>
+            </div>
+          </div>
+          <p *ngIf="admin.errors()['Returns']" role="alert" class="mt-2 text-xs text-rose-700">{{ admin.errors()['Returns'] }}</p>
+        </div>
+
         <div class="flex items-center gap-2">
           <p class="text-sm">Shipping and delivery update from recorded fulfillment operations.</p>
           <button *ngIf="viewOrder.rawState === 'PAID' && (!viewOrder.cancellation || viewOrder.cancellation.state === 'REJECTED') && admin.session.hasRole('OPERATIONS')" (click)="admin.setOrderStatus(viewOrder.id, 'Processing')" class="rounded-xl bg-brand px-4 py-2 font-bold text-white">Release for processing</button>
@@ -133,9 +198,112 @@ export class AdminOrdersComponent implements OnInit {
   viewOrder: AdminOrder | null = null;
   readonly reviewingRefund = signal(false);
   readonly refundError = signal<string | null>(null);
+  readonly returns = signal<OrderReturns | null>(null);
+  readonly returnsLoading = signal(false);
+  readonly returnAction = signal<'APPROVE' | 'REJECT' | 'RECEIVE' | 'REFUND' | null>(null);
+  readonly returnBusy = signal(false);
+  readonly returnError = signal<string | null>(null);
+  selectedReturnId = '';
+  returnReason = '';
+  returnInstructions = '';
+  receiptReference = '';
+  restock = false;
+  refundAmount = '';
 
-  openOrder(order: AdminOrder) { if (this.reviewingRefund()) return; this.refundError.set(null); this.viewOrder = order; }
-  closeOrder() { if (!this.reviewingRefund()) this.viewOrder = null; }
+  openOrder(order: AdminOrder) {
+    if (this.reviewingRefund()) return;
+    this.refundError.set(null);
+    this.viewOrder = order;
+    this.loadReturns(order.id);
+  }
+
+  closeOrder() {
+    if (this.reviewingRefund() || this.returnBusy()) return;
+    this.viewOrder = null;
+    this.resetReturnAction();
+    this.returns.set(null);
+  }
+
+  private loadReturns(orderId: string) {
+    this.returnsLoading.set(true);
+    this.returns.set(null);
+    this.resetReturnAction();
+    this.admin.getOrderReturns(orderId).subscribe({
+      next: view => { this.returns.set(view); this.returnsLoading.set(false); },
+      error: () => this.returnsLoading.set(false)
+    });
+  }
+
+  selectedReturn(): OrderReturn | null {
+    return this.returns()?.requests.find(item => item.id === this.selectedReturnId) ?? null;
+  }
+
+  beginReturn(item: OrderReturn, action: 'APPROVE' | 'REJECT' | 'RECEIVE' | 'REFUND') {
+    this.selectedReturnId = item.id;
+    this.returnAction.set(action);
+    this.returnError.set(null);
+    this.returnReason = '';
+    this.returnInstructions = '';
+    this.receiptReference = '';
+    this.restock = false;
+    this.refundAmount = action === 'REFUND' ? (this.returns()?.refundableAmount ?? 0).toFixed(2) : '';
+  }
+
+  cancelReturnAction() {
+    if (!this.returnBusy()) this.resetReturnAction();
+  }
+
+  private resetReturnAction() {
+    this.returnAction.set(null);
+    this.selectedReturnId = '';
+    this.returnError.set(null);
+    this.returnReason = '';
+    this.returnInstructions = '';
+    this.receiptReference = '';
+    this.restock = false;
+    this.refundAmount = '';
+  }
+
+  returnActionLabel(): string {
+    return ({ APPROVE: 'Approve return', REJECT: 'Reject return', RECEIVE: 'Record physical receipt', REFUND: 'Request Finance refund' } as Record<string, string>)[this.returnAction() ?? ''] ?? '';
+  }
+
+  submitReturnAction() {
+    const order = this.viewOrder;
+    const item = this.selectedReturn();
+    const action = this.returnAction();
+    if (!order || !item || !action || this.returnBusy()) return;
+    const reason = this.returnReason.trim();
+    if (reason.length < 10) { this.returnError.set('Enter a reason of at least 10 characters.'); return; }
+    if (action === 'APPROVE' && this.returnInstructions.trim().length < 10) {
+      this.returnError.set('Approval requires customer return instructions of at least 10 characters.');
+      return;
+    }
+    if (action === 'RECEIVE' && !/^[A-Za-z0-9][A-Za-z0-9:_-]{0,119}$/.test(this.receiptReference.trim())) {
+      this.returnError.set('Enter a valid external receipt reference (letters, digits, colon, underscore or hyphen).');
+      return;
+    }
+    const amount = Number(this.refundAmount);
+    if (action === 'REFUND' && (!Number.isFinite(amount) || amount <= 0 || amount > (this.returns()?.refundableAmount ?? 0))) {
+      this.returnError.set('Enter a refund amount within the remaining refundable amount.');
+      return;
+    }
+    if (action === 'REFUND') {
+      const formatted = new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(amount);
+      if (!confirm(`Request a ${formatted} refund on the original Paystack payment? Finance approval and payment processing remain separate.`)) return;
+    }
+    this.returnError.set(null);
+    this.returnBusy.set(true);
+    const request = action === 'APPROVE' || action === 'REJECT'
+      ? this.admin.reviewReturn(order.id, item, action === 'APPROVE', reason, this.returnInstructions.trim())
+      : action === 'RECEIVE'
+        ? this.admin.receiveReturn(order.id, item, this.receiptReference.trim(), this.restock, reason)
+        : this.admin.requestReturnRefund(order.id, item, amount.toFixed(2), reason);
+    request.subscribe({
+      next: view => { this.returns.set(view); this.returnBusy.set(false); this.resetReturnAction(); },
+      error: () => this.returnBusy.set(false)
+    });
+  }
   reviewRefund() {
     const order = this.viewOrder;
     const id = order?.cancellation?.refundId;

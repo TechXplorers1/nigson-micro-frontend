@@ -83,6 +83,47 @@ export interface OrdersPage {
   size: number;
 }
 
+/** API-237..242 delivered-product return request and status view. */
+export type ReturnState = 'REQUESTED' | 'APPROVED' | 'REJECTED' | 'RECEIVED';
+
+export interface ReturnLine {
+  orderLineId: string;
+  name: string;
+  orderedQuantity: number;
+  availableQuantity: number;
+  quantityScale: number;
+}
+
+export interface OrderReturn {
+  id: string;
+  orderId: string;
+  orderLineId: string;
+  productName: string;
+  quantity: number;
+  reason: string;
+  policyRevision: string;
+  state: ReturnState;
+  decisionReason: string | null;
+  instructions: string | null;
+  receiptReference: string | null;
+  restock: boolean | null;
+  receivedAt: string | null;
+  refundId: string | null;
+  refundState: string | null;
+  version: number;
+  createdAt: string;
+}
+
+export interface OrderReturns {
+  orderId: string;
+  orderVersion: number;
+  delivered: boolean;
+  lines: ReturnLine[];
+  requests: OrderReturn[];
+  refundableAmount: number;
+  paystackRefundAvailable: boolean;
+}
+
 /** API-041 local payment state; `settled` is only true after independently verified provider success. */
 export interface OrderPayment {
   orderId: string;
@@ -101,7 +142,9 @@ export class OrderService {
   readonly loading = signal(false);
   readonly totalElements = signal(0);
   readonly cancellationError = signal<string | null>(null);
+  readonly returnError = signal<string | null>(null);
   private cancellationKeys = new Map<string, string>();
+  private returnKeys = new Map<string, string>();
 
   /** TASK-41: Load paginated order history */
   loadOrders(page = 0, size = 20): Observable<OrdersPage | null> {
@@ -195,6 +238,96 @@ export class OrderService {
   /** TASK-42: Get single order detail */
   getOrder(orderId: string): Observable<BackendOrder> {
     return this.http.get<any>("/api/v1/orders/" + orderId).pipe(map(raw => this.mapOrder(raw)));
+  }
+
+  /** API-237: Bounded delivered-product return options and prior return records for one owned order. */
+  getReturns(orderId: string): Observable<OrderReturns | null> {
+    return this.http.get<any>("/api/v1/orders/" + orderId + "/returns").pipe(
+      map(raw => this.mapReturns(raw)),
+      catchError(err => {
+        if (err?.status !== 404) console.warn("[OrderService] getReturns:", err?.status ?? err);
+        return of(null);
+      })
+    );
+  }
+
+  /** API-238: Reserve one product and exact quantity; a lost response reuses the same key and version. */
+  requestReturn(orderId: string, lineId: string, quantity: number, reason: string): Observable<OrderReturn | null> {
+    this.returnError.set(null);
+    return this.getReturns(orderId).pipe(
+      switchMap(view => {
+        if (!view || !view.delivered) {
+          this.returnError.set('Returns are available only after the order has been delivered.');
+          return of(null);
+        }
+        const identity = `${orderId}:${lineId}:${quantity}:${reason}`;
+        let key = this.returnKeys.get(identity);
+        if (!key) {
+          key = crypto.randomUUID();
+          this.returnKeys.set(identity, key);
+        }
+        return this.http.post<any>(`/api/v1/orders/${orderId}/returns`,
+          { orderLineId: lineId, quantity: String(quantity), reason },
+          { headers: new HttpHeaders({ 'If-Match': `"${view.orderVersion}"`, 'Idempotency-Key': key }) })
+          .pipe(
+            map(raw => this.mapReturn(raw)),
+            tap(() => this.returnKeys.delete(identity)),
+            catchError(err => {
+              const code = err?.error?.code;
+              this.returnError.set(code === 'INVALID_TRANSITION'
+                ? 'This product or quantity is no longer returnable. Refresh the order and try again.'
+                : code === 'VERSION_MISMATCH'
+                  ? 'The order changed. Refresh its latest status before requesting a return.'
+                  : code === 'ORDER_RULE_VIOLATION'
+                    ? 'The requested quantity exceeds the delivered, unreturned quantity.'
+                    : 'We could not confirm your return request. Retry to check the same request.');
+              if (code === 'VERSION_MISMATCH') this.returnKeys.delete(identity);
+              return of(null);
+            })
+          );
+      })
+    );
+  }
+
+  private mapReturns(raw: any): OrderReturns {
+    const quantity = (value: unknown) => Number(value ?? 0) || 0;
+    return {
+      orderId: raw?.orderId ?? '',
+      orderVersion: Number(raw?.orderVersion ?? 0) || 0,
+      delivered: raw?.delivered === true,
+      lines: (raw?.lines ?? []).map((line: any) => ({
+        orderLineId: line.orderLineId,
+        name: line.name,
+        orderedQuantity: quantity(line.orderedQuantity),
+        availableQuantity: quantity(line.availableQuantity),
+        quantityScale: Number(line.quantityScale ?? 0) || 0
+      })),
+      requests: (raw?.requests ?? []).map((item: any) => this.mapReturn(item)),
+      refundableAmount: quantity(raw?.refundableAmount),
+      paystackRefundAvailable: raw?.paystackRefundAvailable === true
+    };
+  }
+
+  private mapReturn(raw: any): OrderReturn {
+    return {
+      id: raw?.id ?? '',
+      orderId: raw?.orderId ?? '',
+      orderLineId: raw?.orderLineId ?? '',
+      productName: raw?.productName ?? '',
+      quantity: Number(raw?.quantity ?? 0) || 0,
+      reason: raw?.reason ?? '',
+      policyRevision: raw?.policyRevision ?? '',
+      state: raw?.state,
+      decisionReason: raw?.decisionReason ?? null,
+      instructions: raw?.instructions ?? null,
+      receiptReference: raw?.receiptReference ?? null,
+      restock: typeof raw?.restock === 'boolean' ? raw.restock : null,
+      receivedAt: raw?.receivedAt ?? null,
+      refundId: raw?.refundId ?? null,
+      refundState: raw?.refundState ?? null,
+      version: Number(raw?.version ?? 0) || 0,
+      createdAt: raw?.createdAt ?? ''
+    };
   }
 
   /** API-041: Verified local payment attempt state for the hosted-checkout return page. */

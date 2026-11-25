@@ -26,3 +26,35 @@ describe('Order cancellation presentation', () => {
   expect(c.cancellationMessage()).toContain('has been cancelled');
  });
 });
+
+function returnComponent(view: any) {
+ const c: any = component({});
+ c.returns = signal(view);
+ c.returnLineId = view.lines.find((line: any) => line.availableQuantity > 0)?.orderLineId ?? '';
+ return c;
+}
+
+describe('Order return presentation', () => {
+ it('offers only lines with remaining delivered quantity and respects the SKU scale', () => {
+  const c = returnComponent({ delivered: true, lines: [
+   { orderLineId: 'line-1', name: 'Whole item', orderedQuantity: 3, availableQuantity: 2, quantityScale: 0 },
+   { orderLineId: 'line-2', name: 'Measured item', orderedQuantity: '1.5', availableQuantity: '0.5', quantityScale: 3 },
+   { orderLineId: 'line-3', name: 'Fully returned', orderedQuantity: 1, availableQuantity: 0, quantityScale: 0 }
+  ] });
+  expect(c.returnableLines().map((line: any) => line.orderLineId)).toEqual(['line-1', 'line-2']);
+  expect(c.scaleStep()).toBe(1);
+  c.returnLineId = 'line-2';
+  expect(c.scaleStep()).toBe(0.001);
+ });
+
+ it('keeps review, approval, rejection and refund language separate', () => {
+  const c = returnComponent({ delivered: true, lines: [] });
+  expect(c.returnStateLabel('REQUESTED')).toBe('Under review');
+  expect(c.returnMessage({ state: 'REQUESTED' })).toContain('Operations are reviewing');
+  expect(c.returnMessage({ state: 'APPROVED' })).toContain('approved');
+  expect(c.returnMessage({ state: 'REJECTED', decisionReason: 'Outside the recorded policy' })).toContain('Outside the recorded policy');
+  expect(c.returnMessage({ state: 'RECEIVED', restock: false })).toContain('not returned to saleable stock');
+  expect(c.returnRefundMessage({ refundState: 'REQUESTED' })).toContain('Finance approval');
+  expect(c.returnRefundMessage({ refundState: 'SUCCEEDED' })).toContain('completed');
+ });
+});

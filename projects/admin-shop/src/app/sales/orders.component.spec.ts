@@ -37,3 +37,62 @@ describe('Cancellation refund review', () => {
   c.reviewRefund(); expect(c.refundError()).toContain('recent MFA'); expect(c.reviewingRefund()).toBe(false);
  });
 });
+
+function returnComponent(state: string) {
+ const c: any = Object.create(AdminOrdersComponent.prototype);
+ const item = { id: 'return-1', orderId: 'order-1', productName: 'Nexa Power Bank', quantity: 2, reason: 'Synthetic damaged product return', policyRevision: 'POLICY_1', state, version: 1 };
+ const view = { orderId: 'order-1', orderVersion: 2, delivered: true, lines: [], requests: [item], refundableAmount: 25, paystackRefundAvailable: true };
+ c.viewOrder = { id: 'order-1' };
+ c.returns = signal(view); c.returnsLoading = signal(false); c.returnAction = signal(null); c.returnBusy = signal(false); c.returnError = signal(null);
+ c.admin = {
+   errors: signal({}), session: { hasRole: vi.fn(() => true) },
+   reviewReturn: vi.fn(() => of(view)), receiveReturn: vi.fn(() => of(view)), requestReturnRefund: vi.fn(() => of(view))
+ };
+ return { c, item, view };
+}
+
+describe('Return review, receipt and refund', () => {
+ it('requires approval instructions and sends only an Operations decision', () => {
+  const { c, item, view } = returnComponent('REQUESTED');
+  c.beginReturn(item, 'APPROVE');
+  c.returnReason = 'Operations reviewed the recorded returns policy';
+  c.submitReturnAction();
+  expect(c.returnError()).toContain('instructions');
+  expect(c.admin.reviewReturn).not.toHaveBeenCalled();
+  c.returnInstructions = 'Send the item through the approved support channel';
+  c.submitReturnAction();
+  expect(c.admin.reviewReturn).toHaveBeenCalledWith('order-1', item, true, 'Operations reviewed the recorded returns policy', 'Send the item through the approved support channel');
+  expect(c.returns()).toBe(view);
+  expect(c.returnAction()).toBeNull();
+  expect(c.returnBusy()).toBe(false);
+ });
+
+ it('requires an external receipt reference and an explicit restock decision', () => {
+  const { c, item, view } = returnComponent('APPROVED');
+  c.beginReturn(item, 'RECEIVE');
+  c.returnReason = 'Physical inspection completed at the returns desk';
+  c.submitReturnAction();
+  expect(c.returnError()).toContain('receipt reference');
+  c.receiptReference = 'SYNTH_RETURN_RECEIPT_01';
+  c.restock = true;
+  c.submitReturnAction();
+  expect(c.admin.receiveReturn).toHaveBeenCalledWith('order-1', item, 'SYNTH_RETURN_RECEIPT_01', true, 'Physical inspection completed at the returns desk');
+  expect(c.returns()).toBe(view);
+ });
+
+ it('asks Finance to confirm a bounded amount before requesting the linked refund', () => {
+  const { c, item, view } = returnComponent('RECEIVED');
+  const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+  c.beginReturn(item, 'REFUND');
+  c.returnReason = 'Finance approved the returned-product refund';
+  c.refundAmount = '10.00';
+  c.submitReturnAction();
+  expect(confirm).toHaveBeenCalledWith(expect.stringContaining('10.00'));
+  expect(c.admin.requestReturnRefund).not.toHaveBeenCalled();
+  confirm.mockReturnValue(true);
+  c.submitReturnAction();
+  expect(c.admin.requestReturnRefund).toHaveBeenCalledWith('order-1', item, '10.00', 'Finance approved the returned-product refund');
+  expect(c.returns()).toBe(view);
+  confirm.mockRestore();
+ });
+});
