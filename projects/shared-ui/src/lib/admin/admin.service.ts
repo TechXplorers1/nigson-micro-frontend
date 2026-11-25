@@ -118,6 +118,7 @@ export type AdminRefund = { id: string; state: string; amount: string; currency:
 
 export type AdminOrder = {
   cancellation?: OrderCancellation | null;
+  afterSales?: { returnState: string; refundState: string | null; updatedAt: string } | null;
   id: string; version?: number; rawState?: string; number: string; date: string;
   customer: { name: string; email: string; phone: string; address: string };
   items: { lineId?: string; sku: string; name: string; qty: number; price: number }[];
@@ -747,13 +748,20 @@ export class AdminService {
   updateCustomerStatus(_id: string, _status: 'Active' | 'Suspended'): void { this.errors.update(all => ({ ...all, Customers: 'Customer account suspension is not available through this portal. Staff access is managed on Admin Users.' })); }
   saveCustomer(_customer: AdminCustomer): void { throw new Error('Customer profiles are managed by their account owners.'); }
   loadStaffOrders(): Observable<AdminOrder[]> {
-    return this.table('Orders', this.rows('/api/v1/staff/orders').pipe(map(rows => rows.map(order => ({
+    const orders = this.rows('/api/v1/staff/orders');
+    const afterSales = this.http.get<any>('/api/v1/staff/orders/after-sales').pipe(catchError(() => of({ items: [] })));
+    return this.table('Orders', forkJoin({ orders, afterSales }).pipe(map(({ orders: rows, afterSales: summary }) => {
+      const attention = new Map<string, any>();
+      for (const item of summary?.items || []) if (!attention.has(item.orderId)) attention.set(item.orderId, item);
+      return rows.map(order => ({
       id: order.id, number: order.orderNumber, date: order.createdAt, version: order.version, rawState: order.status, cancellation: order.cancellation ?? null,
+      afterSales: attention.get(order.id) ?? null,
       customer: { name: order.address?.recipient || '', email: '', phone: order.address?.phone || '', address: [order.address?.line1, order.address?.city, order.address?.region].filter(Boolean).join(', ') },
       items: (order.lines || []).map((line: any) => ({ lineId: line.id, sku: line.skuCode, name: line.name, qty: Number(line.quantity), price: Number(line.unitAmount) })), total: Number(order.totals.grandTotal), paymentStatus: order.paymentStatus === 'PAID' ? 'Paid' as const : order.paymentStatus === 'REFUNDED' ? 'Refunded' as const : 'Pending' as const,
       status: ({ PENDING: 'Pending', PAID: 'Confirmed', PROCESSING: 'Processing', SHIPPED: 'Shipped', DELIVERED: 'Delivered', CANCELLED: 'Cancelled' } as any)[order.status] || order.status,
       delivery: order.fulfillmentStatus, timeline: []
-    })))), this.orders);
+      }));
+    })), this.orders);
   }
   getRefund(id: string): Observable<AdminRefund> {
     return this.http.get<AdminRefund>(`/api/v1/staff/refunds/${id}`);

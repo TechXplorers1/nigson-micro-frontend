@@ -2,61 +2,58 @@ import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { EMPTY, switchMap, finalize } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { AdminService, AdminHeadingComponent, StatCardComponent, BadgeComponent, statusTone, AdminOrder, AdminOrderStatus, OrderReturn, OrderReturns } from 'shared-ui';
+import { AdminService, AdminHeadingComponent, BadgeComponent, statusTone, AdminOrder, OrderReturn, OrderReturns } from 'shared-ui';
 import { LucideEye } from '@lucide/angular';
 
 @Component({
   selector: 'app-admin-orders',
   standalone: true,
-  imports: [CommonModule, FormsModule, AdminHeadingComponent, StatCardComponent, BadgeComponent, LucideEye],
+  imports: [CommonModule, FormsModule, AdminHeadingComponent, BadgeComponent, LucideEye],
   template: `
     <lib-admin-heading title="Orders" subtitle="Every customer order, payment and delivery state"></lib-admin-heading>
 
-    <div class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      <lib-stat-card label="Total orders" [value]="admin.orders().length"></lib-stat-card>
-      <lib-stat-card label="Pending" [value]="pendingCount()"></lib-stat-card>
-      <lib-stat-card label="Delivered" [value]="deliveredCount()"></lib-stat-card>
-      <lib-stat-card label="Revenue" [value]="revenue() | currency:'NGN':'symbol-narrow':'1.0-0'"></lib-stat-card>
+    <div class="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+      <button *ngFor="let card of summaryCards()" (click)="activeTab.set(card.tab)" class="rounded-2xl border bg-white p-5 text-left shadow-sm transition hover:border-brand/40" [class.border-brand]="activeTab() === card.tab" [class.ring-2]="activeTab() === card.tab" [class.ring-brand/10]="activeTab() === card.tab">
+        <span class="text-[10px] font-bold uppercase tracking-widest text-muted-ink">{{ card.label }}</span>
+        <span class="mt-2 block text-2xl font-bold">{{ card.value }}</span>
+      </button>
     </div>
 
     <p *ngIf="admin.errors()['Orders']" role="alert" class="mb-3 text-sm text-rose-700">{{ admin.errors()['Orders'] }}</p>
+    <div class="mb-4 flex flex-wrap gap-2 border-b border-hairline">
+      <button *ngFor="let tab of tabs" (click)="activeTab.set(tab)" class="border-b-2 px-3 py-2 text-sm font-semibold" [class.border-brand]="activeTab() === tab" [class.text-brand]="activeTab() === tab" [class.border-transparent]="activeTab() !== tab">{{ tab }}</button>
+    </div>
     <div class="mb-5 flex flex-wrap gap-3">
       <button (click)="refreshOrders()" [disabled]="reviewingRefund()" class="rounded-xl border border-hairline bg-white px-4 py-2 text-sm">Refresh orders</button>
-      <input type="text" [(ngModel)]="searchQuery" placeholder="Search order or customer..." class="w-64 rounded-xl border border-hairline bg-white px-4 py-2 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20">
-      <select [(ngModel)]="statusFilter" class="rounded-xl border border-hairline bg-white px-4 py-2 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20">
-        <option value="All statuses">All statuses</option>
-        <option *ngFor="let s of statuses" [value]="s">{{ s }}</option>
-      </select>
+      <input type="text" [(ngModel)]="searchQuery" placeholder="Search order, customer, product or SKU..." class="min-w-72 flex-1 rounded-xl border border-hairline bg-white px-4 py-2 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20">
     </div>
 
     <div class="rounded-2xl border border-hairline bg-white shadow-sm overflow-x-auto">
-      <table class="w-full min-w-[720px] text-left text-sm text-ink">
+      <table class="w-full min-w-[980px] text-left text-sm text-ink">
         <thead class="border-b border-hairline bg-surface-alt/50 text-[10px] font-bold uppercase tracking-widest text-muted-ink">
           <tr>
-            <th class="px-6 py-4">Order ID</th>
+            <th class="px-5 py-4">Order</th>
             <th class="px-6 py-4">Customer</th>
             <th class="px-6 py-4">Products</th>
-            <th class="px-6 py-4">Amount</th>
+            <th class="px-5 py-4">Total</th>
             <th class="px-6 py-4">Payment</th>
-            <th class="px-6 py-4">Status</th>
-            <th class="px-6 py-4">Delivery</th>
-            <th class="px-6 py-4">Date</th>
+            <th class="px-5 py-4">Progress</th>
+            <th class="px-5 py-4">Attention</th>
             <th class="px-6 py-4 text-right">Actions</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-hairline">
           <tr *ngFor="let o of filteredOrders()" class="transition-colors hover:bg-surface-alt/30">
-            <td class="px-6 py-4 whitespace-nowrap font-semibold">{{ o.number }}</td>
+            <td class="px-5 py-4"><p class="font-mono font-semibold">{{ shortOrder(o.number) }}</p><p class="mt-1 text-xs text-muted-ink">{{ o.date | date:'mediumDate' }}</p></td>
             <td class="px-6 py-4">
               {{ o.customer.name }}<br>
               <span class="text-xs text-muted-ink">{{ o.customer.email }}</span>
             </td>
-            <td class="px-6 py-4 text-muted-ink">{{ o.items.length }} items</td>
-            <td class="px-6 py-4 font-semibold">{{ o.total | currency:'NGN':'symbol-narrow':'1.0-0' }}</td>
+            <td class="px-6 py-4"><p class="font-medium">{{ o.items[0]?.name || 'No product' }}</p><p class="text-xs text-muted-ink">{{ o.items[0]?.qty || 0 }} × {{ o.items[0]?.sku }}<span *ngIf="o.items.length > 1"> · +{{ o.items.length - 1 }} more</span></p></td>
+            <td class="px-5 py-4 font-semibold">{{ o.total | currency:'NGN':'symbol-narrow':'1.0-0' }}</td>
             <td class="px-6 py-4"><lib-badge [tone]="getTone(o.paymentStatus)">{{ o.paymentStatus }}</lib-badge></td>
-            <td class="px-6 py-4"><lib-badge [tone]="getTone(o.status)">{{ o.status }}</lib-badge></td>
-            <td class="px-6 py-4 text-muted-ink">{{ o.delivery }}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-muted-ink">{{ o.date | date:'shortDate' }}</td>
+            <td class="px-5 py-4"><lib-badge [tone]="getTone(progress(o))">{{ progress(o) }}</lib-badge></td>
+            <td class="px-5 py-4"><span *ngIf="attention(o) as issue" class="inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">{{ issue }}</span><span *ngIf="!attention(o)" class="text-xs text-muted-ink">—</span></td>
             <td class="px-6 py-4 text-right">
               <div class="flex items-center justify-end">
                 <button (click)="openOrder(o)" class="grid h-8 w-8 place-items-center rounded-lg text-muted-ink transition-colors hover:bg-brand/10 hover:text-brand" title="View order">
@@ -66,20 +63,23 @@ import { LucideEye } from '@lucide/angular';
             </td>
           </tr>
           <tr *ngIf="filteredOrders().length === 0">
-            <td colspan="9" class="p-8 text-center text-muted-ink">No orders match your filters.</td>
+            <td colspan="8" class="p-8 text-center text-muted-ink">No orders match this view.</td>
           </tr>
         </tbody>
       </table>
     </div>
 
-    <!-- Modal view (Simplified) -->
-    <div *ngIf="viewOrder" class="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 p-4">
-      <div class="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl">
+    <!-- Order management drawer -->
+    <div *ngIf="viewOrder" class="fixed inset-0 z-50 flex justify-end bg-ink/40">
+      <div class="h-full w-full max-w-3xl overflow-y-auto bg-white p-6 shadow-2xl sm:p-8">
         <div class="mb-4 flex items-center justify-between">
-          <h2 class="text-xl font-bold">Order {{ viewOrder.number }}</h2>
+          <div><p class="text-xs font-bold uppercase tracking-widest text-brand">Order details</p><h2 class="text-xl font-bold">{{ shortOrder(viewOrder.number) }}</h2><p class="text-xs text-muted-ink">{{ viewOrder.number }}</p></div>
           <button (click)="closeOrder()" [disabled]="reviewingRefund()" class="text-muted-ink hover:text-ink">✕</button>
         </div>
-        
+        <div class="mb-6 grid grid-cols-5 gap-1 rounded-xl bg-surface-alt p-3 text-center text-[10px] font-semibold sm:text-xs">
+          <div *ngFor="let step of progressSteps" [class.text-brand]="stepReached(viewOrder, step)" [class.text-muted-ink]="!stepReached(viewOrder, step)"><span class="mx-auto mb-1 block h-2 w-2 rounded-full" [class.bg-brand]="stepReached(viewOrder, step)" [class.bg-gray-300]="!stepReached(viewOrder, step)"></span>{{ step }}</div>
+        </div>
+
         <div class="mb-4 grid grid-cols-2 gap-4">
           <div>
             <p class="text-xs text-muted-ink uppercase font-bold">Customer</p>
@@ -181,7 +181,11 @@ import { LucideEye } from '@lucide/angular';
           <p class="mt-1 text-sm text-muted-ink">Create a local test shipment from the order's allocated stock, then dispatch and confirm delivery.</p>
           <p *ngIf="fulfillmentError()" role="alert" class="mt-2 text-sm text-rose-700">{{ fulfillmentError() }}</p>
           <p *ngIf="shipment()" class="mt-2 text-sm font-medium">Shipment: {{ shipment()!.status }}</p>
-          <div *ngIf="admin.session.hasRole('OPERATIONS')" class="mt-3 flex flex-wrap gap-2">
+          <div *ngIf="cancellationBlocksFulfillment()" role="status" class="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            <p class="font-semibold">Cancellation pending — fulfilment actions are unavailable.</p>
+            <p class="mt-1 text-xs">{{ cancellationFulfillmentMessage() }}</p>
+          </div>
+          <div *ngIf="admin.session.hasRole('OPERATIONS') && !cancellationBlocksFulfillment()" class="mt-3 flex flex-wrap gap-2">
             <button *ngIf="viewOrder.rawState === 'PROCESSING' && !shipment()" (click)="createShipment()" [disabled]="fulfillmentBusy()" class="rounded-xl bg-brand px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{{ fulfillmentBusy() ? 'Creating...' : 'Create shipment' }}</button>
             <button *ngIf="shipment()?.status === 'READY' || shipment()?.status === 'CREATED'" (click)="dispatchShipment()" [disabled]="fulfillmentBusy()" class="rounded-xl bg-brand px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{{ fulfillmentBusy() ? 'Dispatching...' : 'Dispatch shipment' }}</button>
             <button *ngIf="shipment()?.status === 'SHIPPED'" (click)="deliverShipment()" [disabled]="fulfillmentBusy()" class="rounded-xl bg-brand px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{{ fulfillmentBusy() ? 'Recording...' : 'Mark delivered' }}</button>
@@ -203,8 +207,9 @@ export class AdminOrdersComponent implements OnInit {
   refreshOrders() { this.admin.loadStaffOrders().subscribe({ error: () => {} }); }
   
   searchQuery = signal('');
-  statusFilter = signal('All statuses');
-  statuses: string[] = ["Pending", "Confirmed", "Processing", "Packed", "Shipped", "Delivered", "Cancelled"];
+  readonly tabs = ['All', 'New', 'Processing', 'Shipped', 'Delivered', 'Needs attention'];
+  readonly activeTab = signal('All');
+  readonly progressSteps = ['Placed', 'Paid', 'Processing', 'Shipped', 'Delivered'];
   
   viewOrder: AdminOrder | null = null;
   readonly shipment = signal<{ id: string; status: string; version: number } | null>(null);
@@ -230,7 +235,7 @@ export class AdminOrdersComponent implements OnInit {
     this.viewOrder = order;
     this.shipment.set(null);
     this.fulfillmentError.set(null);
-    this.loadFulfillment(order.id);
+    if (this.admin.session.hasRole('OPERATIONS')) this.loadFulfillment(order.id);
     this.loadReturns(order.id);
   }
 
@@ -252,7 +257,7 @@ export class AdminOrdersComponent implements OnInit {
   }
 
   createShipment() {
-    if (!this.viewOrder || this.fulfillmentBusy()) return;
+    if (!this.viewOrder || this.fulfillmentBusy() || this.cancellationBlocksFulfillment()) return;
     this.fulfillmentBusy.set(true); this.fulfillmentError.set(null);
     this.admin.getOrderFulfillment(this.viewOrder.id).pipe(
       switchMap(view => this.admin.createManualShipment(this.viewOrder!.id, view.lines)),
@@ -261,13 +266,13 @@ export class AdminOrdersComponent implements OnInit {
   }
 
   dispatchShipment() {
-    const shipment = this.shipment(); if (!shipment || this.fulfillmentBusy()) return;
+    const shipment = this.shipment(); if (!shipment || this.fulfillmentBusy() || this.cancellationBlocksFulfillment()) return;
     this.fulfillmentBusy.set(true); this.fulfillmentError.set(null);
     this.admin.dispatchShipment(shipment).pipe(finalize(() => this.fulfillmentBusy.set(false))).subscribe({ next: result => { this.shipment.set(result); this.refreshOrders(); }, error: () => this.fulfillmentError.set(this.admin.errors()['Fulfillment'] || 'Shipment could not be dispatched.') });
   }
 
   deliverShipment() {
-    const shipment = this.shipment(); if (!shipment || this.fulfillmentBusy()) return;
+    const shipment = this.shipment(); if (!shipment || this.fulfillmentBusy() || this.cancellationBlocksFulfillment()) return;
     this.fulfillmentBusy.set(true); this.fulfillmentError.set(null);
     this.admin.deliverShipment(shipment).pipe(finalize(() => this.fulfillmentBusy.set(false))).subscribe({ next: result => { this.shipment.set(result); this.refreshOrders(); }, error: () => this.fulfillmentError.set(this.admin.errors()['Fulfillment'] || 'Delivery could not be recorded.') });
   }
@@ -374,20 +379,71 @@ export class AdminOrdersComponent implements OnInit {
     });
   }
 
-  pendingCount = computed(() => this.admin.orders().filter(o => o.status === 'Pending').length);
-  deliveredCount = computed(() => this.admin.orders().filter(o => o.status === 'Delivered').length);
-  revenue = computed(() => this.admin.orders().filter(o => o.status !== 'Cancelled').reduce((n, o) => n + o.total, 0));
+  newCount = computed(() => this.admin.orders().filter(o => this.progress(o) === 'New').length);
+  processingCount = computed(() => this.admin.orders().filter(o => this.progress(o) === 'Processing').length);
+  deliveredCount = computed(() => this.admin.orders().filter(o => this.progress(o) === 'Delivered').length);
+  attentionCount = computed(() => this.admin.orders().filter(o => !!this.attention(o)).length);
+  revenue = computed(() => this.admin.orders().filter(o => o.paymentStatus === 'Paid' && o.status !== 'Cancelled').reduce((n, o) => n + o.total, 0));
+  summaryCards = computed(() => [
+    { label: 'New', value: this.newCount(), tab: 'New' },
+    { label: 'Processing', value: this.processingCount(), tab: 'Processing' },
+    { label: 'Needs attention', value: this.attentionCount(), tab: 'Needs attention' },
+    { label: 'Delivered', value: this.deliveredCount(), tab: 'Delivered' },
+    { label: 'Net paid revenue', value: new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(this.revenue()), tab: 'All' }
+  ]);
+
+  progress(order: AdminOrder): string {
+    if (order.status === 'Cancelled') return 'Cancelled';
+    if (order.status === 'Delivered' || order.delivery === 'DELIVERED') return 'Delivered';
+    if (order.status === 'Shipped' || order.delivery === 'SHIPPED' || order.delivery === 'PARTIALLY_SHIPPED') return 'Shipped';
+    if (order.status === 'Processing' || order.delivery === 'PROCESSING') return 'Processing';
+    return 'New';
+  }
+
+  attention(order: AdminOrder): string | null {
+    const cancellation = order.cancellation;
+    if (cancellation && cancellation.state !== 'REJECTED') {
+      if (cancellation.refundState && !['SUCCEEDED', 'REJECTED'].includes(cancellation.refundState)) return 'Refund pending';
+      return cancellation.state === 'CANCELLED' ? 'Cancelled' : 'Cancellation requested';
+    }
+    if (order.afterSales) {
+      if (order.afterSales.refundState && !['SUCCEEDED', 'REJECTED'].includes(order.afterSales.refundState)) return 'Refund pending';
+      return order.afterSales.returnState === 'REQUESTED' ? 'Return requested' : order.afterSales.returnState === 'APPROVED' ? 'Return approved' : 'Return received';
+    }
+    return null;
+  }
+
+  cancellationBlocksFulfillment(order: AdminOrder | null = this.viewOrder): boolean {
+    const state = order?.cancellation?.state;
+    return !!state && state !== 'REJECTED';
+  }
+
+  cancellationFulfillmentMessage(): string {
+    const state = this.viewOrder?.cancellation?.state;
+    if (state === 'WAITING_PAYMENT') return 'Waiting for the payment outcome before cancellation can finish.';
+    if (state === 'WAITING_CARRIER') return 'Waiting for delivery cancellation confirmation. Do not dispatch this shipment.';
+    if (state === 'CANCELLED') return 'This order is cancelled and must not be shipped.';
+    return 'The cancellation request must finish or be rejected before fulfilment can continue.';
+  }
+
+  shortOrder(value: string): string { return value.length > 18 ? `${value.slice(0, 8)}…${value.slice(-8)}` : value; }
+
+  stepReached(order: AdminOrder, step: string): boolean {
+    const levels: Record<string, number> = { Placed: 0, Paid: 1, Processing: 2, Shipped: 3, Delivered: 4 };
+    const state = this.progress(order);
+    const current = state === 'Delivered' ? 4 : state === 'Shipped' ? 3 : state === 'Processing' ? 2 : order.paymentStatus === 'Paid' ? 1 : 0;
+    return current >= levels[step];
+  }
 
   filteredOrders = computed(() => {
     let list = this.admin.orders();
-    const q = this.searchQuery().toLowerCase();
+    const q = this.searchQuery().trim().toLowerCase();
     if (q) {
-      list = list.filter(o => (o.number + o.customer.name + o.customer.email).toLowerCase().includes(q));
+      list = list.filter(o => [o.number, o.customer.name, o.customer.email, ...o.items.flatMap(item => [item.name, item.sku])].join(' ').toLowerCase().includes(q));
     }
-    const s = this.statusFilter();
-    if (s !== 'All statuses') {
-      list = list.filter(o => o.status === s);
-    }
+    const tab = this.activeTab();
+    if (tab === 'Needs attention') list = list.filter(o => !!this.attention(o));
+    else if (tab !== 'All') list = list.filter(o => this.progress(o) === tab);
     return list;
   });
 

@@ -4,7 +4,7 @@ export type BackendRole = 'ADMIN'|'SALES'|'OPERATIONS'|'FINANCE'|'CONTENT_EDITOR
 /** Mirrors current owner API permissions; ADMIN is not an implicit domain grant. */
 export const ROLE_PERMISSIONS:Record<BackendRole,SectionKey[]> = {
  ADMIN:['dashboard','admins','roles','affiliatePayouts'],
- SALES:['dashboard','quotes','distributors','customers','inquiries'],
+ SALES:['dashboard','orders','quotes','distributors','customers','inquiries'],
  OPERATIONS:['dashboard','orders','inventory'],
  FINANCE:['dashboard','orders','affiliatePayouts'],
  CONTENT_EDITOR:['dashboard','products','categories','pages','blog'],

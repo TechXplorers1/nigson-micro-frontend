@@ -24,6 +24,7 @@ describe('Staff route access',()=>{
  });
  it('allows the corresponding owner-authorized pages',async()=>{
   for(const [role,path] of [['ADMIN','/admin/users'],['SALES','/admin/quotes'],['OPERATIONS','/admin/inventory/stock-in'],['FINANCE','/admin/orders'],['CONTENT_EDITOR','/admin/pages/home'],['CONTENT_PUBLISHER','/admin/reviews'],['ANALYST','/admin/analytics']])expect((await guard([role],path)).result).toBe(true);
+  expect((await guard(['SALES'],'/admin/orders')).result).toBe(true);
  });
  it('protects user and role administration from every non-admin staff role',async()=>{
   for(const role of ['SALES','OPERATIONS','FINANCE','CONTENT_EDITOR','CONTENT_PUBLISHER','ANALYST'])for(const path of ['/admin/users','/admin/roles']){expect((await guard([role],path)).result).not.toBe(true);expect((await guard([role],path,{adminOnly:true})).result).toBe('/account');}
