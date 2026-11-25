@@ -7,7 +7,7 @@ import { CheckoutComponent } from './checkout.component';
 function setup() {
   const component: any = Object.create(CheckoutComponent.prototype);
   Object.assign(component, {
-    step: () => 1, address: { street: '12 Test street', city: 'Lagos', state: 'Lagos', postal: '' },
+    step: () => 1, address: { street: '12 Test street', instructions: '', city: 'Lagos', state: 'Lagos', postal: '' },
     selectedAddressId: '', savedAddresses: [],
     customer: { fullName: 'Test Customer', phone: '+2348000000001' },
     card: { name: 'Test User', number: '1234 5678 1234 5678', expiry: '12/30', cvv: '123' },
@@ -22,6 +22,37 @@ function setup() {
 }
 
 describe('Checkout automatic delivery location', () => {
+  it('saves only floor, door and delivery instructions in address line2', async () => {
+    const c = setup(); c.address.instructions = '  2nd Floor, Door B – leave at the door  ';
+    c.http.post.mockReturnValue(of({ id: 'address' }));
+    await c.ensureAddressId();
+    expect(c.http.post.mock.calls[0][1]).toMatchObject({
+      line1: '12 Test street', line2: '2nd Floor, Door B – leave at the door',
+      recipient: 'Test Customer', phone: '+2348000000001'
+    });
+  });
+  it('keeps absent delivery instructions null', async () => {
+    const c = setup(); c.address.instructions = '  ';
+    c.http.post.mockReturnValue(of({ id: 'address' }));
+    await c.ensureAddressId();
+    expect(c.http.post.mock.calls[0][1].line2).toBeNull();
+  });
+  it('shows saved floor/door details and clears them when choosing a new address', () => {
+    const c = setup(); c.deliveryQuote = signal(null);
+    c.savedAddresses = [{ id: 'saved', line1: '12 Test street', line2: 'Floor 2, Door B', countryCode: 'NG' }];
+    c.selectAddress('saved'); expect(c.address.instructions).toBe('Floor 2, Door B');
+    c.selectAddress(''); expect(c.address.instructions).toBe('');
+  });
+  it('invalidates the address and delivery quote when instructions change', () => {
+    const c = setup(); c.createdAddressId = 'old'; c.deliveryQuote = signal({ id: 'quote' }); c.deliveryQuoteAddressId = 'old';
+    c.address.instructions = 'Door B'; c.addressChanged();
+    expect(c.createdAddressId).toBeNull(); expect(c.deliveryQuote()).toBeNull(); expect(c.deliveryQuoteAddressId).toBeNull();
+  });
+  it('checks the existing address line2 limit before continuing', () => {
+    const c = setup(); c.address.instructions = 'A'.repeat(201);
+    expect(c.validate()).toContain('200 characters');
+  });
+
   it('accepts a complete postal address without asking for coordinates', () => {
     const c = setup();
     expect(c.validate()).toBeNull();

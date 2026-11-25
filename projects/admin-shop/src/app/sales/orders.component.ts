@@ -44,7 +44,9 @@ import { LucideEye } from '@lucide/angular';
         </thead>
         <tbody class="divide-y divide-hairline">
           <tr *ngFor="let o of filteredOrders()" class="transition-colors hover:bg-surface-alt/30">
-            <td class="px-5 py-4"><p class="font-mono font-semibold">{{ shortOrder(o.number) }}</p><p class="mt-1 text-xs text-muted-ink">{{ o.date | date:'mediumDate' }}</p></td>
+            <td class="px-6 py-4 whitespace-nowrap font-semibold">{{ o.number }}
+              <span *ngIf="pickupCode(o.number) as code" class="mt-1 block text-xs font-normal text-muted-ink">Pickup code: <span class="font-mono font-semibold">{{ code }}</span></span>
+            </td>
             <td class="px-6 py-4">
               {{ o.customer.name }}<br>
               <span class="text-xs text-muted-ink">{{ o.customer.email }}</span>
@@ -76,10 +78,12 @@ import { LucideEye } from '@lucide/angular';
           <div><p class="text-xs font-bold uppercase tracking-widest text-brand">Order details</p><h2 class="text-xl font-bold">{{ shortOrder(viewOrder.number) }}</h2><p class="text-xs text-muted-ink">{{ viewOrder.number }}</p></div>
           <button (click)="closeOrder()" [disabled]="reviewingRefund()" class="text-muted-ink hover:text-ink">✕</button>
         </div>
-        <div class="mb-6 grid grid-cols-5 gap-1 rounded-xl bg-surface-alt p-3 text-center text-[10px] font-semibold sm:text-xs">
-          <div *ngFor="let step of progressSteps" [class.text-brand]="stepReached(viewOrder, step)" [class.text-muted-ink]="!stepReached(viewOrder, step)"><span class="mx-auto mb-1 block h-2 w-2 rounded-full" [class.bg-brand]="stepReached(viewOrder, step)" [class.bg-gray-300]="!stepReached(viewOrder, step)"></span>{{ step }}</div>
+        
+        <div *ngIf="pickupCode(viewOrder.number) as code" class="mb-4 rounded-lg border border-hairline p-3">
+          <p class="text-xs font-bold uppercase text-muted-ink">PandaGo pickup code</p>
+          <p class="font-mono text-lg font-semibold">{{ code }}</p>
+          <p class="text-xs text-muted-ink">Match this code with the rider when handing over this order.</p>
         </div>
-
         <div class="mb-4 grid grid-cols-2 gap-4">
           <div>
             <p class="text-xs text-muted-ink uppercase font-bold">Customer</p>
@@ -439,13 +443,23 @@ export class AdminOrdersComponent implements OnInit {
     let list = this.admin.orders();
     const q = this.searchQuery().trim().toLowerCase();
     if (q) {
-      list = list.filter(o => [o.number, o.customer.name, o.customer.email, ...o.items.flatMap(item => [item.name, item.sku])].join(' ').toLowerCase().includes(q));
+      list = list.filter(o => (o.number + (this.pickupCode(o.number) ?? '') + o.customer.name + o.customer.email).toLowerCase().includes(q));
+    }
+    const s = this.statusFilter();
+    if (s !== 'All statuses') {
+      list = list.filter(o => o.status === s);
     }
     const tab = this.activeTab();
     if (tab === 'Needs attention') list = list.filter(o => !!this.attention(o));
     else if (tab !== 'All') list = list.filter(o => this.progress(o) === tab);
     return list;
   });
+
+  /** Must match Commerce JdbcShipmentRepository.pickupCode: last 10 alphanumeric order-number characters. */
+  pickupCode(orderNumber: string): string | null {
+    const normalized = (orderNumber ?? '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+    return normalized.length >= 10 ? normalized.slice(-10) : null;
+  }
 
   getTone(status: string) {
     return statusTone(status);

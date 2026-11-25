@@ -146,6 +146,11 @@ const BANKS = ["Access Bank", "First Bank", "Guaranty Trust Bank", "United Bank 
                   <label class="text-xs font-semibold uppercase tracking-wider text-muted-ink">Street address</label>
                   <input [(ngModel)]="address.street" [disabled]="!!selectedAddressId" (ngModelChange)="addressChanged()" class="w-full rounded-md border border-hairline bg-surface-alt px-4 py-2.5 text-sm focus:border-brand focus:outline-none disabled:opacity-70" />
                 </div>
+                <div class="space-y-1">
+                  <label for="delivery-instructions" class="text-xs font-semibold uppercase tracking-wider text-muted-ink">Floor, door and delivery instructions (optional)</label>
+                  <input id="delivery-instructions" [(ngModel)]="address.instructions" maxlength="200" [disabled]="!!selectedAddressId" (ngModelChange)="addressChanged()" placeholder="2nd Floor, Door B – leave at the door" aria-describedby="delivery-instructions-help" class="w-full rounded-md border border-hairline bg-surface-alt px-4 py-2.5 text-sm focus:border-brand focus:outline-none disabled:opacity-70" />
+                  <p id="delivery-instructions-help" class="text-xs text-muted-ink">Only floor, door and delivery instructions. The rider will see these notes. Edit saved address instructions in your account.</p>
+                </div>
                 <div class="grid gap-5 md:grid-cols-2">
                   <div class="space-y-1">
                     <label class="text-xs font-semibold uppercase tracking-wider text-muted-ink">City</label>
@@ -502,7 +507,7 @@ export class CheckoutComponent implements OnInit {
     phone: "",
   };
   private phoneEdited = false;
-  address = { street: "", city: "", state: "Lagos", country: "Nigeria", postal: "" };
+  address = { street: "", instructions: "", city: "", state: "Lagos", country: "Nigeria", postal: "" };
   card = { name: "", number: "", expiry: "", cvv: "" };
   netbank = { bank: BANKS[0], userId: "", pin: "" };
 
@@ -535,6 +540,7 @@ export class CheckoutComponent implements OnInit {
     const a = this.savedAddresses.find(x => x.id === id);
     if (a) {
           this.address.street = a.line1 || '';
+          this.address.instructions = a.line2 || '';
           this.address.city = a.city || '';
           this.address.state = a.region || 'Lagos';
           this.address.country = a.countryCode === 'NG' ? 'Nigeria' : a.countryCode;
@@ -542,7 +548,7 @@ export class CheckoutComponent implements OnInit {
           if (a.recipient && !this.customer.fullName) this.customer.fullName = a.recipient;
           if (a.phone && !this.phoneEdited) this.customer.phone = a.phone;
     } else if (!id) {
-      this.address = { street: '', city: '', state: 'Lagos', country: 'Nigeria', postal: '' };
+      this.address = { street: '', instructions: '', city: '', state: 'Lagos', country: 'Nigeria', postal: '' };
     }
   }
 
@@ -625,6 +631,7 @@ export class CheckoutComponent implements OnInit {
     }
     if (this.step() === 1) {
       if (!this.address.street.trim()) return "Street address is required.";
+      if ((this.address.instructions?.trim().length ?? 0) > 200) return "Floor, door and delivery instructions must be 200 characters or fewer.";
       if (!this.address.city.trim()) return "City is required.";
       if (!this.address.state.trim()) return "State is required to locate your delivery address.";
       if (this.deliveryMode() === 'SCHEDULED') {
@@ -729,7 +736,7 @@ export class CheckoutComponent implements OnInit {
       recipient,
       phone,
       line1: this.address.street,
-      line2: null,
+      line2: this.address.instructions?.trim() || null,
       city: this.address.city,
       region: this.address.state,
       postalCode: this.address.postal || null,

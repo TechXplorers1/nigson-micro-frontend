@@ -103,14 +103,16 @@ import {
 
           <div>
             <label class="block text-xs font-semibold uppercase tracking-wider text-muted-ink mb-1">
-              Apartment / Suite / Unit (optional)
+              Floor, door and delivery instructions (optional)
             </label>
             <input
               [(ngModel)]="formData.line2"
               name="line2"
-              placeholder="Suite 4B, Building C"
+              maxlength="200"
+              placeholder="2nd Floor, Door B – leave at the door"
               class="w-full rounded-xl border border-hairline bg-white px-4 py-2.5 text-sm focus:outline-none focus:border-brand"
             />
+            <p class="mt-1 text-xs text-muted-ink">Only floor, door and extra delivery instructions. The rider will see these notes.</p>
           </div>
 
           <div class="grid gap-4 md:grid-cols-3">

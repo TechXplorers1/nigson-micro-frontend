@@ -96,3 +96,18 @@ describe('Return review, receipt and refund', () => {
   confirm.mockRestore();
  });
 });
+
+
+describe('Operator PandaGo pickup code', () => {
+ it('matches the backend code for the full order number', () => {
+  const c: any = Object.create(AdminOrdersComponent.prototype);
+  const number = 'NIG_0123456789ABCDEF0123456789ABCDEF';
+  expect(c.pickupCode(number)).toBe('6789ABCDEF');
+  expect(c.pickupCode(number.toLowerCase())).toBe('6789ABCDEF');
+  expect(c.pickupCode(number)).toMatch(/^[A-Z0-9]{10}$/);
+ });
+ it('does not invent a pickup code for missing or malformed short order references', () => {
+  const c: any = Object.create(AdminOrdersComponent.prototype);
+  expect(c.pickupCode('NIG-1')).toBeNull(); expect(c.pickupCode(undefined)).toBeNull();
+ });
+});
