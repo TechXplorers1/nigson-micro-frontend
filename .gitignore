@@ -50,3 +50,10 @@ Thumbs.db
 
 # Temporary wishlist verification build output
 /.angular/wishlist-check/
+
+# Release job staging (never credentials or Terraform state artifacts)
+/.build/
+
+# Python deployment tooling caches
+**/__pycache__/
+**/*.pyc

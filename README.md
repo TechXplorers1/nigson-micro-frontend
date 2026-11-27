@@ -56,3 +56,5 @@ Multiple roles combine their sections. Customers cannot enter the staff portal. 
 Current API boundaries matter: catalogue reads require CONTENT_EDITOR; operational inventory can be viewed using its actual SKU identifiers without that grant. CMS draft reads require CONTENT_EDITOR, while publication also requires CONTENT_PUBLISHER. Publisher-only users therefore land on review moderation; give both content roles only when that combined authority is intended. FINANCE alone does not grant ANALYST reports. These requirements are reflected in page links, data loads and action controls rather than inferred or bypassed.
 
 Details and verification: [Staff portal access implementation](docs/2026-11-14-STAFF-PORTAL-ACCESS.md).
+
+AWS staging CI/CD is defined in `.github/workflows/aws-stage-ui.yml`. See [deployment/AWS.md](deployment/AWS.md) for the required UI repository secrets/public site-key variable and infrastructure preparation.

@@ -17,6 +17,9 @@ def main():
     parser.add_argument('--output', required=True, type=Path)
     args = parser.parse_args()
     target = args.output.resolve()
+    site_key = os.environ.get('NIGSON_GOOGLE_RECAPTCHA_SITE_KEY', '').strip()
+    if not re.fullmatch(r'[A-Za-z0-9_-]{20,100}', site_key):
+        raise SystemExit('NIGSON_GOOGLE_RECAPTCHA_SITE_KEY must be configured for a production release.')
     if target.exists():
         raise SystemExit('Output already exists; choose a new release directory.')
     source_manifest = json.loads((ROOT / 'projects/shell/public/federation.manifest.json').read_text())
@@ -41,9 +44,6 @@ def main():
             shutil.copytree(browser, destination, dirs_exist_ok=True)
         (site / 'federation.manifest.json').write_text(json.dumps(
             {name: f'/remotes/{name}/remoteEntry.json' for name in remotes}, indent=2) + '\n')
-        site_key = os.environ.get('NIGSON_GOOGLE_RECAPTCHA_SITE_KEY', '').strip()
-        if not re.fullmatch(r'[A-Za-z0-9_-]{20,100}', site_key):
-            raise SystemExit('NIGSON_GOOGLE_RECAPTCHA_SITE_KEY must be configured for a production release.')
         index = site / 'index.html'
         html = index.read_text()
         pattern = r'<meta name="google-recaptcha-site-key" content="[^"]*"\s*/?>'
